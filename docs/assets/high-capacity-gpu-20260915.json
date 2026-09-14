@@ -1,0 +1,172 @@
+{
+  "schema": "cat-high-capacity-gpu-observations-v1",
+  "host": "dep-0 / WS012743",
+  "gpu": "NVIDIA GeForce RTX 5090",
+  "run": "outputs/continuous_cat_dex3_20260915_large",
+  "source_commit": "12a4ad8f1b03fc319db03d9d0dab6b8278f549a3",
+  "runner_pid": 786591,
+  "worker_pid": 786603,
+  "active_stage": "r000000-p0-generic",
+  "num_envs": 8192,
+  "previous_light_scene_num_envs": 1024,
+  "unroll_length": 16,
+  "stage_transition_budget": 8388608,
+  "checkpoint_epochs": 16,
+  "global_step_offset": 1638400,
+  "preallocation_enabled": false,
+  "memory_fraction": 0.93,
+  "measurement": "Read-only nvidia-smi samples and actual completed PPO epoch metrics; no benchmark or evaluation was started.",
+  "interpretation": {
+    "nvidia_total_allocated_gib": 30.103515625,
+    "allocator_peak_live_gib": 17.57828998565674,
+    "allocator_retained_pool_gib": 29.190897226333618,
+    "distinction": "About 30.1 GiB is allocated on the GPU during training; measured peak live JAX buffers are about 17.6 GiB. The retained allocator pool is about 29.2 GiB. Allocated VRAM is not the same as simultaneously live tensors.",
+    "throughput": "The first completed epoch includes compilation and is excluded from steady throughput. The second epoch measured 11295.32 transitions/s; this is an observation of the real run, not a controlled benchmark.",
+    "status": "Worker remained active and transitions advanced; no observed OOM and no stop or configuration change was performed by this monitor."
+  },
+  "epochs": [
+    {
+      "first_observed_utc": "2026-09-14T21:21:23.929718Z",
+      "local_transition_step": 524288,
+      "global_transition_step": 2162688,
+      "training_sps": 3016.829296239927,
+      "includes_first_graph_compilation": true,
+      "allocator_bytes_in_use": 10460624640,
+      "allocator_peak_bytes_in_use": 18874545152,
+      "allocator_pool_bytes": 31343487232,
+      "allocator_bytes_limit": 31343487462,
+      "allocator_reported_bytes_reserved": 0
+    },
+    {
+      "first_observed_utc": "2026-09-14T21:22:09.156147Z",
+      "local_transition_step": 1048576,
+      "global_transition_step": 2686976,
+      "training_sps": 11295.321061878392,
+      "includes_first_graph_compilation": false,
+      "allocator_bytes_in_use": 10461468928,
+      "allocator_peak_bytes_in_use": 18874545152,
+      "allocator_pool_bytes": 31343487232,
+      "allocator_bytes_limit": 31343487462,
+      "allocator_reported_bytes_reserved": 0
+    }
+  ],
+  "samples": [
+    {
+      "observed_utc": "2026-09-14T21:18:22.942455Z",
+      "gpu_utilization_percent": 0,
+      "nvidia_total_used_mib": 9110,
+      "nvidia_free_mib": 23033,
+      "power_w": 57.29,
+      "worker_pid": 786603,
+      "nvidia_worker_used_mib": 8880
+    },
+    {
+      "observed_utc": "2026-09-14T21:19:53.446781Z",
+      "gpu_utilization_percent": 0,
+      "nvidia_total_used_mib": 9112,
+      "nvidia_free_mib": 23031,
+      "power_w": 12.23,
+      "worker_pid": 786603,
+      "nvidia_worker_used_mib": 8882
+    },
+    {
+      "observed_utc": "2026-09-14T21:20:23.656199Z",
+      "gpu_utilization_percent": 100,
+      "nvidia_total_used_mib": 30826,
+      "nvidia_free_mib": 1317,
+      "power_w": 263.11,
+      "worker_pid": 786603,
+      "nvidia_worker_used_mib": 30596
+    },
+    {
+      "observed_utc": "2026-09-14T21:20:38.730036Z",
+      "gpu_utilization_percent": 100,
+      "nvidia_total_used_mib": 30826,
+      "nvidia_free_mib": 1317,
+      "power_w": 503.78,
+      "worker_pid": 786603,
+      "nvidia_worker_used_mib": 30596,
+      "latest_local_transition_step": 131072
+    },
+    {
+      "observed_utc": "2026-09-14T21:20:53.807377Z",
+      "gpu_utilization_percent": 100,
+      "nvidia_total_used_mib": 30826,
+      "nvidia_free_mib": 1317,
+      "power_w": 512.12,
+      "worker_pid": 786603,
+      "nvidia_worker_used_mib": 30596,
+      "latest_local_transition_step": 262144
+    },
+    {
+      "observed_utc": "2026-09-14T21:21:08.869185Z",
+      "gpu_utilization_percent": 100,
+      "nvidia_total_used_mib": 30826,
+      "nvidia_free_mib": 1317,
+      "power_w": 523.11,
+      "worker_pid": 786603,
+      "nvidia_worker_used_mib": 30596,
+      "latest_local_transition_step": 393216
+    },
+    {
+      "observed_utc": "2026-09-14T21:21:23.929718Z",
+      "gpu_utilization_percent": 100,
+      "nvidia_total_used_mib": 30826,
+      "nvidia_free_mib": 1317,
+      "power_w": 529.83,
+      "worker_pid": 786603,
+      "nvidia_worker_used_mib": 30596,
+      "latest_local_transition_step": 655360
+    },
+    {
+      "observed_utc": "2026-09-14T21:21:39.006352Z",
+      "gpu_utilization_percent": 100,
+      "nvidia_total_used_mib": 30826,
+      "nvidia_free_mib": 1317,
+      "power_w": 531.94,
+      "worker_pid": 786603,
+      "nvidia_worker_used_mib": 30596,
+      "latest_local_transition_step": 786432
+    },
+    {
+      "observed_utc": "2026-09-14T21:21:54.081623Z",
+      "gpu_utilization_percent": 100,
+      "nvidia_total_used_mib": 30826,
+      "nvidia_free_mib": 1317,
+      "power_w": 534.27,
+      "worker_pid": 786603,
+      "nvidia_worker_used_mib": 30596,
+      "latest_local_transition_step": 917504
+    },
+    {
+      "observed_utc": "2026-09-14T21:22:09.156147Z",
+      "gpu_utilization_percent": 100,
+      "nvidia_total_used_mib": 30826,
+      "nvidia_free_mib": 1317,
+      "power_w": 536.18,
+      "worker_pid": 786603,
+      "nvidia_worker_used_mib": 30596,
+      "latest_local_transition_step": 1179648
+    },
+    {
+      "observed_utc": "2026-09-14T21:22:24.234205Z",
+      "gpu_utilization_percent": 100,
+      "nvidia_total_used_mib": 30826,
+      "nvidia_free_mib": 1317,
+      "power_w": 539.08,
+      "worker_pid": 786603,
+      "nvidia_worker_used_mib": 30596,
+      "latest_local_transition_step": 1310720
+    },
+    {
+      "observed_utc": "2026-09-14T21:22:39.308040Z",
+      "gpu_utilization_percent": 100,
+      "nvidia_total_used_mib": 30826,
+      "nvidia_free_mib": 1317,
+      "power_w": 539.4,
+      "worker_pid": 786603,
+      "nvidia_worker_used_mib": 30596,
+      "latest_local_transition_step": 1441792
+    }
+  ]
+}

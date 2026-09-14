@@ -32,6 +32,8 @@ rate `3e-4`. The larger restart uses 8,192 environments on original typical CAT
 and simple generic clutter, 4,096 on simple furniture, 2,048 on randomized CAT,
 2,048 on dense generic clutter and 1,024 on dense furniture. These counts target
 high GPU memory use; measured allocation is recorded in the run notes and W&B.
+The [larger run notes](HIGH_CAPACITY_RUN_20260915.md) include measured VRAM,
+live tensor peaks, throughput and the current stop command.
 Native dense furniture MJX state alone occupies about 9.44 MiB per environment,
 compared with 0.293 MiB on original forward. Training also needs cached resets,
 rollout buffers and compiler temporaries, so scene families need different counts.

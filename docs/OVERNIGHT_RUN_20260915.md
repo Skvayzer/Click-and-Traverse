@@ -3,7 +3,8 @@
 This initial smaller run was cooperatively stopped at the user's request for
 larger batches. It completed 1,048,576 forward transitions and 589,824 generic
 clutter transitions; the selected generic checkpoint is at step 589,824. The
-restart configuration is in [TRAINING_READINESS.md](TRAINING_READINESS.md).
+restart measurements and current stop command are in
+[HIGH_CAPACITY_RUN_20260915.md](HIGH_CAPACITY_RUN_20260915.md).
 The observations and stop command below refer to the original, now stopped run.
 
 Launched at 01:02:47 Dubai time (September 14, 21:02:47 UTC) on dep-0's RTX
