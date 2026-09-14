@@ -68,6 +68,16 @@ def load_plan(path):
     plan = json.loads(Path(path).read_text())
     if plan.get("schema") != "cat-whole-body-curriculum-v1" or plan.get("sha256") != _digest({k: v for k, v in plan.items() if k != "sha256"}):
         raise ValueError("Curriculum schema or hash mismatch")
+    budget_keys = ("steps_per_stage", "rounds", "num_envs", "unroll_length", "checkpoint_epochs")
+    if any(type(plan.get(key)) is not int or plan[key] < 1 for key in budget_keys):
+        raise ValueError("Curriculum budgets must be positive integers")
+    quantum = plan["num_envs"] * plan["unroll_length"] * plan["checkpoint_epochs"]
+    if (plan["steps_per_stage"] % quantum or plan["num_envs"] % 4
+            or not plan.get("stages") or plan.get("total_steps") != len(plan["stages"]) * plan["steps_per_stage"]):
+        raise ValueError("Curriculum stage budgets, total steps or minibatch divisibility disagree")
+    if (type(plan.get("seed")) is not int or plan["seed"] < 0
+            or plan.get("wandb_mode") not in ("disabled", "offline", "online")):
+        raise ValueError("Invalid curriculum seed or logging mode")
     names = [stage["name"] for stage in plan["stages"]]
     if len(set(names)) != len(names) or any(Path(name).name != name or name in ("", ".", "..") for name in names):
         raise ValueError("Stage names must be unique directory basenames")
@@ -143,7 +153,8 @@ def _read_json(path):
 def _retire_owned_stage(stage_dir, *, receipt_sha256):
     """Prune only models bound to a verified runner receipt; preserve all logs."""
     stage_dir = Path(stage_dir)
-    if stage_dir.is_symlink() or not (stage_dir / "run.json").is_file():
+    if (stage_dir.is_symlink() or (stage_dir / "run.json").is_symlink()
+            or not (stage_dir / "run.json").is_file()):
         raise ValueError("Refusing to retire an unrecognized stage directory")
     receipt_path = stage_dir / "curriculum_receipt.json"
     receipt = _read_json(receipt_path)
@@ -201,6 +212,7 @@ def _reconcile_retirement(state, run_dir):
         receipt = _read_json(stage_dir / "curriculum_receipt.json")
         if (_file_hash(stage_dir / "curriculum_receipt.json") != item["receipt_sha256"]
                 or receipt["owner"] != state["owner"] or receipt["plan_sha256"] != state["plan_sha256"]
+                or _file_hash(stage_dir / "run.json") != receipt["run_sha256"]
                 or _file_hash(stage_dir / "summary.json") != receipt["summary_sha256"]):
             raise ValueError("Completed stage receipt or summary was modified")
         if item is completed[-1] and receipt["selected"] != selection:
@@ -245,6 +257,9 @@ def _verify_stage(stage_dir, *, plan, stage, scene, scene_dir, previous_selectio
                 or source.get("files") != expected_files
                 or not run.get("warmstart", {}).get("critic_restored")):
             raise ValueError("Stage did not restore the preceding verified actor/critic/normalizer payload")
+    elif (run.get("source", {}).get("kind") != "pinned_public_native_checkpoint"
+          or not run.get("warmstart", {}).get("critic_restored")):
+        raise ValueError("First stage did not restore the pinned native CAT initialization")
     update = float(summary.get("actor_max_abs_parameter_update", 0))
     if (not math.isfinite(update) or update <= 0
             or summary.get("requested_steps") != plan["steps_per_stage"]

@@ -9,7 +9,9 @@ This file records implementation checks, not trained traversal results.
 - GPU dense-scene reset and one zero-action step passed: finite 406/494 observations, no termination/contact. Including compilation, the bounded check took 67.9 s; a single step executed in 0.0426 s. These single-environment smoke timings are not PPO throughput estimates. See `assets/dense-mjx-smoke.json` for exact source hashes and measured memory scope.
 - Original-family adapters passed 24 focused legacy/scene tests, including lossless voxel merging, source-coordinate alignment and nonzero vertical crouch guidance. Native reset checks passed for original forward, hurdle, crouch and random scenes.
 - Strict evaluation/cache/provenance regression checks passed (43 focused tests at that point). No benchmark episodes or performance evaluation have been run.
-- Full combined CPU suite and final mixed-stage GPU integration are being completed in subsequent commits. The individual focused counts overlap and should not be summed.
+- The full combined CPU suite passed: **114 tests in 82.04 s**, including the locally fetched pinned native CAT release fixture. The 12 warnings come from pinned JAX/JAXopt deprecations and MuJoCo sentinel float casts; tested states and observations remain finite. The individual focused counts above overlap and should not be summed.
+- Mocked curriculum tests cover successful handoff, process failure, incomplete-stage preservation, corrupt payloads, invalid source lineage, interrupted state publication and interrupted model retirement. Final mixed-stage GPU integration is still running.
+- The complete default test specification generated successfully: 120 rooms, 360 scene/start-goal cases, 1,080 planned episodes per controller across three training seeds. Manifest SHA256: `5e93453db3c32d220c931b065db3019798f24a458db44e4b99fe6f8e5a8c18a7`. This generated specifications only; no evaluation episodes ran.
 
 `assets/dense-room.png` is an actual static MuJoCo render. No learned policy or rollout was used. Its JSON sidecar records geometry and source provenance.
 

@@ -19,6 +19,31 @@ def _configure_numerics():
     return {"jax_default_matmul_precision": str(jax.config.jax_default_matmul_precision)}
 
 
+def _resolve_checkpoint(path):
+    from cat_ppo.furniture.checkpoint import BestCheckpointStore
+
+    path = Path(path).absolute()
+    run = None
+    if (path / "checkpoints" / "best").is_symlink():
+        run = path
+    elif path.is_symlink() and path.name == "best" and path.parent.name == "checkpoints":
+        run = path.parent.parent
+    selection = BestCheckpointStore.open_existing(run).selected(verify=True) if run is not None else None
+    native = Path(selection["path"]) if selection is not None else path.resolve()
+    if selection is None and (native / "native").is_dir():
+        native = native / "native"
+    if not (native / "ppo_network_config.json").is_file():
+        raise ValueError("checkpoint must include its native network configuration")
+    return native, selection
+
+
+def _apply_environment_overrides(config, overrides):
+    # This module-level import is intentionally local; train_furniture's config
+    # helper imports no simulation modules and rejects unknown nested keys.
+    from train_furniture import _update_config
+    _update_config(config, overrides)
+
+
 def _code_provenance():
     """Bind results to actual local sources, including uncommitted Python files."""
     root = Path(__file__).resolve().parent
@@ -119,7 +144,6 @@ def main():
     numerics = _configure_numerics()
     from cat_ppo.envs.g1.env_furniture import G1FurnitureEnv, default_config
     from cat_ppo.furniture.benchmark import summarize
-    from cat_ppo.furniture.checkpoint import BestCheckpointStore
     from cat_ppo.furniture.manifest import load_manifest, materialize_case
 
     manifest = load_manifest(args.manifest)
@@ -127,16 +151,10 @@ def main():
         raise ValueError("training seed is absent from benchmark manifest")
     if args.max_cases is not None and args.max_cases < 1:
         raise ValueError("max-cases must be positive")
-    checkpoint = args.checkpoint.resolve()
-    selection = None
-    if (checkpoint / "checkpoints" / "best").is_symlink():
-        selection = BestCheckpointStore(checkpoint).selected(verify=True)
-        checkpoint = Path(selection["path"])
-    if not (checkpoint / "ppo_network_config.json").is_file():
-        raise ValueError("checkpoint must include its native network configuration")
+    checkpoint, selection = _resolve_checkpoint(args.checkpoint)
     config = default_config()
     if args.env_config:
-        config.update(json.loads(args.env_config.read_text()))
+        _apply_environment_overrides(config, json.loads(args.env_config.read_text()))
     source_code = _code_provenance()
     hashes = {str(p.relative_to(checkpoint)): hashlib.sha256(p.read_bytes()).hexdigest()
               for p in sorted(checkpoint.rglob("*")) if p.is_file()}

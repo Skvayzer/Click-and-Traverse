@@ -116,7 +116,7 @@ def export_selected(run_dir, output_path=None):
     from brax.training.agents.ppo import checkpoint as brax_checkpoint
     from cat_ppo.furniture.checkpoint import BestCheckpointStore
 
-    selected = BestCheckpointStore(run_dir).selected(verify=True)
+    selected = BestCheckpointStore.open_existing(run_dir).selected(verify=True)
     if selected is None:
         raise ValueError("Run has no selected learned checkpoint")
     native = Path(selected["path"])

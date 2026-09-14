@@ -121,3 +121,23 @@ def test_unknown_generation_is_preserved(tmp_path):
     (other/"valuable.txt").write_text("keep")
     submit(store, 20, 2)
     assert (other/"valuable.txt").read_text() == "keep"
+
+
+def test_read_only_loader_never_creates_or_cleans_store(tmp_path):
+    missing = tmp_path / "missing"
+    with pytest.raises(ValueError, match="existing regular"):
+        BestCheckpointStore.open_existing(missing)
+    assert not missing.exists()
+    store = BestCheckpointStore(tmp_path / "run")
+    submit(store, 10, 1)
+    stale = store.generations / "candidate-interrupted"
+    stale.mkdir()
+    (stale / "owner.json").write_text(json.dumps({"owner": store.owner}))
+    (stale / "weights.bin").write_bytes(b"interrupted")
+    before = {str(p.relative_to(tmp_path)): p.lstat().st_mtime_ns for p in tmp_path.rglob("*")}
+    reader = BestCheckpointStore.open_existing(store.run_dir)
+    assert reader.selected()["step"] == 10
+    assert stale.is_dir()
+    assert before == {str(p.relative_to(tmp_path)): p.lstat().st_mtime_ns for p in tmp_path.rglob("*")}
+    with pytest.raises(ValueError, match="read-only"):
+        submit(reader, 20, 2)

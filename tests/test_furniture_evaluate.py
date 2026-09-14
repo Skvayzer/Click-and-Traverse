@@ -94,3 +94,32 @@ def test_evaluator_sets_and_records_highest_matmul_precision(monkeypatch):
     config.update = lambda key, value: setattr(config, key, value)
     fake.config = config
     assert evaluation._configure_numerics() == {"jax_default_matmul_precision": "highest"}
+
+
+def test_eval_overrides_are_recursive_and_reject_unknown_fields():
+    config = {"perception_mode": "oracle", "noise": {"level": .1, "other": 2}}
+    evaluation._apply_environment_overrides(config, {"noise": {"level": .2}})
+    assert config["noise"] == {"level": .2, "other": 2}
+    with pytest.raises(ValueError, match="Unknown"):
+        evaluation._apply_environment_overrides(config, {"percepton_mode": "corrupted"})
+    with pytest.raises(ValueError, match="Unknown"):
+        evaluation._apply_environment_overrides(config, {"noise": {"typo": 1}})
+
+
+def test_run_and_best_link_resolve_same_checkpoint_without_cleanup(tmp_path):
+    from cat_ppo.furniture.checkpoint import BestCheckpointStore
+    run = tmp_path / "run"
+    store = BestCheckpointStore(run)
+    def writer(path):
+        path.mkdir()
+        (path / "ppo_network_config.json").write_text("{}")
+        (path / "weights.bin").write_bytes(b"actor and critic fixture")
+    store.consider(step=1, metrics={"proxy_score": 1}, source="training_proxy",
+                   write_checkpoint=writer, contract={"action_names": ["joint"]})
+    stale = store.generations / "candidate-unused"
+    stale.mkdir()
+    (stale / "owner.json").write_text('{"owner": "' + store.owner + '"}')
+    native, selection = evaluation._resolve_checkpoint(run)
+    native_from_link, link_selection = evaluation._resolve_checkpoint(run / "checkpoints" / "best")
+    assert native == native_from_link and selection == link_selection
+    assert stale.exists()

@@ -25,6 +25,8 @@ export MUJOCO_GL=egl
 
 `scikit-fmm` may compile a small native extension and needs a C/C++ build toolchain. This runtime uses the explicit requirements above; the upstream `uv.lock` remains for upstream workflows. It does not install the original project's unrelated deployment/ROS, TensorFlow or PyTorch stacks. Native checkpoints are downloaded from the pinned public CAT release automatically, so GitHub credentials are needed only to push code. W&B is disabled by default; choose `--wandb-mode online` to use the account already logged in on dep-0. No credentials are copied into the repository.
 
+The tested complete version snapshots are in `requirements/locks/` for Linux/CUDA and macOS ARM64. These pin transitive packages as well as the main dependencies; they are platform-specific version snapshots, not wheel-hash locks. The installed dep-0 environment occupies about **7.2 GB**; source weights occupy about **5.4 MB**.
+
 ## Controller and hand protection
 
 - Actions cover 12 leg joints, 3 waist joints and 14 arm/wrist joints. Twelve- and 23-action variants are available for comparisons.
@@ -51,6 +53,8 @@ Fixed raised/tucked/contextual arm presets are available as comparisons. Native 
 Furniture/generic scenes use a goal-bound route-lookahead guidance field with boundary projection. It is explicitly distinguished in provenance from CAT's original fast-marching field. Their default grid resolution is 10 cm; original-family adapters use 4 cm. Thin furniture parts remain exact collision geometry even where a coarse voxel grid cannot resolve their interior; conservative grid margins are therefore included.
 
 The generator checks a 23 cm radius root cylinder along furniture routes. This admits a narrow root path, but does **not** certify full-body or dynamically feasible traversal. Each environment additionally verifies the complete nominal reset pose with MuJoCo collision detection. Training and full episodes must establish whether the robot can execute the route.
+
+Original typical templates deliberately retain their upstream geometry across seeds and splits. Random original scenes use disjoint source seeds across splits. A renamed typical template is therefore not an independent held-out layout, and identical training/validation geometry is rejected by the training CLI.
 
 ```bash
 .venv/bin/python -m cat_ppo.furniture.scenes generate \
@@ -103,6 +107,8 @@ Standalone fine-tuning supports a designated validation scene:
 The CLI refuses to round a requested step budget upward. Validation scenes must be explicitly labeled `validation` and differ from training geometry. Test scenes cannot select checkpoints. No evaluation runs by default.
 
 **Checkpoint retention:** one selected native checkpoint per standalone run, replaced atomically with its metadata, plus its ONNX export. Within a curriculum, the predecessor's model is retired only after a successful verified next-stage handoff; metadata and metric history remain. No periodic checkpoint archive is kept. Interrupted handoffs preserve the recoverable model.
+
+Continuation verifies saved stage receipts before adopting a completed stage or starting the next stage, and retries interrupted retirement. A partially trained stage is preserved and refused for inspection; it is not silently overwritten or resumed with invented optimizer state. To restart such a stage, use its selected native checkpoint as an explicit warm-start in a new standalone run.
 
 Without validation, selection is labeled **training proxy** (rollout reward); it is not benchmark-best or evidence of retained original skills. The curriculum ends with the final stage's selected model, not a model selected across all original and clutter domains. Use explicit held-out validation before choosing a final research/demo policy. ONNX export always reloads the selected native model and checks batchwise parity against native inference using highest float32 matmul precision.
 

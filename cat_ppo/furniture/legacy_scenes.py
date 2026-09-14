@@ -157,7 +157,7 @@ def original_guidance_field(scene, sdf, bf, grid):
     try:
         module = _upstream("pf_modular")
     except ModuleNotFoundError as error:
-        raise ImportError("Original CAT 3-D guidance requires scikit-fmm; install requirements-furniture-cpu.txt") from error
+        raise ImportError("Original CAT 3-D guidance requires scikit-fmm; install requirements/furniture-cpu.txt") from error
     if _source_hashes()["pf_modular.py"] != scene["legacy_cat"]["source_hashes"]["pf_modular.py"]:
         raise ValueError("Original CAT field source changed since scene specification")
     config = module.PFConfig()
