@@ -1,0 +1,12 @@
+{
+  "url": "http://127.0.0.1:8085",
+  "javascript_errors": [],
+  "camera_presets_checked": 4,
+  "wall_toggle_checked": true,
+  "recording": "viser-environment-tour.mp4",
+  "simulation_steps": 0,
+  "policy_loaded": false,
+  "full_decode_exit_code": 0,
+  "mp4_sha256": "8de787dc3540ff81b4dee78e482d449f7a722e9ced93e14c83674a79762ae282",
+  "bytes": 1935562
+}

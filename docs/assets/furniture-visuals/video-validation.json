@@ -1,0 +1,28 @@
+{
+  "video_sha256": "1ebf82924da578981a9733d6ca2c98b97c7b80156e946c7ceac1799e402612c3",
+  "decode_returncode": 0,
+  "decode_errors": "",
+  "decoded_frames": 648,
+  "metadata": {
+    "ffmpeg_version": "7.1 built with Apple clang version 13.1.6 (clang-1316.0.21.2.5)",
+    "codec": "h264",
+    "pix_fmt": "yuv420p(progressive)",
+    "fps": 24.0,
+    "source_size": [
+      1280,
+      720
+    ],
+    "size": [
+      1280,
+      720
+    ],
+    "rotate": 0,
+    "duration": 27.0
+  },
+  "review_contact_sheet": "/Users/konstantinsmirnov/research/CAT-Furniture-Visuals-20260914/review/camera-tour-contact-sheet.png",
+  "stills_resolution": [
+    1920,
+    1080
+  ],
+  "video_bytes": 3470523
+}

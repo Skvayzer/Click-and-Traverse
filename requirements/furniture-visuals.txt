@@ -1,0 +1,7 @@
+# Separate viewer environment; Viser currently requires trimesh<5.
+viser==1.1.0
+playwright==1.58.0
+pillow==12.3.0
+imageio-ffmpeg==0.6.0
+colorlog==6.10.1
+absl-py==2.3.1

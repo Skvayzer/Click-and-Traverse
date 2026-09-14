@@ -6,6 +6,8 @@ The implementation is a research training and evaluation system. The included im
 
 ![Actual generated MuJoCo scene: nine tables, 36 chairs and six route bottlenecks](docs/assets/dense-room.png)
 
+[Camera tour, close-up views and interactive Viser instructions](docs/VISUALS.md)
+
 ## Setup
 
 Development checkout: `~/robotics/Click-and-Traverse-WholeBody`, on the Mac and on `konstantin.smirnov@dep-0`. The GPU runtime uses Python 3.12.9, JAX 0.4.38, Brax 0.12.3, MuJoCo/MJX 3.3.1 and Playground 0.0.4. The pinned stack was checked on dep-0's RTX 5090 (32 GB). The Mac environment is for CPU checks and scene preparation.

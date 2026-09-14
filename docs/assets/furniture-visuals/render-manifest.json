@@ -1,0 +1,55 @@
+{
+  "schema": "cat-native-camera-tour-v1",
+  "scene_id": "dense-mixed-train-000000-9cfba94bcbc0",
+  "geometry_hash": "9cfba94bcbc0b19e392455a9d3be2fe2a83be32d7363f4f3480b70ff4a41c2f9",
+  "counts": {
+    "bottlenecks": 6,
+    "chairs": 36,
+    "primitive_boxes": 298,
+    "tables": 9
+  },
+  "scene_dir": "/Users/konstantinsmirnov/robotics/Click-and-Traverse-WholeBody/generated_scenes/local_dense_visual",
+  "scene_json_sha256": "ad4a7b69e4e7b3e6670a3128838db7c1e1d0425752c600d37df4e02422520279",
+  "assembled_xml_sha256": "8ba0e4f3c3ab38c93695418861c5c3fbd4f50e9c03d0b62f0105f962b51fa67e",
+  "renderer_sha256": "4a5c1974c304e88a8fce453b8cecb5755237aae75b329b1dc6fc54cfdf307ac6",
+  "mujoco_version": "3.3.1",
+  "simulation_steps": 0,
+  "policy_loaded": false,
+  "robot_fixed_at_scene_start": true,
+  "native_start_forbidden_contacts": [],
+  "visual_only_changes": [
+    "colors",
+    "skybox",
+    "translucent walls",
+    "route/start/goal markers",
+    "camera motion",
+    "text overlays"
+  ],
+  "geometry_or_dynamics_modified": false,
+  "traversal_demonstrated": false,
+  "elapsed_seconds": 13.93701516703004,
+  "outputs": {
+    "overview": {
+      "path": "/Users/konstantinsmirnov/research/CAT-Furniture-Visuals-20260914/01-oblique-overview.png",
+      "sha256": "485a6eb783721b4a92232b1b12ad37a7180363b32a3e0b1e2d4cc9499f0a6094"
+    },
+    "overhead": {
+      "path": "/Users/konstantinsmirnov/research/CAT-Furniture-Visuals-20260914/02-overhead-route.png",
+      "sha256": "6c04516c4eccb54611685230a194dcf2da95d10d1ab12e4f572d7155ae73089a"
+    },
+    "aisle": {
+      "path": "/Users/konstantinsmirnov/research/CAT-Furniture-Visuals-20260914/03-tight-aisle.png",
+      "sha256": "a2f26143a8ef901c00eaf43a8fef36d1e3b54b8624f7cb985876dc286606cf92"
+    },
+    "video": {
+      "path": "/Users/konstantinsmirnov/research/CAT-Furniture-Visuals-20260914/dense-furniture-camera-tour.mp4",
+      "sha256": "1ebf82924da578981a9733d6ca2c98b97c7b80156e946c7ceac1799e402612c3",
+      "codec": "H.264",
+      "width": 1280,
+      "height": 720,
+      "fps": 24,
+      "frames": 648,
+      "duration_seconds": 27.0
+    }
+  }
+}
