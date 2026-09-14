@@ -34,13 +34,13 @@ The tested complete version snapshots are in `requirements/locks/` for Linux/CUD
 - Actions cover 12 leg joints, 3 waist joints and 14 arm/wrist joints. Twelve- and 23-action variants are available for comparisons.
 - The published CAT actor, critic and normalizer are loaded from native training weights. Named input/output mappings retain the existing leg policy; new upper-body means start at zero with small exploration. Each fine-tuning stage uses a fresh optimizer and explicitly restores the critic. Warm-start parity is checked, rather than assuming a larger network preserved the original outputs.
 - The original leg target-increment semantics are retained. Upper-body actions are bounded offsets from the nominal pose with joint limits and a 2 rad/s target slew limit.
-- Conservative physical boxes cover the palm/finger region; additional arm, shoulder, torso, head and pelvis collision primitives are active. Finger articulation and hardware-specific injury thresholds are not modeled.
+- Unitree Dex3-1 three-finger hands replace the original rigid rubber-hand visuals. Their seven finger joints per hand are fixed in a documented traversal pose; PPO still controls the 29 body joints, including both wrists. The hand collision boxes and clearance probes use the mesh-derived bounds, including the thumb, with 5 mm padding. Official hand inertials are retained. Finger manipulation and hardware-specific injury thresholds are not modeled.
 - Twenty-two hand/arm probes add current clearance, 0.2/0.4 s constant-velocity clearance estimates, obstacle normal, map age, unknown-space flag and position uncertainty. The full actor/critic sizes are 406/494. Prediction is a geometric approximation, not forward dynamics or a safety certificate.
 - Reward combines route progress, CAT foot slip/clearance/balance terms, control costs, body clearance, and a hand clearance penalty that grows when the hand approaches a nearby surface. Collision or falling terminates the episode. These coefficients are initial research settings, not tuned results.
 - Collision detection runs at each 2 ms physics substep and again at the final integrated pose. Any robot–obstacle contact, selected nonadjacent self-contact, or non-foot floor contact invalidates strict success; normal foot–floor support is allowed. Collision at the goal is a failure. There is no initial collision grace period.
 - Controlled perception experiments can delay map packets, reduce their update rate, add translation noise and mark samples unknown. Clearance margins include voxel error, position noise and packet age. This is simulated map corruption; a real RGB-D/LiDAR reconstruction pipeline is future work.
 
-Fixed raised/tucked/contextual arm presets are available as comparisons. Native forward kinematics verified that the raised preset lifts the lowest hand-envelope point by about 36 cm and that tucking reduces total hand-envelope width by about 17 cm at the nominal pose. These are static measurements, not evidence of walking stability or learned anticipation.
+Fixed raised/tucked/contextual arm presets are available as comparisons. Native forward-kinematics checks verify that raising lifts the hand envelopes and tucking reduces their combined width. These are static checks, not evidence of walking stability or learned anticipation.
 
 ## How environments are built
 
@@ -72,6 +72,8 @@ MUJOCO_GL=egl .venv/bin/python render_furniture.py \
 ## Training scheme
 
 The intended sequence is: expand the pretrained CAT policy on familiar easy scenes; learn isolated hand/arm encounters; progress to dense generic/furniture rooms; then add controlled map corruption. Original obstacle families continue throughout training, rather than being replaced by furniture.
+
+[Concrete pretrained pilot and readiness notes](docs/TRAINING_READINESS.md)
 
 The executable curriculum alternates one original CAT stage with one new-clutter stage. Across equal stage budgets, the mixture is **50% original CAT, 25% generic clutter and 25% furniture**. A round contains six original scenes (forward, hurdle, narrow gap, crouch, random obstacles and combined obstacles) interleaved with six new scenes. Round 1 uses pilot encounters, round 2 uses dense rooms, and round 3 adds delayed/noisy/partially unknown maps to dense rooms. Scene seeds change each round.
 
@@ -130,7 +132,7 @@ The benchmark manifest describes 120 held-out dense rooms (20 per family), three
 
 Evaluation uses unwrapped episodes, independent geometric goal checks, latched physical contact outcomes, precise first-contact timestamps and explicit numerical failures. Reports include strict success, furniture/hand contacts, falls, timeouts, completion time with failure time caps, route progress and bottlenecks cleared before contact. Paired comparisons match scene/case/training/episode seeds and bootstrap by scene. A subset run is labeled a subset. Synthetic layout/dimension holdouts are not real-object identity holdouts.
 
-The proposal's contact-reduction, success and time targets are research targets, not achieved results. Original-skill retention, dense-room learning, realistic perception, robustness to perturbed resets and robot deployment remain to be measured. The provided robot has conservative hand envelopes, not a calibrated articulated finger model. Do not treat an exported policy as deployment-validated.
+The proposal's contact-reduction, success and time targets are research targets, not achieved results. Original-skill retention, dense-room learning, realistic perception, robustness to perturbed resets and robot deployment remain to be measured. The hand envelopes cover the fixed Dex3-1 traversal pose; they are not a certificate for moving fingers or calibrated hardware clearances. Do not treat an exported policy as deployment-validated.
 
 ## Verification and implementation map
 

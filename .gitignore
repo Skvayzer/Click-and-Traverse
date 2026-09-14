@@ -193,4 +193,9 @@ cython_debug/
 /swanlog/
 /data/assets/mujoco_menagerie/
 /data/assets/
+!/data/assets/
+/data/assets/*
+!/data/assets/unitree_g1/
+/data/assets/unitree_g1/*
+!/data/assets/unitree_g1/dex3/
 /output_logs/

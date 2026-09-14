@@ -86,6 +86,7 @@ class TrainingMetricsLogger:
         self._buffer_size = buffer_size
         self._steps_between_logging = steps_between_logging
         self._num_steps = 0
+        self._completed_episodes = 0
         self._last_log_steps = 0
         self._log_count = 0
         self._progress_fn = progress_fn
@@ -107,6 +108,7 @@ class TrainingMetricsLogger:
             self._rollout_buffer["training/action_std"].append(float(np.asarray(action_std)))
 
         done_count = int(np.sum(dones))
+        self._completed_episodes += done_count
         if done_count > 0:
             timeout_count = int(np.sum(dones & truncations))
             termination_count = done_count - timeout_count
@@ -152,7 +154,8 @@ class TrainingMetricsLogger:
     def log_metrics(self, pad=35):
         self._log_count += 1
         log_string = f"\n{'Steps':>{pad}} Env: {self._num_steps} Log: {self._log_count}\n"
-        mean_metrics = {}
+        mean_metrics = {"rollout/completed_episodes": self._completed_episodes,
+                        "rollout/completed_episodes_in_buffer": len(self._metrics_buffer.get("episode/length", ()))}
         for metric_name in self._metrics_buffer:
             mean_metrics[metric_name] = np.mean(self._metrics_buffer[metric_name])
             log_string += f"{f'{metric_name}:':>{pad}} {mean_metrics[metric_name]:.4f}\n"

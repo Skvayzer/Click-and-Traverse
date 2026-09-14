@@ -1,6 +1,7 @@
 """Explicit CAT joint/feature contracts and bounded whole-body target generation."""
 from itertools import product
 import numpy as np
+from cat_ppo.furniture.grippers import hand_envelope, geometry_contract
 
 LEG_NAMES = [f"{side}_{joint}_joint" for side in ("left", "right")
              for joint in ("hip_pitch", "hip_roll", "hip_yaw", "knee", "ankle_pitch", "ankle_roll")]
@@ -11,14 +12,14 @@ JOINT_NAMES = LEG_NAMES + WAIST_NAMES + [f"{side}_{joint}_joint" for side in ("l
     for joint in ("shoulder_pitch", "shoulder_roll", "shoulder_yaw", "elbow", "wrist_roll", "wrist_pitch", "wrist_yaw")]
 LEGACY_OBS_NAMES = LEG_NAMES + WAIST_NAMES + ARM_NAMES
 PF_GROUPS = (("head", 1), ("pelv", 1), ("tors", 1), ("feet", 2), ("hands", 2), ("knees", 2), ("shlds", 2))
-# Conservative generic hand envelope: no articulated finger model or hardware calibration.
-HAND_CENTER = (0.09, 0.0, 0.0)
-HAND_HALF_SIZE = (0.085, 0.04, 0.03)
+# Palm and corner probes use exactly the side-specific physical Dex3 envelope.
 PROBE_SPECS = []
 for side in ("left", "right"):
-    PROBE_SPECS.append((f"{side}_palm", f"{side}_wrist_yaw_link", HAND_CENTER, 0.03))
+    envelope = hand_envelope(side)
+    center, half_size = envelope["center"], envelope["half_size"]
+    PROBE_SPECS.append((f"{side}_palm", f"{side}_wrist_yaw_link", tuple(center), 0.03))
     for i, signs in enumerate(product((-1, 1), repeat=3)):
-        point = tuple(c + s * h for c, s, h in zip(HAND_CENTER, signs, HAND_HALF_SIZE))
+        point = tuple(c + s * h for c, s, h in zip(center, signs, half_size))
         PROBE_SPECS.append((f"{side}_hand_corner_{i}", f"{side}_wrist_yaw_link", point, 0.0))
     PROBE_SPECS.append((f"{side}_forearm", f"{side}_elbow_link", (0.07, 0.0, -0.005), 0.05))
     PROBE_SPECS.append((f"{side}_elbow", f"{side}_elbow_link", (0.0, 0.0, 0.0), 0.05))
@@ -125,7 +126,7 @@ def observation_contract(action_dofs=29):
             "observed_joint_names": observed, "actor_features": actor + extras,
             "critic_features": critic + extras, "baseline_actor_size": len(actor),
             "baseline_critic_size": len(critic), "prediction_horizons_seconds": [0.2, 0.4],
-            "hand_geometry": "generic_conservative_envelope_not_hardware_calibrated"}
+            "hand_geometry": geometry_contract()}
 
 
 def route_coordinate(position, route, xp=np):

@@ -20,6 +20,7 @@ from cat_ppo.envs.g1 import base, constants as consts
 from cat_ppo.envs.g1.env_cat import G1CatEnv, base2navi_transform, g1_loco_task_config
 from cat_ppo.envs.g1.env_loco import G1LocoEnv
 from cat_ppo.furniture import control
+from cat_ppo.furniture.grippers import install_fixed_hands, hand_envelope, validate_hand_envelopes
 from cat_ppo.furniture.perception import sample_grid, probe_features, apply_uncertainty_margin, hand_protection_cost
 from cat_ppo.furniture.scenes import load_scene
 
@@ -66,12 +67,14 @@ def assemble_scene_xml(scene, asset_root=None):
     """Derive physics from canonical scene boxes, independently of its voxel field.
 
     Only collision primitives get enabled. Visual meshes remain noncolliding.
-    Added hand/finger envelopes change neither robot joints nor inertial masses.
+    Dex3 fingers are fixed at the source stand pose, with source wrist/palm and
+    finger inertials. Protection envelopes add no mass or action coordinates.
     """
     asset_root = Path(asset_root or consts.ROOT_PATH).resolve()
     root = ET.parse(asset_root / "g1_mjx_feetonly_torque.xml").getroot()
     for mesh in root.findall("./asset/mesh"):
         mesh.set("file", str(asset_root / mesh.get("file")))
+    install_fixed_hands(root)
     world = root.find("worldbody")
     for geom in world.iter("geom"):
         if geom.get("class") in ("collision", "foot"):
@@ -96,7 +99,8 @@ def assemble_scene_xml(scene, asset_root=None):
         collision(f"{side}_shoulder_pitch_link", f"furniture_{side}_shoulder", "sphere", (0.055,))
         collision(f"{side}_shoulder_roll_link", f"furniture_{side}_upper_arm", "capsule", (0.05,), fromto="0 0 -0.02 0 0 -0.17")
         collision(f"{side}_elbow_link", f"furniture_{side}_forearm", "capsule", (0.05,), fromto="0 0 0 0.14 0 -0.01")
-        collision(f"{side}_wrist_yaw_link", f"furniture_{side}_hand_envelope", "box", control.HAND_HALF_SIZE, pos=_numbers(control.HAND_CENTER))
+        envelope = hand_envelope(side)
+        collision(f"{side}_wrist_yaw_link", f"furniture_{side}_hand_envelope", "box", envelope["half_size"], pos=_numbers(envelope["center"]))
     for name, body, point, _ in control.PROBE_SPECS:
         ET.SubElement(bodies[body], "site", name=f"furniture_probe_{name}", pos=_numbers(point), size="0.005", group="5")
     # Explicit nonadjacent self pairs; never enable overlapping visual meshes or
@@ -145,7 +149,7 @@ class G1FurnitureEnv(G1CatEnv):
         xml_path = Path(self._xml_directory.name) / "scene.xml"
         xml_path.write_text(self._assembled_xml)
         base.G1Env.__init__(self, str(xml_path), config)
-        G1LocoEnv._post_init(self)
+        G1LocoEnv._post_init(self, hand_geom_names=("furniture_left_hand_envelope", "furniture_right_hand_envelope"))
         self.action_joint_names, self.obs_joint_names = control.joint_names(config.action_dofs)
         # Released CAT indexes qpos/qvel with actuator IDs. Assert that contract.
         for i, name in enumerate(control.JOINT_NAMES):
@@ -216,7 +220,8 @@ class G1FurnitureEnv(G1CatEnv):
             if contact.dist <= 0 and not allowed:
                 raise ValueError(f"scene reset intersects forbidden geometry: {self.mj_model.geom(a).name}, {self.mj_model.geom(b).name}")
         self.reset_validation = {"nominal_full_body_checked": True, "randomized_pose": False,
-                                 "method": "MuJoCo FK and physical primitive collision at fixed start"}
+                                 "method": "MuJoCo FK and physical primitive collision at fixed start",
+                                 "hand_envelope_validation": validate_hand_envelopes(self.mj_model, data)}
 
     def sample_field(self, field, pos):
         value, known = sample_grid(field, pos, self.pf_origin, self.dx)

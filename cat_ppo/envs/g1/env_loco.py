@@ -267,7 +267,7 @@ class G1LocoEnv(g1_base.G1Env):
         )
         self._post_init()
 
-    def _post_init(self) -> None:
+    def _post_init(self, hand_geom_names=("left_hand_collision", "right_hand_collision")) -> None:
         self.num_joints = self.mjx_model.nq - 7
         self.episode_length = self._config.episode_length
 
@@ -358,8 +358,8 @@ class G1LocoEnv(g1_base.G1Env):
         self._cmd_resample_steps = int(self._config.command_config.resampling_time / self.dt)
         self._cmd_stop_prob = self._config.command_config.stop_prob
 
-        self._left_hand_geom_id = self._mj_model.geom("left_hand_collision").id
-        self._right_hand_geom_id = self._mj_model.geom("right_hand_collision").id
+        self._left_hand_geom_id = self._mj_model.geom(hand_geom_names[0]).id
+        self._right_hand_geom_id = self._mj_model.geom(hand_geom_names[1]).id
         self._left_foot_geom_id = self._mj_model.geom("left_foot").id
         self._right_foot_geom_id = self._mj_model.geom("right_foot").id
         self._left_shin_geom_id = self._mj_model.geom("left_shin").id

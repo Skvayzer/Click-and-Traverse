@@ -24,6 +24,8 @@ def prepare(scene_dir, output):
     import trimesh
     from cat_ppo.envs.g1 import constants
     from cat_ppo.envs.g1.env_furniture import assemble_scene_xml
+    from cat_ppo.furniture.control import observation_contract
+    from cat_ppo.furniture.grippers import validate_hand_envelopes
     from cat_ppo.furniture.scenes import load_scene
 
     scene_dir, output = Path(scene_dir).resolve(), Path(output).resolve()
@@ -36,6 +38,7 @@ def prepare(scene_dir, output):
     yaw = scene["start"][2]
     data.qpos[3:7] = [np.cos(yaw/2), 0, 0, np.sin(yaw/2)]
     mujoco.mj_forward(model, data)
+    containment = validate_hand_envelopes(model, data)
     mesh_scene = trimesh.Scene()
     for geom in range(model.ngeom):
         if model.geom_bodyid[geom] == 0 or model.geom_type[geom] != mujoco.mjtGeom.mjGEOM_MESH:
@@ -62,6 +65,8 @@ def prepare(scene_dir, output):
     manifest = dict(schema="cat-furniture-viser-v1", geometry_hash=scene["geometry_hash"],
         native_xml_sha256=hashlib.sha256(xml.encode()).hexdigest(),
         robot_mesh_source="compiled MuJoCo mesh vertices and native FK geom poses",
+        hand_geometry=observation_contract()["hand_geometry"],
+        hand_envelope_check=containment,
         simulation_steps=0, policy_loaded=False,
         files={name: sha256(output/name) for name in ("scene.json", "robot.glb", "hands.json")})
     (output / "manifest.json").write_text(json.dumps(manifest, indent=2) + "\n")
@@ -110,10 +115,21 @@ def serve(bundle, *, port=8085):
             opacity=.15 if is_wall else 1., cast_shadow=not is_wall, receive_shadow=True)
     server.scene.add_glb("/robot", (bundle / "robot.glb").read_bytes())
     hand_group = server.scene.add_frame("/hand_envelopes", show_axes=False)
-    for hand in json.loads((bundle / "hands.json").read_text()):
+    hands = json.loads((bundle / "hands.json").read_text())
+    for hand in hands:
+        rotation = np.asarray(hand["rotation"])
+        center = np.asarray(hand["center"])
         server.scene.add_box("/hand_envelopes/"+hand["side"], dimensions=tuple(hand["dimensions"]),
-            position=tuple(hand["center"]), wxyz=tf.SO3.from_matrix(np.asarray(hand["rotation"])).wxyz,
-            color=(243, 165, 55), opacity=.55, cast_shadow=False)
+            position=tuple(center), wxyz=tf.SO3.from_matrix(rotation).wxyz,
+            color=(243, 165, 55), opacity=.10, cast_shadow=False)
+        # Wire edges keep the thumb and fingertips visible through the enclosure.
+        from itertools import product
+        signs = np.asarray(list(product((-1, 1), repeat=3)))
+        corners = np.einsum("ij,kj->ik", signs*np.asarray(hand["dimensions"])/2, rotation)+center
+        edges = [(a,b) for a in range(8) for b in range(a+1,8)
+                 if np.count_nonzero(signs[a] != signs[b]) == 1]
+        server.scene.add_line_segments("/hand_envelopes/"+hand["side"]+"_edges",
+            corners[np.asarray(edges)], colors=(220, 135, 24), thickness=.0015)
     route = np.column_stack([scene["route"], np.full(len(scene["route"]), .026)])
     route_handle = server.scene.add_line_segments("/route", np.stack([route[:-1], route[1:]], axis=1),
         colors=(13, 157, 151), thickness=.033)
@@ -127,7 +143,8 @@ def serve(bundle, *, port=8085):
             position=(x,y,1.12), font_screen_scale=.9)
     server.scene.add_label("/start", "START", position=tuple(route[0]+[0,0,.12]))
     server.scene.add_label("/goal", "GOAL", position=tuple(route[-1]+[0,0,.12]))
-    server.gui.add_markdown("## Whole-body furniture traversal\n**9 tables · 36 chairs · 6 narrow passages**\n\nDrag to orbit; scroll to zoom.\n\nCamera inspection of the actual scene. The robot is in a fixed pose; this is not a policy rollout.")
+    counts = scene.get("counts", {})
+    server.gui.add_markdown(f"## Whole-body furniture traversal\n**{counts.get('tables',0)} tables · {counts.get('chairs',0)} chairs · {len(scene.get('bottlenecks',[]))} narrow passages**\n\nDrag to orbit; scroll to zoom.\n\nCamera inspection of the actual scene. The robot is in a fixed pose; this is not a policy rollout.")
     views = {
         "Room overview": ((14.5,-8.2,12.5), (width/2,depth/2,.35), (0,0,1), .76),
         "Overhead layout": ((width/2,depth/2,15.8), (width/2,depth/2,0), (0,1,0), .70),
@@ -135,6 +152,10 @@ def serve(bundle, *, port=8085):
             (2.2,scene["bottlenecks"][0]["center"][1],.94), (0,0,1), .97),
         "Robot and hand clearance": ((2.25,-1.15,1.8), (*scene["start"][:2],.8), (0,0,1), .78),
     }
+    for hand in hands:
+        center, rotation = np.asarray(hand["center"]), np.asarray(hand["rotation"])
+        eye = center + rotation @ np.array([.015, .16 if hand["side"] == "left" else -.16, .42])
+        views[hand["side"].capitalize()+" gripper envelope"] = (tuple(eye), tuple(center), (0,0,1), .68)
     for name, (position, target, up, fov) in views.items():
         button = server.gui.add_button(name)
         @button.on_click

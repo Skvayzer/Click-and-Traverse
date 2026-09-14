@@ -129,12 +129,12 @@ def train(args):
     import numpy as np
     from brax.training.acme import running_statistics, specs
     from brax.training.agents.ppo import networks
-    from mujoco_playground import wrapper
     from cat_ppo.envs.g1.env_furniture import G1FurnitureEnv, default_config
     from cat_ppo.furniture.control import legacy_observation_contract
     from cat_ppo.furniture.learning import (DEFAULT_MANIFEST, adapt_native_params,
         fetch_native_checkpoint, load_native, mlp_hidden_sizes, verify_warmstart_parity)
     from cat_ppo.furniture.checkpoint import BestCheckpointStore, native_writer
+    from cat_ppo.furniture.training import wrap_for_furniture_training
     from cat_ppo.learning.policy.ppo import train as native_ppo
 
     args.run_dir = args.run_dir.absolute()
@@ -220,6 +220,11 @@ def train(args):
         "source": source_provenance, "normalization_enabled": normalize,
         "code": code_provenance, "training_scene": training_scene, "validation_scene": validation_scene,
         "wandb_mode": args.wandb_mode, "selection_source": "validation" if args.num_evals else "training_proxy",
+        "training_telemetry": {"enabled": True, "episode_buffer_size": 100,
+            "logging_interval_transitions": max(args.num_envs * args.unroll_length, min(4096, args.steps)),
+            "outcomes_and_minimum_clearance": "completed-episode snapshots",
+            "cross_track_map_age_unknown_fraction": "within-episode means",
+            "selection": "unchanged; training telemetry does not run validation or select by success"},
         "python": sys.version, "jax_version": jax.__version__,
         "jax_default_matmul_precision": jax.config.jax_default_matmul_precision,
         "devices": [str(device) for device in jax.devices()]}
@@ -263,7 +268,7 @@ def train(args):
     try:
         _, final_params, _ = native_ppo.train(environment=environment, num_timesteps=args.steps,
             num_envs=args.num_envs, episode_length=environment.episode_length, action_repeat=1,
-            randomize_initial_episode_steps=False, wrap_env_fn=wrapper.wrap_for_brax_training,
+            randomize_initial_episode_steps=False, wrap_env_fn=wrap_for_furniture_training,
             batch_size=args.num_envs // args.num_minibatches, num_minibatches=args.num_minibatches,
             unroll_length=args.unroll_length, num_updates_per_batch=args.updates_per_batch,
             learning_rate=args.learning_rate, entropy_cost=.01, discounting=.97, gae_lambda=.95,
@@ -271,7 +276,9 @@ def train(args):
             network_factory=factory, seed=args.seed, num_evals=args.num_evals,
             num_eval_envs=args.num_eval_envs, eval_env=validation_env, deterministic_eval=True,
             eval_episode_length=validation_env.episode_length if validation_env is not None else None,
-            log_training_metrics=False, progress_fn=progress, restore_params=target,
+            log_training_metrics=True, training_metrics_buffer_size=100,
+            training_metrics_steps=record["training_telemetry"]["logging_interval_transitions"],
+            progress_fn=progress, restore_params=target,
             restore_value_fn=True, save_checkpoint_path=None, scored_checkpoint_fn=scored,
             num_training_epochs=args.checkpoint_epochs if args.num_evals == 0 else None)
         selected = store.selected(verify=True)

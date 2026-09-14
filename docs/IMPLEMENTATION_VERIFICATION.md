@@ -2,6 +2,35 @@
 
 This file records implementation checks, not trained traversal results.
 
+## September 15 corrections
+
+- Replaced CAT's rigid rubber hands with fixed Unitree Dex3-1 three-finger
+  geometry and source inertials. Kept all 29 body joints/actions. Native MuJoCo
+  checks all 81,432 compiled vertices per hand against the actual collision
+  boxes; the measured minimum padding is 4.999998 mm. Thumbs are included.
+- Regression checks cover nominal/raised/tucked arms and three wrist
+  configurations, source mass and joint contracts, matching corner probes,
+  actual contact in the thumb region missed by the previous generic box, and
+  non-contact just outside the corrected box.
+- The training audit found that the generic cached autoreset retained task
+  info after termination. A furniture-specific wrapper now restores contact
+  and fall flags, motor targets, map history, episode clock and clearance state
+  for each terminated vector slot. Synthetic multi-episode tests cover
+  asynchronous terminations, time limits and telemetry reductions.
+- Training logs now include completed-episode task metrics and explicit episode
+  counts. No completion means no reported outcome rates. Reward terms are
+  summed; outcome/progress/minimum-clearance values retain their episode meaning.
+- The full CPU suite passed **132 tests in 102.31 s** after both corrections.
+  The 13 warnings are pinned JAX/JAXopt deprecations and MuJoCo sentinel casts;
+  finite-state checks pass. This includes native CAT warm-start/export parity.
+
+The earlier short GPU checks below predate these fixes and establish only their
+stated limited optimizer/compilation results. They did not establish reliable
+repeated-episode learning. See [the training plan](TRAINING_READINESS.md) for the
+bounded learning pilot and remaining performance questions.
+
+## September 14 checks
+
 - dep-0: RTX 5090, 32 GB; isolated Python 3.12.9 environment. Pinned JAX 0.4.38 CUDA initialization and numerical check passed. Environment size measured at 7.2 GB, native source weights about 5.4 MB.
 - Native CAT checkpoint/ONNX parity, named 12→29 action/observation warm-start mapping, atomic selected-checkpoint retention and ONNX export regression checks passed (25 focused tests at that point).
 - A preliminary 64-transition GPU PPO smoke completed parameter-update iterations and selected step 32. Its initial export comparison exposed reduced-precision GPU matmul differences. The precision setting was corrected without relaxing the 2e-5 parity threshold. Re-exporting the saved checkpoint passed, maximum native GPU/ONNX difference 8.19e-6.
