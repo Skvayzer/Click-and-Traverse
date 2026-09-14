@@ -1,5 +1,4 @@
 import numpy as np
-import torch
 from dataclasses import dataclass
 from scipy.ndimage import binary_closing, binary_opening, binary_erosion, rotate as ndi_rotate
 import os
@@ -336,6 +335,9 @@ def sample_gate_segments(
 
 
 def generate_and_save(cfg: Cfg, prefix="occ", save=True):
+    # Geometry-only callers do not need the optional PyTorch serialization path.
+    if save:
+        import torch
     rng = np.random.default_rng(cfg.seed)
     xv, yv, zv = make_axes(cfg)
     Nx, Ny, Nz = len(xv), len(yv), len(zv)

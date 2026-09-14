@@ -1,0 +1,77 @@
+{
+  "kind": "dense_single_reset_single_zero_action_step",
+  "not_performance_evaluation": true,
+  "policy_loaded": false,
+  "simulation_steps": 1,
+  "jax_version": "0.4.38",
+  "devices": [
+    "cuda:0"
+  ],
+  "source_hashes": {
+    "cat_ppo/envs/g1/env_furniture.py": "697804745807eeef9f7f10eef8edefbce32fa61e0bfac6752572ef479eb28965",
+    "cat_ppo/furniture/control.py": "c50d41a7bc959476dcc1e2cb425311eb15ee6214cdd0843f90fe7b4e81074fe9",
+    "cat_ppo/furniture/perception.py": "1a2994fc0b36dababffb9745325996d7a92542d145108731f57c11d43a90ad1a"
+  },
+  "phases": {
+    "constructor_seconds": 0.798724772001151,
+    "reset_compile_seconds": 21.138170168000215,
+    "reset_execute_seconds": 0.07451718700031051,
+    "step_compile_seconds": 45.53277575299944,
+    "step_execute_seconds": 0.04256433000045945
+  },
+  "reset_validation": {
+    "nominal_full_body_checked": true,
+    "randomized_pose": false,
+    "method": "MuJoCo FK and physical primitive collision at fixed start"
+  },
+  "ngeom": 379,
+  "geometry_hash": "9cfba94bcbc0b19e392455a9d3be2fe2a83be32d7363f4f3480b70ff4a41c2f9",
+  "memory_after_constructor": {
+    "num_allocs": 185,
+    "bytes_in_use": 8025088,
+    "peak_bytes_in_use": 8891904,
+    "largest_alloc_size": 4194304,
+    "bytes_limit": 25277005824,
+    "bytes_reserved": 0,
+    "peak_bytes_reserved": 0,
+    "largest_free_block_bytes": 0,
+    "pool_bytes": 14680064,
+    "peak_pool_bytes": 14680064
+  },
+  "memory_after_reset": {
+    "num_allocs": 383,
+    "bytes_in_use": 19299072,
+    "peak_bytes_in_use": 52856576,
+    "largest_alloc_size": 33554432,
+    "bytes_limit": 25277005824,
+    "bytes_reserved": 0,
+    "peak_bytes_reserved": 0,
+    "largest_free_block_bytes": 0,
+    "pool_bytes": 65011712,
+    "peak_pool_bytes": 65011712
+  },
+  "memory_after_step": {
+    "num_allocs": 578,
+    "bytes_in_use": 31872256,
+    "peak_bytes_in_use": 65012480,
+    "largest_alloc_size": 33554432,
+    "bytes_limit": 25277005824,
+    "bytes_reserved": 0,
+    "peak_bytes_reserved": 0,
+    "largest_free_block_bytes": 0,
+    "pool_bytes": 132120576,
+    "peak_pool_bytes": 132120576
+  },
+  "total_seconds": 67.88345789199957,
+  "actor_shape": [
+    406
+  ],
+  "critic_shape": [
+    494
+  ],
+  "finite_state": true,
+  "reward": -0.002392828930169344,
+  "done": 0.0,
+  "forbidden_contact": false,
+  "full_route_feasibility_validated": false
+}

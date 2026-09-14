@@ -3,6 +3,19 @@ from collections.abc import Callable
 
 # Nested dict: registry[task][category] -> object
 _REGISTRY = defaultdict(dict)
+_BUILTINS_LOADED = False
+
+
+def _load_builtin_tasks():
+    global _BUILTINS_LOADED
+    if _BUILTINS_LOADED:
+        return
+    _BUILTINS_LOADED = True
+    try:
+        import cat_ppo.envs  # Registers the original tasks on first use.
+    except Exception:
+        _BUILTINS_LOADED = False
+        raise
 _CATEGORIES = [
     "train_env_class",
     "play_env_class",
@@ -18,6 +31,8 @@ def _check_set_task(task: str):
 
 
 def _check_get_task(task: str):
+    if task not in _REGISTRY:
+        _load_builtin_tasks()
     if "_" in task:
         raise ValueError(f"task name should not contain '_' (underscores), got {task}")
 
@@ -68,6 +83,7 @@ def get(task: str, category: str, call: bool = False):
 
 
 def list_task():
+    _load_builtin_tasks()
     return list(_REGISTRY.keys())
 
 

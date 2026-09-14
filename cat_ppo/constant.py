@@ -3,17 +3,14 @@ from pathlib import Path
 from absl import logging
 
 PATH_GLI_STR = os.environ.get("GLI_PATH")
-if PATH_GLI_STR is None:
-    raise ValueError("GLI_PATH environment variable not set.")
-
-PATH_GLI = Path(PATH_GLI_STR)
+PATH_GLI = Path(PATH_GLI_STR) if PATH_GLI_STR else Path(__file__).resolve().parent
 if not PATH_GLI.exists():
     raise ValueError("GLI_PATH does not exist.")
 
 PATH_STORAGE = PATH_GLI.parent / "data"
 PATH_ASSET = PATH_STORAGE / "assets"
 
-WANDB_PROJECT = os.environ.get("WANDB_PROJECT")
+WANDB_PROJECT = os.environ.get("WANDB_PROJECT", "cat")
 PATH_LOG = PATH_STORAGE / "logs" / WANDB_PROJECT
 
 

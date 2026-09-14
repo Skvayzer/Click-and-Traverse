@@ -1,0 +1,69 @@
+{
+  "schema_version": 1,
+  "repo_id": "Axian12138/Click-and-Traverse",
+  "revision": "46ce4b57ba0639168d51741b661ff62f7ce6f045",
+  "checkpoint_path": "logs_v1/generalist_v1/checkpoints/005033164800",
+  "files": [
+    {
+      "path": "_CHECKPOINT_METADATA",
+      "size": 249,
+      "sha256": "1f1a8019342053438e4fc2f39fb0e8ebc2e1eca23d6fdf3f00ccc559834a521c"
+    },
+    {
+      "path": "_METADATA",
+      "size": 6994,
+      "sha256": "2f33779a0162d95adcfc258bf01849adac719c708704b29e1075fd54b04245e9"
+    },
+    {
+      "path": "_sharding",
+      "size": 2962,
+      "sha256": "2a1ec3bf416421ca783bf8ee3fd560d4e5b484e62a7ae6db9606008c49a92bf4"
+    },
+    {
+      "path": "d/c1d178a426d91ed68a232b14563ca623",
+      "size": 9583,
+      "sha256": "c55547dd21d8b569ec7581a06e02417bf25d5160e148985d94c238c4077ac505"
+    },
+    {
+      "path": "manifest.ocdbt",
+      "size": 116,
+      "sha256": "5aa3ccf19ee24f235f56afc6cbf65bca5c600998679eec121ba4c45a349961fa"
+    },
+    {
+      "path": "ocdbt.process_0/d/0b222ac2d22d04445e2c14c8b6de56dc",
+      "size": 2215745,
+      "sha256": "795805920dea01507b9e158be9f3a8fdf1fc586f9a7429c391ee597ed5fd070e"
+    },
+    {
+      "path": "ocdbt.process_0/d/a1a85341eb5bda8cc699478aba21a467",
+      "size": 310015,
+      "sha256": "fc769586b46516de19e81ac188b6e6a1830c9bacee86abc8237e4358b0836b4f"
+    },
+    {
+      "path": "ocdbt.process_0/d/e3b1b4a02ad088854bebe354bd0b790c",
+      "size": 1954157,
+      "sha256": "aa404a153839f0aa86fd3d8e32e0c115b5c385bde2745d6bd5119b5687379cf4"
+    },
+    {
+      "path": "ocdbt.process_0/d/f6bf41b16cf9c9c14c104c94ed086e91",
+      "size": 195,
+      "sha256": "9dd3b13c0a3f10df7457ae5639745ac3b4a5a732d72f500df90d6de4ee29d6cd"
+    },
+    {
+      "path": "ocdbt.process_0/manifest.ocdbt",
+      "size": 259,
+      "sha256": "91f5d41a51e7c92eb9de1b4aec91071d74354f2f210e845775f57e77a6f1526f"
+    },
+    {
+      "path": "policy.onnx",
+      "size": 1032695,
+      "sha256": "17372d1d7b1c6759a2eb2eea09b9589f55746def198d744517efd05ac8665f62"
+    },
+    {
+      "path": "ppo_network_config.json",
+      "size": 310,
+      "sha256": "0ffd2ce60a3fd200b96d33808603190ef5bf693a9efe531bc3fc6fe6d4305772"
+    }
+  ],
+  "description": "Public CAT generalist-v1 native parameters and reference ONNX; no optimizer/RNG continuation state."
+}

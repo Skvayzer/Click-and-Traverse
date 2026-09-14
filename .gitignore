@@ -148,6 +148,11 @@ celerybeat.pid
 
 # Environments
 .venv
+.bootstrap/
+outputs/
+generated_scenes/
+data/furniture/
+.DS_Store
 env/
 venv/
 ENV/

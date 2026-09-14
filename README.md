@@ -1,3 +1,5 @@
+> **Whole-body development branch:** [setup, mixed CAT/clutter training, hand protection and dense-room implementation](WHOLE_BODY.md). Research implementation; trained traversal results are not yet available.
+
 <div align="center">  
   <img src="assets/icon.png" width="150" style="vertical-align: middle;">
   <h1 align="center"> Click and Traverse </h1>

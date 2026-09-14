@@ -1,0 +1,7 @@
+{
+  "action_dofs": 29,
+  "probe_features_enabled": true,
+  "hand_protection_enabled": true,
+  "prediction_enabled": false,
+  "uncertainty_margin_enabled": false
+}

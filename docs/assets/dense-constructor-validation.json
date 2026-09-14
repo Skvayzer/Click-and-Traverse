@@ -1,0 +1,17 @@
+{
+  "kind": "dense_native_constructor_only",
+  "elapsed_seconds": 0.7372673350000696,
+  "reset_validation": {
+    "nominal_full_body_checked": true,
+    "randomized_pose": false,
+    "method": "MuJoCo FK and physical primitive collision at fixed start"
+  },
+  "action_size": 29,
+  "actor_observation_size": 406,
+  "critic_observation_size": 494,
+  "ngeom": 379,
+  "nq": 36,
+  "nu": 29,
+  "simulation_steps": 0,
+  "jax_platform": "cpu"
+}

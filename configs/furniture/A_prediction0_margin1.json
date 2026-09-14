@@ -1,0 +1,9 @@
+{
+  "perception_mode": "corrupted",
+  "map_latency_steps": 3,
+  "map_update_interval_steps": 2,
+  "map_position_noise_std": 0.01,
+  "unknown_probability": 0.02,
+  "prediction_enabled": false,
+  "uncertainty_margin_enabled": true
+}

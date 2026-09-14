@@ -599,6 +599,9 @@ def train(
     restore_params: Optional[Any] = None,
     restore_value_fn: bool = False,
     dagger_config: Optional[Any] = None,
+    scored_checkpoint_fn: Optional[Callable[..., None]] = None,
+    num_training_epochs: Optional[int] = None,
+    eval_episode_length: Optional[int] = None,
 ):
     """PPO training.
 
@@ -704,6 +707,10 @@ def train(
         batch_size * unroll_length * num_minibatches * action_repeat
     )
     num_evals_after_init = max(num_evals - 1, 1)
+    if num_training_epochs is not None:
+        if num_evals != 0 or num_training_epochs < 1:
+            raise ValueError("num_training_epochs requires num_evals=0 and a positive epoch count")
+        num_evals_after_init = num_training_epochs
     # The number of training_step calls per training_epoch call.
     # equals to ceil(num_timesteps / (num_evals * env_step_per_training_step *
     #                                 num_resets_per_eval))
@@ -1022,6 +1029,7 @@ def train(
             normalizer_params=normalizer_params,
             env_steps=training_state.env_steps + env_step_per_training_step,
         )
+        metrics = {**metrics, "rollout_reward_mean": jnp.mean(data.reward)}
         return (new_training_state, state, new_key), metrics
 
     def training_epoch(
@@ -1137,25 +1145,28 @@ def train(
         training_state, jax.local_devices()[:local_devices_to_use]
     )
 
-    eval_env = _maybe_wrap_env(
-        eval_env or environment,
-        wrap_env,
-        num_eval_envs,
-        episode_length,
-        action_repeat,
-        local_device_count=1,  # eval on the host only
-        key_env=eval_key,
-        wrap_env_fn=wrap_env_fn,
-        randomization_fn=randomization_fn,
-    )
-    evaluator = acting.Evaluator(
-        eval_env,
-        functools.partial(make_policy, deterministic=deterministic_eval),
-        num_eval_envs=num_eval_envs,
-        episode_length=episode_length,
-        action_repeat=action_repeat,
-        key=eval_key,
-    )
+    evaluator = None
+    if num_evals > 0:
+        evaluation_length = eval_episode_length or episode_length
+        eval_env = _maybe_wrap_env(
+            eval_env or environment,
+            wrap_env,
+            num_eval_envs,
+            evaluation_length,
+            action_repeat,
+            local_device_count=1,  # eval on the host only
+            key_env=eval_key,
+            wrap_env_fn=wrap_env_fn,
+            randomization_fn=randomization_fn,
+        )
+        evaluator = acting.Evaluator(
+            eval_env,
+            functools.partial(make_policy, deterministic=deterministic_eval),
+            num_eval_envs=num_eval_envs,
+            episode_length=evaluation_length,
+            action_repeat=action_repeat,
+            key=eval_key,
+        )
 
     # Run initial eval
     metrics = {}
@@ -1218,6 +1229,13 @@ def train(
             )
             logging.info(metrics)
             progress_fn(current_step, metrics)
+
+        if scored_checkpoint_fn is not None:
+            scored_checkpoint_fn(
+                current_step, make_policy, params, ckpt_config,
+                metrics if num_evals > 0 else training_metrics,
+                "validation" if num_evals > 0 else "training_proxy",
+            )
 
     total_steps = current_step
     if not total_steps >= num_timesteps:
