@@ -1,0 +1,117 @@
+{
+  "hand_geometry": {
+    "model": "unitree_dex3_three_finger_fixed_stand_v1",
+    "finger_control": "fixed_source_stand_pose",
+    "actuated_finger_dofs": 0,
+    "physical_finger_dofs_per_hand": 7,
+    "fixed_thumb_1_angle_rad": {
+      "left": 1.0472,
+      "right": -1.0472
+    },
+    "other_fixed_finger_angles_rad": 0.0,
+    "wrist_palm_and_finger_mass_kg_per_side": 0.7811226,
+    "source_upstream_commit": "c20ca8f1fe5e519474c6c8d10b1ce5c719dd7a65",
+    "source_mjcf_sha256": "937f77cc991be13e68a4de239a966aaf2d98ff47b7d336f0c2270c34800a6a9c",
+    "asset_files_sha256": {
+      "assets/left_hand_index_0_link.STL": "6b35f2f77211d5a366f0b9a4e47c4ee35e536731266f1a34e9efa12db579b892",
+      "assets/left_hand_index_1_link.STL": "9e315ebc8a7a0cb98e033985b586b20d81cf8aa761181ae61ce56fcb14077a06",
+      "assets/left_hand_middle_0_link.STL": "6b35f2f77211d5a366f0b9a4e47c4ee35e536731266f1a34e9efa12db579b892",
+      "assets/left_hand_middle_1_link.STL": "9e315ebc8a7a0cb98e033985b586b20d81cf8aa761181ae61ce56fcb14077a06",
+      "assets/left_hand_palm_link.STL": "23a486b75bd78a9bf03cec25d84d87f97f3dae038cf21a743b6d469b337e4004",
+      "assets/left_hand_thumb_0_link.STL": "a90c721661c0622685488a3c74d1e122c7da89242d3a1daef75edb83422d05e0",
+      "assets/left_hand_thumb_1_link.STL": "445c54a45bc13ce36001556f66bc0f49c83cb40321205ae4d676bb2874325684",
+      "assets/left_hand_thumb_2_link.STL": "3d8dbe5085acfc213d21aa8b0782e89cd79084e9678f3a85fc7b04a86b029db5",
+      "assets/right_hand_index_0_link.STL": "12ab4300c95e437e834f9aef772b3b431c671bf34338930b52ad11aef73bbd0d",
+      "assets/right_hand_index_1_link.STL": "c9c34efce4563cacdcfd29fc838a982976d40f5442c71219811dcbbf3923a33d",
+      "assets/right_hand_middle_0_link.STL": "12ab4300c95e437e834f9aef772b3b431c671bf34338930b52ad11aef73bbd0d",
+      "assets/right_hand_middle_1_link.STL": "c9c34efce4563cacdcfd29fc838a982976d40f5442c71219811dcbbf3923a33d",
+      "assets/right_hand_palm_link.STL": "86c0b231cc44477d64a6493e5a427ba16617a00738112dd187c652675b086fb9",
+      "assets/right_hand_thumb_0_link.STL": "544298d0ea1088f5b276a10cc6a6a9e533efdd91594955fdc956c46211d07f83",
+      "assets/right_hand_thumb_1_link.STL": "0a9a820da8dd10f298778b714f1364216e8a5976f4fd3a05689ea26327d44bf6",
+      "assets/right_hand_thumb_2_link.STL": "3f1bfb37668e8f61801c8d25f171fa1949e08666be86c67acad7e0079937cc45",
+      "source-hands.xml": "b8d50f5f7b41fa7eed78206d933dd1a9f8a43e437e0069257e0c8f73c8a09894"
+    },
+    "envelopes": {
+      "left": {
+        "center": [
+          0.12923083770871163,
+          -0.022143624205178604,
+          8.903443813323975e-07
+        ],
+        "half_size": [
+          0.09273083757758141,
+          0.051559837568587646,
+          0.04889683529734611
+        ],
+        "mesh_lower": [
+          0.04150000013113022,
+          -0.06870346177376625,
+          -0.04389594495296478
+        ],
+        "mesh_upper": [
+          0.21696167528629304,
+          0.02441621336340904,
+          0.04389772564172745
+        ],
+        "margin_m": 0.005
+      },
+      "right": {
+        "center": [
+          0.12923083764296023,
+          0.022143624205178604,
+          -8.903443813323975e-07
+        ],
+        "half_size": [
+          0.0927308376433328,
+          0.051559837568587646,
+          0.04889683529734611
+        ],
+        "mesh_lower": [
+          0.04149999999962744,
+          -0.02441621336340904,
+          -0.04389772564172745
+        ],
+        "mesh_upper": [
+          0.21696167528629304,
+          0.06870346177376625,
+          0.04389594495296478
+        ],
+        "margin_m": 0.005
+      }
+    }
+  },
+  "native_vertex_check": {
+    "left": {
+      "checked_meshes": [
+        "left_hand_palm_link",
+        "left_hand_thumb_0_link",
+        "left_hand_thumb_1_link",
+        "left_hand_thumb_2_link",
+        "left_hand_middle_0_link",
+        "left_hand_middle_1_link",
+        "left_hand_index_0_link",
+        "left_hand_index_1_link"
+      ],
+      "checked_vertices": 81432,
+      "minimum_margin_m": 0.004999998207313061,
+      "contained": true
+    },
+    "right": {
+      "checked_meshes": [
+        "right_hand_palm_link",
+        "right_hand_thumb_0_link",
+        "right_hand_thumb_1_link",
+        "right_hand_thumb_2_link",
+        "right_hand_middle_0_link",
+        "right_hand_middle_1_link",
+        "right_hand_index_0_link",
+        "right_hand_index_1_link"
+      ],
+      "checked_vertices": 81432,
+      "minimum_margin_m": 0.004999998200331673,
+      "contained": true
+    }
+  },
+  "body_actions": 29,
+  "policy_rollout": false
+}

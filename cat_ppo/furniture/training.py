@@ -51,6 +51,9 @@ class FurnitureTrainingWrapper(wrapper.Wrapper):
     A terminal step returns its real reward, outcomes and metrics alongside
     reset physics/observations (the Brax training convention). Before the next
     action, every task info leaf is restored for the terminated environments.
+    Wrapped state metrics keep reward increments; other episode statistics are
+    emitted only at termination, so Brax's additive EvalWrapper remains valid.
+    The training callback reads the continuously updated info aggregates.
     The nominal reset, including its sampled gait phase, is reused per vector
     slot, matching the existing cached-reset training convention.
     """
@@ -90,7 +93,15 @@ class FurnitureTrainingWrapper(wrapper.Wrapper):
                      "episode_done": done, "episode_metrics": aggregates, _CACHE: cache})
         data = jax.tree.map(lambda a, b: _where(done.astype(bool), a, b), cache["data"], next_state.data)
         obs = jax.tree.map(lambda a, b: _where(done.astype(bool), a, b), cache["obs"], next_state.obs)
-        return next_state.replace(data=data, obs=obs, done=done, info=info)
+        # EvalWrapper sums state.metrics until the first terminal step. Emit
+        # episode summaries once instead of summing clearance/progress snapshots
+        # or already-averaged map statistics. Reward terms remain step values.
+        summable_metrics = {
+            name: value if name == "reward" or name.startswith("reward/") else
+                  jp.where(done.astype(bool), aggregates[name], jp.zeros_like(value))
+            for name, value in next_state.metrics.items()
+        }
+        return next_state.replace(data=data, obs=obs, done=done, info=info, metrics=summable_metrics)
 
 
 def wrap_for_furniture_training(env, *, episode_length, action_repeat=1, randomization_fn=None):

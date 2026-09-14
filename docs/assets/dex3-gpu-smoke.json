@@ -1,0 +1,33 @@
+{
+  "purpose": "Bounded implementation check; not a learning or performance result",
+  "evidence": "Summary and run metadata read successfully over SSH after process exit 0",
+  "run_path": "dep-0:/home/konstantin.smirnov/robotics/Click-and-Traverse-WholeBody/outputs/dex3_gpu_check_20260915",
+  "gpu": "NVIDIA RTX 5090",
+  "code_commit": "3f21a4d033a5f280309421202bc588ebd1aed4ed",
+  "hand_model": "unitree_dex3_three_finger_fixed_stand_v1",
+  "requested_steps": 128,
+  "parallel_environments": 4,
+  "selected_step": 128,
+  "actor_max_abs_parameter_update": 0.006612475961446762,
+  "source": {
+    "kind": "pinned_public_native_checkpoint",
+    "repo_id": "Axian12138/Click-and-Traverse",
+    "revision": "46ce4b57ba0639168d51741b661ff62f7ce6f045",
+    "checkpoint_path": "logs_v1/generalist_v1/checkpoints/005033164800"
+  },
+  "warmstart": {
+    "kind": "native_parameter_finetuning",
+    "optimizer": "fresh",
+    "critic_restored": true,
+    "source_action_count": 12,
+    "target_action_count": 29,
+    "parity": {
+      "actor_mean_and_raw_scale_max_abs_error": 0.0,
+      "critic_max_abs_error": 0.0
+    }
+  },
+  "training_completed_episodes_reported": 15,
+  "retained_checkpoint_generations": 1,
+  "export_native_parity_max_abs_error": 4.626810550689697e-6,
+  "export_batch_sizes_checked": [1, 7, 32]
+}

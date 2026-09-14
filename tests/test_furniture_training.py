@@ -22,7 +22,8 @@ class ShortContactTask:
         del rng
         zero = jp.asarray(0.0)
         metrics = {name: zero for name in ("reward/progress", "success", "fall", "hand_contact",
-            "forbidden_contact", "min_hand_clearance_m", "route_fraction", "cross_track_m", "map_age_seconds")}
+            "forbidden_contact", "completion_time", "min_hand_clearance_m", "route_fraction",
+            "cross_track_m", "map_age_seconds")}
         return State(data=jp.zeros(1), obs=jp.zeros(1), reward=zero, done=zero, metrics=metrics,
             info={"clock": jp.asarray(0), "contact": jp.asarray(False), "motor_target": zero,
                   "map_history": jp.zeros(2), "minimum_clearance": jp.asarray(1.0)})
@@ -38,6 +39,7 @@ class ShortContactTask:
         metrics = {"reward/progress": action[0], "success": jp.asarray(0.0), "fall": jp.asarray(0.0),
             "hand_contact": info["contact"].astype(jp.float32),
             "forbidden_contact": info["contact"].astype(jp.float32),
+            "completion_time": jp.where(info["contact"], 10.0, 0.0),
             "min_hand_clearance_m": info["minimum_clearance"], "route_fraction": position[0] / 2,
             "cross_track_m": position[0], "map_age_seconds": .02 * info["clock"]}
         return state.replace(data=position, obs=position, reward=action[0],
@@ -112,16 +114,31 @@ def test_wrapper_time_limit_resets_clock_without_inventing_contact():
         np.testing.assert_array_equal(state.info["episode_metrics"]["length"], [1])
 
 
-def test_optional_brax_evaluation_consumes_first_terminal_outcomes_only():
+def test_optional_brax_evaluation_consumes_episode_summaries_once():
     # Exercise the optional validation wrapper contract using a synthetic task,
     # without running a robot policy or enabling evaluation in the launcher.
     env = brax_training.EvalWrapper(wrap_for_furniture_training(ShortContactTask(), episode_length=10))
     state = env.reset(jax.random.split(jax.random.PRNGKey(0), 1))
     step = jax.jit(env.step)
-    for _ in range(4):
+    for index in range(4):
         state = step(state, jp.ones((1, 1)))
+        if index == 0:
+            # Training aggregates remain current between terminals; additive
+            # evaluation gets no premature snapshot but retains step rewards.
+            np.testing.assert_allclose(state.info["episode_metrics"]["min_hand_clearance_m"], [.75])
+            np.testing.assert_array_equal(state.metrics["min_hand_clearance_m"], [0])
+            np.testing.assert_array_equal(state.metrics["reward/progress"], [1])
     metrics = state.info["eval_metrics"]
     np.testing.assert_array_equal(metrics.active_episodes, [0])
     np.testing.assert_array_equal(metrics.episode_steps, [2])
     np.testing.assert_array_equal(metrics.episode_metrics["hand_contact"], [1])
     np.testing.assert_array_equal(metrics.episode_metrics["forbidden_contact"], [1])
+    np.testing.assert_array_equal(metrics.episode_metrics["completion_time"], [10])
+    np.testing.assert_allclose(metrics.episode_metrics["min_hand_clearance_m"], [.5])
+    np.testing.assert_array_equal(metrics.episode_metrics["route_fraction"], [1])
+    np.testing.assert_allclose(metrics.episode_metrics["cross_track_m"], [1.5])
+    np.testing.assert_allclose(metrics.episode_metrics["map_age_seconds"], [.03])
+    np.testing.assert_array_equal(metrics.episode_metrics["reward/progress"], [2])
+    # Training summaries describe the second completed episode independently.
+    np.testing.assert_array_equal(state.info["episode_metrics"]["completion_time"], [10])
+    np.testing.assert_allclose(state.info["episode_metrics"]["min_hand_clearance_m"], [.5])

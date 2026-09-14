@@ -1,0 +1,8 @@
+{
+  "page_errors": [],
+  "presets_tested": 3,
+  "url": "http://127.0.0.1:8085/",
+  "geometry_hash": "9cfba94bcbc0b19e392455a9d3be2fe2a83be32d7363f4f3480b70ff4a41c2f9",
+  "hand_model": "unitree_dex3_three_finger_fixed_stand_v1",
+  "policy_loaded": false
+}

@@ -6,6 +6,26 @@ hash `9cfba94bcbc0b19e392455a9d3be2fe2a83be32d7363f4f3480b70ff4a41c2f9`.
 The robot stays at its nominal start pose. Camera motion illustrates the room;
 no learned policy or physics rollout is shown.
 
+## Corrected Unitree hands — September 15
+
+The live viewer now uses fixed Unitree Dex3-1 three-finger hands. Amber boxes
+enclose every palm/finger mesh vertex, including the thumb, with 5 mm padding.
+Their bounds are shared by the collision model and clearance probes. The
+viewer has separate left/right gripper close-up buttons and transparent box
+faces with visible edges.
+
+![Left Dex3 hand and its complete envelope](assets/dex3-visuals/left-gripper-envelope.png)
+
+![Right Dex3 hand and its complete envelope](assets/dex3-visuals/right-gripper-envelope.png)
+
+[Native mesh containment report](assets/dex3-visuals/gripper-geometry-validation.json)
+
+The room tours below were recorded on September 14 with the previous rigid
+hand visuals. Their furniture layout is unchanged. Run the rendering commands
+below at the current commit to obtain tours with the corrected hands.
+
+## Room tours — September 14
+
 [Watch/download the 27-second camera tour](assets/furniture-visuals/camera-tour.mp4)
 
 [Watch the Viser viewer recording](assets/furniture-visuals/viser-tour.mp4)

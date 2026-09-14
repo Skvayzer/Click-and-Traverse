@@ -23,6 +23,20 @@ This file records implementation checks, not trained traversal results.
 - The full CPU suite passed **132 tests in 102.31 s** after both corrections.
   The 13 warnings are pinned JAX/JAXopt deprecations and MuJoCo sentinel casts;
   finite-state checks pass. This includes native CAT warm-start/export parity.
+- The corrected model and training wrapper passed a **128-transition GPU PPO
+  integration check** on dep-0, with four parallel environments and two
+  checkpoint candidates. Initialization preserved the original actor/critic
+  outputs exactly in the named-mapping parity check. Parameters updated by up
+  to 0.00661; the selected step-128 ONNX matched native inference within
+  4.63e-6. Training telemetry reported 15 completed episodes, and one checkpoint
+  generation remained. This checks updates, resets, logging and export; the
+  tiny run is not evidence of useful learned traversal. It used commit
+  `3f21a4d`; [the saved report](assets/dex3-gpu-smoke.json) records provenance.
+- A final optional-validation metric adjustment emits clearance/progress/mean
+  summaries once at episode termination for Brax's additive evaluator. Its
+  four focused wrapper regressions passed in 1.13 s. Training telemetry reads
+  the same continuously updated info aggregates as in the GPU check. No
+  performance evaluation was run.
 
 The earlier short GPU checks below predate these fixes and establish only their
 stated limited optimizer/compilation results. They did not establish reliable
