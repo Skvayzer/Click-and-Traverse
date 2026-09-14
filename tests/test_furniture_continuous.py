@@ -10,6 +10,7 @@ import pytest
 from cat_ppo.furniture import continuous, curriculum
 from cat_ppo.furniture.checkpoint import BestCheckpointStore
 from cat_ppo.furniture.scenes import generate_scene, load_scene, write_scene_bundle
+from cat_ppo.furniture.scenes import _digest
 
 
 def test_stage_stream_preserves_rehearsal_and_keeps_generating_dense_seeds():
@@ -68,10 +69,6 @@ def fixture(tmp_path, monkeypatch):
             (path / "weights.bin").write_bytes(f"stage {stage_index} actor critic normalizer".encode())
             (path / "ppo_network_config.json").write_text("{}")
 
-        store.consider(step=8, metrics={"proxy_score": 1.0}, source="training_proxy",
-                       write_checkpoint=writer, contract={"action_names": ["fixture_joint"]})
-        selected = store.selected()
-        selected_paths.append(selected["path"])
         source = {"kind": "pinned_public_native_checkpoint"}
         if "--warmstart" in args:
             native = Path(args["--warmstart"])
@@ -86,6 +83,11 @@ def fixture(tmp_path, monkeypatch):
         for key in ("steps", "seed", "num_envs", "unroll_length", "checkpoint_epochs", "num_evals", "global_step_offset"):
             run["args"][key] = int(run["args"][key])
         run["args"]["action_dofs"] = 29
+        store.consider(step=8, metrics={"proxy_score": 1.0}, source="training_proxy",
+                       write_checkpoint=writer, contract={"action_names": ["fixture_joint"]},
+                       provenance={key: run.get(key) for key in ("warmstart", "source", "code", "training_scene", "validation_scene")})
+        selected = store.selected()
+        selected_paths.append(selected["path"])
         (directory / "run.json").write_text(json.dumps(run))
         interrupted = controls.get("partial_stop_at") == stage_index
         budget = int(args["--steps"])
@@ -95,7 +97,7 @@ def fixture(tmp_path, monkeypatch):
             native_checkpoint=selected["path"])
         (directory / "summary.json").write_text(json.dumps(summary))
         if interrupted or len(calls) == controls["stop_after"]:
-            continuous.request_stop(run_dir)
+            continuous.request_stop(Path(args["--stop-file"]).parent)
 
     monkeypatch.setattr(continuous, "_run_child", train)
     return SimpleNamespace(config=config, run=run_dir, calls=calls, selected=selected_paths, controls=controls)
@@ -175,4 +177,130 @@ def test_existing_configuration_cannot_be_changed_during_continuation(fixture):
                                       checkpoint_epochs=2, wandb_mode="disabled")
     with pytest.raises(ValueError, match="different configuration"):
         continuous.execute(changed, fixture.run)
+    assert len(fixture.calls) == 2
+
+
+def test_explicit_domain_batch_overrides_support_restart_sizing():
+    config = continuous.build_config(steps_per_stage=8388608, num_envs=512,
+        legacy_num_envs=8192, pilot_num_envs=8192, pilot_furniture_num_envs=4096,
+        random_num_envs=2048, generic_num_envs=1024, furniture_num_envs=512)
+    expected = {0: 8192, 1: 8192, 3: 4096, 8: 2048, 13: 1024, 15: 512}
+    for index, count in expected.items():
+        assert continuous.stage_num_envs(config, continuous.stage_spec(index, 0)) == count
+
+
+def test_restart_replays_partial_scene_with_selected_weights_and_all_executed_steps(fixture):
+    fixture.controls["partial_stop_at"] = 1
+    old_state = continuous.execute(fixture.config, fixture.run)
+    old_bytes = {str(path.relative_to(fixture.run)): path.read_bytes()
+                 for path in fixture.run.rglob("*") if path.is_file()}
+    new_run = fixture.run.parent / "larger_run"
+    config = continuous.build_config(steps_per_stage=32, num_envs=8, unroll_length=2,
+        checkpoint_epochs=2, wandb_mode="disabled", restart_from_run=fixture.run)
+    fixture.controls.update(partial_stop_at=None, stop_after=4)
+    state = continuous.execute(config, new_run)
+    anchor = json.loads((new_run / "restart_anchor.json").read_text())
+    assert anchor["source_selection"] == old_state["partial_stage"]["selected"]
+    assert anchor["resume_stage_index"] == state["start_stage_index"] == 1
+    assert anchor["global_step_offset"] == state["initial_transition_offset"] == 24
+    assert state["completed_transitions"] == 88
+    first_command = fixture.calls[2]
+    assert first_command[first_command.index("--warmstart") + 1] == str(new_run / "restart_source/native")
+    assert first_command[first_command.index("--global-step-offset") + 1] == "24"
+    assert Path(first_command[first_command.index("--run-dir") + 1]).name == continuous.stage_spec(1, 0)["name"]
+    assert not (new_run / "restart_source").exists()
+    assert (new_run / "restart_source_retired.json").exists()
+    assert len(list(new_run.rglob("weights.bin"))) == 1
+    assert old_bytes == {str(path.relative_to(fixture.run)): path.read_bytes()
+                         for path in fixture.run.rglob("*") if path.is_file()}
+
+
+def test_restart_after_complete_stage_advances_and_can_restart_a_restart(fixture):
+    continuous.execute(fixture.config, fixture.run)
+    second = fixture.run.parent / "second"
+    config = continuous.build_config(steps_per_stage=16, num_envs=4, unroll_length=2,
+        checkpoint_epochs=2, wandb_mode="disabled", restart_from_run=fixture.run)
+    fixture.controls["stop_after"] = 3
+    state = continuous.execute(config, second)
+    assert state["start_stage_index"] == 2 and state["initial_transition_offset"] == 32
+    third = fixture.run.parent / "third"
+    config = continuous.build_config(steps_per_stage=16, num_envs=4, unroll_length=2,
+        checkpoint_epochs=2, wandb_mode="disabled", restart_from_run=second)
+    fixture.controls["stop_after"] = 4
+    state = continuous.execute(config, third)
+    assert state["start_stage_index"] == 3 and state["initial_transition_offset"] == 48
+    assert state["completed_transitions"] == 64
+
+
+def test_restart_accepts_original_continuous_config_without_new_optional_fields(fixture):
+    fixture.controls["partial_stop_at"] = 1
+    continuous.execute(fixture.config, fixture.run)
+    path = fixture.run / "continuous_config.json"
+    old_config = json.loads(path.read_text())
+    for key in ("random_num_envs", "generic_num_envs", "furniture_num_envs", "pilot_furniture_num_envs", "restart_from_run"):
+        del old_config[key]
+    old_config["sha256"] = _digest({key: value for key, value in old_config.items() if key != "sha256"})
+    path.write_text(json.dumps(old_config))
+    state_path = fixture.run / "continuous_state.json"
+    state = json.loads(state_path.read_text())
+    state["plan_sha256"] = old_config["sha256"]
+    del state["start_stage_index"], state["initial_transition_offset"]
+    for item in state["completed"]:
+        receipt_path = fixture.run / "stages" / item["name"] / "curriculum_receipt.json"
+        receipt = json.loads(receipt_path.read_text())
+        receipt["plan_sha256"] = old_config["sha256"]
+        receipt_path.write_text(json.dumps(receipt))
+        item["receipt_sha256"] = hashlib.sha256(receipt_path.read_bytes()).hexdigest()
+    state_path.write_text(json.dumps(state))
+    path = fixture.run / "runner.json"
+    runner = json.loads(path.read_text());runner["config_sha256"] = old_config["sha256"]
+    path.write_text(json.dumps(runner))
+    config = continuous.build_config(steps_per_stage=16, num_envs=4, unroll_length=2,
+        checkpoint_epochs=2, wandb_mode="disabled", restart_from_run=fixture.run)
+    fixture.controls.update(stop_after=3, partial_stop_at=None)
+    resumed = continuous.execute(config, fixture.run.parent / "from_original_v1")
+    assert resumed["start_stage_index"] == 1 and resumed["initial_transition_offset"] == 24
+
+
+@pytest.mark.parametrize("fault", ["scene", "config", "seed", "provenance"])
+def test_partial_restart_binds_saved_scene_configuration_and_selected_provenance(fixture, fault):
+    fixture.controls["partial_stop_at"] = 1
+    state = continuous.execute(fixture.config, fixture.run)
+    directory = fixture.run / "stages" / state["partial_stage"]["name"]
+    run_path = directory / "run.json"
+    record = json.loads(run_path.read_text())
+    if fault == "scene":
+        record["training_scene"]["geometry_hash"] = "0" * 64
+    elif fault == "config":
+        record["environment_config"]["action_dofs"] = 12
+    elif fault == "seed":
+        record["args"]["seed"] = 123
+    else:
+        record["code"] = {"modified": True}
+    run_path.write_text(json.dumps(record))
+    config = continuous.build_config(steps_per_stage=16, num_envs=4, unroll_length=2,
+        checkpoint_epochs=2, wandb_mode="disabled", restart_from_run=fixture.run)
+    with pytest.raises(ValueError, match="Restart partial"):
+        continuous.execute(config, fixture.run.parent / "restarted")
+    assert len(fixture.calls) == 2
+
+
+@pytest.mark.parametrize("fault", ["active", "checkpoint", "offset", "seed"])
+def test_restart_refuses_unstopped_or_modified_source(fixture, fault):
+    continuous.execute(fixture.config, fixture.run)
+    if fault == "active":
+        path = fixture.run / "runner.json"
+        record = json.loads(path.read_text());record["active"] = True
+        path.write_text(json.dumps(record))
+    elif fault == "checkpoint":
+        Path(fixture.selected[-1], "weights.bin").write_bytes(b"modified")
+    elif fault == "offset":
+        path = fixture.run / "continuous_state.json"
+        record = json.loads(path.read_text());record["completed_transitions"] += 1
+        path.write_text(json.dumps(record))
+    config = continuous.build_config(steps_per_stage=16, num_envs=4, unroll_length=2,
+        checkpoint_epochs=2, wandb_mode="disabled", restart_from_run=fixture.run,
+        seed=1 if fault == "seed" else 0)
+    with pytest.raises(ValueError):
+        continuous.execute(config, fixture.run.parent / "restarted")
     assert len(fixture.calls) == 2

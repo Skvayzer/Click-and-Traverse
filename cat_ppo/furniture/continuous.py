@@ -13,12 +13,14 @@ import json
 import os
 from pathlib import Path
 import signal
+import shutil
 import socket
 import subprocess
 import sys
 import uuid
 
 from cat_ppo.furniture import curriculum
+from cat_ppo.furniture.checkpoint import _manifest
 from cat_ppo.furniture.scenes import _digest, load_scene
 
 
@@ -52,7 +54,8 @@ def stage_spec(index, seed):
 def build_config(*, steps_per_stage=1048576, num_envs=32, seed=0,
                  unroll_length=16, checkpoint_epochs=16, wandb_mode="online",
                  wandb_group=None, wandb_entity=None, legacy_num_envs=None,
-                 pilot_num_envs=None):
+                 pilot_num_envs=None, random_num_envs=None, generic_num_envs=None,
+                 furniture_num_envs=None, pilot_furniture_num_envs=None, restart_from_run=None):
     # Reuse the bounded curriculum's exact arithmetic validation; its finite
     # stage list is deliberately not used by the continuous runner.
     curriculum.build_plan(steps_per_stage=steps_per_stage, rounds=1, seed=seed,
@@ -60,8 +63,9 @@ def build_config(*, steps_per_stage=1048576, num_envs=32, seed=0,
         checkpoint_epochs=checkpoint_epochs, wandb_mode=wandb_mode)
     if type(seed) is not int or seed < 0:
         raise ValueError("Seed must be a nonnegative integer")
-    random_num_envs = min(legacy_num_envs, 2 * num_envs) if legacy_num_envs is not None else None
-    for count in (legacy_num_envs, pilot_num_envs, random_num_envs):
+    default_random_num_envs = min(legacy_num_envs, 2 * num_envs) if legacy_num_envs is not None else None
+    for count in (legacy_num_envs, pilot_num_envs, random_num_envs, default_random_num_envs,
+                  generic_num_envs, furniture_num_envs, pilot_furniture_num_envs):
         if count is not None:
             curriculum.build_plan(steps_per_stage=steps_per_stage, rounds=1, seed=seed,
                 num_envs=count, unroll_length=unroll_length,
@@ -71,6 +75,10 @@ def build_config(*, steps_per_stage=1048576, num_envs=32, seed=0,
         checkpoint_epochs=checkpoint_epochs, wandb_mode=wandb_mode,
         wandb_group=wandb_group, wandb_entity=wandb_entity,
         legacy_num_envs=legacy_num_envs, pilot_num_envs=pilot_num_envs,
+        random_num_envs=random_num_envs, generic_num_envs=generic_num_envs,
+        furniture_num_envs=furniture_num_envs,
+        pilot_furniture_num_envs=pilot_furniture_num_envs,
+        restart_from_run=str(Path(restart_from_run).absolute()) if restart_from_run is not None else None,
         initialization="pinned-public-CAT-once; subsequent stages restore previous selection",
         sampling="sequential rehearsal: 50% original CAT, 25% generic, 25% furniture",
         stop_condition="explicit STOP file or SIGINT/SIGTERM; errors halt without retries",
@@ -83,20 +91,27 @@ def build_config(*, steps_per_stage=1048576, num_envs=32, seed=0,
 def _validate_config(config):
     expected = build_config(**{key: config[key] for key in (
         "steps_per_stage", "num_envs", "seed", "unroll_length", "checkpoint_epochs",
-        "wandb_mode", "wandb_group", "wandb_entity", "legacy_num_envs", "pilot_num_envs")})
+        "wandb_mode", "wandb_group", "wandb_entity", "legacy_num_envs", "pilot_num_envs",
+        "random_num_envs", "generic_num_envs", "furniture_num_envs", "pilot_furniture_num_envs", "restart_from_run")})
     if config != expected:
         raise ValueError("Continuous configuration hash or schema mismatch")
 
 
 def stage_num_envs(config, stage):
     scene = stage["scene"]
+    if scene["domain"] == "legacy" and scene["kind"] == "random" and config.get("random_num_envs") is not None:
+        return config["random_num_envs"]
     if scene["domain"] == "legacy" and config["legacy_num_envs"] is not None:
         count = config["legacy_num_envs"]
         # Original random occupancy is substantially larger than the typical
         # templates; cap its optional light-scene batch at twice the base.
         return min(count, 2 * config["num_envs"]) if scene["kind"] == "random" else count
+    if scene["domain"] == "furniture" and scene["difficulty"] == "pilot" and config.get("pilot_furniture_num_envs") is not None:
+        return config["pilot_furniture_num_envs"]
     if scene["difficulty"] == "pilot" and config["pilot_num_envs"] is not None:
         return config["pilot_num_envs"]
+    if scene["domain"] in ("generic", "furniture") and config.get(scene["domain"] + "_num_envs") is not None:
+        return config[scene["domain"] + "_num_envs"]
     return config["num_envs"]
 
 
@@ -105,15 +120,210 @@ def _validate_state(state, config):
             or state.get("plan_sha256") != config["sha256"]):
         raise ValueError("Existing run belongs to a different continuous configuration")
     completed = state["completed"]
+    start = state.get("start_stage_index", 0)
+    offset = state.get("initial_transition_offset", 0)
+    if type(start) is not int or start < 0 or type(offset) is not int or offset < 0:
+        raise ValueError("Invalid restart stage/transition offsets")
     for index, item in enumerate(completed):
-        if item["name"] != stage_spec(index, config["seed"])["name"]:
+        if item["name"] != stage_spec(start + index, config["seed"])["name"]:
             raise ValueError("Continuous history is not the expected ordered prefix")
     if state["current_stage"] != (completed[-1]["name"] if completed else None):
         raise ValueError("Continuous current stage disagrees with completed history")
-    if state["completed_transitions"] != sum(item["actual_steps"] for item in completed):
+    if state["completed_transitions"] != offset + sum(item["actual_steps"] for item in completed):
         raise ValueError("Continuous transition offset disagrees with completed history")
-    if state.get("active_stage") and state["active_stage"]["stage_name"] != stage_spec(len(completed), config["seed"])["name"]:
+    if state.get("active_stage") and state["active_stage"]["stage_name"] != stage_spec(start + len(completed), config["seed"])["name"]:
         raise ValueError("Active stage is not the next continuous stage")
+
+
+def _load_restart_anchor(run_dir, state, config):
+    if config.get("restart_from_run") is None:
+        if state.get("restart_anchor_sha256") or state.get("start_stage_index", 0) or state.get("initial_transition_offset", 0):
+            raise ValueError("Fresh public initialization cannot carry restart offsets")
+        return None
+    anchor = curriculum._read_json(run_dir / "restart_anchor.json")
+    if (anchor.get("schema") != "cat-continuous-restart-v1"
+            or _digest(anchor) != state.get("restart_anchor_sha256")
+            or anchor["owner"] != state["owner"]
+            or anchor["source_run"] != config["restart_from_run"]
+            or anchor["resume_stage_index"] != state["start_stage_index"]
+            or anchor["global_step_offset"] != state["initial_transition_offset"]
+            or anchor["imported_selection"]["path"] != str(run_dir / "restart_source" / "native")):
+        raise ValueError("Restart anchor differs from saved ownership, source or offsets")
+    return anchor
+
+
+def _verify_source_lineage(run, selected, previous_selection):
+    if not run.get("warmstart", {}).get("critic_restored"):
+        raise ValueError("Restart source did not restore the CAT critic")
+    source = run.get("source", {})
+    if previous_selection is None:
+        if source.get("kind") != "pinned_public_native_checkpoint":
+            raise ValueError("Restart source lineage does not begin at pinned public CAT")
+    elif (source.get("kind") != "explicit_local_native_checkpoint"
+          or source.get("path") != previous_selection["path"]
+          or source.get("files") != {name: item["sha256"] for name, item in previous_selection["files"].items()}):
+        raise ValueError("Restart source warm-start lineage does not match its predecessor")
+    if selected["selection_source"] != "training_proxy":
+        raise ValueError("Continuous restart expects the tracked training-proxy selection")
+
+
+def _verify_partial_intent(run, selected, active, stage, old_config, source_run, directory, offset):
+    command = active.get("command", [])
+    if len(command) < 2 or len(command[2:]) % 2:
+        raise ValueError("Restart source has a malformed saved training command")
+    intent = dict(zip(command[2::2], command[3::2]))
+    if len(intent) != len(command[2:]) // 2 or active.get("stage_sha256") != _digest(stage):
+        raise ValueError("Restart partial intent does not match the expected curriculum stage")
+    expected = dict(steps=old_config["steps_per_stage"], seed=old_config["seed"],
+        num_envs=stage_num_envs(old_config, stage), unroll_length=old_config["unroll_length"],
+        checkpoint_epochs=old_config["checkpoint_epochs"], num_evals=0, global_step_offset=offset,
+        run_dir=str(directory), stop_file=str(source_run / "STOP"), wandb_mode=old_config["wandb_mode"],
+        wandb_group=old_config["wandb_group"] or source_run.name)
+    if any(run["args"].get(key) != value or intent.get("--" + key.replace("_", "-")) != str(value)
+           for key, value in expected.items()):
+        raise ValueError("Restart partial run arguments differ from saved command/configuration")
+    if (run["args"].get("action_dofs") != 29 or run.get("validation_scene") is not None
+            or run.get("selection_source") != "training_proxy"
+            or run["args"].get("wandb_entity") != old_config["wandb_entity"]
+            or any(run["environment_config"].get(key) != value for key, value in stage["environment_config"].items())):
+        raise ValueError("Restart partial task/action/selection configuration differs from its stage")
+    scene_path = Path(intent.get("--scene-dir", ""))
+    if run["args"].get("scene_dir") != str(scene_path):
+        raise ValueError("Restart partial scene path differs from saved intent")
+    scene = load_scene(scene_path)
+    if any(run["training_scene"].get(key) != scene[key] for key in ("scene_id", "geometry_hash", "split")) or scene["split"] != "train":
+        raise ValueError("Restart partial scene provenance differs from its verified scene bundle")
+    for key in ("warmstart", "source", "code", "training_scene", "validation_scene"):
+        if selected.get("provenance", {}).get(key) != run.get(key):
+            raise ValueError(f"Restart partial selected checkpoint provenance differs at {key}")
+
+
+def _import_restart(source_run, run_dir, config, owner):
+    """Copy one verified native selection while holding the stopped source lock.
+
+    Source metadata and models are read-only. The owned copy decouples the new
+    process from future source-run cleanup and is retired after verified handoff.
+    """
+    source_run = Path(source_run).absolute()
+    lock_path = source_run / ".continuous.lock"
+    if source_run == run_dir or source_run.is_symlink() or lock_path.is_symlink() or not lock_path.is_file():
+        raise ValueError("Restart requires a distinct existing regular continuous run")
+    with lock_path.open("r") as lock:
+        fcntl.flock(lock.fileno(), fcntl.LOCK_EX | fcntl.LOCK_NB)
+        old_config = curriculum._read_json(source_run / "continuous_config.json")
+        old_state = curriculum._read_json(source_run / "continuous_state.json")
+        runner = curriculum._read_json(source_run / "runner.json")
+        if (old_config.get("schema") != "cat-continuous-curriculum-v1"
+                or old_config.get("sha256") != _digest({key: value for key, value in old_config.items() if key != "sha256"})):
+            raise ValueError("Restart source configuration hash is invalid")
+        _validate_state(old_state, old_config)
+        old_anchor = _load_restart_anchor(source_run, old_state, old_config)
+        if (runner.get("active") is not False or runner.get("child_pid") is not None
+                or runner.get("owner") != old_state["owner"]
+                or runner.get("config_sha256") != old_config["sha256"]
+                or old_state.get("status") not in ("stopped_by_request", "stopped_with_partial_stage")):
+            raise ValueError("Restart source must be cooperatively stopped with no active worker")
+        if old_config["seed"] != config["seed"]:
+            raise ValueError("Restart must preserve the source curriculum seed")
+        previous_selection = old_anchor["imported_selection"] if old_anchor else None
+        for item in old_state["completed"]:
+            directory = source_run / "stages" / item["name"]
+            receipt = curriculum._read_json(directory / "curriculum_receipt.json")
+            run = curriculum._read_json(directory / "run.json")
+            summary = curriculum._read_json(directory / "summary.json")
+            if (curriculum._file_hash(directory / "curriculum_receipt.json") != item["receipt_sha256"]
+                    or receipt["owner"] != old_state["owner"] or receipt["plan_sha256"] != old_config["sha256"]
+                    or curriculum._file_hash(directory / "run.json") != receipt["run_sha256"]
+                    or curriculum._file_hash(directory / "summary.json") != receipt["summary_sha256"]
+                    or summary["actual_steps"] != item["actual_steps"]
+                    or receipt["input_selection"] != previous_selection):
+                raise ValueError("Restart source completed-stage history was modified")
+            _verify_source_lineage(run, receipt["selected"], previous_selection)
+            previous_selection = receipt["selected"]
+        next_index = old_state.get("start_stage_index", 0) + len(old_state["completed"])
+        offset = old_state["completed_transitions"]
+        partial = old_state.get("partial_stage")
+        if partial:
+            stage = stage_spec(next_index, config["seed"])
+            if partial["name"] != stage["name"] or old_state.get("active_stage", {}).get("stage_name") != stage["name"]:
+                raise ValueError("Restart partial stage differs from its recorded curriculum position")
+            directory = source_run / "stages" / stage["name"]
+            selected = curriculum._selected(directory)
+            summary = curriculum._read_json(directory / "summary.json")
+            run = curriculum._read_json(directory / "run.json")
+            if (partial["selected"] != selected
+                    or partial["summary_sha256"] != curriculum._file_hash(directory / "summary.json")
+                    or summary.get("stopped_by_request") is not True
+                    or summary.get("actual_steps") != partial["actual_steps"]
+                    or summary.get("selected_step") != selected["step"]
+                    or summary.get("selected_score") != selected["score"]
+                    or type(partial["actual_steps"]) is not int
+                    or not selected["step"] <= partial["actual_steps"] <= old_config["steps_per_stage"]
+                    or summary["native_checkpoint"] != selected["path"]
+                    or run["args"]["global_step_offset"] != offset
+                    or run["args"]["steps"] != old_config["steps_per_stage"]
+                    or run["args"]["num_envs"] != stage_num_envs(old_config, stage)
+                    or old_state["active_stage"]["input_selection"] != previous_selection):
+                raise ValueError("Restart partial checkpoint, budget or lineage metadata is inconsistent")
+            _verify_source_lineage(run, selected, previous_selection)
+            _verify_partial_intent(run, selected, old_state["active_stage"], stage, old_config,
+                                   source_run, directory, offset)
+            offset += partial["actual_steps"]
+            mode = "replay-interrupted-scene-from-selected-parameters"
+        else:
+            if old_state.get("active_stage") is not None or not old_state["completed"]:
+                raise ValueError("Restart source has no clean completed or stopped-partial selection")
+            directory = source_run / "stages" / old_state["current_stage"]
+            selected = curriculum._selected(directory)
+            if selected != previous_selection:
+                raise ValueError("Restart source selection differs from its last handoff receipt")
+            mode = "continue-at-next-scene"
+        destination = run_dir / "restart_source"
+        if destination.exists() or destination.is_symlink():
+            raise ValueError("Restart import destination already exists")
+        destination.mkdir()
+        shutil.copytree(selected["path"], destination / "native")
+        if _manifest(destination / "native") != selected["files"]:
+            raise ValueError("Copied restart checkpoint failed hash verification")
+        imported_selection = {**selected, "path": str(destination / "native"), "generation": str(destination)}
+        anchor = dict(schema="cat-continuous-restart-v1", owner=owner, source_run=str(source_run),
+            source_owner=old_state["owner"], source_config_sha256=old_config["sha256"],
+            source_state_sha256=curriculum._file_hash(source_run / "continuous_state.json"),
+            source_runner_sha256=curriculum._file_hash(source_run / "runner.json"),
+            source_stage=directory.name, source_run_metadata_sha256=curriculum._file_hash(directory / "run.json"),
+            source_summary_sha256=curriculum._file_hash(directory / "summary.json"),
+            source_selection=selected, imported_selection=imported_selection,
+            resume_stage_index=next_index, global_step_offset=offset, mode=mode,
+            optimizer="fresh; actor, critic and normalization parameters retained",
+            offset_semantics="all executed source transitions, including work after the selected best checkpoint")
+        curriculum._atomic_json(destination / "owner.json", {"owner": owner, "anchor_sha256": _digest(anchor)})
+        return anchor
+
+
+def _initial_selection(anchor):
+    if anchor is None:
+        return None
+    selected = anchor["imported_selection"]
+    path = Path(selected["path"])
+    if path.is_symlink() or not path.is_dir() or _manifest(path) != selected["files"]:
+        raise ValueError("Owned restart checkpoint differs from its immutable import manifest")
+    return selected
+
+
+def _retire_restart_copy(run_dir, state, anchor):
+    if not anchor or not state["completed"]:
+        return
+    # Only the new run's import copy is eligible; source_run is never mutated.
+    destination = run_dir / "restart_source"
+    if destination.exists() or destination.is_symlink():
+        if destination.is_symlink() or curriculum._read_json(destination / "owner.json") != {
+                "owner": state["owner"], "anchor_sha256": state["restart_anchor_sha256"]}:
+            raise ValueError("Refusing to retire an unowned restart import")
+        _initial_selection(anchor)
+        shutil.rmtree(destination)
+    curriculum._atomic_json(run_dir / "restart_source_retired.json", {
+        "anchor_sha256": state["restart_anchor_sha256"], "first_verified_stage": state["completed"][0]["name"],
+        "reason": "owned import retired after verified stage handoff; original source run preserved"})
 
 
 def request_stop(run_dir):
@@ -147,7 +357,7 @@ def _run_child(command, *, cwd, runner_record, runner_path):
 def _execute_locked(config, run_dir):
     root = Path(__file__).resolve().parents[2]
     state_path, stop_file = run_dir / "continuous_state.json", run_dir / "STOP"
-    for name in ("stages", "scenes", "STOP", "runner.json", "continuous_config.json"):
+    for name in ("stages", "scenes", "STOP", "runner.json", "continuous_config.json", "restart_anchor.json", "restart_source"):
         if (run_dir / name).is_symlink():
             raise ValueError(f"Refusing managed symlink: {name}")
     if state_path.exists():
@@ -159,11 +369,20 @@ def _execute_locked(config, run_dir):
             raise ValueError("New continuous run directory must be empty")
         state = dict(schema="cat-continuous-state-v1", owner=str(uuid.uuid4()),
                      plan_sha256=config["sha256"], completed=[], current_stage=None,
-                     active_stage=None, completed_transitions=0, status="starting")
+                     active_stage=None, completed_transitions=0, status="starting",
+                     start_stage_index=0, initial_transition_offset=0)
+        if config["restart_from_run"] is not None:
+            anchor = _import_restart(config["restart_from_run"], run_dir, config, state["owner"])
+            state.update(start_stage_index=anchor["resume_stage_index"],
+                         initial_transition_offset=anchor["global_step_offset"],
+                         completed_transitions=anchor["global_step_offset"], restart_anchor_sha256=_digest(anchor))
+            curriculum._atomic_json(run_dir / "restart_anchor.json", anchor)
         curriculum._atomic_json(run_dir / "continuous_config.json", config)
         curriculum._atomic_json(state_path, state)
     _validate_state(state, config)
+    anchor = _load_restart_anchor(run_dir, state, config)
     curriculum._reconcile_retirement(state, run_dir)
+    _retire_restart_copy(run_dir, state, anchor)
     runner_path = run_dir / "runner.json"
     runner = dict(pid=os.getpid(), child_pid=None, hostname=socket.gethostname(),
                   owner=state["owner"], config_sha256=config["sha256"], active=True,
@@ -185,7 +404,7 @@ def _execute_locked(config, run_dir):
                 return state
             if state.get("partial_stage"):
                 raise RuntimeError("Stopped partial stage preserved; use its selected checkpoint in an explicitly configured new run")
-            index = len(state["completed"])
+            index = state.get("start_stage_index", 0) + len(state["completed"])
             stage = stage_spec(index, config["seed"])
             num_envs = stage_num_envs(config, stage)
             scene_dir = curriculum.materialize_stage(stage["scene"], run_dir / "scenes")
@@ -208,7 +427,7 @@ def _execute_locked(config, run_dir):
             if config["wandb_entity"]:
                 command += ["--wandb-entity", config["wandb_entity"]]
             previous = run_dir / "stages" / state["current_stage"] if state["current_stage"] else None
-            previous_selection = curriculum._selected(previous) if previous is not None else None
+            previous_selection = curriculum._selected(previous) if previous is not None else _initial_selection(anchor)
             if previous_selection is not None:
                 command += ["--warmstart", previous_selection["path"]]
             active = dict(owner=state["owner"], stage_name=stage["name"], stage_sha256=_digest(stage),
@@ -255,6 +474,7 @@ def _execute_locked(config, run_dir):
                          status="switching_scene")
             curriculum._atomic_json(state_path, state)
             curriculum._reconcile_retirement(state, run_dir)
+            _retire_restart_copy(run_dir, state, anchor)
     except BaseException as error:
         state.update(status="failed", error=f"{type(error).__name__}: {error}")
         curriculum._atomic_json(state_path, state)
@@ -291,6 +511,12 @@ def main():
     run.add_argument("--legacy-num-envs", type=int,
                      help="Typical CAT batch override; random CAT is capped at twice --num-envs")
     run.add_argument("--pilot-num-envs", type=int, help="Pilot clutter batch override")
+    run.add_argument("--pilot-furniture-num-envs", type=int, help="Separate furniture pilot batch override")
+    run.add_argument("--random-num-envs", type=int, help="Explicit original random CAT batch override")
+    run.add_argument("--generic-num-envs", type=int, help="Generic dense clutter batch override")
+    run.add_argument("--furniture-num-envs", type=int, help="Furniture dense clutter batch override")
+    run.add_argument("--restart-from-run", type=Path,
+                     help="Import a stopped run's selected parameters and continue its curriculum/step offset")
     run.add_argument("--seed", type=int, default=0)
     run.add_argument("--checkpoint-epochs", type=int, default=16)
     run.add_argument("--wandb-mode", choices=("online", "offline", "disabled"), default="online")

@@ -1075,6 +1075,16 @@ def train(
             "training/walltime": training_walltime,
             **{f"training/{name}": value for name, value in metrics.items()},
         }
+        # Read actual allocator statistics after completed GPU work. Keeping
+        # this outside the compiled epoch avoids adding device callbacks and
+        # distinguishes live tensors from the allocator's retained pool.
+        for device in jax.local_devices()[:local_devices_to_use]:
+            if device.platform == "gpu":
+                memory = device.memory_stats() or {}
+                for name in ("bytes_in_use", "peak_bytes_in_use", "bytes_reserved",
+                             "peak_bytes_reserved", "bytes_limit", "pool_bytes"):
+                    if name in memory:
+                        metrics[f"training/gpu_{device.id}/{name}"] = memory[name]
         return (
             training_state,
             env_state,

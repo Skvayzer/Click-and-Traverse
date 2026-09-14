@@ -1,5 +1,11 @@
 # Continuous CAT training on dep-0 — September 15, 2026
 
+This initial smaller run was cooperatively stopped at the user's request for
+larger batches. It completed 1,048,576 forward transitions and 589,824 generic
+clutter transitions; the selected generic checkpoint is at step 589,824. The
+restart configuration is in [TRAINING_READINESS.md](TRAINING_READINESS.md).
+The observations and stop command below refer to the original, now stopped run.
+
 Launched at 01:02:47 Dubai time (September 14, 21:02:47 UTC) on dep-0's RTX
 5090. This is the requested ongoing training run, with no global step, scene or
 time cap. It stops on an explicit manual request or an error. The run initializes
