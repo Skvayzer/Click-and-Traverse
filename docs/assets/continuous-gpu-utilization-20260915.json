@@ -1,0 +1,191 @@
+{
+  "schema": "cat-continuous-gpu-observations-v1",
+  "host": "dep-0 / WS012743",
+  "gpu": "NVIDIA GeForce RTX 5090",
+  "run": "outputs/continuous_cat_dex3_20260915_live",
+  "source_commit": "02a01c6",
+  "runner_pid": 757162,
+  "measurement": "Read-only nvidia-smi, process status and existing training logs; no benchmark or evaluation was launched.",
+  "sampling": "Nominal 15-second intervals; selected compilation samples retained and two monitor streams overlap by six seconds.",
+  "notes": [
+    "GPU memory includes runtime allocations and display usage; it is not a peak tensor-memory measurement.",
+    "Latest metrics can describe the completed previous stage while a new worker is compiling; the stage field names that metrics source.",
+    "Zero-utilization observations during initial compilation and automatic stage handoff are included."
+  ],
+  "summary": {
+    "active_training_samples": 7,
+    "active_gpu_utilization_percent": [
+      99,
+      99
+    ],
+    "active_power_w_range": [
+      416.29,
+      468.22
+    ],
+    "active_total_gpu_memory_used_mib": 5059,
+    "first_stage_completed_transitions": 1048576,
+    "first_stage_final_training_sps": 10347.936073752795,
+    "first_stage_worker_pid": 757175,
+    "next_stage_worker_pid": 765770,
+    "handoff_observed_utc": "2026-09-14T21:07:32.979317Z",
+    "interpretation": "1024 original-CAT environments saturated GPU compute during sampled PPO updates. Extra VRAM alone is not evidence that a larger batch is needed."
+  },
+  "samples": [
+    {
+      "time_utc": "2026-09-14T21:03:26.072431Z",
+      "gpu_utilization_percent": 0,
+      "total_gpu_memory_used_mib": 1957,
+      "gpu_memory_free_mib": 30185,
+      "power_w": 55.68,
+      "worker_pid": 757175,
+      "worker_memory_mib": 1736,
+      "phase": "first_graph_compilation"
+    },
+    {
+      "time_utc": "2026-09-14T21:05:41.832196Z",
+      "gpu_utilization_percent": 0,
+      "total_gpu_memory_used_mib": 1959,
+      "gpu_memory_free_mib": 30183,
+      "power_w": 8.25,
+      "worker_pid": 757175,
+      "worker_memory_mib": 1738,
+      "phase": "first_graph_compilation"
+    },
+    {
+      "time_utc": "2026-09-14T21:05:56.927201Z",
+      "gpu_utilization_percent": 99,
+      "total_gpu_memory_used_mib": 5059,
+      "gpu_memory_free_mib": 27083,
+      "power_w": 438.2,
+      "worker_pid": 757175,
+      "worker_memory_mib": 4838,
+      "observed_step": 131072,
+      "step_source": "checkpoint_path",
+      "latest_metrics_stage": "r000000-p0-cat-forward",
+      "phase": "PPO_training"
+    },
+    {
+      "time_utc": "2026-09-14T21:06:02.533579Z",
+      "gpu_utilization_percent": 99,
+      "total_gpu_memory_used_mib": 5059,
+      "gpu_memory_free_mib": 27083,
+      "power_w": 438.25,
+      "worker_pid": 757175,
+      "worker_memory_mib": 4838,
+      "observed_step": 180224,
+      "latest_metrics_stage": "r000000-p0-cat-forward",
+      "phase": "PPO_training"
+    },
+    {
+      "time_utc": "2026-09-14T21:06:17.607297Z",
+      "gpu_utilization_percent": 99,
+      "total_gpu_memory_used_mib": 5059,
+      "gpu_memory_free_mib": 27083,
+      "power_w": 416.29,
+      "worker_pid": 757175,
+      "worker_memory_mib": 4838,
+      "observed_step": 327680,
+      "training_sps": 10309.46857502804,
+      "latest_metrics_stage": "r000000-p0-cat-forward",
+      "phase": "PPO_training"
+    },
+    {
+      "time_utc": "2026-09-14T21:06:32.675277Z",
+      "gpu_utilization_percent": 99,
+      "total_gpu_memory_used_mib": 5059,
+      "gpu_memory_free_mib": 27083,
+      "power_w": 453.24,
+      "worker_pid": 757175,
+      "worker_memory_mib": 4838,
+      "observed_step": 491520,
+      "latest_metrics_stage": "r000000-p0-cat-forward",
+      "phase": "PPO_training"
+    },
+    {
+      "time_utc": "2026-09-14T21:06:47.751210Z",
+      "gpu_utilization_percent": 99,
+      "total_gpu_memory_used_mib": 5059,
+      "gpu_memory_free_mib": 27083,
+      "power_w": 460.61,
+      "worker_pid": 757175,
+      "worker_memory_mib": 4838,
+      "observed_step": 638976,
+      "latest_metrics_stage": "r000000-p0-cat-forward",
+      "phase": "PPO_training"
+    },
+    {
+      "time_utc": "2026-09-14T21:07:02.818264Z",
+      "gpu_utilization_percent": 99,
+      "total_gpu_memory_used_mib": 5059,
+      "gpu_memory_free_mib": 27083,
+      "power_w": 434.23,
+      "worker_pid": 757175,
+      "worker_memory_mib": 4838,
+      "latest_metrics_stage": "r000000-p0-cat-forward",
+      "observed_step": 802816,
+      "phase": "PPO_training"
+    },
+    {
+      "time_utc": "2026-09-14T21:07:17.916680Z",
+      "gpu_utilization_percent": 99,
+      "total_gpu_memory_used_mib": 5059,
+      "gpu_memory_free_mib": 27083,
+      "power_w": 468.22,
+      "worker_pid": 757175,
+      "worker_memory_mib": 4838,
+      "latest_metrics_stage": "r000000-p0-cat-forward",
+      "observed_step": 950272,
+      "phase": "PPO_training"
+    },
+    {
+      "time_utc": "2026-09-14T21:07:32.979317Z",
+      "gpu_utilization_percent": 0,
+      "total_gpu_memory_used_mib": 213,
+      "gpu_memory_free_mib": 31929,
+      "power_w": 73.07,
+      "latest_metrics_stage": "r000000-p0-cat-forward",
+      "observed_step": 1048576,
+      "training_sps": 10347.936073752795,
+      "phase": "automatic_handoff_and_next_stage_setup"
+    },
+    {
+      "time_utc": "2026-09-14T21:07:48.043769Z",
+      "gpu_utilization_percent": 0,
+      "total_gpu_memory_used_mib": 761,
+      "gpu_memory_free_mib": 31381,
+      "power_w": 67.42,
+      "worker_pid": 765770,
+      "worker_memory_mib": 540,
+      "latest_metrics_stage": "r000000-p0-cat-forward",
+      "observed_step": 1048576,
+      "training_sps": 10347.936073752795,
+      "phase": "automatic_handoff_and_next_stage_setup"
+    },
+    {
+      "time_utc": "2026-09-14T21:08:03.103348Z",
+      "gpu_utilization_percent": 0,
+      "total_gpu_memory_used_mib": 761,
+      "gpu_memory_free_mib": 31381,
+      "power_w": 65.91,
+      "worker_pid": 765770,
+      "worker_memory_mib": 540,
+      "latest_metrics_stage": "r000000-p0-cat-forward",
+      "observed_step": 1048576,
+      "training_sps": 10347.936073752795,
+      "phase": "automatic_handoff_and_next_stage_setup"
+    },
+    {
+      "time_utc": "2026-09-14T21:08:18.171300Z",
+      "gpu_utilization_percent": 0,
+      "total_gpu_memory_used_mib": 1933,
+      "gpu_memory_free_mib": 30209,
+      "power_w": 65.01,
+      "worker_pid": 765770,
+      "worker_memory_mib": 1712,
+      "latest_metrics_stage": "r000000-p0-cat-forward",
+      "observed_step": 1048576,
+      "training_sps": 10347.936073752795,
+      "phase": "automatic_handoff_and_next_stage_setup"
+    }
+  ]
+}

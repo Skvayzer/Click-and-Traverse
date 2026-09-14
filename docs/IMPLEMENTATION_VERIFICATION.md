@@ -41,7 +41,7 @@ This file records implementation checks, not trained traversal results.
 The earlier short GPU checks below predate these fixes and establish only their
 stated limited optimizer/compilation results. They did not establish reliable
 repeated-episode learning. See [the training plan](TRAINING_READINESS.md) for the
-bounded learning pilot and remaining performance questions.
+continuous training configuration and remaining performance questions.
 
 ## September 14 checks
 
