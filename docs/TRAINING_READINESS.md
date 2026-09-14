@@ -20,31 +20,49 @@ the hands without learning finger manipulation. Collision boxes include the
 entire fixed hand mesh and an additional 5 mm geometric padding. The separate
 hand-clearance reward encourages advance avoidance before physical contact.
 
-## First training pilot
+## Continuous overnight training
 
-Use dep-0's isolated `.venv` and one RTX 5090. Begin with four parallel environments,
-16-step rollouts, four minibatches, four PPO updates per batch, learning rate
-`3e-4`, and **32,768 transitions per stage**. Measure actual throughput and GPU
-memory before increasing the batch toward the proposed 32 environments or
-predicting wall-clock duration.
+The requested run uses dep-0's RTX 5090 and online W&B logging, with **no global
+step, stage or time limit**. It continues until an explicit manual stop or an
+error. Scene changes are automatic; reaching a per-scene cadence does not end
+the training job. A small implementation smoke is not evidence of learning.
+
+Use 16-step rollouts, four minibatches, four PPO updates per batch and learning
+rate `3e-4`. The batch uses 1,024 environments on original typical CAT and simple
+clutter, 512 on randomized CAT, and 256 on dense clutter. Native dense MJX state
+alone occupies about 9.44 MiB per environment, compared with 0.293 MiB on original
+forward. Training also needs cached resets and compiler temporaries. These
+batches are selected for GPU throughput with dense-scene memory headroom;
+actual utilization and peak allocation must be monitored during training.
 
 ```bash
-.venv/bin/python -m cat_ppo.furniture.curriculum prepare \
-  --output outputs/plans/dex3_pilot_seed0.json --rounds 1 \
-  --steps-per-stage 32768 --num-envs 4 --seed 0 --wandb-mode online
-
-# Launch explicitly when ready; preparation above only writes the plan.
-.venv/bin/python -m cat_ppo.furniture.curriculum run \
-  --plan outputs/plans/dex3_pilot_seed0.json \
-  --run-dir outputs/dex3_pilot_seed0 --max-stages 4
+.venv/bin/python -m cat_ppo.furniture.continuous run \
+  --run-dir outputs/continuous_cat_dex3_20260915 \
+  --num-envs 256 --legacy-num-envs 1024 --pilot-num-envs 1024 \
+  --steps-per-stage 1048576 --checkpoint-epochs 16 \
+  --seed 0 --wandb-mode online
 ```
 
-The first four stages are original CAT forward, generic pilot clutter, original
-CAT hurdle, and furniture pilot clutter: **131,072 transitions total**. Each
-stage starts from the preceding selected checkpoint; only the first starts from
-the published CAT weights. This pilot is for checking learning behavior,
-episode resets, hand-contact/fall trends and throughput. It is not a convergence
-budget or a benchmark result.
+The first four stages are original CAT forward, simple generic clutter, original
+CAT hurdle, and simple furniture clutter. Each stage starts from the preceding
+selected checkpoint; only the first starts from the published CAT weights.
+Scenes switch every 1,048,576 transitions, with checkpoint candidates every
+65,536 transitions. These intervals organize an ongoing run; they do not impose
+a total training budget. Each stage is a W&B run in the same group, with an
+explicit cumulative `global_step` axis. `wandb.json` contains its exact URL.
+
+Request a manual stop from the same checkout, using the actual absolute run path
+when the training source is in an isolated worktree:
+
+```bash
+.venv/bin/python -m cat_ppo.furniture.continuous stop \
+  --run-dir outputs/continuous_cat_dex3_20260915
+```
+
+The active trainer finishes its current checkpoint epoch and exports the
+selected model before exiting. SIGINT/SIGTERM to the runner makes the same
+cooperative request. The runner never silently retries a failed or partially
+completed stage with invented optimizer state.
 
 Task metrics come from completed training episodes: success, forbidden/hand/arm
 contact, falls, numerical failures, timeouts, completion time, route progress and
@@ -67,12 +85,13 @@ handoff. This is sequential rehearsal, rather than many different room layouts
 in the same PPO batch. Rehearsal is intended to reduce forgetting; retention
 still needs measurement.
 
-A starting full budget is 36 stages × 1,048,576 transitions = **37,748,736
-transitions per training seed**. Three independent seeds belong to the eventual
-study, after the first seed establishes a useful training regime. Stage budgets
-are fixed, not automatically gated by skill mastery. A final demo policy needs
-separate held-out checks on both original CAT environments and dense clutter;
-no evaluation is launched automatically.
+The first three rounds comprise 36 stages / 37,748,736 transitions, but the
+continuous runner keeps going afterward with new scene seeds and capped
+difficulty. Three independent seeds belong to the eventual study; the requested
+overnight run follows one evolving seed. Scene switching is based on cadence,
+not automatically gated by skill mastery. A final demo policy needs separate
+held-out checks on both original CAT environments and dense clutter; no
+evaluation is launched automatically.
 
 ## Checkpoints and readiness
 
@@ -88,6 +107,7 @@ state between episodes and reduces terminal metrics according to their meaning
 implementation-check results are recorded in
 [IMPLEMENTATION_VERIFICATION.md](IMPLEMENTATION_VERIFICATION.md).
 
-The next learning run should be the bounded pilot above. The full training and
-held-out performance study remain unrun. No GitHub or W&B credentials need to be
-copied into the repository.
+The continuous launch above supersedes the earlier bounded-pilot recommendation.
+Learned traversal and retained CAT skills must be judged from actual training
+and later held-out results. No GitHub or W&B credentials are copied into the
+repository.

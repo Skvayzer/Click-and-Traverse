@@ -73,7 +73,13 @@ MUJOCO_GL=egl .venv/bin/python render_furniture.py \
 
 The intended sequence is: expand the pretrained CAT policy on familiar easy scenes; learn isolated hand/arm encounters; progress to dense generic/furniture rooms; then add controlled map corruption. Original obstacle families continue throughout training, rather than being replaced by furniture.
 
-[Concrete pretrained pilot and readiness notes](docs/TRAINING_READINESS.md)
+[Continuous overnight training, W&B and manual stopping](docs/TRAINING_READINESS.md)
+
+The requested overnight launcher is `cat_ppo.furniture.continuous`. It starts
+from the public CAT checkpoint once, follows this curriculum and continues with
+new scene seeds indefinitely. It has no global step, stage or time limit; the
+user stops it explicitly. The finite commands below remain available for
+separately budgeted experiments.
 
 The executable curriculum alternates one original CAT stage with one new-clutter stage. Across equal stage budgets, the mixture is **50% original CAT, 25% generic clutter and 25% furniture**. A round contains six original scenes (forward, hurdle, narrow gap, crouch, random obstacles and combined obstacles) interleaved with six new scenes. Round 1 uses pilot encounters, round 2 uses dense rooms, and round 3 adds delayed/noisy/partially unknown maps to dense rooms. Scene seeds change each round.
 

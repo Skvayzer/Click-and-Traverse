@@ -38,11 +38,17 @@ def parser():
     p.add_argument("--new-action-std", type=float, default=.05)
     p.add_argument("--wandb-mode", choices=("disabled", "offline", "online"), default="disabled")
     p.add_argument("--wandb-project", default="CAT-furniture")
+    p.add_argument("--wandb-entity")
+    p.add_argument("--wandb-group")
+    p.add_argument("--global-step-offset", type=int, default=0)
+    p.add_argument("--stop-file", type=Path, help="Stop after a completed checkpoint epoch when this file exists")
     p.add_argument("--export-onnx", action=argparse.BooleanOptionalAction, default=True)
     return p
 
 
 def _validate(args):
+    if args.global_step_offset < 0:
+        raise ValueError("global-step-offset must be nonnegative")
     if min(args.steps, args.num_envs, args.unroll_length, args.num_minibatches, args.updates_per_batch, args.checkpoint_epochs) < 1:
         raise ValueError("Compute budgets and counts must be positive")
     if args.num_envs % args.num_minibatches:
@@ -117,8 +123,7 @@ def _wilson_interval(rate, count):
     return max(0.0, center-radius), min(1.0, center+radius)
 
 
-def train(args):
-    _validate(args)
+def _train(args, stop_request):
     os.environ.setdefault("XLA_PYTHON_CLIENT_PREALLOCATE", "false")
     os.environ.setdefault("MUJOCO_GL", "egl")
     import jax
@@ -209,7 +214,9 @@ def train(args):
         warmstart["parity"] = verify_warmstart_parity(source, target, source_contract, contract,
                                                      normalize_observations=normalize, seed=args.seed)
     target = jax.tree.map(jnp.asarray, target)
-    environment_sample = environment.reset(jax.random.PRNGKey(args.seed))
+    # The actual reset is compiled once by PPO. Shape tracing here avoids
+    # compiling hundreds of eager GPU reset operations before every scene.
+    environment_sample = jax.eval_shape(environment.reset, jax.random.PRNGKey(args.seed))
     for key, shape in sizes.items():
         if environment_sample.obs[key].shape != shape:
             raise ValueError(f"Actual environment observation disagrees with contract: {key}")
@@ -233,15 +240,26 @@ def train(args):
     if args.wandb_mode != "disabled":
         import wandb
         wandb_run = wandb.init(project=args.wandb_project, mode=args.wandb_mode,
+                              entity=args.wandb_entity, group=args.wandb_group,
                               name=args.run_dir.name, dir=str(args.run_dir), config=record)
+        wandb_run.define_metric("global_step")
+        wandb_run.define_metric("*", step_metric="global_step")
+        (args.run_dir / "wandb.json").write_text(json.dumps({
+            "id": wandb_run.id, "url": wandb_run.url, "project": wandb_run.project,
+            "entity": wandb_run.entity, "group": args.wandb_group,
+            "global_step_offset": args.global_step_offset}, indent=2) + "\n")
 
     def progress(step, metrics):
         scalars = {key: float(np.asarray(value)) for key, value in metrics.items() if np.asarray(value).ndim == 0}
         finite = {key: value for key, value in scalars.items() if math.isfinite(value)}
+        finite.update(stage_step=int(step), global_step=args.global_step_offset + int(step))
         with (args.run_dir / "metrics.jsonl").open("a") as stream:
             stream.write(json.dumps({"step": int(step), "metrics": finite}) + "\n")
         if wandb_run:
-            wandb_run.log(finite, step=int(step))
+            # W&B's event index stays monotonic even when asynchronous rollout
+            # callbacks and epoch reports share a training step. Charts use the
+            # explicit continuous global_step across stage runs.
+            wandb_run.log(finite)
 
     def scored(step, make_policy, params, network_config, metrics, score_source):
         del make_policy
@@ -266,7 +284,7 @@ def train(args):
                                    "validation_scene": validation_scene})
 
     try:
-        _, final_params, _ = native_ppo.train(environment=environment, num_timesteps=args.steps,
+        _, final_params, final_metrics = native_ppo.train(environment=environment, num_timesteps=args.steps,
             num_envs=args.num_envs, episode_length=environment.episode_length, action_repeat=1,
             randomize_initial_episode_steps=False, wrap_env_fn=wrap_for_furniture_training,
             batch_size=args.num_envs // args.num_minibatches, num_minibatches=args.num_minibatches,
@@ -280,13 +298,17 @@ def train(args):
             training_metrics_steps=record["training_telemetry"]["logging_interval_transitions"],
             progress_fn=progress, restore_params=target,
             restore_value_fn=True, save_checkpoint_path=None, scored_checkpoint_fn=scored,
-            num_training_epochs=args.checkpoint_epochs if args.num_evals == 0 else None)
+            num_training_epochs=args.checkpoint_epochs if args.num_evals == 0 else None,
+            should_stop_fn=stop_request.requested)
         selected = store.selected(verify=True)
         if selected is None:
             raise RuntimeError("Training completed without a finite scored checkpoint")
         actor_delta = max(float(np.max(np.abs(np.asarray(a) - np.asarray(b))))
                           for a, b in zip(jax.tree.leaves(target[1]), jax.tree.leaves(final_params[1])))
         summary = {"requested_steps": args.steps, "selected_step": selected["step"],
+                   "actual_steps": int(final_metrics["training/completed_steps"]),
+                   "stopped_by_request": bool(final_metrics["training/stopped_by_request"]),
+                   "stop_reason": stop_request.reason,
                    "selection_source": selected["selection_source"], "selected_score": selected["score"],
                    "actor_max_abs_parameter_update": actor_delta, "native_checkpoint": selected["path"]}
         if args.export_onnx:
@@ -301,6 +323,13 @@ def train(args):
     finally:
         if wandb_run:
             wandb_run.finish()
+
+
+def train(args):
+    from cat_ppo.furniture.run_control import StopRequest
+    _validate(args)
+    with StopRequest(args.stop_file) as stop_request:
+        return _train(args, stop_request)
 
 
 if __name__ == "__main__":

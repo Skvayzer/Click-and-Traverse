@@ -605,6 +605,7 @@ def train(
     scored_checkpoint_fn: Optional[Callable[..., None]] = None,
     num_training_epochs: Optional[int] = None,
     eval_episode_length: Optional[int] = None,
+    should_stop_fn: Optional[Callable[[], bool]] = None,
 ):
     """PPO training.
 
@@ -1190,6 +1191,7 @@ def train(
     training_metrics = {}
     training_walltime = 0
     current_step = 0
+    stopped_by_request = False
     for it in range(num_evals_after_init):
         logging.info("starting iteration %s %s", it, time.time() - xt)
 
@@ -1240,8 +1242,15 @@ def train(
                 "validation" if num_evals > 0 else "training_proxy",
             )
 
+        # Cooperative stopping keeps the selected model from a completed PPO
+        # epoch. It never interrupts a compiled update or checkpoint write.
+        if should_stop_fn is not None and should_stop_fn():
+            stopped_by_request = True
+            logging.info("Manual stop requested at completed step %s", current_step)
+            break
+
     total_steps = current_step
-    if not total_steps >= num_timesteps:
+    if not stopped_by_request and not total_steps >= num_timesteps:
         raise AssertionError(
             f"Total steps {total_steps} is less than `num_timesteps`= {num_timesteps}."
         )
@@ -1258,4 +1267,6 @@ def train(
     )
     logging.info("total steps: %s", total_steps)
     pmap.synchronize_hosts()
+    metrics = {**metrics, "training/completed_steps": total_steps,
+               "training/stopped_by_request": stopped_by_request}
     return (make_policy, params, metrics)
