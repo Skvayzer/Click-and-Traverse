@@ -1,0 +1,32 @@
+{
+  "git_commit": "5f77a4a1606ffc9702342301ae06d91ce66be19a",
+  "training_updates_executed": 0,
+  "wandb_initialized": false,
+  "checkpoints_written": false,
+  "devices": [
+    "cuda:0"
+  ],
+  "resident_field_array_bytes": 339284400,
+  "model_array_logical_bytes": 11815306,
+  "actual_argument_tree_logical_bytes": 290691084,
+  "allocator_before_compile": {
+    "num_allocs": 1518,
+    "bytes_in_use": 811651584,
+    "peak_bytes_in_use": 852146176,
+    "largest_alloc_size": 268435456,
+    "bytes_limit": 25277005824,
+    "bytes_reserved": 0,
+    "peak_bytes_reserved": 0,
+    "largest_free_block_bytes": 0,
+    "pool_bytes": 1243611136,
+    "peak_pool_bytes": 1243611136
+  },
+  "host": "dep-0 / WS012743",
+  "parallel_environments": 2048,
+  "transitions_per_update": 524288,
+  "gpu_initialization_peak_used_mib": 2405,
+  "full_ppo_memory_verified": false,
+  "diagnostic_limit": "JAX public lower() could not reconstruct Brax UInt64 from ArgInfo. A flat-array workaround compiled locally; remote transfer failed after repeated SSH timeouts.",
+  "last_successful_remote_cleanup": "Diagnostic PID exited; no GPU compute processes; tracked code clean. No flattened-workaround GPU process was started.",
+  "training_restarted": false
+}

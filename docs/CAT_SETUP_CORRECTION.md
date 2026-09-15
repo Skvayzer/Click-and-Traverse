@@ -24,3 +24,15 @@ A native forward-kinematics check sampled 100 randomized resets per dense room. 
 Implementation checks are not learned success. Corrected training has not been restarted. The provisional 2048-env/524288-transition GPU profile requires capacity validation before increased parallelism.
 
 The full regression suite passed **243 tests** (174.19 s). Machine-readable native-weight parity, reset clearance and mixed-wrapper evidence is in [cat-correction-validation-20260915.json](assets/cat-correction-validation-20260915.json).
+
+Subsequent startup-failure and recovery refinements passed their **72-test focused suite** (5.98 s). Preparation, logger initialization and partial checkpoint-store failures now retain the experiment identity. An explicit startup retry requires evidence of zero progress; missing or corrupt previously written recovery state cannot trigger fresh initialization.
+
+Implementation commit `5f77a4a` was pushed to `feature/whole-body-furniture-traversal` and synchronized to dep-0. All 39 scene slots and their file/source hashes were verified again on that machine. No corrected training experiment was started.
+
+## GPU check
+
+The actual default **2048-environment** setup initialized on dep-0, with **2405 MiB peak GPU usage during initialization**. No PPO update was executed, no W&B run was opened, and no model/recovery checkpoint was written by this diagnostic. [Recorded setup measurements](assets/cat-correction-gpu-setup-20260915.json).
+
+**Full PPO peak memory is still unverified.** The compile-only inspection hit a JAX public `lower()` incompatibility when reconstructing Brax's `UInt64` from argument metadata. This was reproduced independently of CAT. A flat-array inspection wrapper compiled locally, but repeated SSH timeouts prevented its transfer for the final GPU check. The prior diagnostic exited, and the last successful remote check found no GPU compute processes. This is an incomplete memory measurement, not evidence that the learner crashed during training.
+
+The initialization measurement does not include the large rollout/optimizer workload. It also recorded the current JAX allocator limit as 25,277,005,824 bytes (about 23.54 GiB); GPU allocator limits and full-update memory should be checked together before raising the resource profile or restarting training.
