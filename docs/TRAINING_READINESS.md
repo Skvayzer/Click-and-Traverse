@@ -49,7 +49,8 @@ rollout buffers and compiler temporaries, so scene families need different count
   --estimated-memory-budget-gib 25 \
   --oom-max-retries 2 --oom-min-num-envs 128 \
   --steps-per-stage 8388608 --checkpoint-epochs 64 \
-  --seed 0 --wandb-mode online
+  --seed 0 --wandb-mode online --wandb-entity skvayzer \
+  --wandb-group continuous_cat_dex3_20260915_large
 ```
 
 The first four stages are original CAT forward, simple generic clutter, original

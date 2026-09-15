@@ -12,7 +12,7 @@ The restart preserves the proven larger light-scene batches and reduces dense
 batches. It uses 8,192 environments for typical CAT/simple generic, 4,096 for
 simple furniture, 2,048 for random CAT, 1,024 for dense generic and 256 for dense
 furniture. The old dense counts were 2,048 and 1,024 respectively. Actual full
-PPO peaks on completed stages were 17.58 GiB for light scenes, 18.28 GiB for
+PPO peaks on completed stages were 15.80–21.24 GiB for light scenes, 18.28 GiB for
 simple furniture and 20.06 GiB for random CAT. A standalone physics-step memory
 estimate was insufficient for predicting the failed full PPO allocation.
 
@@ -43,13 +43,42 @@ Other exceptions or failures after progress halt for inspection. W&B failures
 are explicitly marked unsuccessful; the previous code's unconditional
 `finish()` could misleadingly label a failed stage as Finished.
 
-The planned run directory is
+The recovery launched at 10:26:41 Dubai time (06:26:41 UTC), using pinned
+source commit `ea299cce7abb0e6e58b221e2908de2304eaa1f27`. The supervisor PID
+is `1772487` and the first trainer PID is `1772502`. The first stage uses 1,024
+environments and the same 91-primitive dense generic scene that failed before.
+Its actor and critic outputs exactly matched the imported checkpoint in the
+warm-start parity check. The 92 focused local tests passed before launch.
+
+The run directory is
 `/home/konstantin.smirnov/robotics/Click-and-Traverse-WholeBody/outputs/continuous_cat_dex3_20260915_recovered`.
 Its sibling `.log` file contains the trainer output. The run's restart anchor
 records source checkpoint hashes, curriculum position and cumulative offset.
 The original failed run remains preserved. W&B keeps the existing
 `continuous_cat_dex3_20260915_large` group so stage records from the restart
 remain with the previous training lineage on the cumulative `global_step` axis.
+The recovered dense stage is [W&B run 269cr8uc](https://wandb.ai/skvayzer/CAT-furniture/runs/269cr8uc).
+
+By 10:37 Dubai time, three complete checkpoint epochs had finished at
+131,072, 262,144 and 393,216 new transitions, with further training advancing
+past 475,136. No OOM retry occurred. All logged numeric metrics were finite.
+The first epoch included compilation; the next two achieved 1,068.80 and
+1,067.98 transitions/second. Peak live allocator usage stayed at
+22,080,870,912 bytes (20.56 GiB), below its 30,332,406,185-byte (28.25 GiB)
+limit. The retained allocator pool was 28.25 GiB, and a device-level sample
+showed 29,863 MiB used, 2,279 MiB free, 96% GPU utilization and 497 W.
+A later sample at 10:37:41 Dubai time showed the same memory use with 100% GPU
+utilization and 542.54 W, while new training transitions had reached 507,904.
+Retained pool memory can be reused; it is not additional live tensor usage.
+These results verify actual PPO execution on the scene that previously failed,
+not learned traversal performance or every future scene's memory requirement.
+
+The first selected checkpoint at 131,072 transitions had exactly one retained
+candidate and all 13 payload files matched their recorded sizes and hashes.
+The original source and owned imported copy still matched all 12 source files.
+W&B's API confirmed the recovered stage was running in the existing group and
+receiving advancing cumulative steps (102,793,216 at the final API check).
+Training was left running. See [the runtime samples](assets/recovered-runtime-20260915.json).
 
 Request a saved stop from the Mac using the current run path:
 

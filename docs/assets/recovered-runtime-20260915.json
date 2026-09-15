@@ -1,0 +1,207 @@
+{
+  "schema": "cat-recovered-dense-runtime-evidence-v1",
+  "host": "dep-0 / WS012743",
+  "gpu": "NVIDIA GeForce RTX 5090",
+  "run": "outputs/continuous_cat_dex3_20260915_recovered",
+  "source_commit": "ea299cce7abb0e6e58b221e2908de2304eaa1f27",
+  "supervisor_pid": 1772487,
+  "worker_pid": 1772502,
+  "stage": "r000001-p0-generic",
+  "scene_domain": "generic_dense",
+  "primitive_boxes": 91,
+  "num_envs": 1024,
+  "unroll_length": 16,
+  "checkpoint_epochs": 64,
+  "checkpoint_interval_transitions": 131072,
+  "global_step_offset": 102301696,
+  "allocator_fraction": 0.9,
+  "preallocation_enabled": false,
+  "wandb_run": "https://wandb.ai/skvayzer/CAT-furniture/runs/269cr8uc",
+  "measurement": "Read-only process status, nvidia-smi and persisted actual PPO epoch metrics; no benchmark, evaluation, process mutation or competing GPU work.",
+  "monitoring_note": "The initial SSH stream ended with a connection timeout. A later successful read independently verified the active worker, current GPU status, advancing transitions and three persisted completed epochs. This file does not claim uninterrupted sampling.",
+  "startup_samples": [
+    {
+      "observed_utc": "2026-09-15T06:26:55.738719+00:00",
+      "gpu": {
+        "utilization_percent": 0,
+        "used_mib": 773,
+        "free_mib": 31369,
+        "power_w": 54.6
+      },
+      "runner": {
+        "pid": 1772487,
+        "child_pid": 1772502,
+        "active": true
+      },
+      "active_stage": "r000001-p0-generic"
+    },
+    {
+      "observed_utc": "2026-09-15T06:27:10.809461+00:00",
+      "gpu": {
+        "utilization_percent": 0,
+        "used_mib": 777,
+        "free_mib": 31365,
+        "power_w": 54.24
+      },
+      "runner": {
+        "pid": 1772487,
+        "child_pid": 1772502,
+        "active": true
+      },
+      "active_stage": "r000001-p0-generic"
+    },
+    {
+      "observed_utc": "2026-09-15T06:27:25.876199+00:00",
+      "gpu": {
+        "utilization_percent": 0,
+        "used_mib": 9125,
+        "free_mib": 23017,
+        "power_w": 54.99
+      },
+      "runner": {
+        "pid": 1772487,
+        "child_pid": 1772502,
+        "active": true
+      },
+      "active_stage": "r000001-p0-generic"
+    },
+    {
+      "observed_utc": "2026-09-15T06:27:40.944308+00:00",
+      "gpu": {
+        "utilization_percent": 0,
+        "used_mib": 9127,
+        "free_mib": 23015,
+        "power_w": 55.03
+      },
+      "runner": {
+        "pid": 1772487,
+        "child_pid": 1772502,
+        "active": true
+      },
+      "active_stage": "r000001-p0-generic"
+    },
+    {
+      "observed_utc": "2026-09-15T06:27:56.012671+00:00",
+      "gpu": {
+        "utilization_percent": 0,
+        "used_mib": 9127,
+        "free_mib": 23015,
+        "power_w": 7.49
+      },
+      "runner": {
+        "pid": 1772487,
+        "child_pid": 1772502,
+        "active": true
+      },
+      "active_stage": "r000001-p0-generic"
+    }
+  ],
+  "completed_epochs": [
+    {
+      "local_transition_step": 131072,
+      "metrics": {
+        "training/sps": 490.84739851210355,
+        "training/walltime": 267.03207635879517,
+        "training/entropy_loss": -0.14077773690223694,
+        "training/policy_loss": -0.03283391892910004,
+        "training/total_loss": 0.6654012203216553,
+        "training/v_loss": 0.839012861251831,
+        "training/gpu_0/bytes_in_use": 12862797568,
+        "training/gpu_0/peak_bytes_in_use": 22080870912,
+        "training/gpu_0/bytes_reserved": 0,
+        "training/gpu_0/peak_bytes_reserved": 0,
+        "training/gpu_0/bytes_limit": 30332406185,
+        "training/gpu_0/pool_bytes": 30332406016
+      },
+      "all_reported_losses_finite": true,
+      "global_transition_step": 102432768,
+      "includes_initial_compilation": true
+    },
+    {
+      "local_transition_step": 262144,
+      "metrics": {
+        "training/sps": 1068.8013128936773,
+        "training/walltime": 389.66665625572205,
+        "training/entropy_loss": -0.13719584047794342,
+        "training/policy_loss": -0.03637570142745972,
+        "training/total_loss": 0.3292698562145233,
+        "training/v_loss": 0.5028414130210876,
+        "training/gpu_0/bytes_in_use": 12928173312,
+        "training/gpu_0/peak_bytes_in_use": 22080870912,
+        "training/gpu_0/bytes_reserved": 0,
+        "training/gpu_0/peak_bytes_reserved": 0,
+        "training/gpu_0/bytes_limit": 30332406185,
+        "training/gpu_0/pool_bytes": 30332406016
+      },
+      "all_reported_losses_finite": true,
+      "global_transition_step": 102563840,
+      "includes_initial_compilation": false
+    },
+    {
+      "local_transition_step": 393216,
+      "metrics": {
+        "training/sps": 1067.9787623765894,
+        "training/walltime": 512.395688533783,
+        "training/entropy_loss": -0.1370662897825241,
+        "training/policy_loss": -0.03499753773212433,
+        "training/total_loss": 0.316087543964386,
+        "training/v_loss": 0.4881514012813568,
+        "training/gpu_0/bytes_in_use": 12907011072,
+        "training/gpu_0/peak_bytes_in_use": 22080870912,
+        "training/gpu_0/bytes_reserved": 0,
+        "training/gpu_0/peak_bytes_reserved": 0,
+        "training/gpu_0/bytes_limit": 30332406185,
+        "training/gpu_0/pool_bytes": 30332406016
+      },
+      "all_reported_losses_finite": true,
+      "global_transition_step": 102694912,
+      "includes_initial_compilation": false
+    }
+  ],
+  "latest_snapshot": {
+    "observed_utc": "2026-09-15T06:37:41.247171+00:00",
+    "runner": {
+      "pid": 1772487,
+      "child_pid": 1772502,
+      "active": true
+    },
+    "state": {
+      "status": "training",
+      "completed_global_transitions": 102301696,
+      "active_stage": "r000001-p0-generic",
+      "error": null
+    },
+    "gpu": {
+      "utilization_percent": 100,
+      "used_mib": 29863,
+      "free_mib": 2279,
+      "power_w": 542.54
+    },
+    "latest_local_transition_step": 507904,
+    "latest_global_transition_step": 102809600,
+    "completed_epoch_count": 3
+  },
+  "assessment": {
+    "three_completed_epochs": true,
+    "all_reported_losses_finite": true,
+    "first_epoch_sps_including_compilation": 490.84739851210355,
+    "steady_epoch_sps": [
+      1068.8013128936773,
+      1067.9787623765894
+    ],
+    "peak_live_bytes": 22080870912,
+    "peak_live_gib": 20.56441354751587,
+    "allocator_limit_bytes": 30332406185,
+    "allocator_limit_gib": 28.249254622496665,
+    "live_peak_headroom_to_allocator_limit_bytes": 8251535273,
+    "live_peak_headroom_to_allocator_limit_gib": 7.684841074980795,
+    "allocator_pool_bytes": 30332406016,
+    "allocator_pool_gib": 28.24925446510315,
+    "nvidia_total_used_gib": 29.1630859375,
+    "nvidia_free_gib": 2.2255859375,
+    "distinction": "Peak live buffers, retained allocator pool and nvidia-smi process/device allocation are different measurements. The dense-generic run completed three epochs with stable live peak below the allocator limit; the allocator retained additional memory.",
+    "scope": "This verifies the restarted 1024-environment dense-generic scene. It does not establish every future scene's memory peak or policy success rate.",
+    "worker_active_at_last_observation": true,
+    "reported_run_error": null
+  }
+}
