@@ -8,6 +8,8 @@ Corrected learned traversal success has not yet been demonstrated. See [correcti
 
 Corrected continuous training restarted on dep-0 on September 15 with 8,192 environments and [one W&B run](https://wandb.ai/skvayzer/CAT-wholebody/runs/1d39c55c). [Run settings, capacity evidence and stop command](docs/CORRECTED_RUN_20260915.md).
 
+[Progress analysis at 566 million transitions](docs/TRAINING_PROGRESS_20260915_1243.md): survival improved, especially in generic clutter, while furniture early termination remains high and the hand-clearance objective needs attention. No controlled traversal-success improvement has been established.
+
 ## Preserved CAT behavior
 
 The reference is upstream commit `866ba392f1c1e84b92ad75fa66550f26e8af8e48`, the checksum-pinned [released configuration](configs/cat_generalist_released.json), and public native generalist checkpoint `005033164800` at revision `46ce4b57ba0639168d51741b661ff62f7ce6f045`. The final generalist already completed distillation; direct PPO fine-tuning restores actor and critic and initializes Adam once.

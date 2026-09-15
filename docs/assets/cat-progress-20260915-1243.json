@@ -1,0 +1,114 @@
+{
+  "schema": "cat-training-progress-v1",
+  "collection": {
+    "observed_utc": "2026-09-15T12:43:18.337975+00:00",
+    "metric_event_count": 1620,
+    "max_global_step": 566231040,
+    "gpu": "NVIDIA GeForce RTX 5090, 32607 MiB, 30425 MiB, 99 %",
+    "process": "PID     ELAPSED STAT COMMAND\n  11525    02:06:02 Rsl  /home/konstantin.smirnov/robotics/Click-and-Traverse-WholeBody/outputs/sources/cat_wholebody_generalist_20260915/.venv/bin/python -u /home/konstantin.smirnov/robotics/Click-and-Traverse-WholeBody/outputs/sources/cat_wholebody_generalist_20260915/train_cat_wholebody.py run --bank-manifest /home/konstantin.smirnov/robotics/Click-and-Traverse-WholeBody/data/furniture/cat_generalist/manifest.json --run-dir /home/konstantin.smirnov/robotics/Click-and-Traverse-WholeBody/outputs/cat_wholebody_generalist_20260915 --profile single_gpu_32gb --num-envs 8192 --batch-size 512 --seed 0 --wandb-mode online --wandb-project CAT-wholebody --wandb-entity skvayzer"
+  },
+  "code": {
+    "git_commit": "40b4dd2682dd4e5d75a6b853c24333da99379cf3",
+    "source_sha256": "14292904cb7065229cbba32f90ca43ff1084260e5053239f28f54e7d7617ef2d"
+  },
+  "model_revision": "46ce4b57ba0639168d51741b661ff62f7ce6f045",
+  "critic_restored": true,
+  "warmstart_parity": {
+    "actor_mean_and_raw_scale_max_abs_error": 0.0,
+    "critic_max_abs_error": 0.0
+  },
+  "nonfinite_events": 0,
+  "metrics_snapshot_sha256": "0b1e7fc94479b29e958ecdc50efc5c0aa88fcc8372495ac9cbee3359c126c730",
+  "windows": {
+    "early": {
+      "first_update": 21,
+      "last_update": 70,
+      "first_step": 22020096,
+      "last_step": 73400320,
+      "means": {
+        "training/rollout_reward_mean": 0.33224478662014006,
+        "episode/sum_reward": 205.19521613099226,
+        "episode/length": 615.00834,
+        "training/v_loss": 0.09486963450908661,
+        "training/policy_loss": 0.0041171231912449004,
+        "training/entropy_loss": 0.07335651159286499
+      },
+      "early_termination": {
+        "all": {
+          "completed_episodes": 84899,
+          "early_terminations": 37614,
+          "rate": 0.44304408768065584
+        },
+        "original": {
+          "completed_episodes": 75672,
+          "early_terminations": 28411,
+          "rate": 0.3754493075377947
+        },
+        "furniture": {
+          "completed_episodes": 4733,
+          "early_terminations": 4731,
+          "rate": 0.999577435030636
+        },
+        "generic_clutter": {
+          "completed_episodes": 4494,
+          "early_terminations": 4472,
+          "rate": 0.9951045838896306
+        }
+      },
+      "hand_penalty_magnitude_per_step": 0.013146645744680977,
+      "arm_penalty_magnitude_per_step": 0.0003094151873949499
+    },
+    "recent": {
+      "first_update": 491,
+      "last_update": 540,
+      "first_step": 514850816,
+      "last_step": 566231040,
+      "means": {
+        "training/rollout_reward_mean": 0.32371732234954836,
+        "episode/sum_reward": 244.25762355563685,
+        "episode/length": 753.07382,
+        "training/v_loss": 0.0818347927927971,
+        "training/policy_loss": -0.0008501334144966677,
+        "training/entropy_loss": -0.011247443072497844
+      },
+      "early_termination": {
+        "all": {
+          "completed_episodes": 69360,
+          "early_terminations": 27005,
+          "rate": 0.38934544405997695
+        },
+        "original": {
+          "completed_episodes": 63101,
+          "early_terminations": 21825,
+          "rate": 0.34587407489580196
+        },
+        "furniture": {
+          "completed_episodes": 3927,
+          "early_terminations": 3846,
+          "rate": 0.9793735676088617
+        },
+        "generic_clutter": {
+          "completed_episodes": 2332,
+          "early_terminations": 1334,
+          "rate": 0.5720411663807891
+        }
+      },
+      "hand_penalty_magnitude_per_step": 0.018624522023942297,
+      "arm_penalty_magnitude_per_step": 0.0002592466537476489
+    }
+  },
+  "best": {
+    "step": 6291456,
+    "score": [
+      0.35054904222488403
+    ],
+    "selection_source": "training_proxy"
+  },
+  "method": "540 contiguous updates, one metrics callback per update, before 1000-update rolling buffer fills. Recover global and PF37/PF38 update means with n*m_n-(n-1)*m_(n-1); episode counts and termination counts validated integral and positive for every update. Original counts are global minus both clutter scenes. Episode summaries average logged 1000-completed-episode windows; reward per transition is a current-update metric.",
+  "limits": [
+    "Adaptive scene mix and stochastic training policy; no matched pretrained-versus-trained evaluation.",
+    "Early termination merges falls, body/probe collision and invalid-state failures; timeout is survival, not goal success.",
+    "Hand penalty is a proximity/predicted-clearance objective, not a hand-collision count.",
+    "The first 20 updates are excluded from the early window to avoid initialization transients; early window already includes fine-tuning."
+  ]
+}
