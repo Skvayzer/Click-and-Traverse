@@ -1,0 +1,5817 @@
+{
+  "schema": "cat-native-ppo-gpu-capacity-v1",
+  "status": "passed",
+  "pid": 53342,
+  "bank_manifest": "/home/konstantinsmirnov/robotics/Click-and-Traverse-WholeBody/data/furniture/cat_diversity_v2_20260916/manifest.json",
+  "parallel_environments": 4096,
+  "batch_size": 256,
+  "learning_rate": 3e-05,
+  "reference_kl_coefficient": 0.05,
+  "requested_updates": 1,
+  "wandb_initialized": false,
+  "checkpoints_written": false,
+  "production_training_metrics_enabled": true,
+  "capacity_script_sha256": "a7a17c3623d60f5dc752cb5a47dcf0bdc5c0c572a8c506855a000db18cfffa44",
+  "initialization": "released CAT checkpoint adapted to the compact 222/310 observation contract",
+  "scope": "one disposable complete PPO update; resource-capacity evidence only",
+  "limitations": [
+    "No continuous-training stability or policy-improvement claim",
+    "No checkpoint serialization; production runtime snapshot transfer is not measured",
+    "NVIDIA polling may miss short peaks; JAX allocator peak is reported separately"
+  ],
+  "environment": {
+    "JAX_PLATFORMS": "cuda,cpu",
+    "CUDA_VISIBLE_DEVICES": "0",
+    "XLA_PYTHON_CLIENT_PREALLOCATE": "false",
+    "XLA_PYTHON_CLIENT_MEM_FRACTION": "0.92",
+    "XLA_FLAGS": null,
+    "WANDB_MODE": "disabled"
+  },
+  "initial_gpu": {
+    "monotonic_seconds": 26975.608904562,
+    "name": "NVIDIA RTX 6000 Ada Generation",
+    "total_mib": 49140,
+    "used_mib": 95,
+    "free_mib": 48537,
+    "utilization_percent": 0
+  },
+  "gpu_samples": [
+    {
+      "monotonic_seconds": 26975.608904562,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 95,
+      "free_mib": 48537,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 26976.132671605,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 95,
+      "free_mib": 48537,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 26976.650049877,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 95,
+      "free_mib": 48537,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 26977.179094352,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 532,
+      "free_mib": 48101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 26977.696099677,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 532,
+      "free_mib": 48101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 26978.213274141,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 532,
+      "free_mib": 48101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 26978.731112446,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 532,
+      "free_mib": 48101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 26979.249053866,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 532,
+      "free_mib": 48101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 26979.768350605,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 532,
+      "free_mib": 48101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 26980.286262932,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 532,
+      "free_mib": 48101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 26980.804161238,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 532,
+      "free_mib": 48101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 26981.321166579,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 532,
+      "free_mib": 48101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 26981.837673764,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 532,
+      "free_mib": 48101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 26982.354651644,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 532,
+      "free_mib": 48101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 26982.872315169,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 532,
+      "free_mib": 48101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 26983.391671597,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 532,
+      "free_mib": 48101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 26983.908772651,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 532,
+      "free_mib": 48101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 26984.424918323,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 532,
+      "free_mib": 48101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 26984.940961779,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 532,
+      "free_mib": 48101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 26985.4557879,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 532,
+      "free_mib": 48101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 26985.972737815,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 532,
+      "free_mib": 48101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 26986.490541613,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 532,
+      "free_mib": 48101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 26987.005966714,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 532,
+      "free_mib": 48101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 26987.521191983,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 532,
+      "free_mib": 48101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 26988.036675196,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 532,
+      "free_mib": 48101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 26988.552962526,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 532,
+      "free_mib": 48101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 26989.069238135,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 532,
+      "free_mib": 48101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 26989.584610764,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 532,
+      "free_mib": 48101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 26990.102527568,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 532,
+      "free_mib": 48101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 26990.620994661,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 532,
+      "free_mib": 48101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 26991.137302704,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 532,
+      "free_mib": 48101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 26991.653102862,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 532,
+      "free_mib": 48101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 26992.172766185,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 550,
+      "free_mib": 48083,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 26992.690527033,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 568,
+      "free_mib": 48065,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 26993.206693621,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 568,
+      "free_mib": 48065,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 26993.723633913,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 568,
+      "free_mib": 48065,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 26994.241588535,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 568,
+      "free_mib": 48065,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 26994.759703384,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 568,
+      "free_mib": 48065,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 26995.276418754,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 568,
+      "free_mib": 48065,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 26995.791770031,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 568,
+      "free_mib": 48065,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 26996.308618241,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 568,
+      "free_mib": 48065,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 26996.824337193,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 568,
+      "free_mib": 48065,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 26997.34085842,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 568,
+      "free_mib": 48065,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 26997.857560862,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 568,
+      "free_mib": 48065,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 26998.374445329,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 568,
+      "free_mib": 48065,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 26998.892707364,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 568,
+      "free_mib": 48065,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 26999.409078614,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 568,
+      "free_mib": 48065,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 26999.925012974,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 568,
+      "free_mib": 48065,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27000.44288435,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 568,
+      "free_mib": 48065,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27000.959149441,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 568,
+      "free_mib": 48065,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27001.475194714,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 568,
+      "free_mib": 48065,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27001.99124093,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 568,
+      "free_mib": 48065,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27002.508682171,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 568,
+      "free_mib": 48065,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27003.025340195,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 568,
+      "free_mib": 48065,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27003.542676186,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 568,
+      "free_mib": 48065,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27004.060274764,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 568,
+      "free_mib": 48065,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27004.576768284,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 568,
+      "free_mib": 48065,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27005.093441611,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 568,
+      "free_mib": 48065,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27005.610066153,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 568,
+      "free_mib": 48065,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27006.126060824,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 568,
+      "free_mib": 48065,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27006.642390276,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 568,
+      "free_mib": 48065,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27007.159330177,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 568,
+      "free_mib": 48065,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27007.677009569,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 2616,
+      "free_mib": 46017,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27008.194114877,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 4664,
+      "free_mib": 43969,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27008.711429197,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 4664,
+      "free_mib": 43969,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27009.229035276,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 4664,
+      "free_mib": 43969,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27009.745751891,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 4664,
+      "free_mib": 43969,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27010.262368605,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 12856,
+      "free_mib": 35777,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27010.781523162,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 12856,
+      "free_mib": 35777,
+      "utilization_percent": 41
+    },
+    {
+      "monotonic_seconds": 27011.299533835,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 21048,
+      "free_mib": 27585,
+      "utilization_percent": 8
+    },
+    {
+      "monotonic_seconds": 27011.819110497,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 21048,
+      "free_mib": 27585,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27012.3356891,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 21048,
+      "free_mib": 27585,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27012.855211848,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 21048,
+      "free_mib": 27585,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27013.37275567,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 21048,
+      "free_mib": 27585,
+      "utilization_percent": 16
+    },
+    {
+      "monotonic_seconds": 27013.891769339,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 21048,
+      "free_mib": 27585,
+      "utilization_percent": 41
+    },
+    {
+      "monotonic_seconds": 27014.471431149,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37432,
+      "free_mib": 11201,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27015.044789064,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37432,
+      "free_mib": 11201,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27015.672448029,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37432,
+      "free_mib": 11201,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27016.428383064,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37432,
+      "free_mib": 11201,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27016.946304732,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37432,
+      "free_mib": 11201,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27017.4624882,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37432,
+      "free_mib": 11201,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27017.987355452,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37432,
+      "free_mib": 11201,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27018.502927131,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37432,
+      "free_mib": 11201,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27019.019906754,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37432,
+      "free_mib": 11201,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27019.536114532,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37432,
+      "free_mib": 11201,
+      "utilization_percent": 1
+    },
+    {
+      "monotonic_seconds": 27020.235984257,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37432,
+      "free_mib": 11201,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27020.990958506,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37432,
+      "free_mib": 11201,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27021.766496275,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37432,
+      "free_mib": 11201,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27022.338213304,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37432,
+      "free_mib": 11201,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27022.953891339,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37432,
+      "free_mib": 11201,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27023.891618378,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37432,
+      "free_mib": 11201,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27024.484528386,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37432,
+      "free_mib": 11201,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27025.032023603,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37432,
+      "free_mib": 11201,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27025.582192321,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37432,
+      "free_mib": 11201,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27026.099503049,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37432,
+      "free_mib": 11201,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27026.615861144,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37432,
+      "free_mib": 11201,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27027.134094774,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37432,
+      "free_mib": 11201,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27027.652290629,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37432,
+      "free_mib": 11201,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27028.168480135,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37432,
+      "free_mib": 11201,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27028.684662707,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37432,
+      "free_mib": 11201,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27029.20278866,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37434,
+      "free_mib": 11199,
+      "utilization_percent": 1
+    },
+    {
+      "monotonic_seconds": 27029.721525666,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37434,
+      "free_mib": 11199,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27030.23655155,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37434,
+      "free_mib": 11199,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27030.756429872,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 7
+    },
+    {
+      "monotonic_seconds": 27031.272724356,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27031.792360785,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27032.309223509,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27032.828590541,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27033.348305761,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27033.868442194,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27034.385626165,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27034.905791103,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27035.425053462,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27035.946334428,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27036.467369075,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27036.989492766,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27037.511851128,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27038.032497928,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27038.552591869,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27039.074224144,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27039.596347659,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27040.117312341,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27040.638704139,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27041.160546862,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27041.680514252,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27042.200222201,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27042.721779198,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27043.242661769,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27043.763732243,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27044.285716709,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27044.808208194,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27045.329759657,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27045.850418965,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27046.370503857,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27046.891324208,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27047.414138325,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27047.935113488,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27048.457177398,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27048.977728873,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27049.499514238,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27050.021110747,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27050.539693819,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27051.060631864,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27051.581264076,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27052.102825621,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27052.623725452,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27053.14442592,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27053.665321249,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27054.185662604,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27054.707049322,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27055.226840069,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27055.747837255,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27056.26863389,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27056.788090157,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27057.311647185,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27057.834429965,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27058.355048874,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27058.875191289,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27059.394481312,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27059.915228088,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27060.439779538,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27060.960234207,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27061.480769158,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27061.998797168,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27062.519436072,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27063.03995105,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27063.56148509,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27064.082979583,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27064.603834123,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27065.123825541,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27065.644864382,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27066.164362949,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27066.686569341,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27067.206125963,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27067.72619142,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27068.243902944,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27068.761195392,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27069.277813646,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27069.79465386,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27070.310729209,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27070.827873165,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27071.342587181,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27071.85743063,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27072.372500622,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27072.887457353,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27073.402668753,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27073.919236029,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27074.435142465,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27074.951211446,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27075.468227769,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27075.984461305,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27076.500409566,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27077.015240757,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27077.531537776,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27078.047245329,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27078.563217598,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27079.079358086,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27079.596095471,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27080.112712046,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27080.630970174,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27081.146590826,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27081.66358094,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27082.181171398,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27082.697637877,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27083.214393995,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27083.730329307,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27084.247902673,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27084.764550245,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27085.279466372,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27085.793997376,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27086.310526312,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27086.825929968,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27087.341404525,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27087.858112671,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27088.374959496,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27088.890900513,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27089.409490235,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27089.925828774,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27090.44147603,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27090.959699354,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27091.477567176,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27091.993711079,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27092.513617468,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27093.030837362,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27093.547546927,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27094.06428154,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27094.580737738,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27095.098679364,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27095.613688797,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27096.130473317,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27096.645704841,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27097.160669155,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27097.676336554,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27098.191940122,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27098.707708734,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27099.226665714,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27099.743901072,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27100.259659779,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37442,
+      "free_mib": 11191,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27100.77616581,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37528,
+      "free_mib": 11105,
+      "utilization_percent": 5
+    },
+    {
+      "monotonic_seconds": 27101.291660801,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37528,
+      "free_mib": 11105,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27101.93913845,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37528,
+      "free_mib": 11105,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27102.561383415,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37528,
+      "free_mib": 11105,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27103.141106368,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37528,
+      "free_mib": 11105,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27103.703178211,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37528,
+      "free_mib": 11105,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27104.330401648,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37528,
+      "free_mib": 11105,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27105.041387641,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37528,
+      "free_mib": 11105,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27105.905596688,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37528,
+      "free_mib": 11105,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27106.527763017,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37528,
+      "free_mib": 11105,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27107.156662681,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37528,
+      "free_mib": 11105,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27107.838958249,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37528,
+      "free_mib": 11105,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27108.434946441,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37528,
+      "free_mib": 11105,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27109.181594606,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37528,
+      "free_mib": 11105,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27109.907294757,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37528,
+      "free_mib": 11105,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27110.479324929,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37528,
+      "free_mib": 11105,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27111.031715574,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37528,
+      "free_mib": 11105,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27111.574616275,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37528,
+      "free_mib": 11105,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27112.147510982,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37528,
+      "free_mib": 11105,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27112.690179278,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37528,
+      "free_mib": 11105,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27113.234364658,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37528,
+      "free_mib": 11105,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27113.848425549,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37528,
+      "free_mib": 11105,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27114.36574796,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37528,
+      "free_mib": 11105,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27114.884019926,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37528,
+      "free_mib": 11105,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27115.400232755,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37528,
+      "free_mib": 11105,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27115.917018671,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37528,
+      "free_mib": 11105,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27116.433348517,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37528,
+      "free_mib": 11105,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27116.952039211,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37528,
+      "free_mib": 11105,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27117.469594322,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37528,
+      "free_mib": 11105,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27117.987784207,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37528,
+      "free_mib": 11105,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27118.503318504,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37528,
+      "free_mib": 11105,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27119.019546342,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37528,
+      "free_mib": 11105,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27119.535400218,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37528,
+      "free_mib": 11105,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27120.051716309,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37528,
+      "free_mib": 11105,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27120.56847065,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37528,
+      "free_mib": 11105,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27121.084290607,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37528,
+      "free_mib": 11105,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27121.600981107,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37528,
+      "free_mib": 11105,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27122.117657727,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37528,
+      "free_mib": 11105,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27122.633507306,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37528,
+      "free_mib": 11105,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27123.150040476,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37528,
+      "free_mib": 11105,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27123.665964431,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37528,
+      "free_mib": 11105,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27124.181832726,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37528,
+      "free_mib": 11105,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27124.699244643,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37528,
+      "free_mib": 11105,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27125.216711362,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37528,
+      "free_mib": 11105,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27125.733485016,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37528,
+      "free_mib": 11105,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27126.250342482,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37528,
+      "free_mib": 11105,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27126.766812744,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37528,
+      "free_mib": 11105,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27127.283020643,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37528,
+      "free_mib": 11105,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27127.800153516,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37528,
+      "free_mib": 11105,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27128.316244529,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37528,
+      "free_mib": 11105,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27128.832586363,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37528,
+      "free_mib": 11105,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27129.351066247,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37528,
+      "free_mib": 11105,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27129.867323283,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37528,
+      "free_mib": 11105,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27130.383585499,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37528,
+      "free_mib": 11105,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27130.90024796,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37530,
+      "free_mib": 11103,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27131.417164784,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37530,
+      "free_mib": 11103,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27131.934392044,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37530,
+      "free_mib": 11103,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27132.450703636,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37530,
+      "free_mib": 11103,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27132.96674735,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37530,
+      "free_mib": 11103,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27133.488988067,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37530,
+      "free_mib": 11103,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27134.013730402,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37530,
+      "free_mib": 11103,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27134.533668478,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37530,
+      "free_mib": 11103,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27135.050273885,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37530,
+      "free_mib": 11103,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27135.56705105,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 23
+    },
+    {
+      "monotonic_seconds": 27136.08512749,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27136.600333516,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27137.116928039,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27137.639296686,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27138.160692628,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27138.681096144,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27139.200531316,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27139.722240743,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27140.242784443,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27140.764333268,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27141.284911396,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27141.807253958,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27142.328470778,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27142.850851152,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27143.371429642,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27143.89240798,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27144.413453768,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27144.937353169,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27145.459621915,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27145.980804613,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27146.501757097,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27147.022880104,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27147.543588942,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27148.065938814,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27148.587045418,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27149.107644737,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27149.62792044,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27150.148392427,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27150.669374206,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27151.190713174,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27151.711242671,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27152.232177781,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27152.753451632,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27153.274202842,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27153.795127854,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27154.31799934,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27154.83912569,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27155.35998558,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27155.879942471,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27156.400089591,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27156.919458516,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27157.440824687,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27157.96295727,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27158.484681947,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27159.008169365,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27159.531094838,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27160.052397613,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27160.573417427,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27161.095401285,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27161.619146354,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27162.141712204,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27162.664541978,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27163.186989705,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27163.71292968,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27164.233686973,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27164.755692139,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27165.279058034,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27165.800377937,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27166.323416641,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27166.844951395,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27167.366692218,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27167.888340215,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27168.411053235,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27168.932445527,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27169.454082724,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27169.974965731,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27170.49573747,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27171.016417495,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27171.53870593,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27172.059468086,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27172.58034629,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27173.102486985,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27173.624318308,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27174.147737608,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27174.668951892,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27175.190701446,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27175.713661744,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27176.233821628,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27176.754820828,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27177.277348084,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27177.800331338,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27178.322930778,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27178.845237832,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27179.366768814,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27179.888022304,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27180.40880199,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27180.931082522,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27181.453677703,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27181.975616628,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27182.497372708,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27183.018984387,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27183.538467314,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27184.059803967,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27184.581712805,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27185.106980004,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27185.628166063,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27186.148361004,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27186.669064728,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27187.189928247,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27187.709852477,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27188.230904946,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27188.751494719,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27189.273878013,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27189.796122182,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27190.317049327,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27190.837455774,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27191.355875132,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27191.877759457,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27192.396611597,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27192.91691653,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27193.438562897,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27193.959785902,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27194.481593808,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27195.002795602,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27195.523024077,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27196.043797409,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27196.566698407,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27197.089223354,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27197.611249991,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27198.132498777,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27198.655728246,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27199.177038398,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27199.704523523,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27200.227362514,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27200.749973821,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27201.26985387,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27201.791629252,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27202.313463688,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27202.834356761,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27203.357558561,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27203.878786028,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27204.400524424,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27204.923922307,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27205.446333139,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27205.969415891,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27206.490777695,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27207.01295658,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27207.534369627,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27208.05647863,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27208.579961789,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27209.100764223,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27209.623217426,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27210.146135688,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27210.668717158,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27211.191647962,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27211.708871276,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27212.229684999,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27212.752261071,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27213.273075442,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27213.794908649,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27214.316561461,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27214.833961405,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27215.351171467,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27215.872509395,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27216.394774089,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27216.915991595,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27217.43844752,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27217.961511768,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27218.478954022,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27218.995586588,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27219.5128293,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27220.030397634,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27220.548522556,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27221.065921651,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27221.58240886,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27222.101934863,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27222.6183394,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27223.133101418,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27223.649644661,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27224.166740797,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27224.684885108,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27225.201325026,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27225.718602732,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27226.236579933,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27226.754267921,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27227.271356524,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27227.790483682,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27228.308628377,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27228.827953329,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27229.344793149,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27229.863102976,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27230.379994975,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27230.896207646,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27231.412801631,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27231.929855522,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27232.448472275,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27232.965181428,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27233.481772772,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27233.997866109,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27234.514617293,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27235.032655944,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27235.550803851,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27236.068440578,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27236.584635656,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27237.103472769,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27237.62171423,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27238.140074847,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27238.655636056,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27239.174473108,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27239.693824594,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27240.212402604,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27240.729033308,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27241.244997821,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27241.760898019,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27242.27708029,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27242.793197329,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27243.310511126,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27243.828261167,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27244.345436749,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27244.863899445,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27245.380110939,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27245.89874125,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27246.416216894,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27246.933060217,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27247.44931962,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27247.965376039,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27248.483267145,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27248.99945862,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27249.518176243,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27250.034860122,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27250.551915125,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27251.067674208,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27251.584866999,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27252.101425567,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27252.619260976,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27253.133936913,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27253.651330668,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27254.170259173,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27254.687498361,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27255.20622887,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27255.723220109,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27256.240367658,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27256.757323276,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27257.274064706,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27257.790392327,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27258.309262937,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27258.82622962,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27259.343119368,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27259.860417563,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27260.379546022,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27260.898091436,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27261.414214826,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27261.931277288,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27262.448457528,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27262.967156789,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27263.484327177,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27264.000466385,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27264.51966667,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27265.038339172,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27265.555057135,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27266.07097677,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27266.589821119,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27267.105897213,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27267.622523581,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27268.13785311,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27268.655406588,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27269.174076904,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27269.693134899,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27270.210558501,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27270.728236838,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27271.244917372,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27271.761477368,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27272.277508997,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27272.794242246,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27273.311378106,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27273.828972003,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27274.345110073,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27274.862335064,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27275.380867633,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27275.897895058,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27276.414506596,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27276.93265203,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27277.44939121,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27277.966552054,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27278.484198241,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27279.000953445,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27279.517020508,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27280.033288779,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27280.549892729,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27281.066098104,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27281.582256121,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27282.101383393,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27282.619656295,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27283.136265085,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27283.652957868,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27284.16875932,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27284.684519873,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27285.201356594,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27285.71861448,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27286.237138471,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27286.753360762,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27287.270590579,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27287.788675928,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27288.306321814,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27288.823539535,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27289.339214402,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27289.856030938,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27290.372409776,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27290.889460404,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27291.404797877,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27291.920731367,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27292.436458666,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27292.955168902,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27293.471747738,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27293.990082243,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27294.507113051,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27295.02389317,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27295.540745112,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27296.057159494,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27296.573995083,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27297.090047912,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27297.605930069,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27298.121710067,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27298.638260313,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27299.154937143,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27299.671016111,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27300.187374577,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27300.704778068,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27301.221447359,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27301.739684041,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27302.256798132,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27302.773085279,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27303.287879768,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27303.806038547,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27304.322346716,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27304.840609029,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27305.359483633,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27305.876537239,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27306.396205224,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37532,
+      "free_mib": 11101,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27306.913315019,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37562,
+      "free_mib": 11071,
+      "utilization_percent": 77
+    },
+    {
+      "monotonic_seconds": 27307.428894859,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37562,
+      "free_mib": 11071,
+      "utilization_percent": 99
+    },
+    {
+      "monotonic_seconds": 27307.943589137,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37562,
+      "free_mib": 11071,
+      "utilization_percent": 99
+    },
+    {
+      "monotonic_seconds": 27308.459525131,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37562,
+      "free_mib": 11071,
+      "utilization_percent": 99
+    },
+    {
+      "monotonic_seconds": 27308.974339638,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37562,
+      "free_mib": 11071,
+      "utilization_percent": 99
+    },
+    {
+      "monotonic_seconds": 27309.489709679,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37562,
+      "free_mib": 11071,
+      "utilization_percent": 99
+    },
+    {
+      "monotonic_seconds": 27310.006656468,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37562,
+      "free_mib": 11071,
+      "utilization_percent": 99
+    },
+    {
+      "monotonic_seconds": 27310.523699295,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37562,
+      "free_mib": 11071,
+      "utilization_percent": 99
+    },
+    {
+      "monotonic_seconds": 27311.040284589,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37562,
+      "free_mib": 11071,
+      "utilization_percent": 99
+    },
+    {
+      "monotonic_seconds": 27311.556132693,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37562,
+      "free_mib": 11071,
+      "utilization_percent": 99
+    },
+    {
+      "monotonic_seconds": 27312.073928575,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37562,
+      "free_mib": 11071,
+      "utilization_percent": 99
+    },
+    {
+      "monotonic_seconds": 27312.589960885,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37562,
+      "free_mib": 11071,
+      "utilization_percent": 99
+    },
+    {
+      "monotonic_seconds": 27313.104685379,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37562,
+      "free_mib": 11071,
+      "utilization_percent": 99
+    },
+    {
+      "monotonic_seconds": 27313.621554948,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37562,
+      "free_mib": 11071,
+      "utilization_percent": 99
+    },
+    {
+      "monotonic_seconds": 27314.137542258,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37562,
+      "free_mib": 11071,
+      "utilization_percent": 99
+    },
+    {
+      "monotonic_seconds": 27314.653064607,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37562,
+      "free_mib": 11071,
+      "utilization_percent": 99
+    },
+    {
+      "monotonic_seconds": 27315.168788273,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37562,
+      "free_mib": 11071,
+      "utilization_percent": 99
+    },
+    {
+      "monotonic_seconds": 27315.710048032,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37562,
+      "free_mib": 11071,
+      "utilization_percent": 86
+    },
+    {
+      "monotonic_seconds": 27316.226189604,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37562,
+      "free_mib": 11071,
+      "utilization_percent": 100
+    },
+    {
+      "monotonic_seconds": 27316.742250645,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37562,
+      "free_mib": 11071,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27317.63273186,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37560,
+      "free_mib": 11073,
+      "utilization_percent": 0
+    },
+    {
+      "monotonic_seconds": 27317.652935294,
+      "name": "NVIDIA RTX 6000 Ada Generation",
+      "total_mib": 49140,
+      "used_mib": 37556,
+      "free_mib": 11077,
+      "utilization_percent": 0
+    }
+  ],
+  "updates": [
+    {
+      "step": 524288,
+      "elapsed_seconds": 340.99322850500175,
+      "metrics": {
+        "training/sps": 2442.546933706103,
+        "training/walltime": 214.64807605743408,
+        "training/entropy_loss": 0.09666012227535248,
+        "training/policy_loss": -0.00487668439745903,
+        "training/reference_cat_fraction": 0.6025428771972656,
+        "training/reference_kl": 0.002534538973122835,
+        "training/reference_kl_loss": 0.00012672695447690785,
+        "training/rollout_reward_mean": 0.14217793941497803,
+        "training/total_loss": 0.8104112148284912,
+        "training/v_loss": 0.718501091003418,
+        "training/gpu_0/bytes_in_use": 15737581824.0,
+        "training/gpu_0/peak_bytes_in_use": 22705718784.0,
+        "training/gpu_0/bytes_reserved": 0.0,
+        "training/gpu_0/peak_bytes_reserved": 0.0,
+        "training/gpu_0/bytes_limit": 46914801040.0,
+        "training/gpu_0/pool_bytes": 38690357248.0
+      },
+      "allocator": {
+        "num_allocs": 4159,
+        "bytes_in_use": 15052221696,
+        "peak_bytes_in_use": 22705718784,
+        "largest_alloc_size": 6294866432,
+        "bytes_limit": 46914801040,
+        "bytes_reserved": 0,
+        "peak_bytes_reserved": 0,
+        "largest_free_block_bytes": 0,
+        "pool_bytes": 38690357248,
+        "peak_pool_bytes": 38690357248
+      },
+      "gpu": {
+        "monotonic_seconds": 27316.62164488,
+        "name": "NVIDIA RTX 6000 Ada Generation",
+        "total_mib": 49140,
+        "used_mib": 37562,
+        "free_mib": 11071,
+        "utilization_percent": 5
+      }
+    }
+  ],
+  "jax_version": "0.4.38",
+  "devices": [
+    "cuda:0"
+  ],
+  "code": {
+    "git_commit": "71f9a1cee1ef86847b5ad18baeb53a341efbd666",
+    "source_sha256": "2d93221bdcf3688d023a9f243de9d821fe558dd67cdd4bf3c58f593756d971d6"
+  },
+  "bank_sha256": "dc97e6e19c7767c5d5b567f5abdde0a4fb8a85873893be22adff7863e1b8f6c0",
+  "warmstart": {
+    "kind": "native_parameter_finetuning",
+    "optimizer": "fresh",
+    "critic_restored": true,
+    "source_action_count": 12,
+    "target_action_count": 29,
+    "action_mapping": [
+      0,
+      1,
+      2,
+      3,
+      4,
+      5,
+      6,
+      7,
+      8,
+      9,
+      10,
+      11
+    ],
+    "input_mappings": {
+      "state": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        28,
+        29,
+        30,
+        31,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        57,
+        58,
+        59,
+        60,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        93,
+        94,
+        95,
+        96,
+        97,
+        98,
+        99,
+        100,
+        101,
+        102,
+        103,
+        104,
+        122,
+        123,
+        124,
+        125,
+        126,
+        127,
+        128,
+        129,
+        130,
+        131,
+        132,
+        133,
+        134,
+        135,
+        136,
+        137,
+        138,
+        139,
+        140,
+        141,
+        142,
+        143,
+        144,
+        145,
+        146,
+        147,
+        148,
+        149,
+        150,
+        151,
+        152,
+        153,
+        154,
+        155,
+        156,
+        157,
+        158,
+        159,
+        160,
+        161,
+        162,
+        163,
+        164,
+        165,
+        166,
+        167,
+        168,
+        169,
+        170,
+        171,
+        172,
+        173,
+        174,
+        175,
+        176,
+        177,
+        178,
+        179,
+        180,
+        181,
+        182,
+        183,
+        184,
+        185,
+        186,
+        187,
+        188,
+        189,
+        190,
+        191,
+        192,
+        193,
+        194,
+        195,
+        196,
+        197,
+        198,
+        199,
+        200,
+        201,
+        202,
+        203,
+        204,
+        205,
+        206,
+        207
+      ],
+      "privileged_state": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19,
+        20,
+        21,
+        22,
+        23,
+        24,
+        28,
+        29,
+        30,
+        31,
+        35,
+        36,
+        37,
+        38,
+        39,
+        40,
+        41,
+        42,
+        43,
+        44,
+        45,
+        46,
+        47,
+        48,
+        49,
+        50,
+        51,
+        52,
+        53,
+        57,
+        58,
+        59,
+        60,
+        64,
+        65,
+        66,
+        67,
+        68,
+        69,
+        70,
+        71,
+        72,
+        73,
+        74,
+        75,
+        93,
+        94,
+        95,
+        96,
+        97,
+        98,
+        99,
+        100,
+        101,
+        102,
+        103,
+        104,
+        122,
+        123,
+        124,
+        125,
+        126,
+        127,
+        128,
+        129,
+        130,
+        131,
+        132,
+        133,
+        134,
+        135,
+        136,
+        137,
+        138,
+        139,
+        140,
+        141,
+        142,
+        143,
+        144,
+        145,
+        146,
+        147,
+        148,
+        149,
+        150,
+        151,
+        152,
+        153,
+        154,
+        155,
+        156,
+        157,
+        158,
+        159,
+        160,
+        161,
+        162,
+        163,
+        164,
+        165,
+        166,
+        167,
+        168,
+        169,
+        170,
+        171,
+        172,
+        173,
+        174,
+        175,
+        176,
+        177,
+        178,
+        179,
+        180,
+        181,
+        182,
+        183,
+        184,
+        185,
+        186,
+        187,
+        188,
+        189,
+        190,
+        191,
+        192,
+        193,
+        194,
+        195,
+        196,
+        197,
+        198,
+        199,
+        200,
+        201,
+        202,
+        203,
+        204,
+        205,
+        206,
+        207,
+        208,
+        209,
+        210,
+        211,
+        212,
+        213,
+        214,
+        215,
+        216,
+        217,
+        218,
+        219,
+        220,
+        221,
+        222,
+        223,
+        224,
+        225,
+        226,
+        227,
+        228,
+        229,
+        230,
+        231,
+        232,
+        233,
+        234,
+        235,
+        236,
+        237,
+        238,
+        239,
+        240,
+        241,
+        242,
+        243,
+        244,
+        245,
+        246,
+        247,
+        248,
+        249,
+        250,
+        251,
+        252,
+        253,
+        254,
+        255,
+        256,
+        257,
+        258,
+        259,
+        260,
+        261,
+        262,
+        263,
+        264,
+        265,
+        266,
+        267,
+        268,
+        269,
+        270,
+        271,
+        272,
+        273,
+        274,
+        275,
+        276,
+        277,
+        278,
+        279,
+        280,
+        281,
+        282,
+        283,
+        284,
+        285,
+        286,
+        287,
+        288,
+        289,
+        290,
+        291,
+        292,
+        293,
+        294,
+        295
+      ]
+    },
+    "added_input_weights": "zero",
+    "new_action_mean": 0.0,
+    "new_action_std": 0.05,
+    "normalizer_added_features": "zero mean; unit variance prior at retained scalar count",
+    "parity": {
+      "actor_mean_and_raw_scale_max_abs_error": 0.0,
+      "critic_max_abs_error": 0.0
+    },
+    "model_revision": "46ce4b57ba0639168d51741b661ff62f7ce6f045"
+  },
+  "batch_geometry": {
+    "parallel_environments": 4096,
+    "rollout_chunks_per_update": 4,
+    "transitions_per_update": 524288,
+    "transitions_per_minibatch": 8192,
+    "optimizer_steps_per_update": 256
+  },
+  "observation_dimensions": {
+    "actor": 222,
+    "critic": 310
+  },
+  "field_array_bytes": 14214365760,
+  "scene_count": 2338,
+  "allocator_after_prepare": {
+    "num_allocs": 505,
+    "bytes_in_use": 14353989888,
+    "peak_bytes_in_use": 20441630464,
+    "largest_alloc_size": 6091871232,
+    "bytes_limit": 46914801040,
+    "bytes_reserved": 0,
+    "peak_bytes_reserved": 0,
+    "largest_free_block_bytes": 0,
+    "pool_bytes": 38690357248,
+    "peak_pool_bytes": 38690357248
+  },
+  "preparation_seconds": 43.7842373780004,
+  "training_parameters": {
+    "learning_rate": 3e-05,
+    "clipping_epsilon": 0.1,
+    "entropy_cost": 0.003,
+    "unroll_length": 32,
+    "batch_size": 256,
+    "num_minibatches": 64,
+    "num_updates_per_batch": 4,
+    "num_envs": 4096
+  },
+  "completed_steps": 524288,
+  "final_allocator": {
+    "num_allocs": 4189,
+    "bytes_in_use": 14361058304,
+    "peak_bytes_in_use": 22705718784,
+    "largest_alloc_size": 6294866432,
+    "bytes_limit": 46914801040,
+    "bytes_reserved": 0,
+    "peak_bytes_reserved": 0,
+    "largest_free_block_bytes": 0,
+    "pool_bytes": 38690357248,
+    "peak_pool_bytes": 38690357248
+  },
+  "elapsed_seconds": 342.02605697800027,
+  "observed_gpu_used_peak_mib": 37562,
+  "observed_gpu_free_min_mib": 11071
+}

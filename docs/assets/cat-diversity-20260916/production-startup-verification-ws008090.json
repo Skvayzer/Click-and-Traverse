@@ -1,0 +1,406 @@
+{
+  "captured_at_utc": "2026-09-15T22:51:36.693062+00:00",
+  "status": {
+    "schema": "cat-generalist-status-v1",
+    "owner": "b0e5e08e-3644-4789-acf3-d43b5d611f68",
+    "specification_sha256": "3ffa187db90c93f6958bd7462515ec40262136b36410dd3212e75c8f6ed399ae",
+    "status": "running",
+    "phase": "training",
+    "pid": 64320,
+    "resume": false,
+    "startup_retry": false,
+    "runtime_present_on_entry": false,
+    "attempt": 1,
+    "completed_steps": 2097152,
+    "resume_state_steps": 2097152,
+    "initial_runtime_written": true,
+    "observed_steps": 2621440
+  },
+  "wandb": {
+    "id": "30a1f02d",
+    "project": "CAT-wholebody",
+    "entity": "skvayzer",
+    "mode": "online",
+    "last_global_step": 2621440,
+    "initialized": true,
+    "initialization_attempted": true,
+    "url": "https://wandb.ai/skvayzer/CAT-wholebody/runs/30a1f02d"
+  },
+  "code": {
+    "git_commit": "71f9a1cee1ef86847b5ad18baeb53a341efbd666",
+    "source_sha256": "2d93221bdcf3688d023a9f243de9d821fe558dd67cdd4bf3c58f593756d971d6"
+  },
+  "bank_sha256": "dc97e6e19c7767c5d5b567f5abdde0a4fb8a85873893be22adff7863e1b8f6c0",
+  "observations": {
+    "schema": "cat-wholebody-spheres-v2",
+    "actor": 222,
+    "critic": 310,
+    "field_sample_count": 13
+  },
+  "warmstart": {
+    "model_revision": "46ce4b57ba0639168d51741b661ff62f7ce6f045",
+    "optimizer": "fresh",
+    "critic_restored": true,
+    "parity": {
+      "actor_mean_and_raw_scale_max_abs_error": 0.0,
+      "critic_max_abs_error": 0.0
+    }
+  },
+  "config": {
+    "source_model_revision": "46ce4b57ba0639168d51741b661ff62f7ce6f045",
+    "source_upstream_commit": "866ba392f1c1e84b92ad75fa66550f26e8af8e48",
+    "source_config_sha256": "0e38cac262a3c1c95bacdf859193340056fef53b8d2f8414293789cee5d45d2d",
+    "initialization": "released final generalist actor and critic; Adam initialized once",
+    "dagger": "already completed in released generalist; direct PPO fine-tuning",
+    "continuous": true,
+    "automatic_evaluation": false,
+    "profile": "single_gpu_32gb",
+    "mode": "gentle",
+    "optimization_overrides": {
+      "learning_rate": {
+        "released": 0.0003,
+        "effective": 3e-05
+      },
+      "clipping_epsilon": {
+        "released": 0.2,
+        "effective": 0.1
+      }
+    },
+    "reference_kl": {
+      "coefficient": 0.05,
+      "action_indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11
+      ],
+      "scene_scope": "CAT task scenes only; rooms excluded",
+      "reference": "frozen initial actor mapped from released CAT, on the same compact observations"
+    },
+    "released_batch_geometry": {
+      "parallel_environments": 65536,
+      "rollout_chunks_per_update": 2,
+      "transitions_per_update": 4194304,
+      "transitions_per_minibatch": 65536,
+      "optimizer_steps_per_update": 256
+    },
+    "effective_batch_geometry": {
+      "parallel_environments": 16384,
+      "rollout_chunks_per_update": 1,
+      "transitions_per_update": 524288,
+      "transitions_per_minibatch": 8192,
+      "optimizer_steps_per_update": 256
+    },
+    "resource_overrides": {
+      "num_envs": {
+        "released": 65536,
+        "effective": 16384
+      },
+      "batch_size": {
+        "released": 2048,
+        "effective": 256
+      }
+    },
+    "memory_validation": "profile is provisional until checked on the target GPU",
+    "storage": "one best model plus one overwritten full learner resume state"
+  },
+  "gpu_samples": [
+    {
+      "time_utc": "2026-09-15T22:50:36.084240+00:00",
+      "used_mib": 37562,
+      "free_mib": 11071,
+      "utilization_percent": 100
+    },
+    {
+      "time_utc": "2026-09-15T22:50:38.104442+00:00",
+      "used_mib": 37562,
+      "free_mib": 11071,
+      "utilization_percent": 100
+    },
+    {
+      "time_utc": "2026-09-15T22:50:40.123863+00:00",
+      "used_mib": 37562,
+      "free_mib": 11071,
+      "utilization_percent": 100
+    },
+    {
+      "time_utc": "2026-09-15T22:50:42.143702+00:00",
+      "used_mib": 37562,
+      "free_mib": 11071,
+      "utilization_percent": 100
+    },
+    {
+      "time_utc": "2026-09-15T22:50:44.162295+00:00",
+      "used_mib": 37562,
+      "free_mib": 11071,
+      "utilization_percent": 56
+    },
+    {
+      "time_utc": "2026-09-15T22:50:46.184599+00:00",
+      "used_mib": 37562,
+      "free_mib": 11071,
+      "utilization_percent": 0
+    },
+    {
+      "time_utc": "2026-09-15T22:50:48.203664+00:00",
+      "used_mib": 37562,
+      "free_mib": 11071,
+      "utilization_percent": 0
+    },
+    {
+      "time_utc": "2026-09-15T22:50:50.222244+00:00",
+      "used_mib": 37562,
+      "free_mib": 11071,
+      "utilization_percent": 0
+    },
+    {
+      "time_utc": "2026-09-15T22:50:52.241391+00:00",
+      "used_mib": 37562,
+      "free_mib": 11071,
+      "utilization_percent": 100
+    },
+    {
+      "time_utc": "2026-09-15T22:50:54.261874+00:00",
+      "used_mib": 37562,
+      "free_mib": 11071,
+      "utilization_percent": 100
+    },
+    {
+      "time_utc": "2026-09-15T22:50:56.282151+00:00",
+      "used_mib": 37562,
+      "free_mib": 11071,
+      "utilization_percent": 100
+    },
+    {
+      "time_utc": "2026-09-15T22:50:58.302530+00:00",
+      "used_mib": 37562,
+      "free_mib": 11071,
+      "utilization_percent": 100
+    },
+    {
+      "time_utc": "2026-09-15T22:51:00.321467+00:00",
+      "used_mib": 37562,
+      "free_mib": 11071,
+      "utilization_percent": 100
+    },
+    {
+      "time_utc": "2026-09-15T22:51:02.340226+00:00",
+      "used_mib": 37562,
+      "free_mib": 11071,
+      "utilization_percent": 7
+    },
+    {
+      "time_utc": "2026-09-15T22:51:04.358688+00:00",
+      "used_mib": 37562,
+      "free_mib": 11071,
+      "utilization_percent": 0
+    },
+    {
+      "time_utc": "2026-09-15T22:51:06.379269+00:00",
+      "used_mib": 37562,
+      "free_mib": 11071,
+      "utilization_percent": 0
+    },
+    {
+      "time_utc": "2026-09-15T22:51:08.398271+00:00",
+      "used_mib": 37562,
+      "free_mib": 11071,
+      "utilization_percent": 0
+    },
+    {
+      "time_utc": "2026-09-15T22:51:10.416607+00:00",
+      "used_mib": 37562,
+      "free_mib": 11071,
+      "utilization_percent": 100
+    },
+    {
+      "time_utc": "2026-09-15T22:51:12.434392+00:00",
+      "used_mib": 37562,
+      "free_mib": 11071,
+      "utilization_percent": 100
+    },
+    {
+      "time_utc": "2026-09-15T22:51:14.454246+00:00",
+      "used_mib": 37562,
+      "free_mib": 11071,
+      "utilization_percent": 100
+    },
+    {
+      "time_utc": "2026-09-15T22:51:16.472742+00:00",
+      "used_mib": 37562,
+      "free_mib": 11071,
+      "utilization_percent": 100
+    },
+    {
+      "time_utc": "2026-09-15T22:51:18.491046+00:00",
+      "used_mib": 37562,
+      "free_mib": 11071,
+      "utilization_percent": 100
+    },
+    {
+      "time_utc": "2026-09-15T22:51:20.511816+00:00",
+      "used_mib": 37562,
+      "free_mib": 11071,
+      "utilization_percent": 0
+    },
+    {
+      "time_utc": "2026-09-15T22:51:22.532477+00:00",
+      "used_mib": 37562,
+      "free_mib": 11071,
+      "utilization_percent": 0
+    },
+    {
+      "time_utc": "2026-09-15T22:51:24.551410+00:00",
+      "used_mib": 37562,
+      "free_mib": 11071,
+      "utilization_percent": 0
+    },
+    {
+      "time_utc": "2026-09-15T22:51:26.573380+00:00",
+      "used_mib": 37562,
+      "free_mib": 11071,
+      "utilization_percent": 100
+    },
+    {
+      "time_utc": "2026-09-15T22:51:28.590751+00:00",
+      "used_mib": 37562,
+      "free_mib": 11071,
+      "utilization_percent": 100
+    },
+    {
+      "time_utc": "2026-09-15T22:51:30.610379+00:00",
+      "used_mib": 37562,
+      "free_mib": 11071,
+      "utilization_percent": 100
+    },
+    {
+      "time_utc": "2026-09-15T22:51:32.630288+00:00",
+      "used_mib": 37562,
+      "free_mib": 11071,
+      "utilization_percent": 100
+    },
+    {
+      "time_utc": "2026-09-15T22:51:34.650535+00:00",
+      "used_mib": 37562,
+      "free_mib": 11071,
+      "utilization_percent": 100
+    }
+  ],
+  "optimizer_update_metrics": [
+    {
+      "training/sps": 2473.8842018551477,
+      "training/walltime": 211.92907881736755,
+      "training/entropy_loss": 0.09572651237249374,
+      "training/policy_loss": -0.004569311626255512,
+      "training/reference_cat_fraction": 0.5879421234130859,
+      "training/reference_kl": 0.0026357299648225307,
+      "training/reference_kl_loss": 0.00013178650988265872,
+      "training/rollout_reward_mean": 0.07489883899688721,
+      "training/total_loss": 0.4541372060775757,
+      "training/v_loss": 0.3628482222557068,
+      "training/gpu_0/bytes_in_use": 19795592704.0,
+      "training/gpu_0/peak_bytes_in_use": 28966526464.0,
+      "training/gpu_0/bytes_reserved": 0.0,
+      "training/gpu_0/peak_bytes_reserved": 0.0,
+      "training/gpu_0/bytes_limit": 46914801040.0,
+      "training/gpu_0/pool_bytes": 38690357248.0,
+      "global_step": 524288,
+      "health/nonfinite": 0
+    },
+    {
+      "training/sps": 54658.56037217736,
+      "training/walltime": 221.5211353302002,
+      "training/entropy_loss": 0.09735270589590073,
+      "training/policy_loss": -0.005460165441036224,
+      "training/reference_cat_fraction": 0.5809783935546875,
+      "training/reference_kl": 0.005561805795878172,
+      "training/reference_kl_loss": 0.0002780903014354408,
+      "training/rollout_reward_mean": 0.1357700228691101,
+      "training/total_loss": 0.6313983798027039,
+      "training/v_loss": 0.5392277240753174,
+      "training/gpu_0/bytes_in_use": 19925895936.0,
+      "training/gpu_0/peak_bytes_in_use": 28966526464.0,
+      "training/gpu_0/bytes_reserved": 0.0,
+      "training/gpu_0/peak_bytes_reserved": 0.0,
+      "training/gpu_0/bytes_limit": 46914801040.0,
+      "training/gpu_0/pool_bytes": 38690357248.0,
+      "global_step": 1048576,
+      "health/nonfinite": 0
+    },
+    {
+      "training/sps": 53982.632935970694,
+      "training/walltime": 231.233295917511,
+      "training/entropy_loss": 0.09675730764865875,
+      "training/policy_loss": -0.005747235845774412,
+      "training/reference_cat_fraction": 0.6005802154541016,
+      "training/reference_kl": 0.007861591875553131,
+      "training/reference_kl_loss": 0.00039307965198531747,
+      "training/rollout_reward_mean": 0.17010685801506042,
+      "training/total_loss": 0.614304780960083,
+      "training/v_loss": 0.5229015946388245,
+      "training/gpu_0/bytes_in_use": 19932862464.0,
+      "training/gpu_0/peak_bytes_in_use": 28966526464.0,
+      "training/gpu_0/bytes_reserved": 0.0,
+      "training/gpu_0/peak_bytes_reserved": 0.0,
+      "training/gpu_0/bytes_limit": 46914801040.0,
+      "training/gpu_0/pool_bytes": 38690357248.0,
+      "global_step": 1572864,
+      "health/nonfinite": 0
+    },
+    {
+      "training/sps": 53442.35496245781,
+      "training/walltime": 241.04364204406738,
+      "training/entropy_loss": 0.09648130089044571,
+      "training/policy_loss": -0.005935386288911104,
+      "training/reference_cat_fraction": 0.6175518035888672,
+      "training/reference_kl": 0.009668314829468727,
+      "training/reference_kl_loss": 0.0004834157007280737,
+      "training/rollout_reward_mean": 0.1905338168144226,
+      "training/total_loss": 0.5304432511329651,
+      "training/v_loss": 0.4394139051437378,
+      "training/gpu_0/bytes_in_use": 19934401792.0,
+      "training/gpu_0/peak_bytes_in_use": 28966526464.0,
+      "training/gpu_0/bytes_reserved": 0.0,
+      "training/gpu_0/peak_bytes_reserved": 0.0,
+      "training/gpu_0/bytes_limit": 46914801040.0,
+      "training/gpu_0/pool_bytes": 38690357248.0,
+      "global_step": 2097152,
+      "health/nonfinite": 0
+    },
+    {
+      "training/sps": 52618.73056613901,
+      "training/walltime": 251.00754642486572,
+      "training/entropy_loss": 0.0965418815612793,
+      "training/policy_loss": -0.005992798134684563,
+      "training/reference_cat_fraction": 0.6493206024169922,
+      "training/reference_kl": 0.010770853608846664,
+      "training/reference_kl_loss": 0.0005385426338762045,
+      "training/rollout_reward_mean": 0.21422815322875977,
+      "training/total_loss": 0.46310359239578247,
+      "training/v_loss": 0.37201595306396484,
+      "training/gpu_0/bytes_in_use": 19938839040.0,
+      "training/gpu_0/peak_bytes_in_use": 28966526464.0,
+      "training/gpu_0/bytes_reserved": 0.0,
+      "training/gpu_0/peak_bytes_reserved": 0.0,
+      "training/gpu_0/bytes_limit": 46914801040.0,
+      "training/gpu_0/pool_bytes": 38690357248.0,
+      "global_step": 2621440,
+      "health/nonfinite": 0
+    }
+  ],
+  "nonfinite_event_count": 0,
+  "resume_bytes": 2698771015,
+  "checkpoint_generations": [
+    "candidate-8fycsxg6"
+  ],
+  "disk_free_bytes": 22477012992,
+  "note": "Post-startup observation only; not a long-run stability or task-performance guarantee. Learner remains running."
+}

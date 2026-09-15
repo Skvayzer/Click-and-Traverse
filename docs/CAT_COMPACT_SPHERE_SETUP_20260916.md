@@ -1,6 +1,6 @@
 # Compact whole-body CAT setup
 
-Implemented locally on 2026-09-16. The running training job has not been changed to this observation contract.
+Implemented on 2026-09-16. The old 406-input training job was stopped, and a new continuous run with this compact contract was launched from the original released CAT checkpoint. See the [restart and GPU-capacity record](CAT_COMPACT_RESTART_20260916.md).
 
 ![All obstacle measurement locations](assets/compact-cat-points/CAT-obstacle-measurement-points.png)
 
@@ -42,7 +42,7 @@ The spheres encode proximity, not a prescribed gesture. A policy can learn to ra
 
 For the corrected experiment, initialize from the released CAT checkpoint through named feature/action mapping. The 60 added input rows start at zero; existing hidden layers and the original 12 action outputs are preserved. The 17 new action means start at zero with initial standard deviation 0.05. Geometry changes intentionally change the values in existing hand field slots, so weight preservation does not mean identical trajectories.
 
-The previous 406-input training state must not be resumed directly into this 222-input contract. The launcher uses a separate default run directory and rejects incompatible contracts. Historical 406-input checkpoint evaluation must use its matching frozen source tree. No new training was launched as part of this revision.
+The previous 406-input training state must not be resumed directly into this 222-input contract. The launcher uses a separate run directory and rejects incompatible contracts. Historical 406-input checkpoint evaluation must use its matching frozen source tree. The corrected run starts from the original release, with fresh optimizer state.
 
 ## Validation
 

@@ -1,0 +1,50 @@
+{
+  "started_at_utc": "2026-09-15T22:44:36.886777+00:00",
+  "pid": 64320,
+  "host": "ws008090",
+  "command": [
+    "/home/konstantinsmirnov/robotics/Click-and-Traverse-WholeBody/outputs/sources/cat_compact_diversity_gentle_20260916/.venv/bin/python",
+    "-u",
+    "/home/konstantinsmirnov/robotics/Click-and-Traverse-WholeBody/outputs/sources/cat_compact_diversity_gentle_20260916/train_cat_wholebody.py",
+    "run",
+    "--bank-manifest",
+    "/home/konstantinsmirnov/robotics/Click-and-Traverse-WholeBody/data/furniture/cat_diversity_v2_20260916/manifest.json",
+    "--run-dir",
+    "/home/konstantinsmirnov/robotics/Click-and-Traverse-WholeBody/outputs/cat_compact_diversity_gentle_20260916",
+    "--profile",
+    "single_gpu_32gb",
+    "--finetuning",
+    "gentle",
+    "--num-envs",
+    "16384",
+    "--batch-size",
+    "256",
+    "--seed",
+    "0",
+    "--wandb-mode",
+    "online",
+    "--wandb-project",
+    "CAT-wholebody",
+    "--wandb-entity",
+    "skvayzer"
+  ],
+  "environment": {
+    "JAX_PLATFORMS": "cuda,cpu",
+    "CUDA_VISIBLE_DEVICES": "0",
+    "XLA_PYTHON_CLIENT_PREALLOCATE": "false",
+    "XLA_PYTHON_CLIENT_MEM_FRACTION": "0.92",
+    "PYTHONUNBUFFERED": "1",
+    "WANDB_CONSOLE": "off",
+    "WANDB_MODE": "online"
+  },
+  "code": {
+    "git_commit": "71f9a1cee1ef86847b5ad18baeb53a341efbd666",
+    "source_sha256": "2d93221bdcf3688d023a9f243de9d821fe558dd67cdd4bf3c58f593756d971d6"
+  },
+  "run_dir": "/home/konstantinsmirnov/robotics/Click-and-Traverse-WholeBody/outputs/cat_compact_diversity_gentle_20260916",
+  "log": "/home/konstantinsmirnov/robotics/Click-and-Traverse-WholeBody/output_logs/cat_compact_diversity_gentle_20260916.log",
+  "capacity_report": "/home/konstantinsmirnov/robotics/Click-and-Traverse-WholeBody/docs/assets/cat-diversity-20260916/gpu-capacity-16384-256-ws008090.json",
+  "capacity_report_sha256": "4ff90357fa1ff11d97fe98852dc66d2126a91e53fc4325404e1de8e562d3c09f",
+  "bank_sha256": "dc97e6e19c7767c5d5b567f5abdde0a4fb8a85873893be22adff7863e1b8f6c0",
+  "initialization": "Original released CAT; fresh Adam; no resume"
+}

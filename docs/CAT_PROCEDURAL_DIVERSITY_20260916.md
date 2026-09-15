@@ -1,6 +1,6 @@
 # Expanded CAT procedural and clutter training collection
 
-This revision adds a materialized, reproducible scene bank to the compact whole-body CAT implementation. It expands the available public procedural collection; it does not reconstruct the unreleased paper training manifest or indoor scans. The existing training process and its frozen source were left unchanged.
+This revision adds a materialized, reproducible scene bank to the compact whole-body CAT implementation. It expands the available public procedural collection; it does not reconstruct the unreleased paper training manifest or indoor scans. The old 406-input training process was stopped, and a new continuous run was launched from the original released CAT checkpoint using this bank. See the [restart and GPU-capacity record](CAT_COMPACT_RESTART_20260916.md).
 
 ## Coverage
 
@@ -55,7 +55,7 @@ Original and newly generated CAT scenes preserve CAT's reset distribution and X-
 
 The policy remains the compact **222 actor inputs, 310 critic inputs, 29 actions** setup: nine retained CAT point locations, two enclosing hand spheres reusing the original hand slots, and one new sphere at each elbow. See [the observation and hand-protection contract](CAT_COMPACT_SPHERE_SETUP_20260916.md). The hand-center inspection is a comparison only; the current 10.35 cm spheres have not been replaced by the 9.73 cm optimized alternative.
 
-A new compact run initializes from the released CAT checkpoint using named feature/action mapping. The old 406-input full training state cannot resume directly into this architecture. The new default run directory is separate. No training restart was performed by this revision.
+A new compact run initializes from the released CAT checkpoint using named feature/action mapping. The old 406-input full training state cannot resume directly into this architecture. The corrected training run uses a separate directory and fresh optimizer state.
 
 ## Reproduction and validation
 
