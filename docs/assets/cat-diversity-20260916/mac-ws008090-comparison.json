@@ -1,0 +1,83 @@
+{
+  "local_manifest_sha256": "e918eb5a51180ebb40a2030969c9f063a425b81f45796396952a786d2e9648e7",
+  "ws008090_manifest_sha256": "7fb43ee27324057f5a026eab05d837d380e208a45637a1f6e584208b1fa10967",
+  "scene_count": 2338,
+  "all_scene_ids_identical": true,
+  "all_recorded_geometry_fingerprints_identical": true,
+  "all_original_and_published_fields_byte_identical": true,
+  "numerical_samples": {
+    "procedural-D4G0L0O1S2001__sdf": {
+      "values_compared": 10000,
+      "max_abs_diff": 0.00010383129119873047,
+      "mean_abs_diff": 3.688931465148926e-08
+    },
+    "procedural-D4G0L0O1S2001__bf": {
+      "values_compared": 30000,
+      "max_abs_diff": 0.001434236764907837,
+      "mean_abs_diff": 6.425062815348307e-07
+    },
+    "procedural-D4G0L0O1S2001__gf": {
+      "values_compared": 30000,
+      "max_abs_diff": 0.0,
+      "mean_abs_diff": 0.0
+    },
+    "procedural-D10G3L9O3S2002__sdf": {
+      "values_compared": 10000,
+      "max_abs_diff": 0.002457045018672943,
+      "mean_abs_diff": 1.5691306442022324e-06
+    },
+    "procedural-D10G3L9O3S2002__bf": {
+      "values_compared": 30000,
+      "max_abs_diff": 0.025129884481430054,
+      "mean_abs_diff": 2.041422910988331e-05
+    },
+    "procedural-D10G3L9O3S2002__gf": {
+      "values_compared": 30000,
+      "max_abs_diff": 0.00871354341506958,
+      "mean_abs_diff": 2.5637784091528236e-06
+    },
+    "random-furniture-dense-train-004001-5ef9779babcf__sdf": {
+      "values_compared": 10000,
+      "max_abs_diff": 0.0034549087285995483,
+      "mean_abs_diff": 1.4369025081396103e-05
+    },
+    "random-furniture-dense-train-004001-5ef9779babcf__bf": {
+      "values_compared": 30000,
+      "max_abs_diff": 0.18487262725830078,
+      "mean_abs_diff": 0.00017886169937749704
+    },
+    "random-furniture-dense-train-004001-5ef9779babcf__gf": {
+      "values_compared": 30000,
+      "max_abs_diff": 0.011970579624176025,
+      "mean_abs_diff": 7.82807970487435e-06
+    },
+    "random-generic_clutter-dense-train-005001-1eaef5f4115f__sdf": {
+      "values_compared": 10000,
+      "max_abs_diff": 0.0016434192657470703,
+      "mean_abs_diff": 1.4254763722419738e-06
+    },
+    "random-generic_clutter-dense-train-005001-1eaef5f4115f__bf": {
+      "values_compared": 30000,
+      "max_abs_diff": 0.03591775894165039,
+      "mean_abs_diff": 2.1363654856880506e-05
+    },
+    "random-generic_clutter-dense-train-005001-1eaef5f4115f__gf": {
+      "values_compared": 30000,
+      "max_abs_diff": 0.006926298141479492,
+      "mean_abs_diff": 1.6458441699796821e-06
+    }
+  },
+  "limits": "Numerical comparison samples10000voxelsperfield in four generated scenes; not an exhaustive all-values comparison.",
+  "package_versions_on_both_hosts": {
+    "numpy": "2.1.3",
+    "scipy": "1.16.3",
+    "scikit-fmm": "2025.6.23",
+    "jax": "0.4.38",
+    "mujoco": "3.3.1",
+    "brax": "0.12.3"
+  },
+  "platforms": {
+    "mac": "macOS26.5.1 arm64; Python3.12.9",
+    "ws008090": "Linux6.8.0 x86_64 glibc2.35; Python3.12.9"
+  }
+}

@@ -21,6 +21,8 @@ def parser():
     result.add_argument("--bank-manifest", type=Path, default=ROOT / "data/furniture/cat_diversity_v2_20260916/manifest.json")
     result.add_argument("--run-dir", type=Path, default=ROOT / "outputs/cat_wholebody_diversity_v2")
     result.add_argument("--profile", choices=("single_gpu_32gb", "released"), default="single_gpu_32gb")
+    result.add_argument("--finetuning", choices=("gentle", "released"), default="gentle",
+                        help="Gentle: 10x lower learning rate, PPO clip .1, frozen CAT leg-policy reference")
     result.add_argument("--num-envs", type=int, help="Simulator parallelism; leaves PPO batch geometry unchanged")
     result.add_argument("--batch-size", type=int, help="Explicit trajectories/minibatch resource override")
     result.add_argument("--seed", type=int, default=0)
@@ -35,7 +37,7 @@ def plan(args):
     from cat_ppo.furniture.control import wholebody_observation_contract
     contract = wholebody_observation_contract()
     config = training_config(profile=args.profile, num_envs=args.num_envs,
-                             batch_size=args.batch_size, seed=args.seed)
+                             batch_size=args.batch_size, seed=args.seed, finetuning=args.finetuning)
     return {
         "config": config,
         "bank_manifest": str(args.bank_manifest.resolve()),
@@ -75,6 +77,16 @@ def field_bank_summary(manifest, manifest_sha256):
                 byte_verified_original_count=sum(scene["family"] == "original_cat" and scene["arrays_unchanged"] for scene in scenes),
                 reconstructed_original_count=sum(scene["source_kind"] == "reconstructed-missing-original" for scene in scenes),
                 manifest_sha256=manifest_sha256, scenes=scenes)
+
+
+def reference_kl_config(environment, configuration):
+    settings = configuration["fine_tuning"]["reference_kl"]
+    if settings is None:
+        return None
+    scenes = environment.field_bank_manifest["scenes"]
+    return {"coefficient": settings["coefficient"], "action_indices": settings["action_indices"],
+            "scene_mask": [scene.get("task_kind", "cat" if scene["family"] == "original_cat" else "room") == "cat"
+                           for scene in scenes]}
 
 
 def prepare(args, specification, *, restore_model=True):
@@ -321,6 +333,7 @@ def run(args, specification):
                     training_steps_per_epoch=1, **ppo_kwargs(specification["config"]),
                     wrap_env_fn=wrap_for_cat_wholebody_training, network_factory=factory,
                     restore_params=target, restore_value_fn=True,
+                    reference_kl_config=reference_kl_config(environment, specification["config"]),
                     restore_runtime_state=runtime, runtime_metadata=identity,
                     runtime_checkpoint_fn=save_runtime, save_checkpoint_path=None,
                     log_training_metrics=True, training_metrics_buffer_size=1000,

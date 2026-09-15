@@ -43,6 +43,9 @@ import numpy as np
 import optax
 
 from cat_ppo.learning.policy.ppo.field_arguments import FieldArguments
+from cat_ppo.learning.policy.ppo.reference_policy import (
+    freeze_reference, normalize_reference_config, reference_regularization,
+)
 
 
 InferenceParams = Tuple[running_statistics.NestedMeanStd, Params]
@@ -678,6 +681,7 @@ def train(
     runtime_checkpoint_fn: Optional[Callable[[int, Mapping[str, Any]], None]] = None,
     restore_runtime_state: Optional[Mapping[str, Any]] = None,
     runtime_metadata: Optional[Mapping[str, Any]] = None,
+    reference_kl_config: Optional[Mapping[str, Any]] = None,
 ):
     """PPO training.
 
@@ -765,6 +769,10 @@ def train(
         be combined with either params-only restore argument.
       runtime_metadata: caller's immutable run contract (e.g. scene hashes,
         observation contract and code version), checked on exact resume.
+      reference_kl_config: optional coefficient, action_indices and boolean
+        scene_mask for frozen initial actor retention on the same observations.
+        Adds mean selected-transition KL(reference || current), summing selected
+        action dimensions. Frozen actor/statistics are included in exact resumes.
 
     Returns:
       Tuple of (make_policy function, network params, metrics)
@@ -780,6 +788,11 @@ def train(
             raise ValueError("continuous training requires a bounded checkpoint callback, not save_checkpoint_path")
     if restore_runtime_state is not None and (restore_checkpoint_path is not None or restore_params is not None):
         raise ValueError("Exact runtime restore cannot be combined with params-only restore")
+    reference_config = normalize_reference_config(reference_kl_config, environment.action_size)
+    reference_state = None
+    if reference_config is not None and all(value is None for value in (
+            restore_params, restore_checkpoint_path, restore_runtime_state)):
+        raise ValueError("Reference regularization requires a warm-start checkpoint/params or exact runtime")
     assert batch_size * num_minibatches % num_envs == 0
     _validate_madrona_args(
         madrona_backend, num_envs, num_eval_envs, action_repeat, eval_env
@@ -865,6 +878,12 @@ def train(
     key_envs = jnp.reshape(key_envs, (local_devices_to_use, -1) + key_envs.shape[1:])
     env_state = reset_fn(key_envs, field_values)
     has_scene_ids = "pf_id" in env_state.info
+    if reference_config is not None:
+        if not has_scene_ids:
+            raise ValueError("Reference regularization requires pre-autoreset pf_id scene attribution")
+        count = getattr(environment, "num_pf_scenes", None)
+        if count is not None and len(reference_config["scene_mask"]) != count:
+            raise ValueError("Reference scene mask must match the environment scene count")
     if randomize_initial_episode_steps and "steps" in env_state.info:
         if episode_length is None:
             raise ValueError("episode_length must be specified to randomize initial episode steps")
@@ -888,6 +907,8 @@ def train(
     make_policy = ppo_networks.make_inference_fn(ppo_network)
 
     use_dagger = bool(_cfg_get(dagger_config, "enable", False))
+    if use_dagger and reference_config is not None:
+        raise ValueError("Frozen reference retention is additive to PPO; simultaneous DAgger is unsupported")
     teacher_checkpoint_paths = list(_cfg_get(dagger_config, "teacher_checkpoint_paths", []))
     dagger_timesteps = int(_cfg_get(dagger_config, "dagger_timesteps", 0))
     teacher_params = ()
@@ -959,6 +980,19 @@ def train(
             clipping_epsilon=clipping_epsilon,
             normalize_advantage=normalize_advantage,
         )
+
+    if reference_config is not None:
+        original_ppo_loss = loss_fn
+
+        def loss_with_reference(params, normalizer_params, data, rng):
+            loss, metrics = original_ppo_loss(params, normalizer_params, data, rng)
+            penalty, reference_metrics = reference_regularization(
+                params, normalizer_params, data, network=ppo_network,
+                reference=reference_state, config=reference_config)
+            total = loss + penalty
+            return total, {**metrics, **reference_metrics, "total_loss": total}
+
+        loss_fn = loss_with_reference
 
     gradient_update_fn = gradients.gradient_update_fn(
         loss_fn, optimizer, pmap_axis_name=_PMAP_AXIS_NAME, has_aux=True
@@ -1256,6 +1290,13 @@ def train(
             ),
         )
 
+    if reference_config is not None:
+        # On a new run these are the adapted warm-start parameters. On resume
+        # this tree supplies only shape/type metadata; saved reference values
+        # replace it below, before any optimizer trace or update is performed.
+        reference_state = freeze_reference(training_state.params.policy,
+                                           training_state.normalizer_params)
+
     if num_timesteps == 0 and not continuous and restore_runtime_state is None:
         return (
             make_policy,
@@ -1289,12 +1330,19 @@ def train(
         "device_platforms": [device.platform for device in jax.local_devices()[:local_devices_to_use]],
         "metadata": dict(runtime_metadata or {}),
     }
+    if reference_config is not None:
+        runtime_contract["reference_kl"] = reference_config
     restored_walltime = 0.0
     if restore_runtime_state is not None:
         if restore_runtime_state.get("schema") != "cat-ppo-runtime-v1":
             raise ValueError("Unrecognized exact runtime snapshot schema")
         if restore_runtime_state.get("contract") != runtime_contract:
             raise ValueError("Runtime training configuration differs; exact resume refused")
+        if reference_config is not None:
+            if "reference_policy" not in restore_runtime_state:
+                raise ValueError("Runtime snapshot is missing its frozen reference policy")
+            reference_state = _restore_runtime_tree("reference_policy", reference_state,
+                                                    restore_runtime_state["reference_policy"])
         training_state = _restore_runtime_tree("training_state", training_state, restore_runtime_state["training_state"])
         env_state = _restore_runtime_tree("env_state", env_state, restore_runtime_state["env_state"])
         local_key = _restore_runtime_tree("local_key", local_key, restore_runtime_state["local_key"])
@@ -1361,6 +1409,8 @@ def train(
             "metrics_logger": metrics_aggregator.state_dict(),
             "training_walltime": training_walltime,
         }
+        if reference_config is not None:
+            snapshot["reference_policy"] = _runtime_tree_state(jax.device_get(reference_state))
         runtime_checkpoint_fn(current_step, snapshot)
 
     # A first-update OOM must still have an exact starting state to resume.

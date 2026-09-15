@@ -15,7 +15,7 @@ def launched(tmp_path, monkeypatch):
     bank = tmp_path / "bank.json"
     bank.write_text("{}\n")
     args = launcher.parser().parse_args(["run", "--run-dir", str(tmp_path / "run"),
-        "--bank-manifest", str(bank), "--wandb-mode", "disabled"])
+        "--bank-manifest", str(bank), "--wandb-mode", "disabled", "--finetuning", "released"])
     specification = launcher.plan(args)
     preparations, calls, loggers, selections = [], [], [], []
 

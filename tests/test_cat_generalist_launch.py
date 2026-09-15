@@ -35,6 +35,31 @@ def test_simulator_parallelism_does_not_change_optimizer_batch():
         training_config(num_envs=3000)
 
 
+def test_gentle_finetuning_retains_cat_task_and_declares_optimizer_changes():
+    import train_cat_wholebody as launcher
+    original = training_config()
+    gentle = training_config(finetuning="gentle")
+    assert gentle["env_config"] == original["env_config"]
+    changed = {key for key in original["policy_config"]
+               if original["policy_config"][key] != gentle["policy_config"][key]}
+    assert changed == {"learning_rate", "clipping_epsilon"}
+    assert gentle["policy_config"]["learning_rate"] == 3e-5
+    assert gentle["policy_config"]["clipping_epsilon"] == .1
+    assert gentle["policy_config"]["entropy_cost"] == .003
+    assert gentle["fine_tuning"]["source_model_revision"] == original["fine_tuning"]["source_model_revision"]
+    env = SimpleNamespace(field_bank_manifest={"scenes": [
+        {"family": "original_cat", "task_kind": "cat"},
+        {"family": "published_cat", "task_kind": "cat"},
+        {"family": "procedural_cat", "task_kind": "cat"},
+        {"family": "furniture", "task_kind": "room"},
+        {"family": "generic_clutter", "task_kind": "room"}]})
+    regularizer = launcher.reference_kl_config(env, gentle)
+    assert regularizer == {"coefficient": .05, "action_indices": list(range(12)),
+                           "scene_mask": [True, True, True, False, False]}
+    assert launcher.reference_kl_config(env, original) is None
+    assert launcher.parser().parse_args(["plan"]).finetuning == "gentle"
+
+
 class FakeRun:
     url = "https://example.invalid/run"
     def __init__(self):

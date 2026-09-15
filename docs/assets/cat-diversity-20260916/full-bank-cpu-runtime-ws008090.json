@@ -1,0 +1,277 @@
+{
+  "schema": "cat-full-bank-cpu-runtime-validation-v1",
+  "status": "passed",
+  "scope": "complete bank loaded; five representative scenes; JIT reset and one zero-action wrapped step",
+  "limitations": [
+    "CPU functional validation only; GPU capacity and training throughput are not established",
+    "Five scenes exercised dynamically; all scene files validated by loader fingerprints",
+    "No learned-policy retention, navigation success, or dynamic-feasibility evaluation"
+  ],
+  "seed": 20260916,
+  "jax_version": "0.4.38",
+  "devices": [
+    "TFRT_CPU_0"
+  ],
+  "bank_manifest": "/home/konstantinsmirnov/robotics/Click-and-Traverse-WholeBody/data/furniture/cat_diversity_v2_20260916/manifest.json",
+  "bank_manifest_file_sha256": "dc97e6e19c7767c5d5b567f5abdde0a4fb8a85873893be22adff7863e1b8f6c0",
+  "bank_manifest_payload_sha256": "7fb43ee27324057f5a026eab05d837d380e208a45637a1f6e584208b1fa10967",
+  "scene_count": 2338,
+  "family_counts": {
+    "original_cat": 37,
+    "published_cat": 27,
+    "procedural_cat": 2226,
+    "furniture": 24,
+    "generic_clutter": 24
+  },
+  "representatives": [
+    {
+      "index": 0,
+      "scene_id": "D8G0L1O0S3",
+      "family": "original_cat",
+      "task_kind": "cat",
+      "episode_length": 1000,
+      "reset_mode": "cat",
+      "crossed_mode": "x_plane",
+      "sampling_group": "original_cat"
+    },
+    {
+      "index": 37,
+      "scene_id": "published-forward",
+      "family": "published_cat",
+      "task_kind": "cat",
+      "episode_length": 1000,
+      "reset_mode": "cat",
+      "crossed_mode": "x_plane",
+      "sampling_group": "original_cat"
+    },
+    {
+      "index": 64,
+      "scene_id": "procedural-D4G0L0O1S2001",
+      "family": "procedural_cat",
+      "task_kind": "cat",
+      "episode_length": 1000,
+      "reset_mode": "cat",
+      "crossed_mode": "x_plane",
+      "sampling_group": "procedural_cat"
+    },
+    {
+      "index": 2290,
+      "scene_id": "random-furniture-dense-train-004001-5ef9779babcf",
+      "family": "furniture",
+      "task_kind": "room",
+      "episode_length": 4000,
+      "reset_mode": "room",
+      "crossed_mode": "goal_radius",
+      "sampling_group": "furniture"
+    },
+    {
+      "index": 2314,
+      "scene_id": "random-generic_clutter-dense-train-005001-1eaef5f4115f",
+      "family": "generic_clutter",
+      "task_kind": "room",
+      "episode_length": 4000,
+      "reset_mode": "room",
+      "crossed_mode": "goal_radius",
+      "sampling_group": "generic_clutter"
+    }
+  ],
+  "field_arrays": {
+    "sdf": {
+      "shape": [
+        507655920,
+        1
+      ],
+      "dtype": "float32",
+      "bytes": 2030623680
+    },
+    "bf": {
+      "shape": [
+        507655920,
+        3
+      ],
+      "dtype": "float32",
+      "bytes": 6091871040
+    },
+    "gf": {
+      "shape": [
+        507655920,
+        3
+      ],
+      "dtype": "float32",
+      "bytes": 6091871040
+    }
+  },
+  "total_field_array_bytes": 14214365760,
+  "field_argument_axes": "shared unbatched fields; five environment states",
+  "action_size": 29,
+  "reset": {
+    "finite": {
+      "actor_observations": true,
+      "critic_observations": true,
+      "qpos": true,
+      "qvel": true,
+      "reward": true,
+      "done": true,
+      "motor_targets": true,
+      "wholebody_clearances": true,
+      "sampling_logits": true
+    },
+    "actor_shape": [
+      5,
+      222
+    ],
+    "critic_shape": [
+      5,
+      310
+    ],
+    "scene_ids": [
+      0,
+      37,
+      64,
+      2290,
+      2314
+    ],
+    "reward": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "done": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "hand_and_elbow_clearance_m": [
+      [
+        1.2341727018356323,
+        0.6979140043258667,
+        1.1431224346160889,
+        0.8007994890213013
+      ],
+      [
+        0.7440797090530396,
+        1.0514864921569824,
+        0.6564674973487854,
+        0.9317353963851929
+      ],
+      [
+        1.4770102500915527,
+        1.3376253843307495,
+        1.4088685512542725,
+        1.3593071699142456
+      ],
+      [
+        0.44250714778900146,
+        0.40247833728790283,
+        0.6513268351554871,
+        0.5467420816421509
+      ],
+      [
+        0.589268684387207,
+        0.5156988501548767,
+        0.6308954358100891,
+        0.5808959007263184
+      ]
+    ]
+  },
+  "step": {
+    "finite": {
+      "actor_observations": true,
+      "critic_observations": true,
+      "qpos": true,
+      "qvel": true,
+      "reward": true,
+      "done": true,
+      "motor_targets": true,
+      "wholebody_clearances": true,
+      "sampling_logits": true
+    },
+    "actor_shape": [
+      5,
+      222
+    ],
+    "critic_shape": [
+      5,
+      310
+    ],
+    "scene_ids": [
+      0,
+      37,
+      64,
+      2290,
+      2314
+    ],
+    "reward": [
+      0.08242471516132355,
+      0.09064736217260361,
+      0.08844597637653351,
+      0.10285303741693497,
+      0.07623431831598282
+    ],
+    "done": [
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "hand_and_elbow_clearance_m": [
+      [
+        1.2360103130340576,
+        0.6903207302093506,
+        1.166778326034546,
+        0.793997585773468
+      ],
+      [
+        0.7326370477676392,
+        1.0544723272323608,
+        0.6171298027038574,
+        0.9369986653327942
+      ],
+      [
+        1.486853837966919,
+        1.3506267070770264,
+        1.390313982963562,
+        1.3669912815093994
+      ],
+      [
+        0.4399268627166748,
+        0.4108821749687195,
+        0.6478930115699768,
+        0.5490424633026123
+      ],
+      [
+        0.610277533531189,
+        0.48973745107650757,
+        0.6690232157707214,
+        0.5916395783424377
+      ]
+    ]
+  },
+  "compiler_ir": {
+    "reset": {
+      "serialized_hlo_bytes": 11063354,
+      "stablehlo_text_bytes": 2857317
+    },
+    "step": {
+      "serialized_hlo_bytes": 23105774,
+      "stablehlo_text_bytes": 5378930
+    }
+  },
+  "seconds": {
+    "load_and_verify": 44.47237575300096,
+    "reset_lower_compile_execute": 21.26551857799859,
+    "step_lower_compile_execute": 62.61496477200126,
+    "total": 128.3528591030008
+  },
+  "source_sha256": {
+    "scripts/validate_cat_diversity_runtime.py": "df33a6d80df4b20ae1e7ade02c58fe346e5f1f48d8ba6e985857e3281e7e4fbb",
+    "cat_ppo/learning/policy/ppo/field_arguments.py": "1a07585055719e47a77bee50ef5688ca034de4035cf9b9083a92706f64529154",
+    "cat_ppo/furniture/generalist_fields.py": "b0e7ada1a458c965766b5c37edf468cfebea62fb4713d194892943820e5b13eb",
+    "cat_ppo/envs/g1/env_cat_wholebody.py": "cb8c15e1846c6a0c613f93257730fe482cdd21c1d310c5ba20edb845673a782d"
+  }
+}

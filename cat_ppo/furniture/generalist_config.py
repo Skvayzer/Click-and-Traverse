@@ -44,7 +44,8 @@ def batch_geometry(policy):
     }
 
 
-def training_config(*, profile="single_gpu_32gb", num_envs=None, batch_size=None, seed=0):
+def training_config(*, profile="single_gpu_32gb", num_envs=None, batch_size=None, seed=0,
+                    finetuning="released"):
     config = copy.deepcopy(released_config())
     policy = config["policy_config"]
     original = batch_geometry(policy)
@@ -61,6 +62,11 @@ def training_config(*, profile="single_gpu_32gb", num_envs=None, batch_size=None
     if batch_size is not None:
         policy["batch_size"] = int(batch_size)
     policy["seed"] = int(seed)
+    if finetuning == "gentle":
+        policy["learning_rate"] = 3e-5
+        policy["clipping_epsilon"] = .1
+    elif finetuning != "released":
+        raise ValueError(f"Unknown fine-tuning mode: {finetuning}")
     effective = batch_geometry(policy)
     policy.update(num_timesteps=0, continuous=True, num_evals=0, num_eval_envs=0,
                   num_resets_per_eval=0, max_devices_per_host=1)
@@ -75,6 +81,14 @@ def training_config(*, profile="single_gpu_32gb", num_envs=None, batch_size=None
         "continuous": True,
         "automatic_evaluation": False,
         "profile": profile,
+        "mode": finetuning,
+        "optimization_overrides": {k: {"released": released_config()["policy_config"][k], "effective": policy[k]}
+                                   for k in ("learning_rate", "clipping_epsilon")
+                                   if released_config()["policy_config"][k] != policy[k]},
+        "reference_kl": ({"coefficient": .05, "action_indices": list(range(12)),
+                          "scene_scope": "CAT task scenes only; rooms excluded",
+                          "reference": "frozen initial actor mapped from released CAT, on the same compact observations"}
+                         if finetuning == "gentle" else None),
         "released_batch_geometry": original,
         "effective_batch_geometry": effective,
         "resource_overrides": {k: {"released": released_config()["policy_config"][k], "effective": policy[k]}
