@@ -28,24 +28,27 @@ error. Scene changes are automatic; reaching a per-scene cadence does not end
 the training job. A small implementation smoke is not evidence of learning.
 
 Use 16-step rollouts, four minibatches, four PPO updates per batch and learning
-rate `3e-4`. The larger restart uses 8,192 environments on original typical CAT
+rate `3e-4`. The recovery restart uses 8,192 environments on original typical CAT
 and simple generic clutter, 4,096 on simple furniture, 2,048 on randomized CAT,
-2,048 on dense generic clutter and 1,024 on dense furniture. These counts target
-high GPU memory use; measured allocation is recorded in the run notes and W&B.
-The [larger run notes](HIGH_CAPACITY_RUN_20260915.md) include measured VRAM,
-live tensor peaks, throughput and the current stop command.
+1,024 on dense generic clutter and 256 on dense furniture. The previous dense
+generic batch of 2,048 ran out of memory before producing training metrics.
+The completed light, random and simple furniture stages retain their larger
+batches; dense counts leave room for the much larger solver buffers.
+The [recovery notes](RECOVERED_RUN_20260915.md) record the restart and memory checks.
 Native dense furniture MJX state alone occupies about 9.44 MiB per environment,
 compared with 0.293 MiB on original forward. Training also needs cached resets,
 rollout buffers and compiler temporaries, so scene families need different counts.
 
 ```bash
 .venv/bin/python -m cat_ppo.furniture.continuous run \
-  --run-dir outputs/continuous_cat_dex3_20260915_large \
-  --restart-from-run /home/konstantin.smirnov/robotics/Click-and-Traverse-WholeBody/outputs/continuous_cat_dex3_20260915_live \
-  --num-envs 1024 --legacy-num-envs 8192 --pilot-num-envs 8192 \
+  --run-dir outputs/continuous_cat_dex3_20260915_recovered \
+  --restart-from-run /home/konstantin.smirnov/robotics/Click-and-Traverse-WholeBody/outputs/continuous_cat_dex3_20260915_large \
+  --num-envs 256 --legacy-num-envs 8192 --pilot-num-envs 8192 \
   --pilot-furniture-num-envs 4096 --random-num-envs 2048 \
-  --generic-num-envs 2048 --furniture-num-envs 1024 \
-  --steps-per-stage 8388608 --checkpoint-epochs 16 \
+  --generic-num-envs 1024 --furniture-num-envs 256 \
+  --estimated-memory-budget-gib 25 \
+  --oom-max-retries 2 --oom-min-num-envs 128 \
+  --steps-per-stage 8388608 --checkpoint-epochs 64 \
   --seed 0 --wandb-mode online
 ```
 
@@ -53,7 +56,7 @@ The first four stages are original CAT forward, simple generic clutter, original
 CAT hurdle, and simple furniture clutter. Each stage starts from the preceding
 selected checkpoint; only the first starts from the published CAT weights.
 Scenes switch every 8,388,608 transitions, with checkpoint candidates every
-524,288 transitions. This preserves 64 rollout batches per light scene while
+131,072 transitions, retaining one selected model. This preserves 64 rollout batches per light scene while
 amortizing compilation over more work. These intervals organize an ongoing run; they do not impose
 a total training budget. Each stage is a W&B run in the same group, with an
 explicit cumulative `global_step` axis. `wandb.json` contains its exact URL.
@@ -63,19 +66,27 @@ when the training source is in an isolated worktree:
 
 ```bash
 .venv/bin/python -m cat_ppo.furniture.continuous stop \
-  --run-dir outputs/continuous_cat_dex3_20260915_large
+  --run-dir outputs/continuous_cat_dex3_20260915_recovered
 ```
 
 The active trainer finishes its current checkpoint epoch and exports the
 selected model before exiting. SIGINT/SIGTERM to the runner makes the same
-cooperative request. The runner never silently retries a failed or partially
-completed stage with invented optimizer state.
+cooperative request. A positively identified GPU memory error before any
+observed training progress can trigger up to two batch halvings, with a floor
+of 128 environments. Attempt records and failed-stage logs are preserved. Other
+failures and failures after progress halt rather than silently discarding work.
+An optional 25 GiB empirical working-memory budget caps batches by the actual
+materialized scene's primitive count before launch. This preserves 2,048 random
+CAT environments in smaller layouts and reduces larger later layouts to 1,024.
+The estimate is a conservative fit to observed full PPO peaks, not a guarantee;
+actual memory telemetry and bounded OOM recovery remain necessary.
 
-An explicit `--restart-from-run` requires a stopped, verified source run. It
+An explicit `--restart-from-run` requires an inactive, verified source run. It
 copies the selected actor, critic and normalizer into the new run and verifies
 every file hash. A stopped partial scene is replayed with the new batch size;
 the W&B offset includes all previously executed transitions. The optimizer is
-fresh. The original source run is preserved, and the owned imported copy is
+fresh. A failed stage with no observed progress resumes from the preceding
+verified selected checkpoint at the same curriculum position. The original source run is preserved, and the owned imported copy is
 retired only after the first new stage completes and its handoff is verified.
 
 Task metrics come from completed training episodes: success, forbidden/hand/arm

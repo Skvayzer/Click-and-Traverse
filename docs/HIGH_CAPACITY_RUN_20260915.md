@@ -1,5 +1,12 @@
 # Larger continuous CAT run — September 15, 2026
 
+This run stopped at 06:15 Dubai time on September 15 after a GPU OOM in the
+first dense generic scene (2,048 environments). It completed 12 stages and
+102,301,696 cumulative transitions including its imported offset. The retained
+checkpoint was verified intact. See [the recovery notes](RECOVERED_RUN_20260915.md)
+for the subsequent restart; the commands and measurements below describe this
+historical run.
+
 The user requested a restart with more parallel environments, targeting about
 30 GB of GPU memory. The initial smaller run was cooperatively stopped and its
 selected generic-clutter checkpoint was verified before importing it into this

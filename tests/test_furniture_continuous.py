@@ -83,12 +83,29 @@ def fixture(tmp_path, monkeypatch):
         for key in ("steps", "seed", "num_envs", "unroll_length", "checkpoint_epochs", "num_evals", "global_step_offset"):
             run["args"][key] = int(run["args"][key])
         run["args"]["action_dofs"] = 29
+        (directory / "run.json").write_text(json.dumps(run))
+        if stage_index in controls.get("oom_at", ()):
+            failure = dict(schema="cat-furniture-training-failure-v1", exception_type="XlaRuntimeError",
+                message="RESOURCE_EXHAUSTED: GPU allocator out of memory", classification=controls.get("classification", "gpu_oom"),
+                completed_steps=0, completed_update_evidence=False, metrics_present=False, metrics_last_step=None,
+                selected_checkpoint=None, checkpoint_inspection_error=None, metrics_inspection_error=None,
+                requested_steps=int(args["--steps"]), global_step_offset=int(args["--global-step-offset"]),
+                stage=directory.name, run_dir=str(directory))
+            if controls.get("oom_evidence") == "reported_steps":
+                failure.update(completed_steps=1, completed_update_evidence=True)
+            elif controls.get("oom_evidence") == "metrics":
+                (directory / "metrics.jsonl").write_text('{"step": 1, "metrics": {}}\n')
+            elif controls.get("oom_evidence") == "candidate":
+                (directory / ".checkpoint-generations/candidate-partial").mkdir()
+            elif controls.get("oom_evidence") == "uncertain":
+                failure.update(metrics_inspection_error="cannot inspect metrics", completed_update_evidence=True)
+            (directory / "failure.json").write_text(json.dumps(failure))
+            raise subprocess.CalledProcessError(1, command)
         store.consider(step=8, metrics={"proxy_score": 1.0}, source="training_proxy",
                        write_checkpoint=writer, contract={"action_names": ["fixture_joint"]},
                        provenance={key: run.get(key) for key in ("warmstart", "source", "code", "training_scene", "validation_scene")})
         selected = store.selected()
         selected_paths.append(selected["path"])
-        (directory / "run.json").write_text(json.dumps(run))
         interrupted = controls.get("partial_stop_at") == stage_index
         budget = int(args["--steps"])
         summary = dict(requested_steps=budget, actual_steps=budget // 2 if interrupted else budget,
@@ -237,7 +254,8 @@ def test_restart_accepts_original_continuous_config_without_new_optional_fields(
     continuous.execute(fixture.config, fixture.run)
     path = fixture.run / "continuous_config.json"
     old_config = json.loads(path.read_text())
-    for key in ("random_num_envs", "generic_num_envs", "furniture_num_envs", "pilot_furniture_num_envs", "restart_from_run"):
+    for key in ("random_num_envs", "generic_num_envs", "furniture_num_envs", "pilot_furniture_num_envs", "restart_from_run",
+                "oom_max_retries", "oom_min_num_envs", "estimated_memory_budget_gib"):
         del old_config[key]
     old_config["sha256"] = _digest({key: value for key, value in old_config.items() if key != "sha256"})
     path.write_text(json.dumps(old_config))
@@ -304,3 +322,162 @@ def test_restart_refuses_unstopped_or_modified_source(fixture, fault):
     with pytest.raises(ValueError):
         continuous.execute(config, fixture.run.parent / "restarted")
     assert len(fixture.calls) == 2
+
+
+def _oom_config(**kwargs):
+    return continuous.build_config(steps_per_stage=64, num_envs=16, unroll_length=2,
+        checkpoint_epochs=2, wandb_mode="disabled", oom_min_num_envs=4, **kwargs)
+
+
+def test_gpu_oom_before_updates_halves_batch_preserves_attempt_and_exact_handoff(fixture):
+    fixture.config = _oom_config()
+    fixture.controls.update(oom_at={1}, stop_after=3)
+    state = continuous.execute(fixture.config, fixture.run)
+    assert len(state["completed"]) == 2 and len(fixture.calls) == 3
+    assert state["completed_transitions"] == 128
+    first_failure, retried = fixture.calls[1:]
+    assert first_failure[first_failure.index("--num-envs") + 1] == "16"
+    assert retried[retried.index("--num-envs") + 1] == "8"
+    assert first_failure[first_failure.index("--warmstart") + 1] == retried[retried.index("--warmstart") + 1]
+    assert first_failure[first_failure.index("--global-step-offset") + 1] == retried[retried.index("--global-step-offset") + 1] == "64"
+    assert state["completed"][-1]["num_envs"] == 8
+    attempt = state["oom_attempts"][0]
+    record = json.loads((fixture.run / attempt["record"]).read_text())
+    assert Path(record["archive"], "failure.json").is_file()
+    assert record["num_envs"] == 16 and record["next_num_envs"] == 8
+    assert len(list(fixture.run.rglob("weights.bin"))) == 1
+    # The preserved archive and effective batch survive supervisor continuation.
+    continuous.execute(fixture.config, fixture.run)
+    assert len(fixture.calls) == 3
+
+
+@pytest.mark.parametrize("evidence", ["reported_steps", "metrics", "candidate", "uncertain"])
+def test_gpu_oom_never_retries_when_progress_or_inspection_uncertainty_exists(fixture, evidence):
+    fixture.config = _oom_config()
+    fixture.controls.update(oom_at={1}, oom_evidence=evidence)
+    with pytest.raises((subprocess.CalledProcessError, ValueError)):
+        continuous.execute(fixture.config, fixture.run)
+    assert len(fixture.calls) == 2
+    assert Path(fixture.selected[0], "weights.bin").exists()
+    assert not list(fixture.run.glob("failed_attempts/*/attempt-*.json"))
+
+
+def test_non_oom_never_retries_and_oom_retry_count_is_bounded(fixture):
+    fixture.config = _oom_config()
+    fixture.controls.update(oom_at={0}, classification="other")
+    with pytest.raises(subprocess.CalledProcessError):
+        continuous.execute(fixture.config, fixture.run)
+    assert len(fixture.calls) == 1
+    fixture.controls.update(oom_at={1, 2, 3, 4}, classification="gpu_oom", stop_after=10)
+    second = fixture.run.parent / "bounded"
+    with pytest.raises(subprocess.CalledProcessError):
+        continuous.execute(fixture.config, second)
+    assert len(fixture.calls) == 4  # One non-OOM + initial OOM + two bounded retries.
+    batches = [int(command[command.index("--num-envs") + 1]) for command in fixture.calls[1:]]
+    assert batches == [16, 8, 4]
+
+
+def test_explicit_failed_run_restart_uses_preceding_verified_model_without_losing_offset(fixture):
+    fixture.config = _oom_config(oom_max_retries=0)
+    fixture.controls.update(oom_at={1})
+    with pytest.raises(subprocess.CalledProcessError):
+        continuous.execute(fixture.config, fixture.run)
+    old_state = json.loads((fixture.run / "continuous_state.json").read_text())
+    failed = fixture.run / "stages" / old_state["active_stage"]["stage_name"]
+    # The real overnight source predates structured failure metadata.
+    (failed / "failure.json").unlink()
+    old_bytes = {str(path.relative_to(fixture.run)): path.read_bytes()
+                 for path in fixture.run.rglob("*") if path.is_file()}
+    fixture.controls.update(oom_at=set(), stop_after=3)
+    config = continuous.build_config(steps_per_stage=64, num_envs=8, unroll_length=2,
+        checkpoint_epochs=2, wandb_mode="disabled", restart_from_run=fixture.run)
+    new_run = fixture.run.parent / "recovery"
+    state = continuous.execute(config, new_run)
+    anchor = json.loads((new_run / "restart_anchor.json").read_text())
+    assert state["start_stage_index"] == 1 and state["initial_transition_offset"] == 64
+    assert state["completed_transitions"] == 128
+    assert anchor["mode"] == "retry-failed-scene-without-observed-progress"
+    assert anchor["failed_stage"]["observed_steps"] == 0
+    assert anchor["source_stage"] == continuous.stage_spec(0, 0)["name"]
+    assert old_bytes == {str(path.relative_to(fixture.run)): path.read_bytes()
+                         for path in fixture.run.rglob("*") if path.is_file()}
+
+
+def test_failed_source_with_any_metrics_cannot_silently_discard_work(fixture):
+    fixture.config = _oom_config(oom_max_retries=0)
+    fixture.controls.update(oom_at={1}, oom_evidence="metrics")
+    with pytest.raises(subprocess.CalledProcessError):
+        continuous.execute(fixture.config, fixture.run)
+    config = _oom_config(restart_from_run=fixture.run)
+    with pytest.raises(ValueError, match="observed training metrics"):
+        continuous.execute(config, fixture.run.parent / "rejected")
+
+
+def test_failed_first_replay_imports_its_owned_anchor_and_preserves_partial_offset(fixture):
+    fixture.controls["partial_stop_at"] = 1
+    original = continuous.execute(fixture.config, fixture.run)
+    failed_run = fixture.run.parent / "failed_first_replay"
+    config = _oom_config(restart_from_run=fixture.run, oom_max_retries=0)
+    fixture.controls.update(partial_stop_at=None, oom_at={2})
+    with pytest.raises(subprocess.CalledProcessError):
+        continuous.execute(config, failed_run)
+    failed_state = json.loads((failed_run / "continuous_state.json").read_text())
+    assert not failed_state["completed"] and failed_state["initial_transition_offset"] == 24
+    previous_anchor = json.loads((failed_run / "restart_anchor.json").read_text())
+    old_bytes = {str(path.relative_to(failed_run)): path.read_bytes()
+                 for path in failed_run.rglob("*") if path.is_file()}
+    fixture.controls.update(oom_at=set(), stop_after=4)
+    recovered_run = fixture.run.parent / "recovered_first_replay"
+    recovered = continuous.execute(_oom_config(restart_from_run=failed_run), recovered_run)
+    anchor = json.loads((recovered_run / "restart_anchor.json").read_text())
+    assert anchor["source_selection"] == previous_anchor["imported_selection"]
+    assert anchor["source_selection"]["files"] == original["partial_stage"]["selected"]["files"]
+    assert anchor["source_checkpoint_location"] == "owned_restart_import"
+    assert recovered["start_stage_index"] == 1 and recovered["initial_transition_offset"] == 24
+    assert recovered["completed_transitions"] == 88
+    assert old_bytes == {str(path.relative_to(failed_run)): path.read_bytes()
+                         for path in failed_run.rglob("*") if path.is_file()}
+
+
+def test_modified_oom_archive_is_rejected_on_continuation(fixture):
+    fixture.config = _oom_config()
+    fixture.controls.update(oom_at={0}, stop_after=2)
+    state = continuous.execute(fixture.config, fixture.run)
+    record = json.loads((fixture.run / state["oom_attempts"][0]["record"]).read_text())
+    Path(record["archive"], "failure.json").write_text("{}")
+    with pytest.raises(ValueError, match="OOM attempt"):
+        continuous.execute(fixture.config, fixture.run)
+
+
+def test_reduced_batch_survives_stop_and_restart_before_retry_launch(fixture, monkeypatch):
+    fixture.config = _oom_config()
+    fixture.controls.update(oom_at={1}, stop_after=3)
+    atomic_json = curriculum._atomic_json
+    paused = False
+
+    def pause_after_persisting_retry(path, payload):
+        nonlocal paused
+        atomic_json(path, payload)
+        if not paused and payload.get("status") == "retrying_gpu_oom":
+            paused = True
+            continuous.request_stop(fixture.run)
+
+    monkeypatch.setattr(curriculum, "_atomic_json", pause_after_persisting_retry)
+    stopped = continuous.execute(fixture.config, fixture.run)
+    assert len(fixture.calls) == 2 and len(stopped["completed"]) == 1
+    assert stopped["effective_stage_batches"][continuous.stage_spec(1, 0)["name"]] == 8
+    (fixture.run / "STOP").unlink()
+    resumed = continuous.execute(fixture.config, fixture.run)
+    assert len(fixture.calls) == 3 and len(resumed["completed"]) == 2
+    assert fixture.calls[-1][fixture.calls[-1].index("--num-envs") + 1] == "8"
+    assert fixture.calls[-1][fixture.calls[-1].index("--global-step-offset") + 1] == "64"
+
+
+def test_geometric_capacity_cap_precedes_and_records_actual_batch(fixture, monkeypatch):
+    fixture.config = _oom_config(estimated_memory_budget_gib=25)
+    monkeypatch.setattr(continuous, "_stage_capacity", lambda scene, requested, config:
+        {"num_envs": 8, "requested_num_envs": requested, "estimated_peak_bytes": 123, "enabled": True})
+    state = continuous.execute(fixture.config, fixture.run)
+    assert all(command[command.index("--num-envs") + 1] == "8" for command in fixture.calls)
+    assert all(item["num_envs"] == 8 for item in state["completed"])
+    assert all(item["requested_num_envs"] == 16 for item in state["capacity_decisions"].values())

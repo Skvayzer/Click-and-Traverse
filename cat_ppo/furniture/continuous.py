@@ -2,7 +2,8 @@
 
 Per-scene budgets are switching/checkpoint cadences, never a global stopping
 budget. The public CAT checkpoint initializes only the first stage. Every later
-stage restores the preceding verified selection; failures halt without retries.
+stage restores the preceding verified selection. Confirmed GPU memory failures
+before observed training progress permit a bounded number of batch halvings.
 """
 from __future__ import annotations
 
@@ -10,6 +11,7 @@ import argparse
 import datetime
 import fcntl
 import json
+import math
 import os
 from pathlib import Path
 import signal
@@ -55,7 +57,8 @@ def build_config(*, steps_per_stage=1048576, num_envs=32, seed=0,
                  unroll_length=16, checkpoint_epochs=16, wandb_mode="online",
                  wandb_group=None, wandb_entity=None, legacy_num_envs=None,
                  pilot_num_envs=None, random_num_envs=None, generic_num_envs=None,
-                 furniture_num_envs=None, pilot_furniture_num_envs=None, restart_from_run=None):
+                 furniture_num_envs=None, pilot_furniture_num_envs=None, restart_from_run=None,
+                 oom_max_retries=2, oom_min_num_envs=128, estimated_memory_budget_gib=None):
     # Reuse the bounded curriculum's exact arithmetic validation; its finite
     # stage list is deliberately not used by the continuous runner.
     curriculum.build_plan(steps_per_stage=steps_per_stage, rounds=1, seed=seed,
@@ -63,6 +66,12 @@ def build_config(*, steps_per_stage=1048576, num_envs=32, seed=0,
         checkpoint_epochs=checkpoint_epochs, wandb_mode=wandb_mode)
     if type(seed) is not int or seed < 0:
         raise ValueError("Seed must be a nonnegative integer")
+    if type(oom_max_retries) is not int or not 0 <= oom_max_retries <= 8:
+        raise ValueError("oom-max-retries must be an integer from zero to eight")
+    if type(oom_min_num_envs) is not int or oom_min_num_envs < 4 or oom_min_num_envs % 4:
+        raise ValueError("oom-min-num-envs must be positive and divisible by four")
+    if estimated_memory_budget_gib is not None and (not math.isfinite(estimated_memory_budget_gib) or estimated_memory_budget_gib <= 0):
+        raise ValueError("estimated-memory-budget-gib must be finite and positive")
     default_random_num_envs = min(legacy_num_envs, 2 * num_envs) if legacy_num_envs is not None else None
     for count in (legacy_num_envs, pilot_num_envs, random_num_envs, default_random_num_envs,
                   generic_num_envs, furniture_num_envs, pilot_furniture_num_envs):
@@ -79,9 +88,11 @@ def build_config(*, steps_per_stage=1048576, num_envs=32, seed=0,
         furniture_num_envs=furniture_num_envs,
         pilot_furniture_num_envs=pilot_furniture_num_envs,
         restart_from_run=str(Path(restart_from_run).absolute()) if restart_from_run is not None else None,
+        oom_max_retries=oom_max_retries, oom_min_num_envs=oom_min_num_envs,
+        estimated_memory_budget_gib=estimated_memory_budget_gib,
         initialization="pinned-public-CAT-once; subsequent stages restore previous selection",
         sampling="sequential rehearsal: 50% original CAT, 25% generic, 25% furniture",
-        stop_condition="explicit STOP file or SIGINT/SIGTERM; errors halt without retries",
+        stop_condition="explicit STOP file or SIGINT/SIGTERM; bounded GPU OOM retries only before training progress",
         global_step_limit=None, global_stage_limit=None, global_time_limit=None,
         checkpoint_selection="within-stage training reward proxy; no automatic evaluation")
     config["sha256"] = _digest(config)
@@ -92,7 +103,8 @@ def _validate_config(config):
     expected = build_config(**{key: config[key] for key in (
         "steps_per_stage", "num_envs", "seed", "unroll_length", "checkpoint_epochs",
         "wandb_mode", "wandb_group", "wandb_entity", "legacy_num_envs", "pilot_num_envs",
-        "random_num_envs", "generic_num_envs", "furniture_num_envs", "pilot_furniture_num_envs", "restart_from_run")})
+        "random_num_envs", "generic_num_envs", "furniture_num_envs", "pilot_furniture_num_envs", "restart_from_run",
+        "oom_max_retries", "oom_min_num_envs", "estimated_memory_budget_gib")})
     if config != expected:
         raise ValueError("Continuous configuration hash or schema mismatch")
 
@@ -133,6 +145,10 @@ def _validate_state(state, config):
         raise ValueError("Continuous transition offset disagrees with completed history")
     if state.get("active_stage") and state["active_stage"]["stage_name"] != stage_spec(start + len(completed), config["seed"])["name"]:
         raise ValueError("Active stage is not the next continuous stage")
+    for name, count in state.get("effective_stage_batches", {}).items():
+        attempts = [item for item in state.get("oom_attempts", []) if item["stage_name"] == name]
+        if not attempts or attempts[-1]["next_num_envs"] != count:
+            raise ValueError("Effective stage batch is not bound to an OOM attempt record")
 
 
 def _load_restart_anchor(run_dir, state, config):
@@ -175,7 +191,7 @@ def _verify_partial_intent(run, selected, active, stage, old_config, source_run,
     if len(intent) != len(command[2:]) // 2 or active.get("stage_sha256") != _digest(stage):
         raise ValueError("Restart partial intent does not match the expected curriculum stage")
     expected = dict(steps=old_config["steps_per_stage"], seed=old_config["seed"],
-        num_envs=stage_num_envs(old_config, stage), unroll_length=old_config["unroll_length"],
+        num_envs=active.get("num_envs", stage_num_envs(old_config, stage)), unroll_length=old_config["unroll_length"],
         checkpoint_epochs=old_config["checkpoint_epochs"], num_evals=0, global_step_offset=offset,
         run_dir=str(directory), stop_file=str(source_run / "STOP"), wandb_mode=old_config["wandb_mode"],
         wandb_group=old_config["wandb_group"] or source_run.name)
@@ -193,9 +209,134 @@ def _verify_partial_intent(run, selected, active, stage, old_config, source_run,
     scene = load_scene(scene_path)
     if any(run["training_scene"].get(key) != scene[key] for key in ("scene_id", "geometry_hash", "split")) or scene["split"] != "train":
         raise ValueError("Restart partial scene provenance differs from its verified scene bundle")
-    for key in ("warmstart", "source", "code", "training_scene", "validation_scene"):
-        if selected.get("provenance", {}).get(key) != run.get(key):
-            raise ValueError(f"Restart partial selected checkpoint provenance differs at {key}")
+    if selected is not None:
+        for key in ("warmstart", "source", "code", "training_scene", "validation_scene"):
+            if selected.get("provenance", {}).get(key) != run.get(key):
+                raise ValueError(f"Restart partial selected checkpoint provenance differs at {key}")
+
+
+def _assert_no_progress(directory):
+    """Refuse restart/fallback if any completed rollout/checkpoint was observed."""
+    directory = Path(directory)
+    if directory.is_symlink() or not directory.is_dir():
+        raise ValueError("Expected a regular failed stage directory")
+    for name in ("summary.json", "checkpoints/best"):
+        path = directory / name
+        if path.exists() or path.is_symlink():
+            raise ValueError("Failed stage has saved progress; automatic replay is refused")
+    metrics = directory / "metrics.jsonl"
+    if metrics.is_symlink() or (metrics.exists() and metrics.read_text().strip()):
+        raise ValueError("Failed stage has observed training metrics; automatic replay is refused")
+    generations = directory / ".checkpoint-generations"
+    if generations.is_symlink() or (generations.exists() and any(path.name != "owner.json" for path in generations.iterdir())):
+        raise ValueError("Failed stage has checkpoint candidate evidence; automatic replay is refused")
+    failure_path = directory / "failure.json"
+    if failure_path.exists() or failure_path.is_symlink():
+        failure = curriculum._read_json(failure_path)
+        if (failure.get("completed_steps", 0) != 0 or failure.get("metrics_last_step", 0) not in (0, None)
+                or failure.get("completed_update_evidence", False) or failure.get("metrics_present", False)
+                or failure.get("selected_checkpoint") is not None or failure.get("checkpoint_inspection_error")
+                or failure.get("metrics_inspection_error")):
+            raise ValueError("Failed stage error metadata reports progress or an uncertain checkpoint")
+
+
+def _artifact_manifest(directory):
+    """Hash preserved attempt files; record W&B symlinks without following them."""
+    records = {}
+    for path in sorted(Path(directory).rglob("*")):
+        relative = str(path.relative_to(directory))
+        if path.is_symlink():
+            records[relative] = {"symlink": os.readlink(path)}
+        elif path.is_file():
+            records[relative] = {"size": path.stat().st_size, "sha256": curriculum._file_hash(path)}
+    return records
+
+
+def _oom_retry_batch(directory, *, num_envs, attempts, config):
+    """Return one validated smaller batch, or None; never classify generic errors."""
+    if attempts >= config["oom_max_retries"]:
+        return None
+    path = directory / "failure.json"
+    if not path.is_file() or path.is_symlink():
+        return None
+    failure = curriculum._read_json(path)
+    if (failure.get("schema") != "cat-furniture-training-failure-v1"
+            or failure.get("classification") != "gpu_oom"
+            or type(failure.get("completed_steps")) is not int or failure["completed_steps"] != 0
+            or failure.get("completed_update_evidence") is not False
+            or failure.get("metrics_present") is not False
+            or failure.get("selected_checkpoint") is not None
+            or failure.get("checkpoint_inspection_error") or failure.get("metrics_inspection_error")):
+        return None
+    _assert_no_progress(directory)
+    next_count = num_envs // 2
+    if num_envs % 2 or next_count < config["oom_min_num_envs"] or next_count % 4:
+        return None
+    quantum = next_count * config["unroll_length"] * config["checkpoint_epochs"]
+    if config["steps_per_stage"] % quantum:
+        return None
+    return next_count
+
+
+def _verify_oom_archives(state, run_dir):
+    for item in state.get("oom_attempts", []):
+        expected_path = Path("failed_attempts") / item["stage_name"] / f"attempt-{item['attempt']:03d}.json"
+        if (Path(item["stage_name"]).name != item["stage_name"]
+                or Path(item["record"]) != expected_path):
+            raise ValueError("Preserved OOM attempt path was modified")
+        record_path = run_dir / expected_path
+        record = curriculum._read_json(record_path)
+        archive = run_dir / expected_path.with_suffix("")
+        if (record.get("owner") != state["owner"]
+                or record.get("plan_sha256") != state["plan_sha256"]
+                or curriculum._file_hash(record_path) != item["sha256"]
+                or record.get("next_num_envs") != item["next_num_envs"]
+                or record.get("archive") != str(archive)
+                or archive.is_symlink() or not archive.is_dir()
+                or record["files"] != _artifact_manifest(archive)):
+            raise ValueError("Preserved OOM attempt record or files were modified")
+
+
+def _archive_oom_attempt(state, config, run_dir, stage_dir, active, num_envs, next_count, returncode):
+    index = sum(item["stage_name"] == stage_dir.name for item in state.get("oom_attempts", []))
+    parent = run_dir / "failed_attempts"
+    for directory in (parent, parent / stage_dir.name):
+        if directory.is_symlink():
+            raise ValueError("Refusing a symlink OOM archive directory")
+        directory.mkdir(exist_ok=True)
+    record_path = parent / stage_dir.name / f"attempt-{index:03d}.json"
+    archive = record_path.with_suffix("")
+    if record_path.exists() or record_path.is_symlink() or archive.exists() or archive.is_symlink():
+        raise RuntimeError("Interrupted OOM archive preserved; refusing an automatic overwrite")
+    record = dict(schema="cat-continuous-oom-attempt-v1", owner=state["owner"],
+        plan_sha256=config["sha256"], stage_name=stage_dir.name, attempt=index,
+        original_stage_path=str(stage_dir), archive=str(archive), returncode=returncode,
+        num_envs=num_envs, next_num_envs=next_count, active_intent=active,
+        files=_artifact_manifest(stage_dir), progress="no observed rollout/update/checkpoint")
+    # Publish an immutable intent before moving the failed directory. An
+    # interrupted archive is preserved for inspection, never silently replayed.
+    with record_path.open("x") as stream:
+        json.dump(record, stream, indent=2, allow_nan=False)
+        stream.write("\n");stream.flush();os.fsync(stream.fileno())
+    stage_dir.rename(archive)
+    item = dict(stage_name=stage_dir.name, attempt=index, next_num_envs=next_count,
+                record=str(record_path.relative_to(run_dir)), sha256=curriculum._file_hash(record_path))
+    state.setdefault("oom_attempts", []).append(item)
+    state.setdefault("effective_stage_batches", {})[stage_dir.name] = next_count
+    state.update(active_stage=None, status="retrying_gpu_oom")
+
+
+def _stage_capacity(scene, requested, config):
+    if config["estimated_memory_budget_gib"] is None:
+        return {"num_envs": requested, "requested_num_envs": requested, "enabled": False}
+    from cat_ppo.furniture.capacity import estimated_memory_cap
+    decision = estimated_memory_cap(scene, requested, config["estimated_memory_budget_gib"],
+                                    min_envs=config["oom_min_num_envs"])
+    count = decision["num_envs"]
+    if (type(count) is not int or not 0 < count <= requested or count % 4
+            or config["steps_per_stage"] % (count * config["unroll_length"] * config["checkpoint_epochs"])):
+        raise ValueError("Estimated memory cap produced a batch incompatible with the exact stage cadence")
+    return {**decision, "requested_num_envs": requested, "enabled": True}
 
 
 def _import_restart(source_run, run_dir, config, owner):
@@ -221,8 +362,9 @@ def _import_restart(source_run, run_dir, config, owner):
         if (runner.get("active") is not False or runner.get("child_pid") is not None
                 or runner.get("owner") != old_state["owner"]
                 or runner.get("config_sha256") != old_config["sha256"]
-                or old_state.get("status") not in ("stopped_by_request", "stopped_with_partial_stage")):
-            raise ValueError("Restart source must be cooperatively stopped with no active worker")
+                or old_state.get("status") not in ("stopped_by_request", "stopped_with_partial_stage", "failed")):
+            raise ValueError("Restart source must be stopped or failed with no active worker")
+        _verify_oom_archives(old_state, source_run)
         if old_config["seed"] != config["seed"]:
             raise ValueError("Restart must preserve the source curriculum seed")
         previous_selection = old_anchor["imported_selection"] if old_anchor else None
@@ -262,7 +404,7 @@ def _import_restart(source_run, run_dir, config, owner):
                     or summary["native_checkpoint"] != selected["path"]
                     or run["args"]["global_step_offset"] != offset
                     or run["args"]["steps"] != old_config["steps_per_stage"]
-                    or run["args"]["num_envs"] != stage_num_envs(old_config, stage)
+                    or run["args"]["num_envs"] != old_state["active_stage"].get("num_envs", stage_num_envs(old_config, stage))
                     or old_state["active_stage"]["input_selection"] != previous_selection):
                 raise ValueError("Restart partial checkpoint, budget or lineage metadata is inconsistent")
             _verify_source_lineage(run, selected, previous_selection)
@@ -270,6 +412,27 @@ def _import_restart(source_run, run_dir, config, owner):
                                    source_run, directory, offset)
             offset += partial["actual_steps"]
             mode = "replay-interrupted-scene-from-selected-parameters"
+        elif old_state.get("status") == "failed" and old_state.get("active_stage") is not None:
+            if previous_selection is None:
+                raise ValueError("Failed restart source has no verified model to import")
+            stage = stage_spec(next_index, config["seed"])
+            failed_directory = source_run / "stages" / stage["name"]
+            active = old_state["active_stage"]
+            if (active.get("stage_name") != stage["name"] or active.get("stage_sha256") != _digest(stage)
+                    or active.get("input_selection") != previous_selection):
+                raise ValueError("Failed restart stage intent differs from its expected scene or predecessor")
+            _assert_no_progress(failed_directory)
+            failed_run_path = failed_directory / "run.json"
+            if failed_run_path.exists() or failed_run_path.is_symlink():
+                failed_run = curriculum._read_json(failed_run_path)
+                _verify_source_lineage(failed_run, previous_selection, previous_selection)
+                _verify_partial_intent(failed_run, None, active, stage, old_config,
+                                       source_run, failed_directory, offset)
+            directory = source_run / "stages" / old_state["current_stage"] if old_state["completed"] else None
+            selected = curriculum._selected(directory) if directory is not None else _initial_selection(old_anchor)
+            if selected != previous_selection:
+                raise ValueError("Failed restart source predecessor differs from its last verified receipt")
+            mode = "retry-failed-scene-without-observed-progress"
         else:
             if old_state.get("active_stage") is not None or not old_state["completed"]:
                 raise ValueError("Restart source has no clean completed or stopped-partial selection")
@@ -290,12 +453,20 @@ def _import_restart(source_run, run_dir, config, owner):
             source_owner=old_state["owner"], source_config_sha256=old_config["sha256"],
             source_state_sha256=curriculum._file_hash(source_run / "continuous_state.json"),
             source_runner_sha256=curriculum._file_hash(source_run / "runner.json"),
-            source_stage=directory.name, source_run_metadata_sha256=curriculum._file_hash(directory / "run.json"),
-            source_summary_sha256=curriculum._file_hash(directory / "summary.json"),
+            source_stage=directory.name if directory is not None else old_anchor["source_stage"],
+            source_run_metadata_sha256=curriculum._file_hash(directory / "run.json") if directory is not None else None,
+            source_summary_sha256=curriculum._file_hash(directory / "summary.json") if directory is not None else None,
             source_selection=selected, imported_selection=imported_selection,
             resume_stage_index=next_index, global_step_offset=offset, mode=mode,
             optimizer="fresh; actor, critic and normalization parameters retained",
             offset_semantics="all executed source transitions, including work after the selected best checkpoint")
+        if directory is None:
+            anchor.update(source_checkpoint_location="owned_restart_import",
+                source_restart_anchor_sha256=curriculum._file_hash(source_run / "restart_anchor.json"))
+        if mode == "retry-failed-scene-without-observed-progress":
+            anchor["failed_stage"] = dict(name=stage["name"], active_intent=active,
+                files=_artifact_manifest(failed_directory), observed_steps=0,
+                reason="explicit restart from last verified model; no failed-stage metrics/checkpoint")
         curriculum._atomic_json(destination / "owner.json", {"owner": owner, "anchor_sha256": _digest(anchor)})
         return anchor
 
@@ -380,6 +551,7 @@ def _execute_locked(config, run_dir):
         curriculum._atomic_json(run_dir / "continuous_config.json", config)
         curriculum._atomic_json(state_path, state)
     _validate_state(state, config)
+    _verify_oom_archives(state, run_dir)
     anchor = _load_restart_anchor(run_dir, state, config)
     curriculum._reconcile_retirement(state, run_dir)
     _retire_restart_copy(run_dir, state, anchor)
@@ -406,9 +578,25 @@ def _execute_locked(config, run_dir):
                 raise RuntimeError("Stopped partial stage preserved; use its selected checkpoint in an explicitly configured new run")
             index = state.get("start_stage_index", 0) + len(state["completed"])
             stage = stage_spec(index, config["seed"])
-            num_envs = stage_num_envs(config, stage)
+            requested_envs = stage_num_envs(config, stage)
+            attempt_count = sum(item["stage_name"] == stage["name"] for item in state.get("oom_attempts", []))
+            pending_record = run_dir / "failed_attempts" / stage["name"] / f"attempt-{attempt_count:03d}.json"
+            if pending_record.exists() or pending_record.is_symlink() or pending_record.with_suffix("").exists():
+                raise RuntimeError("Interrupted OOM archive preserved; no automatic replay before inspection")
             scene_dir = curriculum.materialize_stage(stage["scene"], run_dir / "scenes")
             scene = load_scene(scene_dir)
+            capacity = _stage_capacity(scene, requested_envs, config)
+            capacity.update(scene_id=scene["scene_id"], geometry_hash=scene["geometry_hash"],
+                            stage_name=stage["name"], plan_sha256=config["sha256"])
+            num_envs = min(capacity["num_envs"], state.get("effective_stage_batches", {}).get(stage["name"], capacity["num_envs"]))
+            previous_capacity = state.setdefault("capacity_decisions", {}).get(stage["name"])
+            if previous_capacity is not None and previous_capacity != capacity:
+                raise ValueError("Estimated capacity decision changed within an existing stage")
+            state["capacity_decisions"][stage["name"]] = capacity
+            capacity_path = run_dir / (stage["name"] + ".capacity.json")
+            if capacity_path.exists() and curriculum._read_json(capacity_path) != capacity:
+                raise ValueError("Recorded stage capacity decision was modified")
+            curriculum._atomic_json(capacity_path, capacity)
             # A stop can arrive during expensive field materialization.
             if stop_file.exists():
                 continue
@@ -430,7 +618,8 @@ def _execute_locked(config, run_dir):
             previous_selection = curriculum._selected(previous) if previous is not None else _initial_selection(anchor)
             if previous_selection is not None:
                 command += ["--warmstart", previous_selection["path"]]
-            active = dict(owner=state["owner"], stage_name=stage["name"], stage_sha256=_digest(stage),
+            active = dict(owner=state["owner"], stage_name=stage["name"], stage_sha256=_digest(stage), num_envs=num_envs,
+                          capacity=capacity,
                           input_selection=previous_selection, command=command)
             if state.get("active_stage") is not None and state["active_stage"] != active:
                 raise ValueError("Interrupted continuous stage intent differs from saved intent")
@@ -439,7 +628,31 @@ def _execute_locked(config, run_dir):
             state.update(active_stage=active, status="training")
             curriculum._atomic_json(state_path, state)
             if not stage_dir.exists():
-                _run_child(command, cwd=root, runner_record=runner, runner_path=runner_path)
+                try:
+                    _run_child(command, cwd=root, runner_record=runner, runner_path=runner_path)
+                except subprocess.CalledProcessError as error:
+                    if stop_file.exists():
+                        raise
+                    next_count = _oom_retry_batch(stage_dir, num_envs=num_envs, attempts=attempt_count, config=config)
+                    if next_count is None:
+                        raise
+                    failure = curriculum._read_json(stage_dir / "failure.json")
+                    if (failure.get("requested_steps") != config["steps_per_stage"]
+                            or failure.get("global_step_offset") != state["completed_transitions"]
+                            or failure.get("stage") != stage["name"]
+                            or failure.get("run_dir") != str(stage_dir)):
+                        raise ValueError("OOM metadata differs from the active stage budget/offset") from error
+                    if (stage_dir / "run.json").exists():
+                        failed_run = curriculum._read_json(stage_dir / "run.json")
+                        _verify_source_lineage(failed_run, {"selection_source": "training_proxy"}, previous_selection)
+                        _verify_partial_intent(failed_run, None, active, stage, config,
+                                               run_dir, stage_dir, state["completed_transitions"])
+                    _archive_oom_attempt(state, config, run_dir, stage_dir, active,
+                                         num_envs, next_count, error.returncode)
+                    curriculum._atomic_json(state_path, state)
+                    print(f"GPU OOM before training progress: preserved attempt {attempt_count}; "
+                          f"retrying {stage['name']} with {next_count} environments (was {num_envs}).", flush=True)
+                    continue
             if not (stage_dir / "summary.json").is_file():
                 raise RuntimeError(f"Incomplete stage preserved at {stage_dir}; no silent retry or overwrite")
             summary = curriculum._read_json(stage_dir / "summary.json")
@@ -466,7 +679,7 @@ def _execute_locked(config, run_dir):
             selected, receipt = curriculum._verify_stage(stage_dir, plan=verification_plan, stage=stage,
                 scene=scene, scene_dir=scene_dir, previous_selection=previous_selection, active=active)
             state["completed"].append(dict(name=stage["name"], scene_id=scene["scene_id"],
-                actual_steps=summary["actual_steps"], selected_step=selected["step"],
+                actual_steps=summary["actual_steps"], selected_step=selected["step"], num_envs=num_envs,
                 summary_sha256=receipt["summary_sha256"],
                 receipt_sha256=curriculum._file_hash(stage_dir / "curriculum_receipt.json")))
             state.update(current_stage=stage["name"], current_best=str(stage_dir / "checkpoints" / "best"),
@@ -516,7 +729,12 @@ def main():
     run.add_argument("--generic-num-envs", type=int, help="Generic dense clutter batch override")
     run.add_argument("--furniture-num-envs", type=int, help="Furniture dense clutter batch override")
     run.add_argument("--restart-from-run", type=Path,
-                     help="Import a stopped run's selected parameters and continue its curriculum/step offset")
+                     help="Import a stopped/failed run's verified parameters and curriculum/step offset")
+    run.add_argument("--oom-max-retries", type=int, default=2,
+                     help="Bounded batch halvings after GPU OOM before any observed training progress")
+    run.add_argument("--oom-min-num-envs", type=int, default=128, help="Minimum automatic OOM fallback batch")
+    run.add_argument("--estimated-memory-budget-gib", type=float,
+                     help="Optional geometric memory estimate used to cap scene batches before launch")
     run.add_argument("--seed", type=int, default=0)
     run.add_argument("--checkpoint-epochs", type=int, default=16)
     run.add_argument("--wandb-mode", choices=("online", "offline", "disabled"), default="online")

@@ -1,0 +1,209 @@
+{
+  "schema": "cat-dense-capacity-restart-assessment-v1",
+  "host": "dep-0 / WS012743",
+  "gpu": "NVIDIA GeForce RTX 5090",
+  "failed_run": "outputs/continuous_cat_dex3_20260915_large",
+  "source_commit": "12a4ad8f1b03fc319db03d9d0dab6b8278f549a3",
+  "assessment_method": "Read-only full-PPO logs, completed epoch allocator metrics, and CPU-only scene generation. No GPU work or training was performed for this assessment.",
+  "failure": {
+    "stage": "r000001-p0-generic",
+    "num_envs": 2048,
+    "boxes": 91,
+    "completed_global_transitions_before_failure": 102301696,
+    "allocator_fraction": 0.93,
+    "allocator_limit_bytes": 31343487462,
+    "hlo_reported_memory_after_rematerialization_bytes": 22759167616,
+    "hlo_reported_memory_after_rematerialization_gib": 21.2,
+    "failed_allocation_bytes": 4379648000,
+    "error": "RESOURCE_EXHAUSTED: Out of memory while trying to allocate 4379648000 bytes.",
+    "note": "The HLO report is not the complete process live-memory peak. The failed request alone is not the total missing memory. The prior standalone-step buffer estimate did not account for the complete PPO memory requirement."
+  },
+  "completed_full_ppo_comparisons": [
+    {
+      "stage": "r000000-p1-cat-hurdle1",
+      "num_envs": 8192,
+      "boxes": 5,
+      "peak_live_bytes": 16968134144,
+      "steady_sps": 9308.139077094522,
+      "peak_live_gib": 15.802806377410889,
+      "empirical_envelope_gib": 18
+    },
+    {
+      "stage": "r000000-p2-cat-side0",
+      "num_envs": 8192,
+      "boxes": 6,
+      "peak_live_bytes": 18893485056,
+      "steady_sps": 11264.352782807668,
+      "peak_live_gib": 17.59592914581299,
+      "empirical_envelope_gib": 20
+    },
+    {
+      "stage": "r000000-p5-cat-side-hurdle-crouch0",
+      "num_envs": 8192,
+      "boxes": 8,
+      "peak_live_bytes": 22803456256,
+      "steady_sps": 7414.207919757635,
+      "peak_live_gib": 21.23737359046936,
+      "empirical_envelope_gib": 24
+    },
+    {
+      "stage": "r000000-p1-furniture",
+      "num_envs": 4096,
+      "boxes": 17,
+      "peak_live_bytes": 19624540416,
+      "steady_sps": 4787.829931721739,
+      "peak_live_gib": 18.276777505874634,
+      "empirical_envelope_gib": 21
+    },
+    {
+      "stage": "r000000-p4-cat-random",
+      "num_envs": 2048,
+      "boxes": 42,
+      "peak_live_bytes": 21543398656,
+      "steady_sps": 2257.520907111708,
+      "peak_live_gib": 20.06385350227356,
+      "empirical_envelope_gib": 23
+    }
+  ],
+  "empirical_envelope": {
+    "formula": "estimated_GiB = num_envs * (1 + 0.25 * primitive_boxes) / 1024",
+    "status": "Rounded empirical upper envelope over the listed completed runs, not a certified bound or measured dense result.",
+    "observed_margin_over_completed_runs_percent": [
+      {
+        "stage": "r000000-p1-cat-hurdle1",
+        "percent": 13.903819170561116
+      },
+      {
+        "stage": "r000000-p2-cat-side0",
+        "percent": 13.662653641447896
+      },
+      {
+        "stage": "r000000-p5-cat-side-hurdle-crouch0",
+        "percent": 13.008324206202303
+      },
+      {
+        "stage": "r000000-p1-furniture",
+        "percent": 14.899905047539441
+      },
+      {
+        "stage": "r000000-p4-cat-random",
+        "percent": 14.634010846389645
+      }
+    ],
+    "limitations": [
+      "Compiler scheduling, rematerialization, contact types, map shape and allocator fragmentation can change peaks.",
+      "Completed full PPO measurements are the basis; standalone MJX-step extrapolation is deliberately not reused.",
+      "Two completed epochs on the restarted dense scene are required to establish actual allocation and throughput."
+    ]
+  },
+  "dense_predictions": [
+    {
+      "domain": "generic_dense",
+      "boxes": 91,
+      "num_envs": 512,
+      "empirical_envelope_gib": 11.875,
+      "recommended": false,
+      "measured_on_this_dense_batch": false,
+      "compatible_with_8388608_steps_and_64_checkpoint_epochs": true
+    },
+    {
+      "domain": "generic_dense",
+      "boxes": 91,
+      "num_envs": 768,
+      "empirical_envelope_gib": 17.8125,
+      "recommended": false,
+      "measured_on_this_dense_batch": false,
+      "compatible_with_8388608_steps_and_64_checkpoint_epochs": false
+    },
+    {
+      "domain": "generic_dense",
+      "boxes": 91,
+      "num_envs": 1024,
+      "empirical_envelope_gib": 23.75,
+      "recommended": true,
+      "measured_on_this_dense_batch": false,
+      "compatible_with_8388608_steps_and_64_checkpoint_epochs": true
+    },
+    {
+      "domain": "furniture_dense",
+      "boxes": 298,
+      "num_envs": 128,
+      "empirical_envelope_gib": 9.4375,
+      "recommended": false,
+      "measured_on_this_dense_batch": false,
+      "compatible_with_8388608_steps_and_64_checkpoint_epochs": true
+    },
+    {
+      "domain": "furniture_dense",
+      "boxes": 298,
+      "num_envs": 256,
+      "empirical_envelope_gib": 18.875,
+      "recommended": true,
+      "measured_on_this_dense_batch": false,
+      "compatible_with_8388608_steps_and_64_checkpoint_epochs": true
+    },
+    {
+      "domain": "furniture_dense",
+      "boxes": 298,
+      "num_envs": 512,
+      "empirical_envelope_gib": 37.75,
+      "recommended": false,
+      "measured_on_this_dense_batch": false,
+      "compatible_with_8388608_steps_and_64_checkpoint_epochs": true
+    }
+  ],
+  "proposed_restart": {
+    "generic_dense_num_envs": 1024,
+    "furniture_dense_num_envs": 256,
+    "allocator_fraction": 0.9,
+    "checkpoint_epochs": 64,
+    "checkpoint_interval_transitions": 131072,
+    "unroll_length": 16,
+    "stage_transition_budget": 8388608,
+    "verification": "Observe first and second completed PPO epochs, including live peak bytes, allocator limit, GPU utilization and advancing transitions."
+  },
+  "parallel_contact_workload": {
+    "known_saturated_light_8192_potential_contact_slots": 2695168,
+    "generic_dense_1024_potential_contact_slots": 3905536,
+    "furniture_dense_256_potential_contact_slots": 3149056,
+    "note": "Comparable or larger batched contact workloads support useful GPU occupancy; these counts do not prove a particular utilization or throughput."
+  },
+  "future_random_scene_check": [
+    {
+      "round": 0,
+      "seed": 4,
+      "difficulty": 0.35,
+      "boxes": 42,
+      "empirical_envelope_gib_at_2048": 23
+    },
+    {
+      "round": 1,
+      "seed": 104,
+      "difficulty": 0.5,
+      "boxes": 32,
+      "empirical_envelope_gib_at_2048": 18
+    },
+    {
+      "round": 2,
+      "seed": 204,
+      "difficulty": 0.65,
+      "boxes": 53,
+      "empirical_envelope_gib_at_2048": 28.5
+    },
+    {
+      "round": 3,
+      "seed": 304,
+      "difficulty": 0.8,
+      "boxes": 56,
+      "empirical_envelope_gib_at_2048": 30
+    },
+    {
+      "round": 4,
+      "seed": 404,
+      "difficulty": 0.8,
+      "boxes": 79,
+      "empirical_envelope_gib_at_2048": 41.5
+    }
+  ],
+  "future_random_recommendation": "Use 1024 environments or a geometry-aware cap for later randomized CAT scenes; the completed 2048-environment 42-box case does not validate the more complex later seeds."
+}

@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import argparse
+import datetime
 import functools
 import hashlib
 import json
@@ -10,6 +11,142 @@ import os
 from pathlib import Path
 import sys
 import subprocess
+import tempfile
+
+
+def _failure_classification(error, *, gpu_execution=False):
+    """Recognize explicit device allocator OOMs, not arbitrary resource errors."""
+    messages, seen = [], set()
+    current = error
+    while current is not None and id(current) not in seen:
+        seen.add(id(current))
+        messages.append((str(current).lower(), type(current).__module__.lower(), type(current).__name__.lower()))
+        current = current.__cause__ or current.__context__
+    for message, module, name in messages:
+        explicitly_host = ("cpu" in message or "host memory" in message
+                           or name == "memoryerror" or module.startswith("numpy"))
+        if any(marker in message for marker in (
+                "cuda_error_out_of_memory", "cuda out of memory", "hiperroroutofmemory")):
+            return "gpu_oom"
+        exhausted = "resource_exhausted" in message
+        out_of_memory = "out of memory" in message or "out_of_memory" in message
+        allocation = any(marker in message for marker in ("allocate", "allocation", "allocator", "_bfc"))
+        gpu = any(marker in message for marker in ("gpu", "cuda", "cudnn", "cublas", "rocm"))
+        if out_of_memory and allocation and (gpu or (gpu_execution and exhausted and not explicitly_host)):
+            return "gpu_oom"
+    return "other"
+
+
+def _atomic_failure_json(path, record):
+    path = Path(path)
+    if path.is_symlink():
+        raise ValueError("Refusing symlink failure metadata")
+    temporary = None
+    try:
+        with tempfile.NamedTemporaryFile(mode="w", dir=path.parent, prefix=".failure-", delete=False) as stream:
+            temporary = Path(stream.name)
+            stream.write(json.dumps(record, indent=2, allow_nan=False) + "\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+        os.replace(temporary, path)
+    finally:
+        if temporary is not None and temporary.exists():
+            temporary.unlink()
+
+
+def _cleanup_warning(action, error):
+    # Diagnostic/telemetry failures must never replace the original training
+    # exception, including when a logging backend's finish method fails.
+    try:
+        print(f"Training cleanup warning ({action}): {type(error).__name__}: {error}", file=sys.stderr)
+    except BaseException:
+        pass
+
+
+class _TrainingAttempt:
+    """Failure telemetry for one newly owned run directory; no training work."""
+
+    def __init__(self, args):
+        self.args = args
+        self.phase = "dependency_imports"
+        self.wandb_run = None
+        self.gpu_execution = False
+        self.metrics_step = self.scored_step = self.final_steps = 0
+
+    def observe_progress(self, step):
+        self.metrics_step = max(self.metrics_step, int(step))
+
+    def failure_record(self, error):
+        directory = self.args.run_dir
+        metrics_path = directory / "metrics.jsonl"
+        metrics_present = metrics_path.exists() or metrics_path.is_symlink()
+        last_step, last_metrics, metrics_error = None, None, None
+        try:
+            if metrics_present:
+                if metrics_path.is_symlink() or not metrics_path.is_file():
+                    raise ValueError("Expected regular metrics.jsonl")
+                with metrics_path.open() as stream:
+                    for line in stream:
+                        row = json.loads(line, parse_constant=lambda value: (_ for _ in ()).throw(ValueError(value)))
+                        if type(row.get("step")) is not int or row["step"] < 0:
+                            raise ValueError("Invalid reported metric step")
+                        if last_step is None or row["step"] >= last_step:
+                            last_step, last_metrics = row["step"], row.get("metrics", {})
+        except BaseException as inspection_error:
+            metrics_error = f"{type(inspection_error).__name__}: {inspection_error}"
+        selected, checkpoint_error = None, None
+        best = directory / "checkpoints" / "best"
+        try:
+            if best.exists() or best.is_symlink():
+                from cat_ppo.furniture.checkpoint import BestCheckpointStore
+                selected = BestCheckpointStore.open_existing(directory).selected(verify=True)
+        except BaseException as inspection_error:
+            checkpoint_error = f"{type(inspection_error).__name__}: {inspection_error}"
+        selected_step = int(selected["step"]) if selected is not None else 0
+        completed = max(self.metrics_step, self.scored_step, self.final_steps, last_step or 0, selected_step)
+        candidates_present = any((directory / ".checkpoint-generations").glob("candidate-*"))
+        evidence = bool(completed > 0 or selected is not None or candidates_present or metrics_error or checkpoint_error)
+        return dict(schema="cat-furniture-training-failure-v1",
+            recorded_at=datetime.datetime.now(datetime.timezone.utc).isoformat(),
+            exception_type=type(error).__name__, error_type=type(error).__name__,
+            exception_module=type(error).__module__, message=str(error),
+            classification=_failure_classification(error, gpu_execution=self.gpu_execution),
+            gpu_execution=self.gpu_execution, phase=self.phase,
+            stage=directory.name, run_dir=str(directory),
+            requested_steps=int(self.args.steps), global_step_offset=int(self.args.global_step_offset),
+            completed_steps=completed, actual_steps=completed,
+            completed_steps_semantics="lower bound from reported metric/scored/final/checkpoint steps; unreported optimizer work is unknown",
+            completed_update_evidence=evidence, metrics_present=metrics_present,
+            metrics_last_step=last_step, latest_metrics=last_metrics,
+            metrics_inspection_error=metrics_error, selected_checkpoint=selected,
+            checkpoint_inspection_error=checkpoint_error, checkpoint_candidates_present=candidates_present)
+
+    def finish(self, *, exit_code, failure=None):
+        if self.wandb_run is None:
+            return
+        if failure is not None:
+            try:
+                self.wandb_run.summary.update({
+                    "failure/classification": failure["classification"],
+                    "failure/exception_type": failure["exception_type"],
+                    "failure/message": failure["message"], "failure/phase": failure["phase"],
+                    "failure/completed_steps": failure["completed_steps"],
+                    "failure/global_step": self.args.global_step_offset + failure["completed_steps"]})
+            except BaseException as cleanup_error:
+                _cleanup_warning("W&B failure summary", cleanup_error)
+        try:
+            self.wandb_run.finish(exit_code=exit_code)
+        except BaseException as cleanup_error:
+            _cleanup_warning("W&B finish", cleanup_error)
+
+    def fail(self, error):
+        failure = None
+        try:
+            failure = self.failure_record(error)
+            _atomic_failure_json(self.args.run_dir / "failure.json", failure)
+        except BaseException as cleanup_error:
+            _cleanup_warning("failure.json", cleanup_error)
+        self.finish(exit_code=1, failure=failure)
 
 
 def parser():
@@ -123,13 +260,14 @@ def _wilson_interval(rate, count):
     return max(0.0, center-radius), min(1.0, center+radius)
 
 
-def _train(args, stop_request):
+def _train(args, stop_request, attempt):
     os.environ.setdefault("XLA_PYTHON_CLIENT_PREALLOCATE", "false")
     os.environ.setdefault("MUJOCO_GL", "egl")
     import jax
     # Match exported float32 inference rather than backend-dependent reduced
     # precision GEMM. This setting is explicit and recorded in every new run.
     jax.config.update("jax_default_matmul_precision", "highest")
+    attempt.gpu_execution = any(device.platform in ("gpu", "cuda", "rocm") for device in jax.devices())
     import jax.numpy as jnp
     import numpy as np
     from brax.training.acme import running_statistics, specs
@@ -142,15 +280,13 @@ def _train(args, stop_request):
     from cat_ppo.furniture.training import wrap_for_furniture_training
     from cat_ppo.learning.policy.ppo import train as native_ppo
 
-    args.run_dir = args.run_dir.absolute()
-    if args.run_dir.is_symlink() or (args.run_dir.exists() and any(args.run_dir.iterdir())):
-        raise ValueError("run-dir must be new or empty; existing runs are never overwritten")
+    attempt.phase = "scene_validation"
     training_scene = _scene_provenance(args.scene_dir, "train")
     validation_scene = _scene_provenance(args.validation_scene_dir, "validation") if args.num_evals else None
     if validation_scene and training_scene["geometry_hash"] == validation_scene["geometry_hash"]:
         raise ValueError("Training and validation geometry hashes must differ")
     code_provenance = _code_provenance()
-    args.run_dir.mkdir(parents=True, exist_ok=True)
+    attempt.phase = "environment_setup"
     config = default_config()
     config.action_dofs = args.action_dofs
     if args.env_config_json:
@@ -169,6 +305,7 @@ def _train(args, stop_request):
         "upper_body_mode": config.get("upper_body_mode", "learned"),
     }
     source, source_config = None, None
+    attempt.phase = "warmstart_and_network_setup"
     source_contract = legacy_observation_contract()
     source_provenance = {"kind": "from_scratch"}
     if not args.from_scratch:
@@ -237,11 +374,13 @@ def _train(args, stop_request):
         "devices": [str(device) for device in jax.devices()]}
     (args.run_dir / "run.json").write_text(json.dumps(record, indent=2, allow_nan=False) + "\n")
     wandb_run = None
+    attempt.phase = "wandb_initialization"
     if args.wandb_mode != "disabled":
         import wandb
         wandb_run = wandb.init(project=args.wandb_project, mode=args.wandb_mode,
                               entity=args.wandb_entity, group=args.wandb_group,
                               name=args.run_dir.name, dir=str(args.run_dir), config=record)
+        attempt.wandb_run = wandb_run
         wandb_run.define_metric("global_step")
         wandb_run.define_metric("*", step_metric="global_step")
         (args.run_dir / "wandb.json").write_text(json.dumps({
@@ -250,6 +389,7 @@ def _train(args, stop_request):
             "global_step_offset": args.global_step_offset}, indent=2) + "\n")
 
     def progress(step, metrics):
+        attempt.observe_progress(step)
         scalars = {key: float(np.asarray(value)) for key, value in metrics.items() if np.asarray(value).ndim == 0}
         finite = {key: value for key, value in scalars.items() if math.isfinite(value)}
         finite.update(stage_step=int(step), global_step=args.global_step_offset + int(step))
@@ -263,6 +403,7 @@ def _train(args, stop_request):
 
     def scored(step, make_policy, params, network_config, metrics, score_source):
         del make_policy
+        attempt.scored_step = max(attempt.scored_step, int(step))
         if score_source == "training_proxy":
             selected_metrics = {"proxy_score": float(metrics["training/rollout_reward_mean"])}
         else:
@@ -283,53 +424,68 @@ def _train(args, stop_request):
                                    "code": code_provenance, "training_scene": training_scene,
                                    "validation_scene": validation_scene})
 
-    try:
-        _, final_params, final_metrics = native_ppo.train(environment=environment, num_timesteps=args.steps,
-            num_envs=args.num_envs, episode_length=environment.episode_length, action_repeat=1,
-            randomize_initial_episode_steps=False, wrap_env_fn=wrap_for_furniture_training,
-            batch_size=args.num_envs // args.num_minibatches, num_minibatches=args.num_minibatches,
-            unroll_length=args.unroll_length, num_updates_per_batch=args.updates_per_batch,
-            learning_rate=args.learning_rate, entropy_cost=.01, discounting=.97, gae_lambda=.95,
-            clipping_epsilon=.2, max_grad_norm=1.0, normalize_observations=normalize,
-            network_factory=factory, seed=args.seed, num_evals=args.num_evals,
-            num_eval_envs=args.num_eval_envs, eval_env=validation_env, deterministic_eval=True,
-            eval_episode_length=validation_env.episode_length if validation_env is not None else None,
-            log_training_metrics=True, training_metrics_buffer_size=100,
-            training_metrics_steps=record["training_telemetry"]["logging_interval_transitions"],
-            progress_fn=progress, restore_params=target,
-            restore_value_fn=True, save_checkpoint_path=None, scored_checkpoint_fn=scored,
-            num_training_epochs=args.checkpoint_epochs if args.num_evals == 0 else None,
-            should_stop_fn=stop_request.requested)
-        selected = store.selected(verify=True)
-        if selected is None:
-            raise RuntimeError("Training completed without a finite scored checkpoint")
-        actor_delta = max(float(np.max(np.abs(np.asarray(a) - np.asarray(b))))
-                          for a, b in zip(jax.tree.leaves(target[1]), jax.tree.leaves(final_params[1])))
-        summary = {"requested_steps": args.steps, "selected_step": selected["step"],
-                   "actual_steps": int(final_metrics["training/completed_steps"]),
-                   "stopped_by_request": bool(final_metrics["training/stopped_by_request"]),
-                   "stop_reason": stop_request.reason,
-                   "selection_source": selected["selection_source"], "selected_score": selected["score"],
-                   "actor_max_abs_parameter_update": actor_delta, "native_checkpoint": selected["path"]}
-        if args.export_onnx:
-            from cat_ppo.furniture.export import export_selected
-            summary["export"] = export_selected(args.run_dir)
-        (args.run_dir / "summary.json").write_text(json.dumps(summary, indent=2, allow_nan=False) + "\n")
-        display = {**summary}
-        if "export" in display:
-            display["export"] = {key: value for key, value in display["export"].items() if key != "contract"}
-        print(json.dumps(display, indent=2))
-        return summary
-    finally:
-        if wandb_run:
-            wandb_run.finish()
+    attempt.phase = "training"
+    _, final_params, final_metrics = native_ppo.train(environment=environment, num_timesteps=args.steps,
+        num_envs=args.num_envs, episode_length=environment.episode_length, action_repeat=1,
+        randomize_initial_episode_steps=False, wrap_env_fn=wrap_for_furniture_training,
+        batch_size=args.num_envs // args.num_minibatches, num_minibatches=args.num_minibatches,
+        unroll_length=args.unroll_length, num_updates_per_batch=args.updates_per_batch,
+        learning_rate=args.learning_rate, entropy_cost=.01, discounting=.97, gae_lambda=.95,
+        clipping_epsilon=.2, max_grad_norm=1.0, normalize_observations=normalize,
+        network_factory=factory, seed=args.seed, num_evals=args.num_evals,
+        num_eval_envs=args.num_eval_envs, eval_env=validation_env, deterministic_eval=True,
+        eval_episode_length=validation_env.episode_length if validation_env is not None else None,
+        log_training_metrics=True, training_metrics_buffer_size=100,
+        training_metrics_steps=record["training_telemetry"]["logging_interval_transitions"],
+        progress_fn=progress, restore_params=target,
+        restore_value_fn=True, save_checkpoint_path=None, scored_checkpoint_fn=scored,
+        num_training_epochs=args.checkpoint_epochs if args.num_evals == 0 else None,
+        should_stop_fn=stop_request.requested)
+    attempt.final_steps = int(final_metrics["training/completed_steps"])
+    attempt.phase = "checkpoint_verification"
+    selected = store.selected(verify=True)
+    if selected is None:
+        raise RuntimeError("Training completed without a finite scored checkpoint")
+    actor_delta = max(float(np.max(np.abs(np.asarray(a) - np.asarray(b))))
+                      for a, b in zip(jax.tree.leaves(target[1]), jax.tree.leaves(final_params[1])))
+    summary = {"requested_steps": args.steps, "selected_step": selected["step"],
+               "actual_steps": attempt.final_steps,
+               "stopped_by_request": bool(final_metrics["training/stopped_by_request"]),
+               "stop_reason": stop_request.reason,
+               "selection_source": selected["selection_source"], "selected_score": selected["score"],
+               "actor_max_abs_parameter_update": actor_delta, "native_checkpoint": selected["path"]}
+    if args.export_onnx:
+        attempt.phase = "export"
+        from cat_ppo.furniture.export import export_selected
+        summary["export"] = export_selected(args.run_dir)
+    attempt.phase = "summary"
+    (args.run_dir / "summary.json").write_text(json.dumps(summary, indent=2, allow_nan=False) + "\n")
+    display = {**summary}
+    if "export" in display:
+        display["export"] = {key: value for key, value in display["export"].items() if key != "contract"}
+    print(json.dumps(display, indent=2))
+    attempt.phase = "complete"
+    return summary
 
 
 def train(args):
     from cat_ppo.furniture.run_control import StopRequest
     _validate(args)
-    with StopRequest(args.stop_file) as stop_request:
-        return _train(args, stop_request)
+    args.run_dir = args.run_dir.absolute()
+    if args.run_dir.is_symlink() or (args.run_dir.exists() and any(args.run_dir.iterdir())):
+        raise ValueError("run-dir must be new or empty; existing runs are never overwritten")
+    args.run_dir.mkdir(parents=True, exist_ok=True)
+    attempt = _TrainingAttempt(args)
+    try:
+        with StopRequest(args.stop_file) as stop_request:
+            summary = _train(args, stop_request, attempt)
+        if attempt.phase != "complete" or not (args.run_dir / "summary.json").is_file():
+            raise RuntimeError("Training returned before export and summary completion")
+    except BaseException as error:
+        attempt.fail(error)
+        raise
+    attempt.finish(exit_code=0)
+    return summary
 
 
 if __name__ == "__main__":
