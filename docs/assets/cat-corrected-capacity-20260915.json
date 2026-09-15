@@ -1,0 +1,65 @@
+{
+  "schema": "cat-compile-only-capacity-v1",
+  "status": "compiled_not_executed",
+  "source": {
+    "git_commit": "40b4dd2682dd4e5d75a6b853c24333da99379cf3",
+    "source_sha256": "14292904cb7065229cbba32f90ca43ff1084260e5053239f28f54e7d7617ef2d"
+  },
+  "training_updates_executed": 0,
+  "wandb_initialized": false,
+  "checkpoints_written": false,
+  "requested_num_envs": 8192,
+  "requested_batch_size": 512,
+  "allocator_fraction": 0.9,
+  "limitation": "Compiler estimate and compile-time allocation only; no observed training-update peak or runtime stability claim.",
+  "resident_field_array_bytes": 339284400,
+  "model_array_logical_bytes": 11815306,
+  "constant_accounting_note": "All memory-analysis byte fields are retained, including constant fields when exposed. This JAX backend may not separately itemize executable constants. Resident field/model sizes and allocator stats are recorded separately; do not add them blindly to the executable estimate because buffers may overlap.",
+  "allocator_before_compile": {
+    "num_allocs": 1659,
+    "bytes_in_use": 1685115648,
+    "peak_bytes_in_use": 1718768896,
+    "largest_alloc_size": 268435456,
+    "bytes_limit": 30340368809,
+    "bytes_reserved": 0,
+    "peak_bytes_reserved": 0,
+    "largest_free_block_bytes": 0,
+    "pool_bytes": 2317352960,
+    "peak_pool_bytes": 2317352960
+  },
+  "actual_argument_tree_logical_bytes": 1105827852,
+  "lowering_argument_adapter": "flatten actual input/output arrays; rebuild native input pytree inside unchanged training_epoch",
+  "flat_argument_leaf_count": 477,
+  "compiler_memory_bytes": {
+    "alias_size_in_bytes": 0,
+    "argument_size_in_bytes": 1105827852,
+    "generated_code_size_in_bytes": 1031285380,
+    "host_alias_size_in_bytes": 0,
+    "host_argument_size_in_bytes": 0,
+    "host_generated_code_size_in_bytes": 0,
+    "host_output_size_in_bytes": 0,
+    "host_temp_size_in_bytes": 0,
+    "output_size_in_bytes": 1105831712,
+    "temp_size_in_bytes": 20421501336
+  },
+  "estimated_executable_live_buffer_bytes": 22633160900,
+  "compile_seconds": 117.31,
+  "allocator_after_compile": {
+    "num_allocs": 2295,
+    "bytes_in_use": 1685115648,
+    "peak_bytes_in_use": 1944114176,
+    "largest_alloc_size": 268435456,
+    "bytes_limit": 30340368809,
+    "bytes_reserved": 0,
+    "peak_bytes_reserved": 0,
+    "largest_free_block_bytes": 0,
+    "pool_bytes": 2317352960,
+    "peak_pool_bytes": 2317352960
+  },
+  "interception": {
+    "registered": 1,
+    "called": 1
+  },
+  "elapsed_seconds": 171.642,
+  "observed_compile_gpu_used_peak_mib": 3681
+}

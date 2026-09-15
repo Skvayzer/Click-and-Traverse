@@ -6,6 +6,8 @@ This branch extends the released Click-and-Traverse generalist with 29 body acti
 
 Corrected learned traversal success has not yet been demonstrated. See [correction and validation](docs/CAT_SETUP_CORRECTION.md), [field provenance](docs/CAT_FIELD_BANK.md), and [visuals](docs/VISUALS.md).
 
+Corrected continuous training restarted on dep-0 on September 15 with 8,192 environments and [one W&B run](https://wandb.ai/skvayzer/CAT-wholebody/runs/1d39c55c). [Run settings, capacity evidence and stop command](docs/CORRECTED_RUN_20260915.md).
+
 ## Preserved CAT behavior
 
 The reference is upstream commit `866ba392f1c1e84b92ad75fa66550f26e8af8e48`, the checksum-pinned [released configuration](configs/cat_generalist_released.json), and public native generalist checkpoint `005033164800` at revision `46ce4b57ba0639168d51741b661ff62f7ce6f045`. The final generalist already completed distillation; direct PPO fine-tuning restores actor and critic and initializes Adam once.
@@ -32,7 +34,7 @@ The prepared bank has **36 byte-verified released fields, one explicitly reconst
 
 Furniture has nine tables and 36 chairs with separate tops, seats, backs and legs. Generic clutter uses blocks, partitions and shelves. Both use 4 cm occupancy and CAT's original progressive 3D fast marching, SDF and boundary-gradient functions. The former route-lookahead training field is retired. Ragged storage preserves original coordinates, boundaries and samples without padding every field to room size.
 
-| PPO setting | Released CAT | Single 32 GB GPU profile |
+| PPO setting | Released CAT | Active dep-0 run |
 |---|---:|---:|
 | Learning rate / entropy / discount | 0.0003 / 0.003 / 0.98 | same |
 | Unroll / minibatches / passes | 32 / 64 / 4 | same |
@@ -40,12 +42,12 @@ Furniture has nine tables and 36 chairs with separate tops, seats, backs and leg
 | Observation normalization | disabled | same |
 | Actor hidden layers | 512,256,128,64 | same |
 | Critic hidden layers | 1024,512,256,128 | same |
-| Parallel environments | 65,536 | 2,048, provisional |
-| Trajectories per minibatch | 2,048 | 256 |
-| Transitions per update | 4,194,304 | 524,288 |
-| Rollout chunks per update | 2 | 8 |
+| Parallel environments | 65,536 | 8,192 |
+| Trajectories per minibatch | 2,048 | 512 |
+| Transitions per update | 4,194,304 | 1,048,576 |
+| Rollout chunks per update | 2 | 4 |
 
-The hardware profile explicitly reduces optimizer batch size eightfold: expanded observations make the original full rollout too large for a 32 GB GPU. Changing `--num-envs` changes parallelism/chunk count, **not** minibatch size or transitions per update. The default is not a claim of maximum GPU capacity; memory must be checked on the target GPU before increasing it.
+The active run explicitly reduces optimizer batch size fourfold: expanded observations make the original full rollout too large for this 32 GB GPU. Changing `--num-envs` changes parallelism/chunk count, **not** minibatch size or transitions per update. The conservative CLI defaults remain 2,048 environments and 256 trajectories per minibatch; the active run overrides both after the GPU capacity check and sets the allocator fraction to 0.90.
 
 ## Setup and commands
 
@@ -62,10 +64,12 @@ export XLA_PYTHON_CLIENT_PREALLOCATE=false
 
 `plan` prints settings. `validate` checks fields, observation shapes and native weight mapping without training. Prepared fields and pinned weights are reused.
 
-When deliberately launching on dep-0:
+To launch another run with the checked dep-0 settings, use a new run directory and an available GPU:
 
 ```bash
+export XLA_PYTHON_CLIENT_MEM_FRACTION=0.90
 .venv/bin/python train_cat_wholebody.py run \
+  --num-envs 8192 --batch-size 512 \
   --run-dir outputs/cat_wholebody_generalist --wandb-mode online
 ```
 

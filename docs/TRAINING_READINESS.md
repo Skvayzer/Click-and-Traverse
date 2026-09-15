@@ -4,4 +4,4 @@
 
 The former sequential curriculum was retired after the September 15 audit. It changed CAT's task, reset Adam between scenes, rolled live weights back to selected snapshots and opened separate W&B runs. The corrected `train_cat_wholebody.py` uses one continuous mixed-scene learner, the released configuration, one experiment ID and exact recovery.
 
-Training was stopped for the correction and has not been restarted by this implementation work. The GPU resource profile remains subject to capacity validation. Tests establish code behavior and compatibility, not learned traversal quality.
+After the user authorized restart, the 8,192-environment / 512-trajectory-minibatch configuration passed native GPU compiler capacity validation, and continuous training restarted from the released CAT actor and critic. [Active run, observations and stop command](CORRECTED_RUN_20260915.md). Tests and startup checks establish code behavior and initial operation, not learned traversal quality.

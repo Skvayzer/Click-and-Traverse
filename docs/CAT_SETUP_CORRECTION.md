@@ -1,5 +1,7 @@
 # CAT setup correction — 15 September 2026
 
+This report records the stopped state at the end of implementation. The subsequent authorized restart and completed capacity check are recorded in [CORRECTED_RUN_20260915.md](CORRECTED_RUN_20260915.md).
+
 The earlier whole-body task was not a faithful extension of CAT. This correction restores the released task and generalist training behavior, retaining explicit whole-body, hand-protection and scene-size extensions. Historical runs/checkpoints are preserved. Training remains stopped.
 
 ## Implementation

@@ -1,0 +1,201 @@
+{
+  "schema": "cat-corrected-runtime-observation-v1",
+  "runtime_observation": {
+    "observed_utc": "2026-09-15T10:40:57.788251+00:00",
+    "status": {
+      "schema": "cat-generalist-status-v1",
+      "owner": "5b19cd43-d1cf-4921-8ac8-c0bca22ebaa1",
+      "specification_sha256": "dabe27bb3de5148de30f4ff4e0c530d7d59fec951f894fc61fe60d40c8c30994",
+      "status": "running",
+      "phase": "training",
+      "pid": 11525,
+      "resume": false,
+      "startup_retry": false,
+      "runtime_present_on_entry": false,
+      "attempt": 1,
+      "completed_steps": 3145728,
+      "resume_state_steps": 3145728,
+      "initial_runtime_written": true,
+      "observed_steps": 3145728
+    },
+    "wandb": {
+      "id": "1d39c55c",
+      "project": "CAT-wholebody",
+      "entity": "skvayzer",
+      "mode": "online",
+      "last_global_step": 3145728,
+      "initialized": true,
+      "initialization_attempted": true,
+      "url": "https://wandb.ai/skvayzer/CAT-wholebody/runs/1d39c55c"
+    },
+    "code": {
+      "git_commit": "40b4dd2682dd4e5d75a6b853c24333da99379cf3",
+      "source_sha256": "14292904cb7065229cbba32f90ca43ff1084260e5053239f28f54e7d7617ef2d"
+    },
+    "warmstart": {
+      "kind": "native_parameter_finetuning",
+      "optimizer": "fresh",
+      "critic_restored": true,
+      "source_action_count": 12,
+      "target_action_count": 29,
+      "added_input_weights": "zero",
+      "new_action_mean": 0.0,
+      "new_action_std": 0.05,
+      "normalizer_added_features": "zero mean; unit variance prior at retained scalar count",
+      "parity": {
+        "actor_mean_and_raw_scale_max_abs_error": 0.0,
+        "critic_max_abs_error": 0.0
+      },
+      "model_revision": "46ce4b57ba0639168d51741b661ff62f7ce6f045"
+    },
+    "field_bank": {
+      "scene_count": 39,
+      "byte_verified_original_count": 36,
+      "reconstructed_original_count": 1,
+      "manifest_sha256": "bbcccb9a11ebee99ad14f5330de71a6a9461aed0e5c2115774b8c3b4ce19c633"
+    },
+    "batch_geometry": {
+      "parallel_environments": 8192,
+      "rollout_chunks_per_update": 4,
+      "transitions_per_update": 1048576,
+      "transitions_per_minibatch": 16384,
+      "optimizer_steps_per_update": 256
+    },
+    "devices": [
+      "cuda:0"
+    ],
+    "metric_event_count": 9,
+    "nonfinite_events": 0,
+    "optimizer_events": [
+      {
+        "training/sps": 8045.488732540244,
+        "training/walltime": 130.33092641830444,
+        "training/entropy_loss": 0.09615638852119446,
+        "training/policy_loss": 0.009396515786647797,
+        "training/rollout_reward_mean": 0.17668507993221283,
+        "training/total_loss": 0.4517019987106323,
+        "training/v_loss": 0.34614911675453186,
+        "training/gpu_0/bytes_in_use": 2790866176.0,
+        "training/gpu_0/peak_bytes_in_use": 24309893632.0,
+        "training/gpu_0/bytes_reserved": 0.0,
+        "training/gpu_0/peak_bytes_reserved": 0.0,
+        "training/gpu_0/bytes_limit": 30340368809.0,
+        "training/gpu_0/pool_bytes": 30340368640.0,
+        "global_step": 1048576,
+        "health/nonfinite": 0
+      },
+      {
+        "training/sps": 88160.8896992246,
+        "training/walltime": 142.22481727600098,
+        "training/entropy_loss": 0.09568022191524506,
+        "training/policy_loss": 0.012256104499101639,
+        "training/rollout_reward_mean": 0.3166847229003906,
+        "training/total_loss": 0.25750476121902466,
+        "training/v_loss": 0.14956845343112946,
+        "training/gpu_0/bytes_in_use": 2798862592.0,
+        "training/gpu_0/peak_bytes_in_use": 24309893632.0,
+        "training/gpu_0/bytes_reserved": 0.0,
+        "training/gpu_0/peak_bytes_reserved": 0.0,
+        "training/gpu_0/bytes_limit": 30340368809.0,
+        "training/gpu_0/pool_bytes": 30340368640.0,
+        "global_step": 2097152,
+        "health/nonfinite": 0
+      },
+      {
+        "training/sps": 87658.23232055994,
+        "training/walltime": 154.18691110610962,
+        "training/entropy_loss": 0.09515754878520966,
+        "training/policy_loss": 0.012428957037627697,
+        "training/rollout_reward_mean": 0.3436405062675476,
+        "training/total_loss": 0.21187174320220947,
+        "training/v_loss": 0.10428524762392044,
+        "training/gpu_0/bytes_in_use": 2807509504.0,
+        "training/gpu_0/peak_bytes_in_use": 24309893632.0,
+        "training/gpu_0/bytes_reserved": 0.0,
+        "training/gpu_0/peak_bytes_reserved": 0.0,
+        "training/gpu_0/bytes_limit": 30340368809.0,
+        "training/gpu_0/pool_bytes": 30340368640.0,
+        "global_step": 3145728,
+        "health/nonfinite": 0
+      }
+    ],
+    "last_event": {
+      "selection/best_updated": 1.0,
+      "global_step": 3145728,
+      "health/nonfinite": 0
+    },
+    "runtime_file": {
+      "bytes": 1106203697,
+      "modified_utc": "2026-09-15T10:40:54.525681+00:00"
+    },
+    "best": {
+      "target": "/home/konstantin.smirnov/robotics/Click-and-Traverse-WholeBody/outputs/cat_wholebody_generalist_20260915/.checkpoint-generations/candidate-fm0g3dgi",
+      "files": [
+        "owner.json",
+        "selection.json",
+        "native/ppo_network_config.json",
+        "native/_METADATA",
+        "native/_CHECKPOINT_METADATA",
+        "native/observation_contract.json",
+        "native/manifest.ocdbt",
+        "native/_sharding",
+        "native/d/230ca09a14d87a5cfdb90a7724fc6031",
+        "native/ocdbt.process_0/manifest.ocdbt",
+        "native/ocdbt.process_0/d/ef13801d7c84a8d72d56626ead71e3bf",
+        "native/ocdbt.process_0/d/4b3b128f7a21cf1b6cc1847476ec4bdf",
+        "native/ocdbt.process_0/d/b753ccbb3e73cbd3a8a9555264ab7907",
+        "native/ocdbt.process_0/d/6bf3ff713b68274eeafe270cfaf8fd49",
+        "native/ocdbt.process_0/d/78195ece996a052dd120c0c7e6506c77"
+      ]
+    },
+    "gpu": "NVIDIA GeForce RTX 5090, 32607 MiB, 30425 MiB, 100 %",
+    "compute_processes": "11525, /home/konstantin.smirnov/robotics/Click-and-Traverse-WholeBody/outputs/sources/cat_wholebody_generalist_20260915/.venv/bin/python, 30402 MiB",
+    "process": "    PID    PPID STAT     ELAPSED %CPU   RSS COMMAND\n  11525       1 Rsl        03:42  114 11000032 /home/konstantin.smirnov/robotics/Click-and-Traverse-WholeBody/outputs/sources/cat_wholebody_generalist_20260915/.venv/bin/python -u /home/konstantin.smirnov/robotics/Click-and-Traverse-WholeBody/outputs/sources/cat_wholebody_generalist_20260915/train_cat_wholebody.py run --bank-manifest /home/konstantin.smirnov/robotics/Click-and-Traverse-WholeBody/data/furniture/cat_generalist/manifest.json --run-dir /home/konstantin.smirnov/robotics/Click-and-Traverse-WholeBody/outputs/cat_wholebody_generalist_20260915 --profile single_gpu_32gb --num-envs 8192 --batch-size 512 --seed 0 --wandb-mode online --wandb-project CAT-wholebody --wandb-entity skvayzer\n"
+  },
+  "wandb_server_verification": {
+    "observed_utc": "2026-09-15T10:40:46.007882+00:00",
+    "run_id": "1d39c55c",
+    "name": "cat_wholebody_generalist_20260915",
+    "state": "running",
+    "url": "https://wandb.ai/skvayzer/CAT-wholebody/runs/1d39c55c",
+    "summary": {
+      "global_step": 2097152,
+      "training/total_loss": 0.25750476121902466,
+      "training/policy_loss": 0.01225610449910164,
+      "training/v_loss": 0.14956845343112946,
+      "training/rollout_reward_mean": 0.3166847229003906,
+      "training/sps": 88160.8896992246,
+      "health/nonfinite": 0
+    },
+    "history": [
+      {
+        "_step": 1,
+        "global_step": 1048576.0,
+        "training/total_loss": 0.4517019987106323,
+        "training/policy_loss": 0.009396515786647797,
+        "training/v_loss": 0.34614911675453186,
+        "training/rollout_reward_mean": 0.17668507993221283,
+        "training/sps": 8045.488732540244,
+        "health/nonfinite": 0
+      },
+      {
+        "_step": 4,
+        "global_step": 2097152.0,
+        "training/total_loss": 0.25750476121902466,
+        "training/policy_loss": 0.012256104499101639,
+        "training/v_loss": 0.14956845343112946,
+        "training/rollout_reward_mean": 0.3166847229003906,
+        "training/sps": 88160.8896992246,
+        "health/nonfinite": 0
+      }
+    ],
+    "recent_project_runs": [
+      {
+        "id": "1d39c55c",
+        "name": "cat_wholebody_generalist_20260915",
+        "state": "running"
+      }
+    ]
+  },
+  "limitation": "Initial completed updates and checkpoint writes only; no long-duration stability or learned traversal success claim. Training left running."
+}
