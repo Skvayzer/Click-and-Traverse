@@ -73,6 +73,46 @@ def _strip_weak_type(tree):
     return jax.tree_util.tree_map(f, tree)
 
 
+def _runtime_tree_state(tree):
+    """Portable array leaves; the fresh environment supplies static MJX metadata."""
+    pairs, _ = jax.tree_util.tree_flatten_with_path(tree)
+    return {
+        "paths": [jax.tree_util.keystr(path) for path, _ in pairs],
+        "leaves": [np.asarray(value) for _, value in pairs],
+    }
+
+
+def _restore_runtime_tree(name, template, state):
+    pairs, structure = jax.tree_util.tree_flatten_with_path(template)
+    if state["paths"] != [jax.tree_util.keystr(path) for path, _ in pairs]:
+        raise ValueError(f"Runtime {name} tree structure differs")
+    values = state["leaves"]
+    if len(values) != len(pairs):
+        raise ValueError(f"Runtime {name} leaf count differs")
+    for (path, original), value in zip(pairs, values):
+        value = np.asarray(value)
+        if np.shape(original) != value.shape or np.dtype(original.dtype) != value.dtype:
+            raise ValueError(f"Runtime {name}{jax.tree_util.keystr(path)} shape/dtype differs")
+    return jax.tree_util.tree_unflatten(structure, [jnp.asarray(x) for x in values])
+
+
+def _generate_unroll_with_scene_ids(env, state, policy, key, unroll_length, extra_fields):
+    """Attribute terminal transitions to the scene before its autoreset."""
+    def step(carry, _):
+        current, current_key = carry
+        current_key, next_key = jax.random.split(current_key)
+        scene_id = current.info["pf_id"]  # CAT wrappers can mutate info in-place.
+        next_state, transition = acting.actor_step(env, current, policy, current_key, extra_fields)
+        transition = transition._replace(extras={
+            **transition.extras,
+            "state_extras": {**transition.extras["state_extras"], "pf_id": scene_id},
+        })
+        return (next_state, next_key), transition
+
+    (state, _), data = jax.lax.scan(step, (state, key), (), length=unroll_length)
+    return state, data
+
+
 class TrainingMetricsLogger:
     """Aggregates rollout episode metrics without flattening names under one prefix."""
 
@@ -90,6 +130,31 @@ class TrainingMetricsLogger:
         self._last_log_steps = 0
         self._log_count = 0
         self._progress_fn = progress_fn
+
+    def state_dict(self):
+        """Preserve the shared episode windows and logging axis across a resume."""
+        return {
+            "buffer_size": self._buffer_size,
+            "steps_between_logging": self._steps_between_logging,
+            "num_steps": self._num_steps,
+            "completed_episodes": self._completed_episodes,
+            "last_log_steps": self._last_log_steps,
+            "log_count": self._log_count,
+            "metrics_buffer": {k: list(v) for k, v in self._metrics_buffer.items()},
+            "rollout_buffer": {k: list(v) for k, v in self._rollout_buffer.items()},
+        }
+
+    def load_state_dict(self, state):
+        if (state["buffer_size"] != self._buffer_size or
+                state["steps_between_logging"] != self._steps_between_logging):
+            raise ValueError("Runtime metric logger configuration differs")
+        for name in ("num_steps", "completed_episodes", "last_log_steps", "log_count"):
+            setattr(self, f"_{name}", int(state[name]))
+        for name in ("metrics_buffer", "rollout_buffer"):
+            target = getattr(self, f"_{name}")
+            target.clear()
+            for key, values in state[name].items():
+                target[key].extend(values)
 
     @staticmethod
     def _metric_key(name: str) -> str:
@@ -606,6 +671,11 @@ def train(
     num_training_epochs: Optional[int] = None,
     eval_episode_length: Optional[int] = None,
     should_stop_fn: Optional[Callable[[], bool]] = None,
+    continuous: bool = False,
+    training_steps_per_epoch: int = 1,
+    runtime_checkpoint_fn: Optional[Callable[[int, Mapping[str, Any]], None]] = None,
+    restore_runtime_state: Optional[Mapping[str, Any]] = None,
+    runtime_metadata: Optional[Mapping[str, Any]] = None,
 ):
     """PPO training.
 
@@ -679,10 +749,35 @@ def train(
         from the return values of ppo.train().
       restore_value_fn: whether to restore the value function from the checkpoint
         or use a random initialization
+      continuous: keep the same PPO learner and environments running until
+        should_stop_fn requests a cooperative stop. Requires num_evals=0 and
+        num_resets_per_eval=0; num_timesteps is ignored in this mode.
+      training_steps_per_epoch: completed PPO updates between host callbacks in
+        continuous mode. A PPO update retains the native batch accumulation:
+        batch_size * num_minibatches / num_envs rollout chunks.
+      runtime_checkpoint_fn: receives a complete, host-resident snapshot after
+        initialization (step zero) and each callback epoch, including Adam, RNG,
+        environment and sampler state. Exact resumes retain their existing
+        initial snapshot. This is independent of the best-model callback.
+      restore_runtime_state: exact snapshot from runtime_checkpoint_fn. Cannot
+        be combined with either params-only restore argument.
+      runtime_metadata: caller's immutable run contract (e.g. scene hashes,
+        observation contract and code version), checked on exact resume.
 
     Returns:
       Tuple of (make_policy function, network params, metrics)
     """
+    if continuous:
+        if num_evals != 0 or num_resets_per_eval != 0 or num_training_epochs is not None:
+            raise ValueError("continuous training requires num_evals=0, num_resets_per_eval=0 and no num_training_epochs")
+        if type(training_steps_per_epoch) is not int or training_steps_per_epoch < 1:
+            raise ValueError("training_steps_per_epoch must be a positive integer")
+        if should_stop_fn is None:
+            raise ValueError("continuous training requires a cooperative should_stop_fn")
+        if save_checkpoint_path is not None:
+            raise ValueError("continuous training requires a bounded checkpoint callback, not save_checkpoint_path")
+    if restore_runtime_state is not None and (restore_checkpoint_path is not None or restore_params is not None):
+        raise ValueError("Exact runtime restore cannot be combined with params-only restore")
     assert batch_size * num_minibatches % num_envs == 0
     _validate_madrona_args(
         madrona_backend, num_envs, num_eval_envs, action_repeat, eval_env
@@ -705,6 +800,8 @@ def train(
         local_devices_to_use,
     )
     device_count = local_devices_to_use * process_count
+    if (continuous or runtime_checkpoint_fn is not None or restore_runtime_state is not None) and process_count != 1:
+        raise ValueError("Continuous runtime snapshots currently require a single host")
 
     # The number of environment steps executed for every training step.
     env_step_per_training_step = (
@@ -726,6 +823,8 @@ def train(
             * max(num_resets_per_eval, 1)
         )
     ).astype(int)
+    if continuous:
+        num_training_steps_per_epoch = training_steps_per_epoch
 
     key = jax.random.PRNGKey(seed)
     global_key, local_key = jax.random.split(key)
@@ -754,6 +853,7 @@ def train(
     key_envs = jax.random.split(key_env, num_envs // process_count)
     key_envs = jnp.reshape(key_envs, (local_devices_to_use, -1) + key_envs.shape[1:])
     env_state = reset_fn(key_envs)
+    has_scene_ids = "pf_id" in env_state.info
     if randomize_initial_episode_steps and "steps" in env_state.info:
         if episode_length is None:
             raise ValueError("episode_length must be specified to randomize initial episode steps")
@@ -952,9 +1052,8 @@ def train(
             current_state, current_key = carry
             current_key, next_key = jax.random.split(current_key)
             extra_fields = ("truncation", "episode_metrics", "episode_done")
-            if use_dagger:
-                extra_fields = extra_fields + ("pf_id",)
-            next_state, data = acting.generate_unroll(
+            generate_unroll = _generate_unroll_with_scene_ids if has_scene_ids else acting.generate_unroll
+            next_state, data = generate_unroll(
                 env,
                 current_state,
                 policy,
@@ -988,7 +1087,7 @@ def train(
                     rollout_logits
                 ).scale
             )
-            if use_dagger:
+            if has_scene_ids:
                 jax.debug.callback(
                     metrics_aggregator.update_rollout_metrics,
                     data.extras["state_extras"]["episode_metrics"],
@@ -1144,7 +1243,7 @@ def train(
             ),
         )
 
-    if num_timesteps == 0:
+    if num_timesteps == 0 and not continuous and restore_runtime_state is None:
         return (
             make_policy,
             (
@@ -1158,6 +1257,39 @@ def train(
     training_state = jax.device_put_replicated(
         training_state, jax.local_devices()[:local_devices_to_use]
     )
+
+    runtime_contract = {
+        "num_envs": num_envs, "local_devices": local_devices_to_use,
+        "episode_length": episode_length, "action_repeat": action_repeat,
+        "batch_size": batch_size, "num_minibatches": num_minibatches,
+        "unroll_length": unroll_length, "num_updates_per_batch": num_updates_per_batch,
+        "learning_rate": learning_rate, "entropy_cost": entropy_cost,
+        "discounting": discounting, "reward_scaling": reward_scaling,
+        "clipping_epsilon": clipping_epsilon, "gae_lambda": gae_lambda,
+        "max_grad_norm": max_grad_norm, "normalize_advantage": normalize_advantage,
+        "normalize_observations": normalize_observations,
+        "training_steps_per_epoch": int(num_training_steps_per_epoch),
+        "num_resets_per_eval": num_resets_per_eval, "num_evals": num_evals,
+        "seed": seed, "use_dagger": use_dagger,
+        "jax_version": jax.__version__, "flax_version": flax.__version__,
+        "optax_version": optax.__version__,
+        "device_platforms": [device.platform for device in jax.local_devices()[:local_devices_to_use]],
+        "metadata": dict(runtime_metadata or {}),
+    }
+    restored_walltime = 0.0
+    if restore_runtime_state is not None:
+        if restore_runtime_state.get("schema") != "cat-ppo-runtime-v1":
+            raise ValueError("Unrecognized exact runtime snapshot schema")
+        if restore_runtime_state.get("contract") != runtime_contract:
+            raise ValueError("Runtime training configuration differs; exact resume refused")
+        training_state = _restore_runtime_tree("training_state", training_state, restore_runtime_state["training_state"])
+        env_state = _restore_runtime_tree("env_state", env_state, restore_runtime_state["env_state"])
+        local_key = _restore_runtime_tree("local_key", local_key, restore_runtime_state["local_key"])
+        key_envs = _restore_runtime_tree("key_envs", key_envs, restore_runtime_state["key_envs"])
+        metrics_aggregator.load_state_dict(restore_runtime_state["metrics_logger"])
+        restored_walltime = float(restore_runtime_state["training_walltime"])
+        if int(_unpmap(training_state.env_steps)) != int(restore_runtime_state["step"]):
+            raise ValueError("Runtime snapshot step disagrees with learner state")
 
     evaluator = None
     if num_evals > 0:
@@ -1199,11 +1331,36 @@ def train(
         progress_fn(0, metrics)
 
     training_metrics = {}
-    training_walltime = 0
-    current_step = 0
+    training_walltime = restored_walltime
+    current_step = int(_unpmap(training_state.env_steps))
     stopped_by_request = False
-    for it in range(num_evals_after_init):
+
+    def publish_runtime():
+        if runtime_checkpoint_fn is None:
+            return
+        snapshot = {
+            "schema": "cat-ppo-runtime-v1", "contract": runtime_contract,
+            "step": current_step,
+            "training_state": _runtime_tree_state(jax.device_get(training_state)),
+            "env_state": _runtime_tree_state(jax.device_get(env_state)),
+            "local_key": _runtime_tree_state(jax.device_get(local_key)),
+            "key_envs": _runtime_tree_state(jax.device_get(key_envs)),
+            "metrics_logger": metrics_aggregator.state_dict(),
+            "training_walltime": training_walltime,
+        }
+        runtime_checkpoint_fn(current_step, snapshot)
+
+    # A first-update OOM must still have an exact starting state to resume.
+    # This snapshot contains no learned progress and is not a best model.
+    if restore_runtime_state is None:
+        publish_runtime()
+    it = 0
+    while continuous or it < num_evals_after_init:
+        if continuous and should_stop_fn():
+            stopped_by_request = True
+            break
         logging.info("starting iteration %s %s", it, time.time() - xt)
+        it += 1
 
         for _ in range(max(num_resets_per_eval, 1)):
             # optimization
@@ -1222,6 +1379,9 @@ def train(
 
         if process_id != 0:
             continue
+
+        # Flush episode-metric callbacks before publishing one coherent boundary.
+        jax.effects_barrier()
 
         # Process id == 0.
         params = _unpmap(
@@ -1244,6 +1404,8 @@ def train(
             )
             logging.info(metrics)
             progress_fn(current_step, metrics)
+        elif continuous:
+            progress_fn(current_step, training_metrics)
 
         if scored_checkpoint_fn is not None:
             scored_checkpoint_fn(
@@ -1251,6 +1413,8 @@ def train(
                 metrics if num_evals > 0 else training_metrics,
                 "validation" if num_evals > 0 else "training_proxy",
             )
+
+        publish_runtime()
 
         # Cooperative stopping keeps the selected model from a completed PPO
         # epoch. It never interrupts a compiled update or checkpoint write.
@@ -1260,7 +1424,7 @@ def train(
             break
 
     total_steps = current_step
-    if not stopped_by_request and not total_steps >= num_timesteps:
+    if not continuous and not stopped_by_request and not total_steps >= num_timesteps:
         raise AssertionError(
             f"Total steps {total_steps} is less than `num_timesteps`= {num_timesteps}."
         )

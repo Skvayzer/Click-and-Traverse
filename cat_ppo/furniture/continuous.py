@@ -746,11 +746,9 @@ def main():
     if args.command == "stop":
         print(request_stop(args.run_dir))
     else:
-        values = vars(args).copy()
-        values.pop("command")
-        run_dir = values.pop("run_dir")
-        config = build_config(**values)
-        print(json.dumps(execute(config, run_dir), indent=2))
+        parser.error("The sequential scene trainer is retired after the CAT audit. "
+                     "Use train_cat_wholebody.py run for one persistent mixed-scene learner. "
+                     "Existing historical runs can still be stopped with this command.")
 
 
 if __name__ == "__main__":

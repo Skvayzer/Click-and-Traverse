@@ -489,4 +489,6 @@ def train(args):
 
 
 if __name__ == "__main__":
-    train(parser().parse_args())
+    raise SystemExit("This modified-task trainer is retired after the CAT audit. "
+                     "Use train_cat_wholebody.py plan/validate/run. "
+                     "Historical evaluation and checkpoint tools remain available.")

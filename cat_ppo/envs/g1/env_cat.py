@@ -360,6 +360,7 @@ class G1CatEnv(G1LocoEnv):
         rand_qpos = qpos[7:] * jax.random.uniform(key, (29,), minval=0.5, maxval=1.5)
         rand_qpos = jp.clip(rand_qpos, self._soft_lowers, self._soft_uppers)
         qpos = qpos.at[7:].set(rand_qpos)
+        qpos = self._reset_root_pose(qpos)
 
         # d(xyzrpy)=U(-0.5, 0.5)
         rng, key = jax.random.split(rng)
@@ -578,14 +579,7 @@ class G1CatEnv(G1LocoEnv):
         state = state.replace(data=data)
 
         # set motor target
-        lower_motor_targets = jp.clip(
-            state.info["motor_targets"][self.action_joint_ids]
-            + action * self._config.action_scale,
-            self._soft_lowers[self.action_joint_ids],
-            self._soft_uppers[self.action_joint_ids],
-        )
-        motor_targets = self._default_qpos.copy()
-        motor_targets = motor_targets.at[self.action_joint_ids].set(lower_motor_targets)
+        motor_targets = self._motor_targets(action, state.info["motor_targets"])
         state.info["rng"], data = torque_step(
             state.info["rng"],
             self.mjx_model,
@@ -768,7 +762,7 @@ class G1CatEnv(G1LocoEnv):
         reward = jp.clip(sum(rewards.values()) * self.dt, 0.0, 10000.0)
 
 
-        timeout = state.info["step"] >= self._config.episode_length
+        timeout = state.info["step"] >= self._episode_step_limit(state.info)
         state.info["step"] = jp.where(done | timeout, 0, state.info["step"])
 
         state.info["motor_targets"] = jp.where(
@@ -790,6 +784,23 @@ class G1CatEnv(G1LocoEnv):
         done = done.astype(reward.dtype)
         state = state.replace(data=data, obs=obs, reward=reward, done=done)
         return state
+
+    def _reset_root_pose(self, qpos):
+        """Scene extensions may relocate resets; original CAT is identity."""
+        return qpos
+
+    def _episode_step_limit(self, info):
+        """Released episode duration; scene extensions may supply their own."""
+        return self._config.episode_length
+
+    def _motor_targets(self, action, previous):
+        """Released CAT's incremental leg targets, with nominal upper joints."""
+        lower_motor_targets = jp.clip(
+            previous[self.action_joint_ids] + action * self._config.action_scale,
+            self._soft_lowers[self.action_joint_ids],
+            self._soft_uppers[self.action_joint_ids],
+        )
+        return self._default_qpos.copy().at[self.action_joint_ids].set(lower_motor_targets)
 
     def _update_phase(self, state):
         task_mask = state.info["command"][0]
@@ -1111,9 +1122,9 @@ class G1CatEnv(G1LocoEnv):
             "smoothness_joint": self._cost_smoothness_joint(data, info["last_joint_vel"]),
             "smoothness_action": self._cost_smoothness_action(action, info["last_act"], info["last_last_act"]),
             # field
-            "headgf": self._re_gf0(info["headgf"], info["head_vel"], info["headdf"], (move_flag[None]<0.5) | (info["head_pos"][...,0] > 1.5), tau=0.5),
-            "feetgf": self._re_gf0(info["feetgf"], info["feet_vel"], info["feetdf"], (move_flag[None]<0.5) | (info["gait_mask"] == 1) | (info["feet_pos"][...,0] > 1.5), tau=0.3),
-            "handsgf": self._re_gf0(info["handsgf"], info["hands_vel"], info["handsdf"], (move_flag[None]<0.5) | (info["hands_pos"][...,0] > 1.5), tau=0.5),
+            "headgf": self._re_gf0(info["headgf"], info["head_vel"], info["headdf"], (move_flag[None]<0.5) | self._crossed_goal(info["head_pos"]), tau=0.5),
+            "feetgf": self._re_gf0(info["feetgf"], info["feet_vel"], info["feetdf"], (move_flag[None]<0.5) | (info["gait_mask"] == 1) | self._crossed_goal(info["feet_pos"]), tau=0.3),
+            "handsgf": self._re_gf0(info["handsgf"], info["hands_vel"], info["handsdf"], (move_flag[None]<0.5) | self._crossed_goal(info["hands_pos"]), tau=0.5),
 
             # "headgf": self._re_gf0(info["headgf"], info["head_vel"], info["headdf"],
             #                        (move_flag[None] < 0.5) , tau=0.5),
@@ -1133,6 +1144,10 @@ class G1CatEnv(G1LocoEnv):
             reward_dict[k] = jp.where(jp.isnan(v), 0.0, v)
 
         return reward_dict
+
+    def _crossed_goal(self, positions):
+        """Released scenes end at x=2; preserve their original crossing plane."""
+        return positions[..., 0] > 1.5
 
     def _re_gf0(self, gf_vel: jax.Array, lin_vel: jax.Array, sdf: jax.Array, crossed: jax.Array, tau = 0.3) -> jax.Array:
         eps = 1e-6

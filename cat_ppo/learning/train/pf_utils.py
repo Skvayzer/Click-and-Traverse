@@ -214,6 +214,11 @@ class SamplePFWrapper(wrapper.Wrapper):
                 **pf_sampling_updates,
             }
         )
+        # Extension state must reset with its newly sampled scene. The original
+        # CAT keys above deliberately retain their released wrapper semantics.
+        for name in state_reset.info:
+            if name.startswith("wholebody_"):
+                state.info[name] = reset_obs_leaf(state_reset.info[name], state.info[name])
         qpos = jnp.where(done_exp, state_reset.data.qpos, state.data.qpos)
         qvel = jnp.where(done_exp, state_reset.data.qvel, state.data.qvel)
         state = state.replace(

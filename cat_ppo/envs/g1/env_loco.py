@@ -261,11 +261,15 @@ class G1LocoEnv(g1_base.G1Env):
             config_overrides: Optional[Dict[str, Union[str, int, list[Any]]]] = None,
     ):
         super().__init__(
-            xml_path=consts.task_to_xml(task_type).as_posix(),
+            xml_path=self._task_xml_path(task_type),
             config=config,
             config_overrides=config_overrides,
         )
         self._post_init()
+
+    def _task_xml_path(self, task_type: str) -> str:
+        """Model-selection hook; the CAT/locomotion default is unchanged."""
+        return consts.task_to_xml(task_type).as_posix()
 
     def _post_init(self, hand_geom_names=("left_hand_collision", "right_hand_collision")) -> None:
         self.num_joints = self.mjx_model.nq - 7
