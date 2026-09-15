@@ -1,0 +1,40 @@
+{
+  "manifest": "/Users/konstantinsmirnov/robotics/Click-and-Traverse-WholeBody/data/furniture/cat_diversity_v2_20260916/manifest.json",
+  "manifest_sha256": "e918eb5a51180ebb40a2030969c9f063a425b81f45796396952a786d2e9648e7",
+  "output": "/Users/konstantinsmirnov/robotics/Click-and-Traverse-WholeBody/docs/assets/cat-diversity-20260916/random-furniture-rooms.png",
+  "scenes": [
+    {
+      "seed": 4001,
+      "scene_id": "random-furniture-dense-train-004001-5ef9779babcf",
+      "scene_sha256": "59af2c38dbc70272cb12d28064a39d84aac346e49347ae75ff6feb4b0a4496b2",
+      "geometry_hash": "5ef9779babcfb08f51ef8b4b932a891157bd314cb0a4d86d7944d2165a52516e",
+      "source": "/Users/konstantinsmirnov/robotics/Click-and-Traverse-WholeBody/data/furniture/cat_diversity_v2_20260916/rooms/furniture/S4001/scene.json",
+      "individual_image": "/Users/konstantinsmirnov/robotics/Click-and-Traverse-WholeBody/docs/assets/cat-diversity-20260916/furniture-seed-4001.png"
+    },
+    {
+      "seed": 4008,
+      "scene_id": "random-furniture-dense-train-004008-73ed3af356e1",
+      "scene_sha256": "d820cb1e3b614d4fa3c39794f55eb3555d3b6126a6c6c94428e4986a20850b6f",
+      "geometry_hash": "73ed3af356e128c426318ac1da3357c72037963d1901c9a8459bda1036e3536f",
+      "source": "/Users/konstantinsmirnov/robotics/Click-and-Traverse-WholeBody/data/furniture/cat_diversity_v2_20260916/rooms/furniture/S4008/scene.json",
+      "individual_image": "/Users/konstantinsmirnov/robotics/Click-and-Traverse-WholeBody/docs/assets/cat-diversity-20260916/furniture-seed-4008.png"
+    },
+    {
+      "seed": 4016,
+      "scene_id": "random-furniture-dense-train-004016-93a493d7e5f0",
+      "scene_sha256": "0df3334760f9ccad7de845ce4d8f447a62b0f8e35b189ce3ad20aedfa75331dc",
+      "geometry_hash": "93a493d7e5f079dbd78b571590444224c35a51674c3884614599b694f129458f",
+      "source": "/Users/konstantinsmirnov/robotics/Click-and-Traverse-WholeBody/data/furniture/cat_diversity_v2_20260916/rooms/furniture/S4016/scene.json",
+      "individual_image": "/Users/konstantinsmirnov/robotics/Click-and-Traverse-WholeBody/docs/assets/cat-diversity-20260916/furniture-seed-4016.png"
+    },
+    {
+      "seed": 4024,
+      "scene_id": "random-furniture-dense-train-004024-660686a26a46",
+      "scene_sha256": "1c937db9ba1cb219554c4c18fe04e2b5ce04d16bb5c6ed26b4252c83cb0004d6",
+      "geometry_hash": "660686a26a463c88a44a49b127301e742bc55988dbe97c228a432b1951372e9d",
+      "source": "/Users/konstantinsmirnov/robotics/Click-and-Traverse-WholeBody/data/furniture/cat_diversity_v2_20260916/rooms/furniture/S4024/scene.json",
+      "individual_image": "/Users/konstantinsmirnov/robotics/Click-and-Traverse-WholeBody/docs/assets/cat-diversity-20260916/furniture-seed-4024.png"
+    }
+  ],
+  "rendering": "Exact canonical oriented boxes, top view"
+}

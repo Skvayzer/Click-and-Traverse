@@ -59,6 +59,13 @@ def _to_batch(x, mask):
     return x
 
 
+def balanced_scene_logits(weights, group_ids, group_masses):
+    """Preserve each family's probability mass while adapting within families."""
+    totals = jnp.zeros_like(group_masses).at[group_ids].add(weights)
+    probabilities = weights / jnp.maximum(totals[group_ids], 1e-20) * group_masses[group_ids]
+    return jnp.log(probabilities)
+
+
 class SamplePFWrapper(wrapper.Wrapper):
     """
     Loads mocap trajectories from npz files with keys:
@@ -117,13 +124,22 @@ class SamplePFWrapper(wrapper.Wrapper):
         truncation = state.info["truncation"].astype(jnp.float32)
         pf_id = state.info["pf_id"].astype(jnp.int32)
         num_pf = state.info["pf_success_ema"].shape[-1]
-        one_hot = jax.nn.one_hot(pf_id, num_pf, dtype=jnp.float32)
         done_f = done_bool.astype(jnp.float32)
-        episode_counts = jnp.sum(one_hot * done_f[:, None], axis=0)
-        success_counts = jnp.sum(one_hot * (done_f * truncation)[:, None], axis=0)
-
-        prev_episode_ema = jnp.mean(state.info["pf_episode_ema"], axis=0)
-        prev_success_ema = jnp.mean(state.info["pf_success_ema"], axis=0)
+        expanded = "pf_sampling_group_ids" in state.info
+        if expanded:
+            # Thousands of scene slots must not materialize B x N one-hot
+            # counters every control step. Global EMAs are broadcast identically
+            # to each environment, so reading their first copy is sufficient.
+            episode_counts = jnp.bincount(pf_id, weights=done_f, length=num_pf)
+            success_counts = jnp.bincount(pf_id, weights=done_f * truncation, length=num_pf)
+            prev_episode_ema = state.info["pf_episode_ema"][0]
+            prev_success_ema = state.info["pf_success_ema"][0]
+        else:
+            one_hot = jax.nn.one_hot(pf_id, num_pf, dtype=jnp.float32)
+            episode_counts = jnp.sum(one_hot * done_f[:, None], axis=0)
+            success_counts = jnp.sum(one_hot * (done_f * truncation)[:, None], axis=0)
+            prev_episode_ema = jnp.mean(state.info["pf_episode_ema"], axis=0)
+            prev_success_ema = jnp.mean(state.info["pf_success_ema"], axis=0)
         decay = jnp.mean(state.info["pf_sampling_ema_decay"])
         episode_ema = decay * prev_episode_ema + episode_counts
         success_ema = decay * prev_success_ema + success_counts
@@ -131,7 +147,11 @@ class SamplePFWrapper(wrapper.Wrapper):
 
         alpha = jnp.mean(state.info["pf_sampling_alpha"])
         weights = jnp.maximum((1.0 - success_rate) ** alpha, 1e-3)
-        logits = jnp.log(weights / jnp.sum(weights) + 1e-8)
+        if expanded:
+            logits = balanced_scene_logits(weights, state.info["pf_sampling_group_ids"][0],
+                                            state.info["pf_sampling_group_masses"][0])
+        else:
+            logits = jnp.log(weights / jnp.sum(weights) + 1e-8)
         logits_b = jnp.broadcast_to(logits, state.info["pf_sampling_logits"].shape)
         episode_ema_b = jnp.broadcast_to(episode_ema, state.info["pf_episode_ema"].shape)
         success_ema_b = jnp.broadcast_to(success_ema, state.info["pf_success_ema"].shape)
@@ -164,7 +184,11 @@ class SamplePFWrapper(wrapper.Wrapper):
         if pf_sampling_logits is None:
             state_reset = self.reset(rng)
         else:
-            reset_pf_id = jax.vmap(lambda key: jax.random.categorical(key, pf_sampling_logits))(rng)
+            if "pf_sampling_group_ids" in state.info:
+                from cat_ppo.furniture.generalist_fields import sample_scene_ids
+                reset_pf_id = sample_scene_ids(rng, pf_sampling_logits)
+            else:
+                reset_pf_id = jax.vmap(lambda key: jax.random.categorical(key, pf_sampling_logits))(rng)
             state_reset = self._reset_with_pf_id(rng, reset_pf_id.astype(jnp.int32))
             state_reset.info["pf_sampling_logits"] = state.info["pf_sampling_logits"]
             state_reset.info["pf_episode_ema"] = state.info["pf_episode_ema"]

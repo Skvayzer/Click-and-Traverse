@@ -122,8 +122,12 @@ def test_dex3_training_model_retains_flat_physics_and_original_self_pairs(wholeb
         if (geom.name or "").endswith("hand_envelope"):
             assert geom.contype == 0 and geom.conaffinity == 0
     for side in ("left", "right"):
-        assert wholebody.hand_envelope_validation[side]["checked_vertices"] > 80_000
-        assert wholebody.hand_envelope_validation[side]["minimum_margin_m"] >= 0.005 - 2e-6
+        assert wholebody.hand_sphere_validation[side]["checked_vertices"] > 80_000
+        assert wholebody.hand_sphere_validation[side]["minimum_margin_m"] >= 0.005 - 2e-6
+        assert wholebody.mj_model.geom(f"furniture_{side}_hand_sphere").type == mujoco.mjtGeom.mjGEOM_SPHERE
+    sites = [site.get("name", "") for site in root.findall(".//site")]
+    assert not any("corner" in name or "forearm" in name for name in sites)
+    assert sum(name.endswith("elbow_probe") for name in sites) == 2
 
 
 def test_wholebody_reset_extends_original_feature_values_without_remapping_noise(
@@ -132,12 +136,16 @@ def test_wholebody_reset_extends_original_feature_values_without_remapping_noise
     target = wholebody_state.obs
     old_contract = legacy_observation_contract()
     new_contract = wholebody.observation_contract()
-    assert target["state"].shape == (406,)
-    assert target["privileged_state"].shape == (494,)
+    assert target["state"].shape == (222,)
+    assert target["privileged_state"].shape == (310,)
     for key, contract_key in (("state", "actor_features"), ("privileged_state", "critic_features")):
         mapping = index_mapping(old_contract[contract_key], new_contract[contract_key])
-        # Hand geometry changes model inertia, not reset coordinates/site poses.
-        np.testing.assert_allclose(source[key], np.asarray(target[key])[mapping], rtol=1e-6, atol=1e-6)
+        # Sphere centers/clearances change hand fields and derived commands;
+        # every unrelated original feature and the noise stream must survive.
+        retained = np.asarray([not name.startswith(("pf.hands.", "hint.hands_", "command."))
+                               for name in old_contract[contract_key]])
+        np.testing.assert_allclose(np.asarray(source[key])[retained],
+                                   np.asarray(target[key])[mapping][retained], rtol=1e-6, atol=1e-6)
     np.testing.assert_array_equal(reference_state.info["rng"], wholebody_state.info["rng"])
 
 
@@ -180,11 +188,68 @@ def test_field_collision_uses_released_zero_threshold_and_50_step_grace(compatib
 
 def test_added_hand_collision_uses_same_grace(wholebody, wholebody_state):
     info = dict(wholebody_state.info)
-    info["wholebody_probe_features"] = info["wholebody_probe_features"].at[0, 0].set(-0.001)
+    info["handsdf"] = info["handsdf"].at[0, 0].set(-0.001)
     info["step"] = jp.asarray(49)
     assert not wholebody._get_termination(wholebody_state.data, info)
     info["step"] = jp.asarray(50)
     assert wholebody._get_termination(wholebody_state.data, info)
+
+
+def test_elbow_sphere_collision_uses_same_grace(wholebody, wholebody_state):
+    info = dict(wholebody_state.info)
+    info["wholebody_elbow_clearance"] = info["wholebody_elbow_clearance"].at[0].set(-0.001)
+    info["step"] = jp.asarray(49)
+    assert not wholebody._get_termination(wholebody_state.data, info)
+    info["step"] = jp.asarray(50)
+    assert wholebody._get_termination(wholebody_state.data, info)
+
+
+def test_fresh_and_delayed_hand_queries_subtract_fixed_radius_once(wholebody, wholebody_state):
+    from cat_ppo.envs.g1.env_cat import delay_body_pos
+    from cat_ppo.furniture.grippers import hand_sphere
+    state = deepcopy(wholebody_state)
+    positions = jp.concatenate([state.info[name].reshape(-1, 3) for name in
+        ("head_pos", "pelv_pos", "tors_pos", "feet_pos", "hands_pos", "knees_pos", "shlds_pos")])
+    odom = state.info["odom_delay"].at[0].add(-.3)
+    delayed = delay_body_pos(state.data.qpos[:3], state.data.qpos[3:7], odom[:3], odom[3:7], positions)
+    for points in (positions, delayed):
+        raw = wholebody.sample_field(wholebody.sdf, points)
+        _, _, clearance = wholebody._sample_body_fields(points)
+        expected = np.asarray(raw).copy()
+        expected[5:7, 0] -= [hand_sphere(side)["radius"] for side in ("left", "right")]
+        np.testing.assert_allclose(clearance, expected, atol=1e-7)
+    before = np.asarray(state.info["handsdf"]).copy()
+    for _ in range(3):
+        wholebody._get_obs(state.data, state.info, jp.zeros(2, dtype=bool))
+    np.testing.assert_array_equal(state.info["handsdf"], before)
+
+
+def test_elbow_features_use_cat_order_current_critic_and_held_actor(wholebody, wholebody_state):
+    from cat_ppo.envs.g1.env_cat import delay_body_pos, world_to_navi_vel, EPS
+    from cat_ppo.furniture.control import ELBOW_RADIUS_M
+    state = deepcopy(wholebody_state)
+    state.info["odom_delay"] = state.info["odom_delay"].at[0].add(-.3)
+    state.info["step"] = jp.asarray(2)
+    state.info["command"] = state.info["command"].at[0].set(1.)
+    positions = state.data.site_xpos[wholebody._elbow_site_ids]
+    odom = state.info["odom_delay"]
+    delayed = delay_body_pos(state.data.qpos[:3], state.data.qpos[3:7], odom[:3], odom[3:7], positions)
+    result = wholebody._get_obs(state.data, state.info, jp.zeros(2, dtype=bool))
+    for key, points, actor in (("state", delayed, True), ("privileged_state", positions, False)):
+        gf = wholebody.sample_field(wholebody.gf, points)
+        bf = wholebody.sample_field(wholebody.bf, points)
+        df = wholebody.sample_field(wholebody.sdf, points) - ELBOW_RADIUS_M
+        gf /= jp.linalg.norm(gf, axis=-1, keepdims=True) + EPS
+        bf /= jp.linalg.norm(bf, axis=-1, keepdims=True) + EPS
+        if actor:
+            gf = world_to_navi_vel(state.info["navi2world_pose"], gf)
+            bf = world_to_navi_vel(state.info["navi2world_pose"], bf) * (df < .5)
+            df = jp.clip(df, -1., .5)
+        expected = jp.concatenate([gf.reshape(-1), bf.reshape(-1), df.reshape(-1)])
+        np.testing.assert_allclose(result[key][-14:], expected, atol=1e-7)
+    state.info["command"] = state.info["command"].at[0].set(0.)
+    stopped = wholebody._elbow_fields(positions, state.info, actor=False)
+    np.testing.assert_array_equal(stopped[:6], 0.)
 
 
 def test_wholebody_real_step_keeps_reward_scaling_and_state_tree(wholebody, wholebody_state):
@@ -221,9 +286,49 @@ def test_public_ragged_task_reset_matches_original_generalist(config, tmp_path, 
                  reset_xy_scale=[1.0, 1.0], reset_yaw=0.0, sampling_weight=1.0)
     # Field provenance has separate download/hash tests; here use a small bank
     # so the actual public task's scene routing and randomization can be checked.
-    monkeypatch.setattr(generalist_fields, "load_generalist_manifest", lambda path: {"scenes": [scene]})
+    monkeypatch.setattr(generalist_fields, "load_generalist_manifest",
+                        lambda path: {"schema": generalist_fields.SCHEMA, "scenes": [scene]})
     cfg = wholebody_config(config, bank_manifest=tmp_path / "bank.json", compatibility_mode=True)
     reference = G1CatDaggerEnv(config=cfg.copy_and_resolve_references())
     actual = G1CatWholeBodyEnv(config=cfg)
     key = jax.random.PRNGKey(73)
     _assert_tree_equal(jax.jit(reference.reset)(key), jax.jit(actual.reset)(key))
+
+
+def test_expanded_compact_task_runs_all_families_through_real_autoreset(config, tmp_path, monkeypatch):
+    from cat_ppo.furniture import generalist_fields as fields
+    from cat_ppo.furniture.generalist_training import wrap_for_cat_wholebody_training
+
+    families = ["original_cat", "published_cat", "procedural_cat", "furniture", "generic_clutter"]
+    scenes = []
+    for family in families:
+        is_cat = family not in ("furniture", "generic_clutter")
+        scenes.append(dict(path=config.pf_config.path, shape=[20, 21, 16],
+            origin=config.pf_config.origin, dx=config.pf_config.dx, family=family,
+            start=[0., 0., .8], goal=[2., 0., .75], reset_yaw=0., sampling_weight=1.,
+            reset_xy_scale=[1., 1.] if is_cat else [.08, .08],
+            task_kind="cat" if is_cat else "room", reset_mode="cat" if is_cat else "room",
+            crossed_mode="x_plane" if is_cat else "goal_radius",
+            episode_length=1000 if is_cat else 4000,
+            sampling_group="original_cat" if family == "published_cat" else family))
+    manifest = dict(schema=fields.EXPANDED_SCHEMA, scenes=scenes,
+                    sampling_group_masses=fields.DEFAULT_SAMPLING_GROUP_MASSES)
+    # Real compact physics and wrappers; small deterministic fields isolate
+    # scene routing from the independently tested on-disk provenance checks.
+    monkeypatch.setattr(fields, "load_generalist_manifest", lambda path: manifest)
+    env = G1CatWholeBodyEnv(config=wholebody_config(config, bank_manifest=tmp_path / "bank.json"))
+    wrapped = wrap_for_cat_wholebody_training(env)
+    keys = jax.random.split(jax.random.PRNGKey(15), 5)
+    state = jax.jit(wrapped._reset_with_pf_id)(keys, jp.arange(5))
+    assert state.obs["state"].shape == (5, 222)
+    assert state.obs["privileged_state"].shape == (5, 310)
+    state.info["steps"] = jp.array([999., 999., 999., 3999., 3999.])
+    result = jax.jit(wrapped.step)(state, jp.zeros((5, 29)))
+    jax.block_until_ready(result.reward)
+    np.testing.assert_array_equal(result.info["episode_done"], 1.)
+    np.testing.assert_array_equal(result.info["pf_episode_ema"][0], np.ones(5))
+    probabilities = np.asarray(jax.nn.softmax(result.info["pf_sampling_logits"][0]))
+    np.testing.assert_allclose(np.bincount([0, 0, 1, 2, 3], weights=probabilities),
+                               [.2, .4, .25, .15], atol=1e-6)
+    assert np.isfinite(result.obs["state"]).all()
+    assert np.isfinite(result.data.qpos).all()

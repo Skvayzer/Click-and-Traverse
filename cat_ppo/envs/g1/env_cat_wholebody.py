@@ -2,7 +2,7 @@
 
 The inherited task owns the reward, disturbances, gait, observations, field
 latency and termination.  This module changes only the requested body action
-interface, fixed Dex3 hands, and explicit hand/arm field probes.  Furniture
+interface, fixed Dex3 hand spheres, and two elbow field samples.  Furniture
 remains a potential field during training, as in released CAT.  The separate
 physical furniture environment is useful for contact evaluation, not training.
 """
@@ -18,11 +18,12 @@ import numpy as np
 from ml_collections import config_dict
 
 from cat_ppo.envs.g1 import constants as consts
-from cat_ppo.envs.g1.env_cat import G1CatEnv, delay_body_pos, world_to_navi_vel
+from cat_ppo.envs.g1.env_cat import G1CatEnv, delay_body_pos, world_to_navi_vel, EPS
 from cat_ppo.envs.g1.env_loco import G1LocoEnv
 from cat_ppo.furniture import control
-from cat_ppo.furniture.grippers import install_fixed_hands, hand_envelope, validate_hand_envelopes
-from cat_ppo.furniture.perception import hand_protection_cost
+from cat_ppo.furniture.grippers import (
+    install_fixed_hands, hand_envelope, hand_sphere, validate_hand_spheres,
+)
 
 
 def wholebody_config(base_config, *, bank_manifest=None, compatibility_mode=False):
@@ -43,13 +44,12 @@ def wholebody_config(base_config, *, bank_manifest=None, compatibility_mode=Fals
     config.upper_action_scale = 0.8
     config.upper_target_rate = 2.0
     config.hand_protection_enabled = not compatibility_mode
-    config.terminate_on_probe_collision = not compatibility_mode
+    config.terminate_on_elbow_collision = not compatibility_mode
     config.hand_clearance_margin = 0.12
     config.arm_clearance_margin = 0.08
-    config.hand_urgency_gain = 1.0
     config.clutter_episode_length = 4000
     contract = (control.legacy_observation_contract() if compatibility_mode
-                else control.observation_contract(29))
+                else control.wholebody_observation_contract())
     config.num_act = len(contract["action_names"])
     config.num_obs = len(contract["actor_features"])
     config.num_pri = len(contract["critic_features"])
@@ -64,11 +64,12 @@ def _numbers(values):
 
 
 def assemble_training_xml(asset_root=None):
-    """Original feet-only flat physics, with welded Dex3 geometry and probes.
+    """Original physics plus one field-query sphere/hand and one site/elbow.
 
     No obstacle geoms or extra self-contact pairs are introduced.  Original
-    explicit hand/thigh pairs refer to the corrected Dex3 bounding box; meshes
-    and boxes have zero general collision masks and the boxes have no mass.
+    explicit hand/thigh pairs retain their Dex3 box solely for those physics
+    contacts. There are no box-corner query sites. Sphere geoms are noncontact
+    visualizations with zero added mass; their centers reuse CAT's palm sites.
     """
     asset_root = Path(asset_root or consts.ROOT_PATH).resolve()
     root = ET.parse(asset_root / "g1_mjx_feetonly_torque.xml").getroot()
@@ -89,6 +90,7 @@ def assemble_training_xml(asset_root=None):
     bodies = {body.get("name"): body for body in root.findall(".//body")}
     for side in ("left", "right"):
         envelope = hand_envelope(side)
+        sphere = hand_sphere(side)
         ET.SubElement(
             bodies[f"{side}_wrist_yaw_link"], "geom",
             name=f"furniture_{side}_hand_envelope", type="box", **{
@@ -98,9 +100,13 @@ def assemble_training_xml(asset_root=None):
                 "rgba": "0.25 0.6 0.85 0.3",
             },
         )
-    for name, body, point, _ in control.PROBE_SPECS:
-        ET.SubElement(bodies[body], "site", name=f"furniture_probe_{name}",
-                      pos=_numbers(point), size="0.005", group="5")
+        wrist = bodies[f"{side}_wrist_yaw_link"]
+        wrist.find(f"site[@name='{side}_palm']").set("pos", _numbers(sphere["center"]))
+        ET.SubElement(wrist, "geom", name=f"furniture_{side}_hand_sphere", type="sphere",
+                      pos=_numbers(sphere["center"]), size=str(sphere["radius"]),
+                      density="0", contype="0", conaffinity="0", group="4", rgba="0.25 0.6 0.85 0.2")
+        ET.SubElement(bodies[f"{side}_elbow_link"], "site", name=f"{side}_elbow_probe",
+                      pos="0 0 0", size="0.005", group="5")
     return ET.tostring(root, encoding="unicode")
 
 
@@ -115,7 +121,7 @@ class _WholeBodyTask(G1CatEnv):
         self.compatibility_mode = (configured_mode if compatibility_mode is None
                                    else bool(compatibility_mode))
         self._contract = (control.legacy_observation_contract() if self.compatibility_mode
-                          else control.observation_contract(29))
+                          else control.wholebody_observation_contract())
         self._xml_directory = None
         super().__init__(task_type=task_type, config=config,
                          config_overrides=config_overrides)
@@ -145,20 +151,20 @@ class _WholeBodyTask(G1CatEnv):
                 raise ValueError(f"CAT joint coordinate ordering changed at {name}")
         self.action_joint_ids = jp.arange(29)
         self.obs_joint_ids = jp.arange(29)
-        self._probe_site_ids = np.asarray([
-            self.mj_model.site(f"furniture_probe_{spec[0]}").id
-            for spec in control.PROBE_SPECS])
-        self._probe_radii = jp.asarray([spec[3] for spec in control.PROBE_SPECS])
-        self._hand_probe_ids = jp.asarray([
-            i for i, spec in enumerate(control.PROBE_SPECS)
-            if "hand_corner" in spec[0] or "palm" in spec[0]])
-        self._arm_probe_ids = jp.asarray([
-            i for i, spec in enumerate(control.PROBE_SPECS)
-            if "forearm" in spec[0] or "elbow" in spec[0]])
+        self._hand_radii = jp.asarray([hand_sphere(side)["radius"] for side in ("left", "right")])
+        self._elbow_site_ids = np.asarray([self.mj_model.site(name).id for name in control.ELBOW_SITES])
         data = mujoco.MjData(self.mj_model)
         data.qpos[:] = np.asarray(self._init_q)
         mujoco.mj_forward(self.mj_model, data)
-        self.hand_envelope_validation = validate_hand_envelopes(self.mj_model, data)
+        self.hand_sphere_validation = validate_hand_spheres(self.mj_model, data)
+
+    def _sample_body_fields(self, positions):
+        gf, bf, clearance = super()._sample_body_fields(positions)
+        if not self.compatibility_mode:
+            # CAT orders its eleven samples as head/pelvis/torso/feet/hands/
+            # knees/shoulders. Adjust fresh true OR delayed queries exactly once.
+            clearance = clearance.at[5:7, 0].add(-self._hand_radii)
+        return gf, bf, clearance
 
     def _reset_root_pose(self, qpos):
         # A scene bank keeps released scenes' reset pose bit-for-bit unchanged;
@@ -185,6 +191,8 @@ class _WholeBodyTask(G1CatEnv):
         if not hasattr(self, "_pf_scene_original"):
             return original
         scene = info.get("pf_id", self._field_pf_id)
+        if getattr(self, "_pf_expanded", False):
+            return self._pf_scene_episode_lengths[scene]
         return jp.where(self._pf_scene_original[scene], original,
                         self._config.clutter_episode_length)
 
@@ -195,54 +203,46 @@ class _WholeBodyTask(G1CatEnv):
                     obstacle_physics="potential_fields_only",
                     compatibility_mode=self.compatibility_mode)
 
-    def _probe_features(self, positions, velocity, *, age):
-        # Use the same sampler as CAT, including its released interpolation
-        # convention.  Silently fixing that convention changes learned inputs.
-        distances = [self.sample_field(self.sdf, positions + horizon * velocity)[:, 0]
-                     - self._probe_radii for horizon in (0.0, 0.2, 0.4)]
+    def _elbow_fields(self, positions, info, *, actor):
+        guidance = self.sample_field(self.gf, positions)
         boundary = self.sample_field(self.bf, positions)
-        boundary /= jp.maximum(jp.linalg.norm(boundary, axis=-1, keepdims=True), 1e-6)
-        return jp.concatenate([
-            jp.clip(jp.stack(distances, axis=-1), -1.0, 2.0), boundary,
-            jp.full((len(control.PROBE_SPECS), 1), age),
-            # Known static fields, with the same boundary clamping as CAT.
-            jp.zeros((len(control.PROBE_SPECS), 2)),
-        ], axis=-1)
+        clearance = self.sample_field(self.sdf, positions) - control.ELBOW_RADIUS_M
+        # Match CAT: reset normalizes vectors; later GF follows the move flag.
+        move = (jp.asarray(info["step"]) == 0) | (info["command"][0] > 0.5)
+        guidance = guidance * move / (jp.linalg.norm(guidance, axis=-1, keepdims=True) + EPS)
+        boundary = boundary / (jp.linalg.norm(boundary, axis=-1, keepdims=True) + EPS)
+        if actor:
+            guidance = world_to_navi_vel(info["navi2world_pose"], guidance)
+            boundary = world_to_navi_vel(info["navi2world_pose"], boundary) * (clearance < 0.5)
+            clearance = jp.clip(clearance, -1.0, 0.5)
+        # Field-major ordering is the same as existing paired hand/foot slots.
+        return jp.concatenate([guidance.reshape(-1), boundary.reshape(-1), clearance.reshape(-1)])
 
     def _get_obs(self, data, info, feet_contact):
         baseline = super()._get_obs(data, info, feet_contact)
         if self.compatibility_mode:
             return baseline
-        positions = data.site_xpos[self._probe_site_ids]
-        previous = info.get("wholebody_probe_positions", positions)
-        velocity = (positions - previous) / self.dt
-        true_features = self._probe_features(positions, velocity, age=0.0)
+        positions = data.site_xpos[self._elbow_site_ids]
+        true_features = self._elbow_fields(positions, info, actor=False)
         odom = info["odom_delay"]
         delayed_positions = delay_body_pos(
             data.qpos[:3], data.qpos[3:7], odom[:3], odom[3:7], positions)
-        age = (jp.maximum(jp.asarray(info["step"]) - 1, 0) % 5) * self.dt
-        actor_features = self._probe_features(delayed_positions, velocity, age=age)
-        actor_features = actor_features.at[:, 3:6].set(
-            world_to_navi_vel(info["navi2world_pose"], actor_features[:, 3:6]))
-        info["wholebody_probe_positions"] = positions
-        info["wholebody_probe_velocity"] = velocity
-        info["wholebody_probe_features"] = true_features
-        return {"state": jp.concatenate([baseline["state"], actor_features.reshape(-1)]),
+        actor_features = self._elbow_fields(delayed_positions, info, actor=True)
+        info["wholebody_elbow_clearance"] = true_features[-2:]
+        info["wholebody_clearances"] = jp.concatenate([info["handsdf"].reshape(-1), true_features[-2:]])
+        return {"state": jp.concatenate([baseline["state"], jp.nan_to_num(actor_features)]),
                 "privileged_state": jp.concatenate([
-                    baseline["privileged_state"], true_features.reshape(-1)])}
+                    baseline["privileged_state"], jp.nan_to_num(true_features)])}
 
     def _get_reward(self, data, action, info, done, feet_contact):
         rewards = super()._get_reward(data, action, info, done, feet_contact)
         if self.compatibility_mode:
             return rewards
-        features = info["wholebody_probe_features"]
         enabled = self._config.hand_protection_enabled
-        rewards["wholebody_hand_clearance"] = jp.where(enabled, hand_protection_cost(
-            features[self._hand_probe_ids], info["wholebody_probe_velocity"][self._hand_probe_ids],
-            clearance_margin=self._config.hand_clearance_margin,
-            urgency_gain=self._config.hand_urgency_gain), 0.0)
+        hand_deficit = jp.maximum(self._config.hand_clearance_margin - info["handsdf"], 0.0)
+        rewards["wholebody_hand_clearance"] = jp.where(enabled, jp.mean(hand_deficit ** 2), 0.0)
         deficit = jp.maximum(self._config.arm_clearance_margin
-                             - features[self._arm_probe_ids, 0], 0.0)
+                             - info["wholebody_elbow_clearance"], 0.0)
         rewards["wholebody_arm_clearance"] = jp.where(enabled, jp.mean(deficit ** 2), 0.0)
         return rewards
 
@@ -252,16 +252,19 @@ class _WholeBodyTask(G1CatEnv):
             return original
         scene = self._field_pf_id
         near_goal = jp.linalg.norm(positions[..., :2] - self._pf_scene_goals[scene, :2], axis=-1) <= 0.5
-        return jp.where(self._pf_scene_original[scene], original, near_goal)
+        use_plane = (self._pf_crossed_is_x_plane[scene] if getattr(self, "_pf_expanded", False)
+                     else self._pf_scene_original[scene])
+        return jp.where(use_plane, original, near_goal)
 
     def _get_termination(self, data, info):
         original_done = super()._get_termination(data, info)
         if self.compatibility_mode:
             return original_done
-        probe_collision = jp.any(info["wholebody_probe_features"][:, 0]
+        # Hand sphere penetration already uses CAT's inherited handsdf rule.
+        elbow_collision = jp.any(info["wholebody_elbow_clearance"]
                                  < -self._config.term_collision_threshold)
-        return (original_done | (self._config.terminate_on_probe_collision
-                                 & (info["step"] >= 50) & probe_collision))
+        return (original_done | (self._config.terminate_on_elbow_collision
+                                 & (info["step"] >= 50) & elbow_collision))
 
 
 # The scene mixin owns per-environment scene IDs and CAT's adaptive reset

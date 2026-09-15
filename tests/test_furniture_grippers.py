@@ -10,7 +10,8 @@ from cat_ppo.envs.g1 import constants
 from cat_ppo.envs.g1.env_furniture import assemble_scene_xml
 from cat_ppo.furniture.control import JOINT_NAMES, PROBE_SPECS, posture_actions
 from cat_ppo.furniture.grippers import (
-    ASSET_ROOT, ENVELOPE_MARGIN_M, geometry_contract, hand_envelope, hand_mesh_vertices, validate_hand_envelopes,
+    ASSET_ROOT, ENVELOPE_MARGIN_M, geometry_contract, hand_envelope,
+    hand_mesh_vertices, hand_sphere, validate_hand_envelopes, validate_hand_spheres,
 )
 from cat_ppo.furniture.scenes import generate_scene
 
@@ -21,8 +22,83 @@ def model():
     return mujoco.MjModel.from_xml_string(assemble_scene_xml(scene))
 
 
+@pytest.fixture(scope="module")
+def sphere_model():
+    scene = generate_scene(seed=3, family="table", difficulty="open_floor")
+    root = ET.fromstring(assemble_scene_xml(scene))
+    for side in ("left", "right"):
+        sphere = hand_sphere(side)
+        wrist = root.find(f".//body[@name='{side}_wrist_yaw_link']")
+        # Query/visualization sphere does not modify physical contact geometry.
+        ET.SubElement(wrist, "geom", name=f"furniture_{side}_hand_sphere",
+                      type="sphere", pos=" ".join(map(str, sphere["center"])),
+                      size=str(sphere["radius"]), density="0", contype="0", conaffinity="0")
+    return mujoco.MjModel.from_xml_string(ET.tostring(root, encoding="unicode"))
+
+
 def test_persisted_geometry_metadata_matches_current_assets_and_pose():
     assert json.loads((ASSET_ROOT / "geometry-contract.json").read_text()) == geometry_contract()
+
+
+@pytest.mark.parametrize("posture", ["nominal", "raised", "tucked"])
+@pytest.mark.parametrize("wrists", [(0., 0., 0.), (.7, -.5, .6), (-.9, .6, -.7)])
+def test_fixed_spheres_contain_every_compiled_mesh_vertex_at_arbitrary_wrist_pose(sphere_model, posture, wrists):
+    data = mujoco.MjData(sphere_model)
+    data.qpos[:] = constants.DEFAULT_QPOS
+    data.qpos[7:] += .8 * posture_actions(np.zeros(29), JOINT_NAMES, posture)
+    for side, sign in (("left", 1), ("right", -1)):
+        for axis, angle in zip(("roll", "pitch", "yaw"), wrists):
+            joint = sphere_model.joint(f"{side}_wrist_{axis}_joint")
+            data.qpos[int(joint.qposadr[0])] = sign * angle
+    mujoco.mj_forward(sphere_model, data)
+    names = {side: f"furniture_{side}_hand_sphere" for side in ("left", "right")}
+    report = validate_hand_spheres(sphere_model, data)
+    for side in ("left", "right"):
+        sphere = hand_sphere(side)
+        wrist = sphere_model.body(f"{side}_wrist_yaw_link").id
+        geom = sphere_model.geom(names[side]).id
+        # The center follows the articulated wrist frame, while radius is fixed.
+        np.testing.assert_allclose(
+            data.geom_xpos[geom],
+            data.xpos[wrist] + data.xmat[wrist].reshape(3, 3) @ sphere["center"],
+            atol=1e-12,
+        )
+        assert report[side]["radius_m"] == sphere["radius"]
+        assert report[side]["minimum_margin_m"] == pytest.approx(ENVELOPE_MARGIN_M, abs=2e-6)
+        assert report[side]["checked_vertices"] > 80_000
+        assert len(report[side]["checked_meshes"]) == 8
+        assert sum("thumb" in mesh for mesh in report[side]["checked_meshes"]) == 3
+
+
+def test_virtual_spheres_preserve_all_robot_inertias_and_contacts(model, sphere_model):
+    np.testing.assert_array_equal(sphere_model.body_mass, model.body_mass)
+    np.testing.assert_array_equal(sphere_model.body_inertia, model.body_inertia)
+    np.testing.assert_array_equal(sphere_model.body_ipos, model.body_ipos)
+    np.testing.assert_array_equal(sphere_model.body_iquat, model.body_iquat)
+    for side in ("left", "right"):
+        sphere = sphere_model.geom(f"furniture_{side}_hand_sphere").id
+        assert sphere_model.geom_contype[sphere] == sphere_model.geom_conaffinity[sphere] == 0
+        for field in ("geom_type", "geom_size", "geom_contype", "geom_conaffinity"):
+            name = f"furniture_{side}_hand_envelope"
+            np.testing.assert_array_equal(
+                getattr(sphere_model, field)[sphere_model.geom(name).id],
+                getattr(model, field)[model.geom(name).id],
+            )
+
+
+def test_sphere_validator_rejects_an_envelope_that_misses_hand_mesh(sphere_model):
+    data = mujoco.MjData(sphere_model)
+    data.qpos[:] = constants.DEFAULT_QPOS
+    mujoco.mj_forward(sphere_model, data)
+    names = {side: f"furniture_{side}_hand_sphere" for side in ("left", "right")}
+    geom = sphere_model.geom(names["left"]).id
+    original_radius = sphere_model.geom_size[geom, 0]
+    try:
+        sphere_model.geom_size[geom, 0] = original_radius - .01
+        with pytest.raises(ValueError, match="left Dex3 hand not contained in sphere"):
+            validate_hand_spheres(sphere_model, data, geom_names=names)
+    finally:
+        sphere_model.geom_size[geom, 0] = original_radius
 
 
 @pytest.mark.parametrize("posture", ["nominal", "raised", "tucked"])

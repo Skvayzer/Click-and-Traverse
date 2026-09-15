@@ -1,0 +1,50 @@
+{
+  "schema": "cat-generalist-field-bank-v2",
+  "released_config_sha256": "0e38cac262a3c1c95bacdf859193340056fef53b8d2f8414293789cee5d45d2d",
+  "original_count": 37,
+  "scene_count": 2338,
+  "byte_verified_original_count": 36,
+  "reconstructed_original_count": 1,
+  "upstream_commit": "866ba392f1c1e84b92ad75fa66550f26e8af8e48",
+  "dataset_repo": "Axian12138/Click-and-Traverse",
+  "dataset_revision": "db8c202fa724bc4d3dba2cb9fead1267f15fd811",
+  "sampling_group_masses": {
+    "original_cat": 0.2,
+    "procedural_cat": 0.4,
+    "furniture": 0.25,
+    "generic_clutter": 0.15
+  },
+  "storage": "ragged-concatenated-xyz; original CAT clipping and interpolation retained",
+  "fields_bytes": 14215263552,
+  "preparation_plan_sha256": "edf7493a8acd9a3405da31715a6952d0c44e8a764bad2cad0bb1202f753b0882",
+  "generation_coverage_sha256": "604e509c169e2d9508fb66207d9d27d51a4d2265b4afbab9959aa235eec60cd7",
+  "requested_generated_count": 2301,
+  "duplicate_generated_count": 0,
+  "rejected_generated_count": 0,
+  "requested_family_counts": {
+    "published_cat": 27,
+    "procedural_cat": 2226,
+    "furniture": 24,
+    "generic_clutter": 24
+  },
+  "retained_family_counts": {
+    "original_cat": 37,
+    "published_cat": 27,
+    "procedural_cat": 2226,
+    "furniture": 24,
+    "generic_clutter": 24
+  },
+  "unpublished_paper_training_collection_reproduced": false,
+  "indoor_crops_included": false,
+  "procedural_generation": "Unmodified public CAT generator over explicitly recorded parameters; not unpublished paper seed identity",
+  "manifest_sha256": "e918eb5a51180ebb40a2030969c9f063a425b81f45796396952a786d2e9648e7",
+  "fields_gib": 13.238995850086212,
+  "scene_counts": {
+    "original_cat": 37,
+    "published_cat": 27,
+    "procedural_cat": 2226,
+    "furniture": 24,
+    "generic_clutter": 24
+  },
+  "raw_runtime_field_bytes": 14214365760
+}

@@ -386,9 +386,7 @@ class G1CatEnv(G1LocoEnv):
             knees_pos,
             shlds_pos,
         ], axis=0)
-        all_gf = self.sample_field(self.gf, all_poses)
-        all_bf = self.sample_field(self.bf, all_poses)
-        all_df = self.sample_field(self.sdf, all_poses)
+        all_gf, all_bf, all_df = self._sample_body_fields(all_poses)
         all_gf = all_gf / (jp.linalg.norm(all_gf, axis=-1, keepdims=True) + EPS)
         all_bf = all_bf / (jp.linalg.norm(all_bf, axis=-1, keepdims=True) + EPS)
 
@@ -647,9 +645,7 @@ class G1CatEnv(G1LocoEnv):
             knees_pos,
             shlds_pos,
         ], axis=0)
-        all_gf = self.sample_field(self.gf, all_poses)
-        all_bf = self.sample_field(self.bf, all_poses)
-        all_df = self.sample_field(self.sdf, all_poses)
+        all_gf, all_bf, all_df = self._sample_body_fields(all_poses)
         headgf, pelvgf, torsgf, feetgf, handsgf, kneesgf, shldsgf = jp.split(all_gf, [1,2,3,5,7,9], axis=0)
         headbf, pelvbf, torsbf, feetbf, handsbf, kneesbf, shldsbf = jp.split(all_bf, [1,2,3,5,7,9], axis=0)
         headdf, pelvdf, torsdf, feetdf, handsdf, kneesdf, shldsdf = jp.split(all_df, [1,2,3,5,7,9], axis=0)
@@ -668,9 +664,7 @@ class G1CatEnv(G1LocoEnv):
         p_odom = odom_delay[:3]
         q_odom = odom_delay[3:7]
         all_poses_delay = delay_body_pos(p_gt, q_gt, p_odom, q_odom, all_poses)
-        all_gf_delay = self.sample_field(self.gf, all_poses_delay)
-        all_bf_delay = self.sample_field(self.bf, all_poses_delay)
-        all_df_delay = self.sample_field(self.sdf, all_poses_delay)
+        all_gf_delay, all_bf_delay, all_df_delay = self._sample_body_fields(all_poses_delay)
 
         # update gait
         self._update_phase(state)
@@ -784,6 +778,12 @@ class G1CatEnv(G1LocoEnv):
         done = done.astype(reward.dtype)
         state = state.replace(data=data, obs=obs, reward=reward, done=done)
         return state
+
+    def _sample_body_fields(self, positions):
+        """Released point samples; extensions can account for body envelopes."""
+        return (self.sample_field(self.gf, positions),
+                self.sample_field(self.bf, positions),
+                self.sample_field(self.sdf, positions))
 
     def _reset_root_pose(self, qpos):
         """Scene extensions may relocate resets; original CAT is identity."""

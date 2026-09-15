@@ -1,0 +1,1017 @@
+{
+  "schema": "cat-room-reset-audit-v1",
+  "seed": 90260916,
+  "samples_per_room": 256,
+  "reset_distribution": {
+    "xy_half_extent_m": 0.08,
+    "yaw_half_extent_rad": 1.5707963267948966,
+    "joint_nominal_multiplier": [
+      0.5,
+      1.5
+    ],
+    "joint_soft_limit_factor": 0.95,
+    "root_height_m": 0.8
+  },
+  "method": "compiled MuJoCo forward kinematics; exact oriented-box SDF; 13 compact field sites",
+  "limitations": [
+    "Finite sample/grid audit, not a universal reset certificate",
+    "No voxel-field interpolation",
+    "No robot mesh-contact or dynamic-feasibility test",
+    "Route certificate remains root-cylinder only"
+  ],
+  "required_endpoint_center_clearance_m": 0.72,
+  "configured_reset_hand_envelope_radius_m": 0.52,
+  "measured_arm_parameter_grid_radius_m": {
+    "left": 0.5032443488626553,
+    "right": 0.5032368728591448
+  },
+  "arm_grid_points_per_side": 729,
+  "source_sha256": {
+    "cat_ppo/furniture/random_rooms.py": "9f5ca90cb7869c372bb9974ebbce0e7444706d378fb8bbe6e0a301e86a574086",
+    "cat_ppo/furniture/grippers.py": "f44974c12ca1173d1e933cff837912b11e620d324bb5fe5e4bc809c26f348138",
+    "cat_ppo/envs/g1/env_cat_wholebody.py": "cb8c15e1846c6a0c613f93257730fe482cdd21c1d310c5ba20edb845673a782d",
+    "scripts/audit_room_resets.py": "9eaa755b60854fdbb2287f3ad75345853ad4b9b0cd9184b3b2b72bee66e5a4ca"
+  },
+  "summaries": {
+    "furniture": {
+      "rooms": 24,
+      "nominal_colliding_rooms": 0,
+      "nominal_min_m": 0.36779620580932004,
+      "sampled_colliding_rooms": 0,
+      "sampled_collisions": 0,
+      "sampled_total": 6144,
+      "sampled_min_m": 0.21431565067845365
+    },
+    "generic_clutter": {
+      "rooms": 24,
+      "nominal_colliding_rooms": 0,
+      "nominal_min_m": 0.37105436613266557,
+      "sampled_colliding_rooms": 0,
+      "sampled_collisions": 0,
+      "sampled_total": 6144,
+      "sampled_min_m": 0.16455039988291076
+    }
+  },
+  "scenes": [
+    {
+      "kind": "furniture",
+      "seed": 4001,
+      "scene_id": "random-furniture-dense-train-004001-5ef9779babcf",
+      "geometry_hash": "5ef9779babcfb08f51ef8b4b932a891157bd314cb0a4d86d7944d2165a52516e",
+      "start": [
+        2.2,
+        5.24,
+        1.5707963267948966
+      ],
+      "nominal_min_m": 0.40310621034682675,
+      "sampled_min_m": 0.23794905172349884,
+      "colliding_samples": 0,
+      "samples": 256,
+      "worst_site": "right_palm",
+      "worst_pose": 74,
+      "hand_collisions": 0,
+      "nonhand_collisions": 0,
+      "root_center_clearance_m": 0.7552718672748993
+    },
+    {
+      "kind": "furniture",
+      "seed": 4002,
+      "scene_id": "random-furniture-dense-train-004002-4f7ed1085e60",
+      "geometry_hash": "4f7ed1085e60473a96e6e89e899f58995165f9496b83706b6d34d69eec2dbaab",
+      "start": [
+        7.88,
+        2.6,
+        0.9827937232473294
+      ],
+      "nominal_min_m": 0.4824888552255276,
+      "sampled_min_m": 0.35937470100924396,
+      "colliding_samples": 0,
+      "samples": 256,
+      "worst_site": "right_palm",
+      "worst_pose": 96,
+      "hand_collisions": 0,
+      "nonhand_collisions": 0,
+      "root_center_clearance_m": 0.8592738270615636
+    },
+    {
+      "kind": "furniture",
+      "seed": 4003,
+      "scene_id": "random-furniture-dense-train-004003-ec613f0c9066",
+      "geometry_hash": "ec613f0c906644eba7654e9c5ddbef958b64476219604453af8dd74cb8c3e005",
+      "start": [
+        2.44,
+        2.12,
+        0.0
+      ],
+      "nominal_min_m": 0.4499236544624505,
+      "sampled_min_m": 0.25465325665627586,
+      "colliding_samples": 0,
+      "samples": 256,
+      "worst_site": "left_palm",
+      "worst_pose": 166,
+      "hand_collisions": 0,
+      "nonhand_collisions": 0,
+      "root_center_clearance_m": 0.8090251363925167
+    },
+    {
+      "kind": "furniture",
+      "seed": 4004,
+      "scene_id": "random-furniture-dense-train-004004-b43029cf3054",
+      "geometry_hash": "b43029cf30546085435af0254b3a69f92865abfdb57498b94c87cae8981bccfe",
+      "start": [
+        2.52,
+        7.32,
+        -0.7853981633974483
+      ],
+      "nominal_min_m": 0.44205298669849574,
+      "sampled_min_m": 0.3189126986255577,
+      "colliding_samples": 0,
+      "samples": 256,
+      "worst_site": "left_palm",
+      "worst_pose": 228,
+      "hand_collisions": 0,
+      "nonhand_collisions": 0,
+      "root_center_clearance_m": 0.7990503860283915
+    },
+    {
+      "kind": "furniture",
+      "seed": 4005,
+      "scene_id": "random-furniture-dense-train-004005-73bf176dd617",
+      "geometry_hash": "73bf176dd6176f992d72e095a45d710bc8ef119ff201661db0cf27e41be34e0e",
+      "start": [
+        4.92,
+        1.56,
+        0.7853981633974483
+      ],
+      "nominal_min_m": 0.575604310510565,
+      "sampled_min_m": 0.2713484249238889,
+      "colliding_samples": 0,
+      "samples": 256,
+      "worst_site": "right_palm",
+      "worst_pose": 215,
+      "hand_collisions": 0,
+      "nonhand_collisions": 0,
+      "root_center_clearance_m": 0.7655124392610938
+    },
+    {
+      "kind": "furniture",
+      "seed": 4006,
+      "scene_id": "random-furniture-dense-train-004006-e25f23993384",
+      "geometry_hash": "e25f239933844c60f4c70b8fe63ad7c6f3e9446eaeaa4b6205915d6021bb2a92",
+      "start": [
+        1.56,
+        6.68,
+        2.2142974355881804
+      ],
+      "nominal_min_m": 0.4991360402394301,
+      "sampled_min_m": 0.25878125637233945,
+      "colliding_samples": 0,
+      "samples": 256,
+      "worst_site": "right_palm",
+      "worst_pose": 243,
+      "hand_collisions": 0,
+      "nonhand_collisions": 0,
+      "root_center_clearance_m": 0.7637496977508602
+    },
+    {
+      "kind": "furniture",
+      "seed": 4007,
+      "scene_id": "random-furniture-dense-train-004007-20efcd8c8892",
+      "geometry_hash": "20efcd8c8892a61723382e8b5a9f6fc14cd8ea60d774576684a2eed226a206ed",
+      "start": [
+        4.04,
+        1.4,
+        -0.7853981633974477
+      ],
+      "nominal_min_m": 0.4742330981461718,
+      "sampled_min_m": 0.3358145333503762,
+      "colliding_samples": 0,
+      "samples": 256,
+      "worst_site": "left_palm",
+      "worst_pose": 92,
+      "hand_collisions": 0,
+      "nonhand_collisions": 0,
+      "root_center_clearance_m": 0.8284662504696134
+    },
+    {
+      "kind": "furniture",
+      "seed": 4008,
+      "scene_id": "random-furniture-dense-train-004008-73ed3af356e1",
+      "geometry_hash": "73ed3af356e128c426318ac1da3357c72037963d1901c9a8459bda1036e3536f",
+      "start": [
+        5.16,
+        1.72,
+        2.356194490192345
+      ],
+      "nominal_min_m": 0.5542190180853963,
+      "sampled_min_m": 0.28527917272040804,
+      "colliding_samples": 0,
+      "samples": 256,
+      "worst_site": "right_palm",
+      "worst_pose": 72,
+      "hand_collisions": 0,
+      "nonhand_collisions": 0,
+      "root_center_clearance_m": 0.7700225025121378
+    },
+    {
+      "kind": "furniture",
+      "seed": 4009,
+      "scene_id": "random-furniture-dense-train-004009-04bb9ee12a93",
+      "geometry_hash": "04bb9ee12a934774a01f0e3a3fc473702d63e7fdbbec8cd1ce0b1d32b4de02fc",
+      "start": [
+        0.92,
+        4.84,
+        0.22679884805388606
+      ],
+      "nominal_min_m": 0.47242449293965555,
+      "sampled_min_m": 0.256378476145821,
+      "colliding_samples": 0,
+      "samples": 256,
+      "worst_site": "right_palm",
+      "worst_pose": 183,
+      "hand_collisions": 0,
+      "nonhand_collisions": 0,
+      "root_center_clearance_m": 0.7581722542569982
+    },
+    {
+      "kind": "furniture",
+      "seed": 4010,
+      "scene_id": "random-furniture-dense-train-004010-dca221806a10",
+      "geometry_hash": "dca221806a1075f5f9e64b1c68ae51fa99298b11ffe701bee26f339457161b51",
+      "start": [
+        2.04,
+        8.2,
+        -0.7853981633974482
+      ],
+      "nominal_min_m": 0.4831220927650221,
+      "sampled_min_m": 0.2924546677443063,
+      "colliding_samples": 0,
+      "samples": 256,
+      "worst_site": "right_palm",
+      "worst_pose": 183,
+      "hand_collisions": 0,
+      "nonhand_collisions": 0,
+      "root_center_clearance_m": 0.8161075226082191
+    },
+    {
+      "kind": "furniture",
+      "seed": 4011,
+      "scene_id": "random-furniture-dense-train-004011-b56ff3937608",
+      "geometry_hash": "b56ff39376083cff92b4ff3d2ec855e67f2e690d68e540f2c068a600b6c634bf",
+      "start": [
+        1.0,
+        6.68,
+        -0.27829965900511155
+      ],
+      "nominal_min_m": 0.6349566017645241,
+      "sampled_min_m": 0.38985302370462227,
+      "colliding_samples": 0,
+      "samples": 256,
+      "worst_site": "left_palm",
+      "worst_pose": 92,
+      "hand_collisions": 0,
+      "nonhand_collisions": 0,
+      "root_center_clearance_m": 0.8832553178026975
+    },
+    {
+      "kind": "furniture",
+      "seed": 4012,
+      "scene_id": "random-furniture-dense-train-004012-4cbb8ee8d7f9",
+      "geometry_hash": "4cbb8ee8d7f94fdc785c8b449e2fbd469693f0e89b9ac0987900ac310e053c18",
+      "start": [
+        1.32,
+        8.92,
+        0.7853981633974487
+      ],
+      "nominal_min_m": 0.5265367304027131,
+      "sampled_min_m": 0.37126068952991564,
+      "colliding_samples": 0,
+      "samples": 256,
+      "worst_site": "right_palm",
+      "worst_pose": 183,
+      "hand_collisions": 0,
+      "nonhand_collisions": 0,
+      "root_center_clearance_m": 0.8861680358077487
+    },
+    {
+      "kind": "furniture",
+      "seed": 4013,
+      "scene_id": "random-furniture-dense-train-004013-4414684a1298",
+      "geometry_hash": "4414684a1298fa519ba09d8ff82fdcff3ce2234334191379f35e38277273484e",
+      "start": [
+        7.4,
+        2.44,
+        2.356194490192345
+      ],
+      "nominal_min_m": 0.5722819048949072,
+      "sampled_min_m": 0.43550962777220853,
+      "colliding_samples": 0,
+      "samples": 256,
+      "worst_site": "left_palm",
+      "worst_pose": 49,
+      "hand_collisions": 0,
+      "nonhand_collisions": 0,
+      "root_center_clearance_m": 0.9301476857575792
+    },
+    {
+      "kind": "furniture",
+      "seed": 4014,
+      "scene_id": "random-furniture-dense-train-004014-22685e830df6",
+      "geometry_hash": "22685e830df6033ceeb9b79f935c58270bf55dc9014fd63904cd4134bdd0a1d1",
+      "start": [
+        1.96,
+        1.4,
+        2.819842099193151
+      ],
+      "nominal_min_m": 0.44727841402309504,
+      "sampled_min_m": 0.31196205837941776,
+      "colliding_samples": 0,
+      "samples": 256,
+      "worst_site": "left_palm",
+      "worst_pose": 68,
+      "hand_collisions": 0,
+      "nonhand_collisions": 0,
+      "root_center_clearance_m": 0.7880903605440397
+    },
+    {
+      "kind": "furniture",
+      "seed": 4015,
+      "scene_id": "random-furniture-dense-train-004015-357d610c140a",
+      "geometry_hash": "357d610c140a6a943db3eba47dc030085aec3420415b8c20a9a3cc5380cee72a",
+      "start": [
+        1.96,
+        7.16,
+        -1.5707963267948966
+      ],
+      "nominal_min_m": 0.6869599978409779,
+      "sampled_min_m": 0.38841573538736085,
+      "colliding_samples": 0,
+      "samples": 256,
+      "worst_site": "right_palm",
+      "worst_pose": 189,
+      "hand_collisions": 0,
+      "nonhand_collisions": 0,
+      "root_center_clearance_m": 0.8930530419318394
+    },
+    {
+      "kind": "furniture",
+      "seed": 4016,
+      "scene_id": "random-furniture-dense-train-004016-93a493d7e5f0",
+      "geometry_hash": "93a493d7e5f079dbd78b571590444224c35a51674c3884614599b694f129458f",
+      "start": [
+        3.56,
+        1.56,
+        0.785398163397447
+      ],
+      "nominal_min_m": 0.6788360084554073,
+      "sampled_min_m": 0.5367029306146569,
+      "colliding_samples": 0,
+      "samples": 256,
+      "worst_site": "left_palm",
+      "worst_pose": 166,
+      "hand_collisions": 0,
+      "nonhand_collisions": 0,
+      "root_center_clearance_m": 1.0408773251164003
+    },
+    {
+      "kind": "furniture",
+      "seed": 4017,
+      "scene_id": "random-furniture-dense-train-004017-3214d64e0e5d",
+      "geometry_hash": "3214d64e0e5dbfa0c93ea97d7cc0cd68b04e83f00ebb2bc1625afce5e9391bc9",
+      "start": [
+        7.4,
+        1.96,
+        1.5707963267948966
+      ],
+      "nominal_min_m": 0.4737391172693381,
+      "sampled_min_m": 0.23267363086128406,
+      "colliding_samples": 0,
+      "samples": 256,
+      "worst_site": "left_palm",
+      "worst_pose": 166,
+      "hand_collisions": 0,
+      "nonhand_collisions": 0,
+      "root_center_clearance_m": 0.7514477661949343
+    },
+    {
+      "kind": "furniture",
+      "seed": 4018,
+      "scene_id": "random-furniture-dense-train-004018-f04cb1630fcc",
+      "geometry_hash": "f04cb1630fcce32494568242a778f3a6338e82b756a1f5ab994337db8871d549",
+      "start": [
+        0.92,
+        1.96,
+        -0.3947911196997615
+      ],
+      "nominal_min_m": 0.41308847152406575,
+      "sampled_min_m": 0.21431565067845365,
+      "colliding_samples": 0,
+      "samples": 256,
+      "worst_site": "left_palm",
+      "worst_pose": 228,
+      "hand_collisions": 0,
+      "nonhand_collisions": 0,
+      "root_center_clearance_m": 0.7627002032470106
+    },
+    {
+      "kind": "furniture",
+      "seed": 4019,
+      "scene_id": "random-furniture-dense-train-004019-e3b728cf4c7f",
+      "geometry_hash": "e3b728cf4c7f144f98c08b67e95ed676511eb0e74c4d0d0f3853d24d279223f7",
+      "start": [
+        1.56,
+        7.08,
+        1.5707963267948966
+      ],
+      "nominal_min_m": 0.36779620580932004,
+      "sampled_min_m": 0.21645163758352964,
+      "colliding_samples": 0,
+      "samples": 256,
+      "worst_site": "right_palm",
+      "worst_pose": 111,
+      "hand_collisions": 0,
+      "nonhand_collisions": 0,
+      "root_center_clearance_m": 0.7364715786733058
+    },
+    {
+      "kind": "furniture",
+      "seed": 4020,
+      "scene_id": "random-furniture-dense-train-004020-48b2ec62dd60",
+      "geometry_hash": "48b2ec62dd60bab80b5d5a7a32686f0936a58201b66d0173ec0b61ab01ac706f",
+      "start": [
+        1.0,
+        5.16,
+        -0.7853981633974482
+      ],
+      "nominal_min_m": 0.6132052553838453,
+      "sampled_min_m": 0.38791329126302865,
+      "colliding_samples": 0,
+      "samples": 256,
+      "worst_site": "left_palm",
+      "worst_pose": 89,
+      "hand_collisions": 0,
+      "nonhand_collisions": 0,
+      "root_center_clearance_m": 0.8913490821165517
+    },
+    {
+      "kind": "furniture",
+      "seed": 4021,
+      "scene_id": "random-furniture-dense-train-004021-f792525e31bb",
+      "geometry_hash": "f792525e31bb8e77ca09344410649f3716a73ca6a10c9e9104558769d24741ec",
+      "start": [
+        5.16,
+        1.48,
+        -0.2782996590051114
+      ],
+      "nominal_min_m": 0.434263340070179,
+      "sampled_min_m": 0.30473978963472637,
+      "colliding_samples": 0,
+      "samples": 256,
+      "worst_site": "left_palm",
+      "worst_pose": 74,
+      "hand_collisions": 0,
+      "nonhand_collisions": 0,
+      "root_center_clearance_m": 0.7594459287719
+    },
+    {
+      "kind": "furniture",
+      "seed": 4022,
+      "scene_id": "random-furniture-dense-train-004022-478f99301663",
+      "geometry_hash": "478f9930166343d9f372f6b22a54dec3788d4170f6bd2b21bee53078cf832c30",
+      "start": [
+        1.88,
+        8.12,
+        0.7853981633974483
+      ],
+      "nominal_min_m": 0.4949312141191103,
+      "sampled_min_m": 0.2671153097676662,
+      "colliding_samples": 0,
+      "samples": 256,
+      "worst_site": "right_palm",
+      "worst_pose": 238,
+      "hand_collisions": 0,
+      "nonhand_collisions": 0,
+      "root_center_clearance_m": 0.7702955804836122
+    },
+    {
+      "kind": "furniture",
+      "seed": 4023,
+      "scene_id": "random-furniture-dense-train-004023-afb45fa03324",
+      "geometry_hash": "afb45fa03324ff819e787dc1290e9d897cfd826622e051079f16c7d24d0b9ed3",
+      "start": [
+        4.28,
+        1.72,
+        0.7853981633974486
+      ],
+      "nominal_min_m": 0.3975168563618499,
+      "sampled_min_m": 0.26249324772838656,
+      "colliding_samples": 0,
+      "samples": 256,
+      "worst_site": "right_palm",
+      "worst_pose": 183,
+      "hand_collisions": 0,
+      "nonhand_collisions": 0,
+      "root_center_clearance_m": 0.7636713401041784
+    },
+    {
+      "kind": "furniture",
+      "seed": 4024,
+      "scene_id": "random-furniture-dense-train-004024-660686a26a46",
+      "geometry_hash": "660686a26a463c88a44a49b127301e742bc55988dbe97c228a432b1951372e9d",
+      "start": [
+        7.88,
+        1.32,
+        0.7853981633974487
+      ],
+      "nominal_min_m": 0.42905973452301777,
+      "sampled_min_m": 0.22228160080170578,
+      "colliding_samples": 0,
+      "samples": 256,
+      "worst_site": "left_palm",
+      "worst_pose": 166,
+      "hand_collisions": 0,
+      "nonhand_collisions": 0,
+      "root_center_clearance_m": 0.7929740714399292
+    },
+    {
+      "kind": "generic_clutter",
+      "seed": 5001,
+      "scene_id": "random-generic_clutter-dense-train-005001-1eaef5f4115f",
+      "geometry_hash": "1eaef5f4115f28e02926428320450e5512a2db4fd7622989033f7ef29fa56300",
+      "start": [
+        2.2,
+        4.6,
+        -0.7188299996216244
+      ],
+      "nominal_min_m": 0.4549550885448493,
+      "sampled_min_m": 0.2242534529577601,
+      "colliding_samples": 0,
+      "samples": 256,
+      "worst_site": "left_palm",
+      "worst_pose": 92,
+      "hand_collisions": 0,
+      "nonhand_collisions": 0,
+      "root_center_clearance_m": 0.7292273466645275
+    },
+    {
+      "kind": "generic_clutter",
+      "seed": 5002,
+      "scene_id": "random-generic_clutter-dense-train-005002-d4f59651508b",
+      "geometry_hash": "d4f59651508ba45cb03c7666201180f755cce779e2b4e90d7dd8966e56c4244b",
+      "start": [
+        4.52,
+        1.96,
+        -1.5707963267948966
+      ],
+      "nominal_min_m": 0.37105436613266557,
+      "sampled_min_m": 0.217191849715567,
+      "colliding_samples": 0,
+      "samples": 256,
+      "worst_site": "right_palm",
+      "worst_pose": 186,
+      "hand_collisions": 0,
+      "nonhand_collisions": 0,
+      "root_center_clearance_m": 0.7317345549567731
+    },
+    {
+      "kind": "generic_clutter",
+      "seed": 5003,
+      "scene_id": "random-generic_clutter-dense-train-005003-6ca465a6c3f2",
+      "geometry_hash": "6ca465a6c3f2e2b7464c3db74815d45066f979e55abeae4b59a91412ae0b97ec",
+      "start": [
+        4.68,
+        1.08,
+        3.141592653589793
+      ],
+      "nominal_min_m": 0.44694974844171714,
+      "sampled_min_m": 0.2592222243944478,
+      "colliding_samples": 0,
+      "samples": 256,
+      "worst_site": "right_palm",
+      "worst_pose": 192,
+      "hand_collisions": 0,
+      "nonhand_collisions": 0,
+      "root_center_clearance_m": 0.7556823880650287
+    },
+    {
+      "kind": "generic_clutter",
+      "seed": 5004,
+      "scene_id": "random-generic_clutter-dense-train-005004-009c0827c722",
+      "geometry_hash": "009c0827c722f48080a49fa0637b2b91e77a0543edeeae51c40d1b04bb9913b7",
+      "start": [
+        4.76,
+        1.32,
+        0.0
+      ],
+      "nominal_min_m": 0.4555128394041447,
+      "sampled_min_m": 0.20909642730928207,
+      "colliding_samples": 0,
+      "samples": 256,
+      "worst_site": "left_palm",
+      "worst_pose": 228,
+      "hand_collisions": 0,
+      "nonhand_collisions": 0,
+      "root_center_clearance_m": 0.7539684740151937
+    },
+    {
+      "kind": "generic_clutter",
+      "seed": 5005,
+      "scene_id": "random-generic_clutter-dense-train-005005-7e638e137598",
+      "geometry_hash": "7e638e137598652621a8c1351596e7b18cac568dd71ff1bfaeb33c70441370d0",
+      "start": [
+        2.36,
+        7.16,
+        -1.5707963267948966
+      ],
+      "nominal_min_m": 0.5166273956373915,
+      "sampled_min_m": 0.24619623621737974,
+      "colliding_samples": 0,
+      "samples": 256,
+      "worst_site": "left_palm",
+      "worst_pose": 87,
+      "hand_collisions": 0,
+      "nonhand_collisions": 0,
+      "root_center_clearance_m": 0.7791911028657619
+    },
+    {
+      "kind": "generic_clutter",
+      "seed": 5006,
+      "scene_id": "random-generic_clutter-dense-train-005006-2f09d5a0f67c",
+      "geometry_hash": "2f09d5a0f67cf4d069aeed1ccd9312a78c5c90f1668c94fbff1ab53da83b4791",
+      "start": [
+        4.92,
+        1.72,
+        1.10714871779409
+      ],
+      "nominal_min_m": 0.643408848618007,
+      "sampled_min_m": 0.3476589362219288,
+      "colliding_samples": 0,
+      "samples": 256,
+      "worst_site": "right_palm",
+      "worst_pose": 215,
+      "hand_collisions": 0,
+      "nonhand_collisions": 0,
+      "root_center_clearance_m": 0.8661404688698335
+    },
+    {
+      "kind": "generic_clutter",
+      "seed": 5007,
+      "scene_id": "random-generic_clutter-dense-train-005007-fac7daa3f350",
+      "geometry_hash": "fac7daa3f350d4b482886aab2572ea53b3365d6a3ffd098eecd92ebe6ed0f756",
+      "start": [
+        2.12,
+        6.52,
+        0.7853981633974487
+      ],
+      "nominal_min_m": 0.5708785850721758,
+      "sampled_min_m": 0.3100165434130455,
+      "colliding_samples": 0,
+      "samples": 256,
+      "worst_site": "right_palm",
+      "worst_pose": 130,
+      "hand_collisions": 0,
+      "nonhand_collisions": 0,
+      "root_center_clearance_m": 0.7963422884701324
+    },
+    {
+      "kind": "generic_clutter",
+      "seed": 5008,
+      "scene_id": "random-generic_clutter-dense-train-005008-b3206d897e5f",
+      "geometry_hash": "b3206d897e5ff1886aea5b28f36a83a64288e3c420ff32051d17f81bbabc4f9e",
+      "start": [
+        1.08,
+        5.96,
+        1.5707963267948966
+      ],
+      "nominal_min_m": 0.486001798373418,
+      "sampled_min_m": 0.2534962226610951,
+      "colliding_samples": 0,
+      "samples": 256,
+      "worst_site": "left_palm",
+      "worst_pose": 166,
+      "hand_collisions": 0,
+      "nonhand_collisions": 0,
+      "root_center_clearance_m": 0.773509462971121
+    },
+    {
+      "kind": "generic_clutter",
+      "seed": 5009,
+      "scene_id": "random-generic_clutter-dense-train-005009-d93252739e11",
+      "geometry_hash": "d93252739e118be514186ea1f24b2ff300442cb79c800b6713e6ad164e5291d1",
+      "start": [
+        1.4,
+        4.52,
+        2.6779450445889865
+      ],
+      "nominal_min_m": 0.42801881657792845,
+      "sampled_min_m": 0.2419898472716832,
+      "colliding_samples": 0,
+      "samples": 256,
+      "worst_site": "left_palm",
+      "worst_pose": 183,
+      "hand_collisions": 0,
+      "nonhand_collisions": 0,
+      "root_center_clearance_m": 0.7471264023316782
+    },
+    {
+      "kind": "generic_clutter",
+      "seed": 5010,
+      "scene_id": "random-generic_clutter-dense-train-005010-ca62e1d9bd86",
+      "geometry_hash": "ca62e1d9bd8631dd3dac15dee3c9658f2d1ac332408f9f5cbcdaa4571260e41c",
+      "start": [
+        5.96,
+        2.28,
+        1.5707963267948966
+      ],
+      "nominal_min_m": 0.4303370873992544,
+      "sampled_min_m": 0.1914020150280808,
+      "colliding_samples": 0,
+      "samples": 256,
+      "worst_site": "right_palm",
+      "worst_pose": 215,
+      "hand_collisions": 0,
+      "nonhand_collisions": 0,
+      "root_center_clearance_m": 0.7343923223213399
+    },
+    {
+      "kind": "generic_clutter",
+      "seed": 5011,
+      "scene_id": "random-generic_clutter-dense-train-005011-a859d20286e4",
+      "geometry_hash": "a859d20286e4ce48b9e3428bb7cceaca51888e9eb54ed8d4a17e4422bfc734e8",
+      "start": [
+        4.52,
+        2.44,
+        2.356194490192342
+      ],
+      "nominal_min_m": 0.40298385004591336,
+      "sampled_min_m": 0.23358785845942248,
+      "colliding_samples": 0,
+      "samples": 256,
+      "worst_site": "right_palm",
+      "worst_pose": 111,
+      "hand_collisions": 0,
+      "nonhand_collisions": 0,
+      "root_center_clearance_m": 0.7604006475714618
+    },
+    {
+      "kind": "generic_clutter",
+      "seed": 5012,
+      "scene_id": "random-generic_clutter-dense-train-005012-c72c15c86cf0",
+      "geometry_hash": "c72c15c86cf0b677f52ad692fb55ba008913d6a57956f3d4cac1fe9d80d27a4a",
+      "start": [
+        1.88,
+        2.12,
+        2.5535900500422266
+      ],
+      "nominal_min_m": 0.4713295626187071,
+      "sampled_min_m": 0.30093717113296037,
+      "colliding_samples": 0,
+      "samples": 256,
+      "worst_site": "right_palm",
+      "worst_pose": 215,
+      "hand_collisions": 0,
+      "nonhand_collisions": 0,
+      "root_center_clearance_m": 0.8261659092355259
+    },
+    {
+      "kind": "generic_clutter",
+      "seed": 5013,
+      "scene_id": "random-generic_clutter-dense-train-005013-deb217352607",
+      "geometry_hash": "deb21735260754afba50bfc5692e8e50f28aab9f36caf5260183c7cd6c1b81db",
+      "start": [
+        8.28,
+        1.88,
+        2.3561944901923444
+      ],
+      "nominal_min_m": 0.6294304258987923,
+      "sampled_min_m": 0.21640319003176056,
+      "colliding_samples": 0,
+      "samples": 256,
+      "worst_site": "right_palm",
+      "worst_pose": 215,
+      "hand_collisions": 0,
+      "nonhand_collisions": 0,
+      "root_center_clearance_m": 0.7357864025518395
+    },
+    {
+      "kind": "generic_clutter",
+      "seed": 5014,
+      "scene_id": "random-generic_clutter-dense-train-005014-1e8f93593d94",
+      "geometry_hash": "1e8f93593d94cca1c68140ceab5e0cdaf88d27717b64adc29204695b309f19e9",
+      "start": [
+        1.48,
+        2.68,
+        0.7853981633974481
+      ],
+      "nominal_min_m": 0.7487022456194385,
+      "sampled_min_m": 0.5644848697977316,
+      "colliding_samples": 0,
+      "samples": 256,
+      "worst_site": "right_palm",
+      "worst_pose": 18,
+      "hand_collisions": 0,
+      "nonhand_collisions": 0,
+      "root_center_clearance_m": 1.0593311807259642
+    },
+    {
+      "kind": "generic_clutter",
+      "seed": 5015,
+      "scene_id": "random-generic_clutter-dense-train-005015-97e434da7cc7",
+      "geometry_hash": "97e434da7cc7c33809251cb96c727c7583c3f85df79f59dddffe0e6e6202927b",
+      "start": [
+        1.16,
+        1.56,
+        -0.4324077755705377
+      ],
+      "nominal_min_m": 0.5336817748310123,
+      "sampled_min_m": 0.2198323431108835,
+      "colliding_samples": 0,
+      "samples": 256,
+      "worst_site": "left_palm",
+      "worst_pose": 228,
+      "hand_collisions": 0,
+      "nonhand_collisions": 0,
+      "root_center_clearance_m": 0.7438417711087385
+    },
+    {
+      "kind": "generic_clutter",
+      "seed": 5016,
+      "scene_id": "random-generic_clutter-dense-train-005016-7bd015f987b9",
+      "geometry_hash": "7bd015f987b9b1c06bd8b8a4318b6a0e528ddfadbde10e9053d2ea494b1ec177",
+      "start": [
+        2.36,
+        1.16,
+        2.0778948311872334
+      ],
+      "nominal_min_m": 0.4143610526405828,
+      "sampled_min_m": 0.23740172289003098,
+      "colliding_samples": 0,
+      "samples": 256,
+      "worst_site": "left_palm",
+      "worst_pose": 68,
+      "hand_collisions": 0,
+      "nonhand_collisions": 0,
+      "root_center_clearance_m": 0.7532552369756846
+    },
+    {
+      "kind": "generic_clutter",
+      "seed": 5017,
+      "scene_id": "random-generic_clutter-dense-train-005017-9668d6f46ddf",
+      "geometry_hash": "9668d6f46ddf9e9c709c1062406c713fc873ab5c6ea278facb2f556d495ede32",
+      "start": [
+        4.12,
+        2.36,
+        3.141592653589793
+      ],
+      "nominal_min_m": 0.40596327388570025,
+      "sampled_min_m": 0.2753786965830979,
+      "colliding_samples": 0,
+      "samples": 256,
+      "worst_site": "right_palm",
+      "worst_pose": 97,
+      "hand_collisions": 0,
+      "nonhand_collisions": 0,
+      "root_center_clearance_m": 0.7829525199687934
+    },
+    {
+      "kind": "generic_clutter",
+      "seed": 5018,
+      "scene_id": "random-generic_clutter-dense-train-005018-0de30e33b4e8",
+      "geometry_hash": "0de30e33b4e8682488830e105a8b81b3e4e600936db929091dda7e92258c4bd2",
+      "start": [
+        2.04,
+        4.84,
+        -0.17985349979247844
+      ],
+      "nominal_min_m": 0.38004564940318125,
+      "sampled_min_m": 0.24188599339832462,
+      "colliding_samples": 0,
+      "samples": 256,
+      "worst_site": "right_palm",
+      "worst_pose": 58,
+      "hand_collisions": 0,
+      "nonhand_collisions": 0,
+      "root_center_clearance_m": 0.7421211054748309
+    },
+    {
+      "kind": "generic_clutter",
+      "seed": 5019,
+      "scene_id": "random-generic_clutter-dense-train-005019-028a984a4182",
+      "geometry_hash": "028a984a4182a55832b7e9fe3ad4c811a876921c357c18f922138bfdf8f2fa9a",
+      "start": [
+        4.76,
+        1.16,
+        2.356194490192345
+      ],
+      "nominal_min_m": 0.3993407373042756,
+      "sampled_min_m": 0.20914940051639158,
+      "colliding_samples": 0,
+      "samples": 256,
+      "worst_site": "right_palm",
+      "worst_pose": 74,
+      "hand_collisions": 0,
+      "nonhand_collisions": 0,
+      "root_center_clearance_m": 0.7241542658307437
+    },
+    {
+      "kind": "generic_clutter",
+      "seed": 5020,
+      "scene_id": "random-generic_clutter-dense-train-005020-79ed057be1df",
+      "geometry_hash": "79ed057be1df12ef9df978dbd3adf0d8513c0bc2c5848a5df301695374857b77",
+      "start": [
+        5.0,
+        1.72,
+        3.141592653589793
+      ],
+      "nominal_min_m": 0.3975063718628891,
+      "sampled_min_m": 0.16455039988291076,
+      "colliding_samples": 0,
+      "samples": 256,
+      "worst_site": "left_palm",
+      "worst_pose": 52,
+      "hand_collisions": 0,
+      "nonhand_collisions": 0,
+      "root_center_clearance_m": 0.7221075328606038
+    },
+    {
+      "kind": "generic_clutter",
+      "seed": 5021,
+      "scene_id": "random-generic_clutter-dense-train-005021-935e2f119697",
+      "geometry_hash": "935e2f119697c8b8ed78b96c8977df07a3266fc6c7f1e4151d2e77ca2f0e3729",
+      "start": [
+        0.92,
+        3.88,
+        -1.5707963267948966
+      ],
+      "nominal_min_m": 0.4830379942210415,
+      "sampled_min_m": 0.3776377161215788,
+      "colliding_samples": 0,
+      "samples": 256,
+      "worst_site": "right_palm",
+      "worst_pose": 186,
+      "hand_collisions": 0,
+      "nonhand_collisions": 0,
+      "root_center_clearance_m": 0.8600000000000001
+    },
+    {
+      "kind": "generic_clutter",
+      "seed": 5022,
+      "scene_id": "random-generic_clutter-dense-train-005022-88e60788bc7f",
+      "geometry_hash": "88e60788bc7fb43f8a556bc8302e1bc1d928336b486845fe131b41a42542a853",
+      "start": [
+        5.64,
+        2.28,
+        2.3561944901923435
+      ],
+      "nominal_min_m": 0.38175284771919743,
+      "sampled_min_m": 0.22953266397601868,
+      "colliding_samples": 0,
+      "samples": 256,
+      "worst_site": "left_palm",
+      "worst_pose": 49,
+      "hand_collisions": 0,
+      "nonhand_collisions": 0,
+      "root_center_clearance_m": 0.7226100457564899
+    },
+    {
+      "kind": "generic_clutter",
+      "seed": 5023,
+      "scene_id": "random-generic_clutter-dense-train-005023-6fd0e80c7085",
+      "geometry_hash": "6fd0e80c7085b1f35fd56ca50a2f1c5d3b903b0854ef79829105fccbbfdba2fd",
+      "start": [
+        1.88,
+        1.96,
+        0.5280744484263598
+      ],
+      "nominal_min_m": 0.5403921633276525,
+      "sampled_min_m": 0.2768009249454898,
+      "colliding_samples": 0,
+      "samples": 256,
+      "worst_site": "right_palm",
+      "worst_pose": 231,
+      "hand_collisions": 0,
+      "nonhand_collisions": 0,
+      "root_center_clearance_m": 0.7774253770572401
+    },
+    {
+      "kind": "generic_clutter",
+      "seed": 5024,
+      "scene_id": "random-generic_clutter-dense-train-005024-f1ee1d6b2451",
+      "geometry_hash": "f1ee1d6b2451ce1065b3099c71bd069a88fdd5d4f205548db81586d53014ada3",
+      "start": [
+        6.36,
+        1.24,
+        -0.6435011087932844
+      ],
+      "nominal_min_m": 0.5094438839128238,
+      "sampled_min_m": 0.2697981217950288,
+      "colliding_samples": 0,
+      "samples": 256,
+      "worst_site": "left_palm",
+      "worst_pose": 228,
+      "hand_collisions": 0,
+      "nonhand_collisions": 0,
+      "root_center_clearance_m": 0.8024006883357624
+    }
+  ]
+}

@@ -42,6 +42,8 @@ import jax.numpy as jnp
 import numpy as np
 import optax
 
+from cat_ppo.learning.policy.ppo.field_arguments import FieldArguments
+
 
 InferenceParams = Tuple[running_statistics.NestedMeanStd, Params]
 Metrics = types.Metrics
@@ -849,10 +851,19 @@ def train(
         wrap_env_fn,
         randomization_fn,
     )
-    reset_fn = jax.jit(jax.vmap(env.reset))
+    # Keep large immutable field banks out of the compiled HLO constants. These
+    # shared operands never enter per-environment state, rollouts or checkpoints.
+    field_arguments = FieldArguments(environment)
+    field_values = field_arguments.values
+
+    def reset_with_field_arguments(keys, fields):
+        with field_arguments.bind(fields):
+            return jax.vmap(env.reset)(keys)
+
+    reset_fn = jax.jit(reset_with_field_arguments)
     key_envs = jax.random.split(key_env, num_envs // process_count)
     key_envs = jnp.reshape(key_envs, (local_devices_to_use, -1) + key_envs.shape[1:])
-    env_state = reset_fn(key_envs)
+    env_state = reset_fn(key_envs, field_values)
     has_scene_ids = "pf_id" in env_state.info
     if randomize_initial_episode_steps and "steps" in env_state.info:
         if episode_length is None:
@@ -1136,18 +1147,20 @@ def train(
         return (new_training_state, state, new_key), metrics
 
     def training_epoch(
-        training_state: TrainingState, state: envs.State, key: PRNGKey
+        training_state: TrainingState, state: envs.State, key: PRNGKey, fields
     ) -> Tuple[TrainingState, envs.State, Metrics]:
-        (training_state, state, _), loss_metrics = jax.lax.scan(
-            training_step,
-            (training_state, state, key),
-            (),
-            length=num_training_steps_per_epoch,
-        )
+        with field_arguments.bind(fields):
+            (training_state, state, _), loss_metrics = jax.lax.scan(
+                training_step,
+                (training_state, state, key),
+                (),
+                length=num_training_steps_per_epoch,
+            )
         loss_metrics = jax.tree_util.tree_map(jnp.mean, loss_metrics)
         return training_state, state, loss_metrics
 
-    training_epoch = jax.pmap(training_epoch, axis_name=_PMAP_AXIS_NAME)
+    training_epoch = jax.pmap(training_epoch, axis_name=_PMAP_AXIS_NAME,
+                              in_axes=(0, 0, 0, None))
 
     # Note that this is NOT a pure jittable method.
     def training_epoch_with_timing(
@@ -1156,7 +1169,7 @@ def train(
         nonlocal training_walltime
         t = time.time()
         training_state, env_state = _strip_weak_type((training_state, env_state))
-        result = training_epoch(training_state, env_state, key)
+        result = training_epoch(training_state, env_state, key, field_values)
         training_state, env_state, metrics = _strip_weak_type(result)
 
         metrics = jax.tree_util.tree_map(jnp.mean, metrics)
@@ -1375,7 +1388,7 @@ def train(
                 lambda x, s: jax.random.split(x[0], s), in_axes=(0, None)
             )(key_envs, key_envs.shape[1])
             # TODO: move extra reset logic to the AutoResetWrapper.
-            env_state = reset_fn(key_envs) if num_resets_per_eval > 0 else env_state
+            env_state = reset_fn(key_envs, field_values) if num_resets_per_eval > 0 else env_state
 
         if process_id != 0:
             continue

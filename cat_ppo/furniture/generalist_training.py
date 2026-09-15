@@ -46,7 +46,8 @@ def wrap_for_cat_wholebody_training(env, episode_length=1000, action_repeat=1,
                                     randomization_fn=None, **kwargs):
     if randomization_fn is not None or kwargs.get("vision", False):
         raise ValueError("This launch follows CAT's released non-vision, non-model-randomized wrapper")
-    limits = jp.where(env._pf_scene_original, episode_length, env._config.clutter_episode_length)
+    limits = (env._pf_scene_episode_lengths if getattr(env, "_pf_expanded", False)
+              else jp.where(env._pf_scene_original, episode_length, env._config.clutter_episode_length))
     env = training.VmapWrapper(env)
     env = SceneEpisodeWrapper(env, episode_length, action_repeat, limits)
     env = wrapper.BraxAutoResetWrapper(env)

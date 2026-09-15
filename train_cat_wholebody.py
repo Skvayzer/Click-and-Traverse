@@ -18,8 +18,8 @@ from cat_ppo.furniture.generalist_logging import GeneralistLogger, atomic_json
 def parser():
     result = argparse.ArgumentParser(description=__doc__)
     result.add_argument("command", choices=("plan", "validate", "run", "stop"))
-    result.add_argument("--bank-manifest", type=Path, default=ROOT / "data/furniture/cat_generalist/manifest.json")
-    result.add_argument("--run-dir", type=Path, default=ROOT / "outputs/cat_wholebody_generalist")
+    result.add_argument("--bank-manifest", type=Path, default=ROOT / "data/furniture/cat_diversity_v2_20260916/manifest.json")
+    result.add_argument("--run-dir", type=Path, default=ROOT / "outputs/cat_wholebody_diversity_v2")
     result.add_argument("--profile", choices=("single_gpu_32gb", "released"), default="single_gpu_32gb")
     result.add_argument("--num-envs", type=int, help="Simulator parallelism; leaves PPO batch geometry unchanged")
     result.add_argument("--batch-size", type=int, help="Explicit trajectories/minibatch resource override")
@@ -32,14 +32,19 @@ def parser():
 
 
 def plan(args):
+    from cat_ppo.furniture.control import wholebody_observation_contract
+    contract = wholebody_observation_contract()
     config = training_config(profile=args.profile, num_envs=args.num_envs,
                              batch_size=args.batch_size, seed=args.seed)
     return {
         "config": config,
         "bank_manifest": str(args.bank_manifest.resolve()),
-        "task": "G1CatWholeBodyEnv: full released CAT task + 29 body actions/Dex3/probes",
+        "task": "G1CatWholeBodyEnv: released CAT + 29 body actions, one sphere/hand and one site/elbow",
+        "observations": {"schema": contract["schema"], "actor": len(contract["actor_features"]),
+                         "critic": len(contract["critic_features"]), "field_sample_count": 13},
         "physics": "CAT flat floor/feet contact model; field-only obstacles",
-        "termination": "released body SDF/self-contact rule and 50-step grace; added probe SDF uses same grace",
+        "termination": "CAT body rule with hand surface clearances; elbow spheres use the same zero threshold and 50-step grace",
+        "checkpoint_compatibility": "new compact run from released CAT; 406-input v1 runtime cannot resume into this schema",
         "logging": "one persisted W&B ID with aggregate episode metrics and scene diagnostics",
         "stop": str(args.run_dir.resolve() / "STOP"),
         "checkpoint_policy": "one selected best model and one atomically overwritten full resume.msgpack",
@@ -56,11 +61,17 @@ def code_identity():
 
 
 def field_bank_summary(manifest, manifest_sha256):
+    from collections import Counter
     scenes = [dict(scene_id=scene["scene_id"], family=scene["family"],
                    source_kind=scene["source"].get("kind", "released-original" if scene["family"] == "original_cat" else "generated-clutter"),
                    arrays_unchanged=bool(scene["source"].get("arrays_unchanged", False)))
               for scene in manifest["scenes"]]
     return dict(scene_count=len(scenes),
+                schema=manifest.get("schema"),
+                family_counts=dict(Counter(scene["family"] for scene in scenes)),
+                fields_bytes=manifest.get("fields_bytes"),
+                sampling_group_masses=manifest.get("sampling_group_masses"),
+                sampling_mass_meaning="probability at episode reset, not fraction of training transitions",
                 byte_verified_original_count=sum(scene["family"] == "original_cat" and scene["arrays_unchanged"] for scene in scenes),
                 reconstructed_original_count=sum(scene["source_kind"] == "reconstructed-missing-original" for scene in scenes),
                 manifest_sha256=manifest_sha256, scenes=scenes)

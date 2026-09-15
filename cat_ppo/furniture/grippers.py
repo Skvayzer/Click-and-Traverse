@@ -3,7 +3,7 @@
 The seven finger joints per hand are welded at the source model's open-hand
 stand pose (thumb opposition clamped to its published joint limit). Body
 control therefore remains 29-DoF. The source wrist/palm and finger inertials
-are retained; visual geometry and protection boxes have zero added density.
+are retained; visual geometry and protection envelopes have zero added density.
 """
 from copy import deepcopy
 from functools import lru_cache
@@ -115,9 +115,27 @@ def hand_envelope(side):
             "margin_m": ENVELOPE_MARGIN_M}
 
 
-def geometry_contract():
+@lru_cache(maxsize=2)
+def hand_sphere(side):
+    """One fixed sphere encloses the entire fixed hand, including its thumb.
+
+    The center is the mesh bounds center in wrist-yaw coordinates. The radius
+    is the greatest mesh-vertex distance from that center, plus 5 mm. Because
+    all finger joints are welded, this radius stays constant at every wrist
+    pose. This describes a geometric query; it adds no mass to the robot.
+    """
+    vertices = np.concatenate(list(hand_mesh_vertices(side).values()))
+    if not np.isfinite(vertices).all():
+        raise ValueError("Nonfinite Dex3 mesh vertices")
+    center = (vertices.min(axis=0) + vertices.max(axis=0)) / 2
+    radius = float(np.linalg.norm(vertices - center, axis=1).max() + ENVELOPE_MARGIN_M)
+    return {"center": center.tolist(), "radius": radius,
+            "margin_m": ENVELOPE_MARGIN_M}
+
+
+def geometry_contract(*, include_spheres=False):
     provenance = json.loads((ASSET_ROOT / "provenance.json").read_text())
-    return {"model": MODEL_NAME, "finger_control": "fixed_source_stand_pose",
+    contract = {"model": MODEL_NAME, "finger_control": "fixed_source_stand_pose",
             "actuated_finger_dofs": 0, "physical_finger_dofs_per_hand": 7,
             "fixed_thumb_1_angle_rad": {"left": 1.0472, "right": -1.0472},
             "other_fixed_finger_angles_rad": 0.0,
@@ -126,6 +144,10 @@ def geometry_contract():
             "source_mjcf_sha256": provenance["source_mjcf_sha256"],
             "asset_files_sha256": provenance["files_sha256"],
             "envelopes": {side: hand_envelope(side) for side in ("left", "right")}}
+    # Keep the persisted v1 geometry contract unchanged for legacy environments.
+    if include_spheres:
+        contract["hand_spheres"] = {side: hand_sphere(side) for side in ("left", "right")}
+    return contract
 
 
 def validate_hand_envelopes(model, data):
@@ -163,6 +185,50 @@ def validate_hand_envelopes(model, data):
             raise ValueError(f"{side} Dex3 hand not contained with 5 mm margin: {minimum_margin}")
         report[side] = {"checked_meshes": meshes, "checked_vertices": vertex_count,
                         "minimum_margin_m": minimum_margin, "contained": True}
+    return report
+
+
+def validate_hand_spheres(model, data, geom_names=None):
+    """Independently check compiled palm/finger meshes against named spheres.
+
+    Call after ``mj_forward`` at any wrist/body pose. ``geom_names`` maps
+    ``left`` and ``right`` to sphere geom names; the default names are
+    ``furniture_{side}_hand_sphere``. Mesh vertices and transforms come from
+    MuJoCo rather than the source-STL traversal used to size the sphere.
+    """
+    import mujoco
+    if geom_names is None:
+        geom_names = {side: f"furniture_{side}_hand_sphere" for side in ("left", "right")}
+    report = {}
+    for side in ("left", "right"):
+        sphere_id = model.geom(geom_names[side]).id
+        if model.geom_type[sphere_id] != mujoco.mjtGeom.mjGEOM_SPHERE:
+            raise ValueError(f"{side} hand protection geom must be a sphere")
+        radius = float(model.geom_size[sphere_id, 0])
+        minimum_margin = float("inf")
+        vertex_count, meshes = 0, []
+        for geom_id in range(model.ngeom):
+            if model.geom_type[geom_id] != mujoco.mjtGeom.mjGEOM_MESH:
+                continue
+            mesh_id = int(model.geom_dataid[geom_id])
+            mesh_name = model.mesh(mesh_id).name
+            if not mesh_name.startswith(f"{side}_hand_"):
+                continue
+            start, count = int(model.mesh_vertadr[mesh_id]), int(model.mesh_vertnum[mesh_id])
+            vertices = model.mesh_vert[start:start + count]
+            world = (np.einsum("ij,nj->ni", data.geom_xmat[geom_id].reshape(3, 3), vertices)
+                     + data.geom_xpos[geom_id])
+            margin = radius - np.linalg.norm(world - data.geom_xpos[sphere_id], axis=1)
+            if not np.isfinite(margin).all():
+                raise ValueError(f"Nonfinite native Dex3 geometry: {mesh_name}")
+            minimum_margin = min(minimum_margin, float(margin.min()))
+            vertex_count += count
+            meshes.append(mesh_name)
+        if len(meshes) != 8 or minimum_margin < ENVELOPE_MARGIN_M - 2e-6:
+            raise ValueError(f"{side} Dex3 hand not contained in sphere with 5 mm margin: {minimum_margin}")
+        report[side] = {"checked_meshes": meshes, "checked_vertices": vertex_count,
+                        "minimum_margin_m": minimum_margin, "radius_m": radius,
+                        "contained": True}
     return report
 
 

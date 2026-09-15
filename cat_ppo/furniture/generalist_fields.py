@@ -27,7 +27,59 @@ DATASET_REPO = "Axian12138/Click-and-Traverse"
 DATASET_REVISION = "db8c202fa724bc4d3dba2cb9fead1267f15fd811"
 RELEASED_CONFIG_SHA256 = "0e38cac262a3c1c95bacdf859193340056fef53b8d2f8414293789cee5d45d2d"
 SCHEMA = "cat-generalist-field-bank-v1"
+EXPANDED_SCHEMA = "cat-generalist-field-bank-v2"
 FIELD_NAMES = ("sdf", "bf", "gf")
+SAMPLING_GROUPS = ("original_cat", "procedural_cat", "furniture", "generic_clutter")
+DEFAULT_SAMPLING_GROUP_MASSES = dict(zip(SAMPLING_GROUPS, (.20, .40, .25, .15)))
+
+
+def sampling_groups(manifest):
+    """Return stable group IDs and requested masses renormalized over present groups.
+
+    Only expanded banks use this policy. V1 retains CAT's original unconstrained
+    scene-level adaptive sampling and does not add group state to its runtime.
+    """
+    if manifest.get("schema") != EXPANDED_SCHEMA:
+        raise ValueError("Grouped sampling requires an expanded field bank")
+    configured = manifest.get("sampling_group_masses")
+    if not isinstance(configured, dict) or set(configured) != set(SAMPLING_GROUPS):
+        raise ValueError("Expanded bank must declare all four sampling_group_masses")
+    masses = np.asarray([configured[name] for name in SAMPLING_GROUPS], dtype=np.float64)
+    if not np.isfinite(masses).all() or np.any(masses < 0):
+        raise ValueError("Sampling group masses must be finite and nonnegative")
+    names = [scene.get("sampling_group") for scene in manifest["scenes"]]
+    if any(name not in SAMPLING_GROUPS for name in names):
+        raise ValueError("Unknown expanded-bank sampling group")
+    ids = np.asarray([SAMPLING_GROUPS.index(name) for name in names], dtype=np.int32)
+    present = np.bincount(ids, minlength=len(SAMPLING_GROUPS)) > 0
+    if np.any(masses[present] <= 0):
+        raise ValueError("Every represented sampling group must have positive mass")
+    masses = np.where(present, masses, 0.)
+    if masses.sum() <= 0:
+        raise ValueError("Expanded bank must contain a sampled group")
+    return ids, (masses / masses.sum()).astype(np.float32)
+
+
+def sample_scene_ids(keys, logits):
+    """Sample from one scene distribution with O(batch + scenes) live arrays.
+
+    Accepts either one PRNG key or a batch of keys, in JAX's typed or legacy
+    format. Inverse-CDF sampling avoids allocating a batch-by-scene matrix of
+    Gumbel variates when thousands of environments share a large field bank.
+    """
+    import jax
+    import jax.numpy as jp
+
+    typed = jax.dtypes.issubdtype(keys.dtype, jax.dtypes.prng_key)
+    batch_dims = keys.ndim - (0 if typed else 1)
+    if batch_dims not in (0, 1) or logits.ndim != 1 or logits.shape[0] == 0:
+        raise ValueError("Scene sampling needs one key or key batch and a nonempty logits vector")
+    uniforms = jax.random.uniform(keys) if batch_dims == 0 else jax.vmap(jax.random.uniform)(keys)
+    cumulative = jp.cumsum(jax.nn.softmax(logits))
+    # Correct floating-point accumulation drift, preserving zero-mass intervals.
+    cumulative = cumulative / cumulative[-1]
+    scene_ids = jp.searchsorted(cumulative, uniforms, side="right")
+    return jp.clip(scene_ids, 0, logits.shape[0] - 1).astype(jp.int32)
 
 
 def sha256(path):
@@ -301,12 +353,66 @@ def prepare_generalist_fields(released_config, output, *, download=False, clutte
     return destination
 
 
+def _validate_expanded_scene_metadata(manifest):
+    """Validate explicit task semantics without inferring them from provenance."""
+    families = {
+        "original_cat": ("cat", "original_cat"),
+        "published_cat": ("cat", "original_cat"),
+        "procedural_cat": ("cat", "procedural_cat"),
+        "furniture": ("room", "furniture"),
+        "generic_clutter": ("room", "generic_clutter"),
+    }
+    identities, paths = set(), set()
+    for scene in manifest["scenes"]:
+        identity, relative = scene.get("scene_id"), scene.get("path")
+        if not isinstance(identity, str) or not identity or identity in identities:
+            raise ValueError("Expanded scene IDs must be nonempty and unique")
+        if not isinstance(relative, str) or not relative or relative in paths or Path(relative).is_absolute():
+            raise ValueError("Expanded scene paths must be distinct relative paths")
+        identities.add(identity)
+        paths.add(relative)
+        if scene.get("family") not in families:
+            raise ValueError("Unknown expanded-bank scene family")
+        task, group = families[scene["family"]]
+        if scene.get("task_kind") != task or scene.get("sampling_group") != group:
+            raise ValueError("Expanded scene task_kind/sampling_group differs from its family")
+        expected_crossing = "x_plane" if task == "cat" else "goal_radius"
+        if scene.get("reset_mode") != task or scene.get("crossed_mode") != expected_crossing:
+            raise ValueError("Expanded scene must declare its matching reset_mode/crossed_mode")
+        length = scene.get("episode_length")
+        if type(length) is not int or length != (1000 if task == "cat" else 4000):
+            raise ValueError("Expanded scene episode_length must be 1000 for CAT or 4000 for rooms")
+        for key, size in (("start", 3), ("goal", 3), ("reset_xy_scale", 2)):
+            value = np.asarray(scene.get(key, []), dtype=float)
+            if value.shape != (size,) or not np.isfinite(value).all():
+                raise ValueError(f"Invalid expanded scene {key}")
+        if np.any(np.asarray(scene["reset_xy_scale"]) < 0) or not math.isfinite(scene.get("reset_yaw", float("nan"))):
+            raise ValueError("Invalid expanded scene reset transform")
+        if task == "cat" and (scene["reset_xy_scale"] != [1., 1.] or scene["reset_yaw"] != 0.):
+            raise ValueError("CAT reset mode retains the released untransformed reset distribution")
+        weight = scene.get("sampling_weight", float("nan"))
+        if not math.isfinite(weight) or weight < 0:
+            raise ValueError("Expanded scene sampling_weight must be finite and nonnegative")
+        fingerprint = scene.get("source", {}).get("metadata_sha256", "")
+        if (not isinstance(fingerprint, str) or len(fingerprint) != 64
+                or any(char not in "0123456789abcdef" for char in fingerprint)):
+            raise ValueError("Every expanded scene needs a source metadata SHA256")
+        if task == "room" and "scene_sha256" not in scene:
+            raise ValueError("Expanded room needs a scene geometry fingerprint")
+    ids, _ = sampling_groups(manifest)
+    weights = np.asarray([s["sampling_weight"] for s in manifest["scenes"]])
+    sums = np.bincount(ids, weights=weights, minlength=len(SAMPLING_GROUPS))
+    if np.any(sums[np.unique(ids)] <= 0):
+        raise ValueError("Every represented sampling group needs positive scene weight")
+
+
 def load_generalist_manifest(path, *, verify_files=True):
     path = Path(path).resolve()
     manifest = json.loads(path.read_text())
     expected = manifest.pop("manifest_sha256")
-    if _json_hash(manifest) != expected or manifest.get("schema") != SCHEMA:
+    if _json_hash(manifest) != expected or manifest.get("schema") not in (SCHEMA, EXPANDED_SCHEMA):
         raise ValueError("Field-bank manifest hash/schema mismatch")
+    expanded = manifest["schema"] == EXPANDED_SCHEMA
     manifest["manifest_sha256"] = expected
     if len(manifest["scenes"]) != manifest["scene_count"]:
         raise ValueError("Manifest scene count differs")
@@ -325,6 +431,8 @@ def load_generalist_manifest(path, *, verify_files=True):
     if (unchanged != manifest["byte_verified_original_count"]
             or reconstructed != manifest["reconstructed_original_count"] or unchanged + reconstructed != 37):
         raise ValueError("Field-bank original-source provenance counts differ")
+    if expanded:
+        _validate_expanded_scene_metadata(manifest)
     for scene in manifest["scenes"]:
         directory = (path.parent / scene["path"]).resolve()
         if not directory.is_relative_to(path.parent):
@@ -337,10 +445,12 @@ def load_generalist_manifest(path, *, verify_files=True):
             records = _field_records(directory)
             if records != scene["fields"] or records["sdf"]["shape"] != scene["shape"]:
                 raise ValueError(f"Field-bank file hashes/shapes differ: {scene['scene_id']}")
-            if scene["family"] == "original_cat":
+            if scene["family"] == "original_cat" or expanded:
                 if sha256(directory / "source.json") != scene["source"]["metadata_sha256"]:
-                    raise ValueError("Original scene source fingerprint differs")
-            elif sha256(directory / "scene.json") != scene["scene_sha256"]:
+                    raise ValueError("Scene source fingerprint differs" if expanded else
+                                     "Original scene source fingerprint differs")
+            if (scene["family"] != "original_cat" and (not expanded or scene["task_kind"] == "room")
+                    and sha256(directory / "scene.json") != scene["scene_sha256"]):
                 raise ValueError("Clutter scene geometry/source fingerprint differs")
     return manifest
 
@@ -390,17 +500,25 @@ class RaggedSceneMixin:
         self.field_bank_manifest = load_generalist_manifest(manifest_path)
         scenes = self.field_bank_manifest["scenes"]
         self.num_pf_scenes = len(scenes)
-        arrays = {name: [] for name in FIELD_NAMES}
         offsets, position = [], 0
         for scene in scenes:
             offsets.append(position)
             position += int(np.prod(scene["shape"]))
-            for name in FIELD_NAMES:
-                channels = 1 if name == "sdf" else 3
-                array = np.load(manifest_path.parent / scene["path"] / f"{name}.npy", allow_pickle=False)
-                arrays[name].append(array.reshape(-1, channels))
         for name in FIELD_NAMES:
-            setattr(self, name, jp.array(np.concatenate(arrays[name], axis=0)))
+            # Large banks must not retain every source array plus concatenated
+            # copies on the host while transferring all three fields.
+            channels = 1 if name == "sdf" else 3
+            values = np.empty((position, channels), dtype=np.float32)
+            for scene, offset in zip(scenes, offsets):
+                source = np.load(manifest_path.parent / scene["path"] / f"{name}.npy",
+                                 allow_pickle=False, mmap_mode="r")
+                flat = source.reshape(-1, channels)
+                values[offset:offset + len(flat)] = flat
+                del flat, source
+            field = jp.array(values)
+            field.block_until_ready()
+            setattr(self, name, field)
+            del values
         self._pf_offsets = jp.array(offsets, dtype=jp.int32)
         self._pf_shapes = jp.array([s["shape"] for s in scenes], dtype=jp.int32)
         self._pf_origins = jp.array([s["origin"] for s in scenes], dtype=jp.float32)
@@ -409,13 +527,38 @@ class RaggedSceneMixin:
         self._pf_reset_xy_scale = jp.array([s["reset_xy_scale"] for s in scenes], dtype=jp.float32)
         self._pf_scene_yaws = jp.array([s["reset_yaw"] for s in scenes], dtype=jp.float32)
         self._pf_scene_goals = jp.array([s["goal"] for s in scenes], dtype=jp.float32)
-        self._pf_scene_original = jp.array([s["family"] == "original_cat" for s in scenes])
+        self._pf_expanded = self.field_bank_manifest["schema"] == EXPANDED_SCHEMA
+        if self._pf_expanded:
+            # The historical attribute is consumed by task/reset code. For an
+            # expanded bank, CAT behavior includes newly generated CAT fields
+            # and published typical obstacles, independent of their provenance.
+            self._pf_scene_original = jp.array([s["task_kind"] == "cat" for s in scenes])
+            self._pf_reset_is_cat = jp.array([s["reset_mode"] == "cat" for s in scenes])
+            self._pf_crossed_is_x_plane = jp.array([s["crossed_mode"] == "x_plane" for s in scenes])
+            self._pf_scene_episode_lengths = jp.array([s["episode_length"] for s in scenes], dtype=jp.int32)
+        else:
+            self._pf_scene_original = jp.array([s["family"] == "original_cat" for s in scenes])
+            self._pf_reset_is_cat = self._pf_scene_original
+            self._pf_crossed_is_x_plane = self._pf_scene_original
+            self._pf_scene_episode_lengths = jp.where(
+                self._pf_scene_original, getattr(config, "episode_length", 1000),
+                getattr(config, "clutter_episode_length", 4000)).astype(jp.int32)
         self._field_pf_id = jp.array(0, dtype=jp.int32)
         weights = np.asarray(getattr(config.pf_config, "sampling_weights", []) or
                              [s["sampling_weight"] for s in scenes], dtype=np.float32)
         if weights.shape != (self.num_pf_scenes,) or not np.isfinite(weights).all() or np.any(weights < 0) or not np.any(weights > 0):
             raise ValueError("Field sampling weights must be finite, nonnegative and match scene count")
-        self._pf_sampling_logits = jp.log(jp.array(weights / weights.sum()) + 1e-8)
+        if self._pf_expanded:
+            group_ids, group_masses = sampling_groups(self.field_bank_manifest)
+            group_weight = np.bincount(group_ids, weights=weights, minlength=len(SAMPLING_GROUPS))
+            if np.any(group_weight[np.unique(group_ids)] <= 0):
+                raise ValueError("Every represented sampling group needs positive scene weight")
+            probabilities = weights / group_weight[group_ids] * group_masses[group_ids]
+            self._pf_sampling_group_ids = jp.array(group_ids, dtype=jp.int32)
+            self._pf_sampling_group_masses = jp.array(group_masses, dtype=jp.float32)
+            self._pf_sampling_logits = jp.log(jp.array(probabilities, dtype=jp.float32))
+        else:
+            self._pf_sampling_logits = jp.log(jp.array(weights / weights.sum()) + 1e-8)
         self._pf_sampling_alpha = float(getattr(config.pf_config, "sampling_alpha", 1.))
         self._pf_sampling_ema_decay = float(getattr(config.pf_config, "sampling_ema_decay", .95))
 
@@ -425,13 +568,19 @@ class RaggedSceneMixin:
                           pf_episode_ema=jp.zeros(self.num_pf_scenes), pf_sampling_logits=self._pf_sampling_logits,
                           pf_sampling_alpha=jp.array(self._pf_sampling_alpha, dtype=jp.float32),
                           pf_sampling_ema_decay=jp.array(self._pf_sampling_ema_decay, dtype=jp.float32))
+        if self._pf_expanded:
+            state.info.update(pf_sampling_group_ids=self._pf_sampling_group_ids,
+                              pf_sampling_group_masses=self._pf_sampling_group_masses)
         return state
 
     def reset(self, rng):
         import jax
         import jax.numpy as jp
         rng, pf_key = jax.random.split(rng)
-        self._field_pf_id = jax.random.categorical(pf_key, self._pf_sampling_logits).astype(jp.int32)
+        if self._pf_expanded:
+            self._field_pf_id = sample_scene_ids(pf_key, self._pf_sampling_logits)
+        else:
+            self._field_pf_id = jax.random.categorical(pf_key, self._pf_sampling_logits).astype(jp.int32)
         return self._add_pf_info(super().reset(rng))
 
     def reset_with_pf_id(self, rng, pf_id):
@@ -458,4 +607,5 @@ class RaggedSceneMixin:
         position = self._pf_scene_starts[scene, :2] + qpos[:2] * self._pf_reset_xy_scale[scene]
         quat = mj_math.axis_angle_to_quat(jp.array([0., 0., 1.]), self._pf_scene_yaws[scene][None])
         adjusted = qpos.at[:2].set(position).at[3:7].set(mj_math.quat_mul(quat, qpos[3:7]))
-        return jp.where(self._pf_scene_original[scene], qpos, adjusted)
+        cat_reset = getattr(self, "_pf_reset_is_cat", self._pf_scene_original)
+        return jp.where(cat_reset[scene], qpos, adjusted)

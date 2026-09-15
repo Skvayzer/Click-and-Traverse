@@ -12,7 +12,8 @@ JOINT_NAMES = LEG_NAMES + WAIST_NAMES + [f"{side}_{joint}_joint" for side in ("l
     for joint in ("shoulder_pitch", "shoulder_roll", "shoulder_yaw", "elbow", "wrist_roll", "wrist_pitch", "wrist_yaw")]
 LEGACY_OBS_NAMES = LEG_NAMES + WAIST_NAMES + ARM_NAMES
 PF_GROUPS = (("head", 1), ("pelv", 1), ("tors", 1), ("feet", 2), ("hands", 2), ("knees", 2), ("shlds", 2))
-# Palm and corner probes use exactly the side-specific physical Dex3 envelope.
+# Legacy physical-furniture experiment only. Native CAT whole-body training
+# uses wholebody_observation_contract() and reuses its existing hand fields.
 PROBE_SPECS = []
 for side in ("left", "right"):
     envelope = hand_envelope(side)
@@ -119,6 +120,7 @@ def legacy_observation_contract():
 
 
 def observation_contract(action_dofs=29):
+    """Legacy physical-furniture v1 contract; not the native CAT training input."""
     actions, observed = joint_names(action_dofs)
     actor, critic = _base_features(actions, observed)
     extras = [f"probe.{name}.{channel}" for name, _, _, _ in PROBE_SPECS for channel in PROBE_CHANNELS]
@@ -127,6 +129,28 @@ def observation_contract(action_dofs=29):
             "critic_features": critic + extras, "baseline_actor_size": len(actor),
             "baseline_critic_size": len(critic), "prediction_horizons_seconds": [0.2, 0.4],
             "hand_geometry": geometry_contract()}
+
+
+ELBOW_SITES = ("left_elbow_probe", "right_elbow_probe")
+ELBOW_RADIUS_M = 0.05
+
+
+def wholebody_observation_contract():
+    """Compact CAT: existing hand slots plus one CAT-style field sample/elbow."""
+    actor, critic = _base_features(JOINT_NAMES, JOINT_NAMES)
+    # Match CAT's per-group layout: both GF vectors, both BF vectors, distances.
+    elbows = [f"pf.elbows.{field}.{i}.{axis}"
+              for field, axes in (("gf", "xyz"), ("bf", "xyz"), ("df", ("distance",)))
+              for i in range(2) for axis in axes]
+    return {"schema": "cat-wholebody-spheres-v2", "action_names": list(JOINT_NAMES),
+            "observed_joint_names": list(JOINT_NAMES),
+            "actor_features": actor + elbows, "critic_features": critic + elbows,
+            "baseline_actor_size": len(actor), "baseline_critic_size": len(critic),
+            "prediction_horizons_seconds": [], "field_sample_count": 13,
+            "additional_field_samples": ["left_elbow", "right_elbow"],
+            "hand_field_semantics": "existing hand slots: sphere-center GF/BF and SDF(center)-fixed radius",
+            "elbow_radius_m": ELBOW_RADIUS_M,
+            "hand_geometry": geometry_contract(include_spheres=True)}
 
 
 def route_coordinate(position, route, xp=np):
