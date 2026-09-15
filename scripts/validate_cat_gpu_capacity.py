@@ -1,4 +1,4 @@
-"""Measure one disposable native PPO update's GPU capacity; never start W&B.
+"""Measure disposable native PPO updates' GPU capacity; never start W&B.
 
 The update starts from released CAT weights and is discarded. No learner/model
 checkpoint is saved. The only output is a capacity report outside the field bank.
@@ -38,6 +38,8 @@ def main():
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--num-envs", type=int, default=4096)
     parser.add_argument("--batch-size", type=int, default=256)
+    parser.add_argument("--updates", type=int, choices=(1, 2), default=1,
+                        help="Two updates also measure one warm execution after initial compilation")
     parser.add_argument("--learning-rate", type=float, default=3e-5)
     parser.add_argument("--reference-kl-coefficient", type=float, default=.05)
     parser.add_argument("--allocator-fraction", type=float, default=.92)
@@ -64,11 +66,11 @@ def main():
     report = dict(schema="cat-native-ppo-gpu-capacity-v1", status="starting", pid=os.getpid(),
         bank_manifest=str(manifest_path), parallel_environments=args.num_envs, batch_size=args.batch_size,
         learning_rate=args.learning_rate, reference_kl_coefficient=args.reference_kl_coefficient,
-        requested_updates=1, wandb_initialized=False, checkpoints_written=False,
+        requested_updates=args.updates, wandb_initialized=False, checkpoints_written=False,
         production_training_metrics_enabled=True,
         capacity_script_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         initialization="released CAT checkpoint adapted to the compact 222/310 observation contract",
-        scope="one disposable complete PPO update; resource-capacity evidence only",
+        scope="disposable complete PPO updates; resource-capacity evidence only",
         limitations=["No continuous-training stability or policy-improvement claim",
                      "No checkpoint serialization; production runtime snapshot transfer is not measured",
                      "NVIDIA polling may miss short peaks; JAX allocator peak is reported separately"],
@@ -149,13 +151,18 @@ def main():
             runtime_checkpoint_fn=None, scored_checkpoint_fn=None, save_checkpoint_path=None,
             log_training_metrics=True, training_metrics_buffer_size=1000,
             training_metrics_steps=report["batch_geometry"]["transitions_per_update"], progress_fn=progress,
-            should_stop_fn=lambda: len(report["updates"]) >= 1)
-        print("Compiling and executing exactly one complete disposable PPO update...", flush=True)
+            should_stop_fn=lambda: len(report["updates"]) >= args.updates)
+        print(f"Compiling and executing {args.updates} complete disposable PPO update(s)...", flush=True)
         _, parameters, metrics = native_ppo.train(**options)
         jax.block_until_ready(parameters)
-        expected = report["batch_geometry"]["transitions_per_update"]
-        if len(report["updates"]) != 1 or int(metrics["training/completed_steps"]) != expected:
-            raise ValueError("Capacity check did not complete exactly one full PPO update")
+        expected = report["batch_geometry"]["transitions_per_update"] * args.updates
+        if len(report["updates"]) != args.updates or int(metrics["training/completed_steps"]) != expected:
+            raise ValueError("Capacity check did not complete its requested full PPO updates")
+        if args.updates == 2:
+            warm_seconds = report["updates"][1]["elapsed_seconds"] - report["updates"][0]["elapsed_seconds"]
+            report["warm_update"] = dict(seconds=warm_seconds,
+                environment_steps_per_second=report["batch_geometry"]["transitions_per_update"] / warm_seconds,
+                interpretation="one warm update including host callback overhead; not a long-run throughput estimate")
         report.update(status="passed", completed_steps=int(metrics["training/completed_steps"]),
                       final_allocator=device.memory_stats())
     except BaseException as error:
