@@ -1,0 +1,88 @@
+{
+  "schema": "cat-checkpoint-rollout-render-v1",
+  "outputs": {
+    "overnight-cat-checkpoint.mp4": {
+      "path": "/Users/konstantinsmirnov/robotics/Click-and-Traverse-WholeBody/outputs/overnight_recording_20260915/video-clear-view/overnight-cat-checkpoint.mp4",
+      "sha256": "47284ae5829c4b35929fd70c3596dda3a5b08c3368a51cd0f9b2ff7e6f389261"
+    },
+    "preview.png": {
+      "path": "/Users/konstantinsmirnov/robotics/Click-and-Traverse-WholeBody/outputs/overnight_recording_20260915/video-clear-view/preview.png",
+      "sha256": "338324d17fa9a82c7ae7f27451a8c6988e74aa54c05ff914df7a4a60a685afaf"
+    },
+    "contact-sheet.png": {
+      "path": "/Users/konstantinsmirnov/robotics/Click-and-Traverse-WholeBody/outputs/overnight_recording_20260915/video-clear-view/contact-sheet.png",
+      "sha256": "45296162f81d4caf76be3299044673857aac99dff6889201d7a7f46b5eb90696"
+    }
+  },
+  "trajectory": "/Users/konstantinsmirnov/robotics/Click-and-Traverse-WholeBody/outputs/overnight_recording_20260915/furniture-episode/trajectory.npz",
+  "trajectory_sha256": "a8285ea0f47bffe238d0a91d66e12bbb3a69316ed82c9ae19a19122940b94ef0",
+  "metadata": "/Users/konstantinsmirnov/robotics/Click-and-Traverse-WholeBody/outputs/overnight_recording_20260915/furniture-episode/metadata.json",
+  "metadata_sha256": "00d648d4b44d52bd6aadeeb77029002eaf47e44b7ad1dca576f9267c94c77cb7",
+  "scene_id": "pilot-mixed-train-000001-440e3f8cfde4",
+  "geometry_hash": "440e3f8cfde4c7bf646773fd670f8970c667e05eb59c30a6bbda1436d85b9542",
+  "scene_json_sha256": "35d57e4285ebd1f50163aacea76bb18a7a8862b446ed024018ff9a6b067c524e",
+  "assembled_xml_sha256": "31b6b010b338155efe00c0d53e7d7cac1f8b9e096bb6e7e14af18ad42d20da6e",
+  "renderer_sha256": "9012e91ff54385db744e2c8e9c0673b60ec248de79044ddb109303714b384743",
+  "mujoco_version": "3.3.1",
+  "checkpoint_label": "Overnight CAT checkpoint",
+  "global_step": 102301696,
+  "checkpoint_stage": "r000001-p0-cat-forward",
+  "episode_seed": 0,
+  "episode_outcome": {
+    "scene_id": "pilot-mixed-train-000001-440e3f8cfde4",
+    "case_id": "overnight-checkpoint-example",
+    "training_seed": 0,
+    "episode_seed": 0,
+    "controller": "deterministic_native_CAT",
+    "time_budget": 27.25,
+    "elapsed": 1.72,
+    "reached_goal": false,
+    "strict_success": false,
+    "furniture_contact": true,
+    "hand_contact": false,
+    "fall": false,
+    "self_collision": false,
+    "nonfoot_floor_contact": false,
+    "timeout": false,
+    "first_contact_part": "other_body",
+    "first_contact_time": 1.7139999866485596,
+    "minimum_clearance": -1.0,
+    "path_length": 1.5888257262501508,
+    "route_length": 2.9000000000000004,
+    "route_progress": 0.5031199126408017,
+    "progress_before_first_contact": 0.4956854869579447,
+    "bottlenecks_cleared": 0,
+    "bottlenecks_before_first_contact": 0,
+    "bottlenecks_total": 1,
+    "termination_reason": "furniture_contact",
+    "numerical_failure": false,
+    "provenance": {}
+  },
+  "recorded_simulation_seconds": 1.719985008239746,
+  "recorded_pose_count": 87,
+  "additional_simulation_steps": 0,
+  "additional_policy_inference": false,
+  "geometry_or_dynamics_modified": false,
+  "pose_replay": "nearest recorded pose; mj_forward only; no integration or interpolation",
+  "video": {
+    "codec": "H.264",
+    "width": 1280,
+    "height": 720,
+    "fps": 25,
+    "frames": 366,
+    "duration_seconds": 14.64,
+    "initial_hold_seconds": 1,
+    "terminal_hold_seconds": 2,
+    "quarter_speed_replay": true
+  },
+  "visual_only_changes": [
+    "colors",
+    "wall transparency",
+    "hand bound highlighting",
+    "camera tracking",
+    "room overview",
+    "route/start/goal markers",
+    "text overlays"
+  ],
+  "elapsed_seconds": 6.392584208981134
+}

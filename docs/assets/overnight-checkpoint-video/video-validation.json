@@ -1,0 +1,26 @@
+{
+  "video_sha256": "47284ae5829c4b35929fd70c3596dda3a5b08c3368a51cd0f9b2ff7e6f389261",
+  "decoded_frames": 366,
+  "expected_frames": 366,
+  "decoder_exit_code": 0,
+  "decoder_stderr": "",
+  "codec": "H.264",
+  "width": 1280,
+  "height": 720,
+  "fps": 25,
+  "duration_seconds": 14.64,
+  "visual_inspection": "All six sampled trajectory frames and preview inspected; full body, hands and furniture visible.",
+  "checkpoint_payload_hashes_verified": true,
+  "trajectory_sha256_verified": true,
+  "recorded_pose_count": 87,
+  "recorded_control_steps": 86,
+  "actual_simulation_seconds": 1.72,
+  "terminal_contact_inspection": {
+    "method": "Native MuJoCo mj_forward of recorded terminal qpos; no integration",
+    "robot_geom": "right_foot",
+    "furniture_geom": "furniture_object_11",
+    "furniture_component": "chair_00_leg_0",
+    "maximum_penetration_m": 0.00446,
+    "first_substep_geometry_identity_recorded": false
+  }
+}

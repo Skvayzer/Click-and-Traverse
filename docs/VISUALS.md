@@ -1,5 +1,9 @@
 # Furniture environment visuals
 
+A [learned overnight-checkpoint rollout](OVERNIGHT_CHECKPOINT_VIDEO_20260915.md)
+is now available. It shows the complete episode ending on a chair-leg contact.
+The room previews below remain static geometry tours.
+
 The actual dense mixed scene contains **nine tables, 36 chairs and six narrow
 passages** in a 9 × 9.55 m room. All visuals use its canonical physical geometry,
 hash `9cfba94bcbc0b19e392455a9d3be2fe2a83be32d7363f4f3480b70ff4a41c2f9`.
