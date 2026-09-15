@@ -1,0 +1,393 @@
+{
+  "manifest_path": "/Users/konstantinsmirnov/robotics/Click-and-Traverse-WholeBody/data/furniture/cat_generalist/manifest.json",
+  "manifest_sha256": "cb49fb194e12ce7861d1fc90778d8acb176e5143714efa168afbd096840d48e5",
+  "scene_count": 39,
+  "byte_verified_original_count": 36,
+  "reconstructed_original_count": 1,
+  "new_clutter_scenes": 2,
+  "reconstructed_scene": "D8G2L3O2S13",
+  "dataset_revision": "db8c202fa724bc4d3dba2cb9fead1267f15fd811",
+  "config_sha256": "0e38cac262a3c1c95bacdf859193340056fef53b8d2f8414293789cee5d45d2d",
+  "upstream_commit": "866ba392f1c1e84b92ad75fa66550f26e8af8e48",
+  "field_bytes_total": 339299376,
+  "plots": [
+    {
+      "path": "/Users/konstantinsmirnov/robotics/Click-and-Traverse-WholeBody/docs/assets/setup-report-20260915/hand-envelope.pdf",
+      "sha256": "981ac08d6669b179d937dfcc2ce0245826a5856862007de2b61b862c78c2880a",
+      "bytes": 211799
+    },
+    {
+      "path": "/Users/konstantinsmirnov/robotics/Click-and-Traverse-WholeBody/docs/assets/setup-report-20260915/hand-envelope.png",
+      "sha256": "e612b1d7f3c3040352736bb0cb6560d13402277417102d871be3b7b448eaf8f9",
+      "bytes": 268174
+    },
+    {
+      "path": "/Users/konstantinsmirnov/robotics/Click-and-Traverse-WholeBody/docs/assets/setup-report-20260915/scene-field-section.pdf",
+      "sha256": "4fe23779706361850234536c2151c4d919dcee7b211a90739f75fce29b1eb7de",
+      "bytes": 87434
+    },
+    {
+      "path": "/Users/konstantinsmirnov/robotics/Click-and-Traverse-WholeBody/docs/assets/setup-report-20260915/scene-field-section.png",
+      "sha256": "5c37a1ce71aff1cad04122b432df1f1d093e27ddea21c840db621852f54f9d9f",
+      "bytes": 414764
+    },
+    {
+      "path": "/Users/konstantinsmirnov/robotics/Click-and-Traverse-WholeBody/docs/assets/setup-report-20260915/scene-fields.pdf",
+      "sha256": "6457f9b1183200e9a464b482326b458b99b96882164eab485bac94d3ed245847",
+      "bytes": 62328
+    },
+    {
+      "path": "/Users/konstantinsmirnov/robotics/Click-and-Traverse-WholeBody/docs/assets/setup-report-20260915/scene-fields.png",
+      "sha256": "670381938c4a4fe8eaba949b42d2015e32571b05c90af5f0260ae550dcc51e92",
+      "bytes": 191711
+    },
+    {
+      "path": "/Users/konstantinsmirnov/robotics/Click-and-Traverse-WholeBody/docs/assets/setup-report-20260915/scene-layouts.pdf",
+      "sha256": "6c1232800f1c2e9ca545d52620f142e9b98a376ac2ec0dec883ae72b4c13b7d9",
+      "bytes": 48531
+    },
+    {
+      "path": "/Users/konstantinsmirnov/robotics/Click-and-Traverse-WholeBody/docs/assets/setup-report-20260915/scene-layouts.png",
+      "sha256": "794a2809002c19e0d191115ea5771855eeb93e148e36cbcbdb08aa7635fe1f5c",
+      "bytes": 185908
+    }
+  ],
+  "scenes": [
+    {
+      "scene_id": "dense-mixed-train-20260915-23ed4245fb30",
+      "family": "furniture",
+      "geometry_sha256": "23ed4245fb30f143a2d27351d7f1fc1eed4474658a3879aba70ec9fed8075b5a",
+      "scene_json_sha256": "d907df07366ab5bcc069c899c02c379ff490032e9cb0ff05fdd5656b3b84ffe6",
+      "counts": {
+        "tables": 9,
+        "chairs": 36,
+        "primitive_boxes": 298,
+        "bottlenecks": 6
+      },
+      "room_dimensions_m": [
+        9.0,
+        9.690141275616313,
+        2.4
+      ],
+      "grid_shape": [
+        230,
+        248,
+        60
+      ],
+      "voxel_m": 0.04,
+      "sample_origin_m": [
+        -0.08,
+        -0.08,
+        0.02
+      ],
+      "last_sample_m": [
+        9.08,
+        9.8,
+        2.38
+      ],
+      "grid_extent_m": [
+        9.200000000000001,
+        9.92,
+        2.4
+      ],
+      "grid_edge_min_m": [
+        -0.1,
+        -0.1,
+        0.0
+      ],
+      "grid_edge_max_m": [
+        9.1,
+        9.82,
+        2.4
+      ],
+      "start_xyz_m": [
+        0.6,
+        0.56729703,
+        0.8
+      ],
+      "goal_xyz_m": [
+        0.6,
+        9.14014128,
+        0.75
+      ],
+      "geometric_route_length_m": 39.85284425,
+      "bottleneck_width_min_m": 0.6812533365892095,
+      "bottleneck_width_max_m": 0.7766416680413204,
+      "root_geometric_admission": {
+        "method": "analytic-obb-root-cylinder-route-samples-with-lipschitz-bound",
+        "root_radius_m": 0.23,
+        "root_z_interval_m": [
+          0.35,
+          1.05
+        ],
+        "sample_spacing_max_m": 0.0399094808218263,
+        "sampled_center_clearance_min_m": 0.34062666829460475,
+        "center_clearance_lower_bound_m": 0.3206719278836916,
+        "root_margin_lower_bound_m": 0.09067192788369158,
+        "root_route_validated": true,
+        "full_body_validated": false,
+        "dynamic_feasibility_validated": false,
+        "explanation": "Root cylinder only; limb clearance, crouching and tracking remain unvalidated."
+      },
+      "field_generation": {
+        "pipeline": "original-CAT-occupancy-SDF-gradient-progressive-3D-FMM",
+        "upstream_commit": "866ba392f1c1e84b92ad75fa66550f26e8af8e48",
+        "pf_modular_sha256": "208581914395c43e8ef19eb0fd754f42cccf32e98a6bca0893be0e9036b7220c",
+        "grid_config_sha256": "698d225af6ab73f2895972d820b0941ae10ad05a6c44912297def4d8c3837b64",
+        "dx": 0.04,
+        "shape": [
+          230,
+          248,
+          60
+        ],
+        "sample_origin": [
+          -0.08,
+          -0.08,
+          0.02
+        ],
+        "goal": [
+          0.6,
+          9.14014128,
+          0.75
+        ],
+        "route_used_for_guidance": false,
+        "physical_obstacles_in_training": false,
+        "floor_in_obstacle_sdf": false,
+        "free_voxel_start_goal_connected": true,
+        "root_route_geometry_validated": true,
+        "dynamic_feasibility_validated": false,
+        "full_body_reset_clearance_validated": false
+      }
+    },
+    {
+      "scene_id": "generic-dense-mixed-train-20260915-e251f196db07",
+      "family": "generic_clutter",
+      "geometry_sha256": "e251f196db07689ba7cf40b33d01fdef65ca88f0b589a504ff78d5eb6c378689",
+      "scene_json_sha256": "e3350bb658767e11dbd35f6f411884451993272302ccbef96a561bb0ebf9a3d5",
+      "counts": {
+        "tables": 0,
+        "chairs": 0,
+        "generic_objects": 45,
+        "primitive_boxes": 91,
+        "bottlenecks": 6,
+        "crates": 12,
+        "low_blocks": 11,
+        "partitions": 11,
+        "shelves": 11
+      },
+      "room_dimensions_m": [
+        9.0,
+        9.690141275616313,
+        2.4
+      ],
+      "grid_shape": [
+        230,
+        248,
+        60
+      ],
+      "voxel_m": 0.04,
+      "sample_origin_m": [
+        -0.08,
+        -0.08,
+        0.02
+      ],
+      "last_sample_m": [
+        9.08,
+        9.8,
+        2.38
+      ],
+      "grid_extent_m": [
+        9.200000000000001,
+        9.92,
+        2.4
+      ],
+      "grid_edge_min_m": [
+        -0.1,
+        -0.1,
+        0.0
+      ],
+      "grid_edge_max_m": [
+        9.1,
+        9.82,
+        2.4
+      ],
+      "start_xyz_m": [
+        0.6,
+        0.56729703,
+        0.8
+      ],
+      "goal_xyz_m": [
+        0.6,
+        9.14014128,
+        0.75
+      ],
+      "geometric_route_length_m": 39.85284425,
+      "bottleneck_width_min_m": 0.6812533365892104,
+      "bottleneck_width_max_m": 0.7766416680413204,
+      "root_geometric_admission": {
+        "method": "analytic-obb-root-cylinder-route-samples-with-lipschitz-bound",
+        "root_radius_m": 0.23,
+        "root_z_interval_m": [
+          0.35,
+          1.05
+        ],
+        "sample_spacing_max_m": 0.03990948093333333,
+        "sampled_center_clearance_min_m": 0.3406266690000005,
+        "center_clearance_lower_bound_m": 0.3206719285333338,
+        "root_margin_lower_bound_m": 0.0906719285333338,
+        "root_route_validated": true,
+        "full_body_validated": false,
+        "dynamic_feasibility_validated": false,
+        "explanation": "Root cylinder only; limb clearance, crouching and tracking remain unvalidated."
+      },
+      "field_generation": {
+        "pipeline": "original-CAT-occupancy-SDF-gradient-progressive-3D-FMM",
+        "upstream_commit": "866ba392f1c1e84b92ad75fa66550f26e8af8e48",
+        "pf_modular_sha256": "208581914395c43e8ef19eb0fd754f42cccf32e98a6bca0893be0e9036b7220c",
+        "grid_config_sha256": "698d225af6ab73f2895972d820b0941ae10ad05a6c44912297def4d8c3837b64",
+        "dx": 0.04,
+        "shape": [
+          230,
+          248,
+          60
+        ],
+        "sample_origin": [
+          -0.08,
+          -0.08,
+          0.02
+        ],
+        "goal": [
+          0.6,
+          9.14014128,
+          0.75
+        ],
+        "route_used_for_guidance": false,
+        "physical_obstacles_in_training": false,
+        "floor_in_obstacle_sdf": false,
+        "free_voxel_start_goal_connected": true,
+        "root_route_geometry_validated": true,
+        "dynamic_feasibility_validated": false,
+        "full_body_reset_clearance_validated": false
+      }
+    }
+  ],
+  "cross_section": {
+    "family": "furniture",
+    "fixed_x_index": 114,
+    "fixed_x_m": 4.48,
+    "displayed_components": [
+      "gf_y",
+      "gf_z"
+    ],
+    "other_component_omitted": "gf_x",
+    "sdf_file_sha256": "be7c9772437fef6d75308a1d61cb0d33d5a29ef212f3ba63e96755a2f6f345d4",
+    "gf_file_sha256": "a2a00d415c19eeec4c458baae4caa14cd11c15048859dead19736282a24e448f"
+  },
+  "hand_geometry": {
+    "side": "left",
+    "model": "unitree_dex3_three_finger_fixed_stand_v1",
+    "meshes": 8,
+    "stl_triangle_vertices_with_duplicates": 488502,
+    "unique_vertices": 81428,
+    "minimum_mesh_vertex_margin_m": 0.0049999999999999975,
+    "all_mesh_vertices_contained": true,
+    "envelope": {
+      "center": [
+        0.12923083770871163,
+        -0.022143624205178604,
+        8.903443813323975e-07
+      ],
+      "half_size": [
+        0.09273083757758141,
+        0.051559837568587646,
+        0.04889683529734611
+      ],
+      "mesh_lower": [
+        0.04150000013113022,
+        -0.06870346177376625,
+        -0.04389594495296478
+      ],
+      "mesh_upper": [
+        0.21696167528629304,
+        0.02441621336340904,
+        0.04389772564172745
+      ],
+      "margin_m": 0.005
+    },
+    "corners_wrist_frame_m": [
+      [
+        0.03650000013113022,
+        -0.07370346177376624,
+        -0.04889594495296478
+      ],
+      [
+        0.03650000013113022,
+        -0.07370346177376624,
+        0.048897725641727445
+      ],
+      [
+        0.03650000013113022,
+        0.029416213363409043,
+        -0.04889594495296478
+      ],
+      [
+        0.03650000013113022,
+        0.029416213363409043,
+        0.048897725641727445
+      ],
+      [
+        0.22196167528629304,
+        -0.07370346177376624,
+        -0.04889594495296478
+      ],
+      [
+        0.22196167528629304,
+        -0.07370346177376624,
+        0.048897725641727445
+      ],
+      [
+        0.22196167528629304,
+        0.029416213363409043,
+        -0.04889594495296478
+      ],
+      [
+        0.22196167528629304,
+        0.029416213363409043,
+        0.048897725641727445
+      ]
+    ],
+    "finger_control": "fixed_source_stand_pose",
+    "actuated_finger_dofs": 0,
+    "source_mjcf_sha256": "937f77cc991be13e68a4de239a966aaf2d98ff47b7d336f0c2270c34800a6a9c",
+    "source_upstream_commit": "c20ca8f1fe5e519474c6c8d10b1ce5c719dd7a65",
+    "asset_files_sha256": {
+      "assets/left_hand_index_0_link.STL": "6b35f2f77211d5a366f0b9a4e47c4ee35e536731266f1a34e9efa12db579b892",
+      "assets/left_hand_index_1_link.STL": "9e315ebc8a7a0cb98e033985b586b20d81cf8aa761181ae61ce56fcb14077a06",
+      "assets/left_hand_middle_0_link.STL": "6b35f2f77211d5a366f0b9a4e47c4ee35e536731266f1a34e9efa12db579b892",
+      "assets/left_hand_middle_1_link.STL": "9e315ebc8a7a0cb98e033985b586b20d81cf8aa761181ae61ce56fcb14077a06",
+      "assets/left_hand_palm_link.STL": "23a486b75bd78a9bf03cec25d84d87f97f3dae038cf21a743b6d469b337e4004",
+      "assets/left_hand_thumb_0_link.STL": "a90c721661c0622685488a3c74d1e122c7da89242d3a1daef75edb83422d05e0",
+      "assets/left_hand_thumb_1_link.STL": "445c54a45bc13ce36001556f66bc0f49c83cb40321205ae4d676bb2874325684",
+      "assets/left_hand_thumb_2_link.STL": "3d8dbe5085acfc213d21aa8b0782e89cd79084e9678f3a85fc7b04a86b029db5",
+      "assets/right_hand_index_0_link.STL": "12ab4300c95e437e834f9aef772b3b431c671bf34338930b52ad11aef73bbd0d",
+      "assets/right_hand_index_1_link.STL": "c9c34efce4563cacdcfd29fc838a982976d40f5442c71219811dcbbf3923a33d",
+      "assets/right_hand_middle_0_link.STL": "12ab4300c95e437e834f9aef772b3b431c671bf34338930b52ad11aef73bbd0d",
+      "assets/right_hand_middle_1_link.STL": "c9c34efce4563cacdcfd29fc838a982976d40f5442c71219811dcbbf3923a33d",
+      "assets/right_hand_palm_link.STL": "86c0b231cc44477d64a6493e5a427ba16617a00738112dd187c652675b086fb9",
+      "assets/right_hand_thumb_0_link.STL": "544298d0ea1088f5b276a10cc6a6a9e533efdd91594955fdc956c46211d07f83",
+      "assets/right_hand_thumb_1_link.STL": "0a9a820da8dd10f298778b714f1364216e8a5976f4fd3a05689ea26327d44bf6",
+      "assets/right_hand_thumb_2_link.STL": "3f1bfb37668e8f61801c8d25f171fa1949e08666be86c67acad7e0079937cc45",
+      "source-hands.xml": "b8d50f5f7b41fa7eed78206d933dd1a9f8a43e437e0069257e0c8f73c8a09894"
+    }
+  },
+  "builder": {
+    "path": "/Users/konstantinsmirnov/robotics/Click-and-Traverse-WholeBody/docs/assets/setup-report-20260915/build_scene_figures.py",
+    "sha256": "9cbe5c31d059590f0d5e6f40edad48b2d1fd89213d13a4d2fc4f354bcd3cef0d"
+  },
+  "report_use": {
+    "room_comparison": "scene-layouts.png/pdf, approximately 774\u00d7310 pt",
+    "field_section": "scene-fields.png/pdf, approximately 375\u00d7220 pt",
+    "hand": "hand-envelope.png/pdf, approximately 360\u00d7220 pt",
+    "route_note": "Geometric check route, not a policy trajectory; route is not used for FMM guidance."
+  }
+}

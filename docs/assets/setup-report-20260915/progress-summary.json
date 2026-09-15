@@ -1,0 +1,206 @@
+{
+  "schema": "cat-setup-progress-v2",
+  "collection": {
+    "observed_utc": "2026-09-15T14:47:33.440566+00:00",
+    "metric_event_count": 3258,
+    "metrics_sha256": "7c85e48d853ab9f4595cb13078f167ca2438ec65ccd64a0a6c591d48e8c34d32",
+    "metrics_bytes": 9158609,
+    "pid": 11525,
+    "gpu": "NVIDIA GeForce RTX 5090, 32607 MiB, 30425 MiB, 0 %",
+    "process": "PID     ELAPSED STAT COMMAND\n  11525    04:10:18 Rsl  /home/konstantin.smirnov/robotics/Click-and-Traverse-WholeBody/outputs/sources/cat_wholebody_generalist_20260915/.venv/bin/python -u /home/konstantin.smirnov/robotics/Click-and-Traverse-WholeBody/outputs/sources/cat_wholebody_generalist_20260915/train_cat_wholebody.py run --bank-manifest /home/konstantin.smirnov/robotics/Click-and-Traverse-WholeBody/data/furniture/cat_generalist/manifest.json --run-dir /home/konstantin.smirnov/robotics/Click-and-Traverse-WholeBody/outputs/cat_wholebody_generalist_20260915 --profile single_gpu_32gb --num-envs 8192 --batch-size 512 --seed 0 --wandb-mode online --wandb-project CAT-wholebody --wandb-entity skvayzer",
+    "best_resolved": "/home/konstantin.smirnov/robotics/Click-and-Traverse-WholeBody/outputs/cat_wholebody_generalist_20260915/.checkpoint-generations/candidate-_e_p1meo"
+  },
+  "status": {
+    "schema": "cat-generalist-status-v1",
+    "owner": "5b19cd43-d1cf-4921-8ac8-c0bca22ebaa1",
+    "specification_sha256": "dabe27bb3de5148de30f4ff4e0c530d7d59fec951f894fc61fe60d40c8c30994",
+    "status": "running",
+    "phase": "training",
+    "pid": 11525,
+    "resume": false,
+    "startup_retry": false,
+    "runtime_present_on_entry": false,
+    "attempt": 1,
+    "completed_steps": 1137704960,
+    "resume_state_steps": 1137704960,
+    "initial_runtime_written": true,
+    "observed_steps": 1138753536
+  },
+  "wandb": {
+    "id": "1d39c55c",
+    "project": "CAT-wholebody",
+    "entity": "skvayzer",
+    "mode": "online",
+    "last_global_step": 1138753536,
+    "initialized": true,
+    "initialization_attempted": true,
+    "url": "https://wandb.ai/skvayzer/CAT-wholebody/runs/1d39c55c"
+  },
+  "complete_updates": 1086,
+  "last_logged_transition": 1138753536,
+  "completed_episodes": 1555703,
+  "code": {
+    "git_commit": "40b4dd2682dd4e5d75a6b853c24333da99379cf3",
+    "source_sha256": "14292904cb7065229cbba32f90ca43ff1084260e5053239f28f54e7d7617ef2d"
+  },
+  "warmstart": {
+    "model_revision": "46ce4b57ba0639168d51741b661ff62f7ce6f045",
+    "critic_restored": true,
+    "parity": {
+      "actor_mean_and_raw_scale_max_abs_error": 0.0,
+      "critic_max_abs_error": 0.0
+    },
+    "added_input_weights": "zero",
+    "new_action_mean": 0.0,
+    "new_action_std": 0.05
+  },
+  "field_bank": {
+    "scene_count": 39,
+    "byte_verified_original_count": 36,
+    "reconstructed_original_count": 1
+  },
+  "best": {
+    "step": 6291456,
+    "score": [
+      0.35054904222488403
+    ],
+    "selection_source": "training_proxy",
+    "provenance": {
+      "bank_sha256": "bbcccb9a11ebee99ad14f5330de71a6a9461aed0e5c2115774b8c3b4ce19c633",
+      "code": {
+        "git_commit": "40b4dd2682dd4e5d75a6b853c24333da99379cf3",
+        "source_sha256": "14292904cb7065229cbba32f90ca43ff1084260e5053239f28f54e7d7617ef2d"
+      },
+      "selection": "training reward proxy; no held-out evaluation"
+    }
+  },
+  "nonfinite_events": 0,
+  "validation": {
+    "contiguous_updates": true,
+    "three_events_per_update": true,
+    "both_clutter_scenes_positive_in_every_update": true,
+    "global_counts_independently_match_step_rates": {
+      "episodes": true,
+      "terminated": true,
+      "timeouts": true
+    },
+    "original_residual_counts_nonnegative_and_partition": true,
+    "global_episodes_match_cumulative_logged_delta": true,
+    "max_episode_roundoff": 2.3283064365386963e-10,
+    "max_termination_count_roundoff": 1.3778844731859863e-10,
+    "max_termination_timeout_sum_error": 2.637889906509372e-13
+  },
+  "method": "Invert each 1000-update rolling mean independently: n*m_n-(n-1)*m_(n-1) for n<=1000; 1000*(m_n-m_(n-1))+raw_(n-1000) afterwards. Recover episode and termination counts, round only after integral validation, validate global counts independently against reconstructed per-transition done/termination/timeout rates and cumulative completed episode deltas; validate original residual nonnegativity and episode partition. Original aggregate is global minus PF37 and PF38. Window failure rates are episode-weighted reconstructed counts. Episode lengths/rewards remain logged trailing-1000-completed-episode summaries, averaged over the selected updates.",
+  "limits": [
+    "These are stochastic training rollouts with an adaptive scene mix, not a matched pretrained-versus-trained evaluation.",
+    "Early termination combines falls, body/probe collision and invalid-state failures. Timeouts are survival, not demonstrated goal success.",
+    "The early comparison is updates 21-70, already after some fine-tuning.",
+    "The best saved model uses the maximum single-update training reward proxy; it does not identify best furniture traversal performance."
+  ],
+  "windows": {
+    "early": {
+      "first_update": 21,
+      "last_update": 70,
+      "first_step": 22020096,
+      "last_step": 73400320,
+      "means": {
+        "training/rollout_reward_mean": 0.33224478662014006,
+        "episode/sum_reward": 205.19521613099226,
+        "episode/length": 615.00834,
+        "training/v_loss": 0.09486963450908661,
+        "training/policy_loss": 0.0041171231912449004,
+        "training/entropy_loss": 0.07335651159286499,
+        "training/sps": 87540.77421884258
+      },
+      "early_termination": {
+        "all": {
+          "completed_episodes": 84899,
+          "early_terminations": 37614,
+          "timeouts": 47285,
+          "rate": 0.44304408768065584,
+          "fraction_of_all_completed_episodes": 1.0,
+          "fraction_of_all_early_terminations": 1.0
+        },
+        "original": {
+          "completed_episodes": 75672,
+          "early_terminations": 28411,
+          "timeouts": 47261,
+          "rate": 0.3754493075377947,
+          "fraction_of_all_completed_episodes": 0.8913179189389745,
+          "fraction_of_all_early_terminations": 0.7553304620619982
+        },
+        "furniture": {
+          "completed_episodes": 4733,
+          "early_terminations": 4731,
+          "timeouts": 2,
+          "rate": 0.999577435030636,
+          "fraction_of_all_completed_episodes": 0.055748595389816136,
+          "fraction_of_all_early_terminations": 0.12577763598660074
+        },
+        "generic_clutter": {
+          "completed_episodes": 4494,
+          "early_terminations": 4472,
+          "timeouts": 22,
+          "rate": 0.9951045838896306,
+          "fraction_of_all_completed_episodes": 0.05293348567120932,
+          "fraction_of_all_early_terminations": 0.11889190195140108
+        }
+      },
+      "mean_logged_episode_seconds": 12.3001668,
+      "hand_penalty_magnitude_per_step": 0.013146645744680977,
+      "arm_penalty_magnitude_per_step": 0.0003094151873949499
+    },
+    "latest": {
+      "first_update": 1037,
+      "last_update": 1086,
+      "first_step": 1087373312,
+      "last_step": 1138753536,
+      "means": {
+        "training/rollout_reward_mean": 0.3269702011346817,
+        "episode/sum_reward": 243.49642050569193,
+        "episode/length": 742.3418,
+        "training/v_loss": 0.08166538417339325,
+        "training/policy_loss": -0.002531909162644297,
+        "training/entropy_loss": -0.020636312402784823,
+        "training/sps": 87612.12798066165
+      },
+      "early_termination": {
+        "all": {
+          "completed_episodes": 70807,
+          "early_terminations": 27683,
+          "timeouts": 43124,
+          "rate": 0.39096417020916013,
+          "fraction_of_all_completed_episodes": 1.0,
+          "fraction_of_all_early_terminations": 1.0
+        },
+        "original": {
+          "completed_episodes": 64785,
+          "early_terminations": 22741,
+          "timeouts": 42044,
+          "rate": 0.3510226132592421,
+          "fraction_of_all_completed_episodes": 0.9149519115341703,
+          "fraction_of_all_early_terminations": 0.8214788859588917
+        },
+        "furniture": {
+          "completed_episodes": 3915,
+          "early_terminations": 3814,
+          "timeouts": 101,
+          "rate": 0.9742017879948914,
+          "fraction_of_all_completed_episodes": 0.05529114353100682,
+          "fraction_of_all_early_terminations": 0.1377740851786295
+        },
+        "generic_clutter": {
+          "completed_episodes": 2107,
+          "early_terminations": 1128,
+          "timeouts": 979,
+          "rate": 0.5353583293782629,
+          "fraction_of_all_completed_episodes": 0.029756944934822827,
+          "fraction_of_all_early_terminations": 0.04074702886247878
+        }
+      },
+      "mean_logged_episode_seconds": 14.846836000000001,
+      "hand_penalty_magnitude_per_step": 0.016615236299895354,
+      "arm_penalty_magnitude_per_step": 0.00025398712493428596
+    }
+  }
+}

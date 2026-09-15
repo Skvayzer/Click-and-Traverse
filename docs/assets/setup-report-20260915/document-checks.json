@@ -1,0 +1,67 @@
+{
+  "pages": [
+    {
+      "page": 1,
+      "text_characters": 1359,
+      "links": 1,
+      "text_within_page": true
+    },
+    {
+      "page": 2,
+      "text_characters": 1474,
+      "links": 0,
+      "text_within_page": true
+    },
+    {
+      "page": 3,
+      "text_characters": 1510,
+      "links": 0,
+      "text_within_page": true
+    },
+    {
+      "page": 4,
+      "text_characters": 1212,
+      "links": 0,
+      "text_within_page": true
+    },
+    {
+      "page": 5,
+      "text_characters": 1625,
+      "links": 0,
+      "text_within_page": true
+    },
+    {
+      "page": 6,
+      "text_characters": 1302,
+      "links": 0,
+      "text_within_page": true
+    },
+    {
+      "page": 7,
+      "text_characters": 1841,
+      "links": 0,
+      "text_within_page": true
+    },
+    {
+      "page": 8,
+      "text_characters": 1934,
+      "links": 0,
+      "text_within_page": true
+    },
+    {
+      "page": 9,
+      "text_characters": 2109,
+      "links": 0,
+      "text_within_page": true
+    },
+    {
+      "page": 10,
+      "text_characters": 1841,
+      "links": 3,
+      "text_within_page": true
+    }
+  ],
+  "required_claims_present": true,
+  "vector_charts": 4,
+  "pdf_sha256": "33cde76f8844d1f1a6c0e49c982555cebbdca925ba48717526d4094b76e46497"
+}

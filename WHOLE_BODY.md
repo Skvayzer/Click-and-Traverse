@@ -8,6 +8,8 @@ Corrected learned traversal success has not yet been demonstrated. See [correcti
 
 Corrected continuous training restarted on dep-0 on September 15 with 8,192 environments and [one W&B run](https://wandb.ai/skvayzer/CAT-wholebody/runs/1d39c55c). [Run settings, capacity evidence and stop command](docs/CORRECTED_RUN_20260915.md).
 
+[Illustrated current-setup PDF](docs/CAT_CURRENT_TRAINING_SETUP_20260915.pdf) and [technical companion](docs/CAT_CURRENT_TRAINING_SETUP_20260915.md): architecture, control/PPO pipeline, actual furniture layouts, hand protection, source identities and progress at **1.139 billion transitions (14:47 UTC, September 15)**. Generic clutter survival improved; furniture early termination remains 97.42%, and safe hand raising is not yet demonstrated.
+
 [Progress analysis at 566 million transitions](docs/TRAINING_PROGRESS_20260915_1243.md): survival improved, especially in generic clutter, while furniture early termination remains high and the hand-clearance objective needs attention. No controlled traversal-success improvement has been established.
 
 ## Preserved CAT behavior
