@@ -8,6 +8,7 @@ from __future__ import annotations
 
 import argparse
 import csv
+import hashlib
 import inspect
 import json
 import os
@@ -64,6 +65,8 @@ def main():
         bank_manifest=str(manifest_path), parallel_environments=args.num_envs, batch_size=args.batch_size,
         learning_rate=args.learning_rate, reference_kl_coefficient=args.reference_kl_coefficient,
         requested_updates=1, wandb_initialized=False, checkpoints_written=False,
+        production_training_metrics_enabled=True,
+        capacity_script_sha256=hashlib.sha256(Path(__file__).read_bytes()).hexdigest(),
         initialization="released CAT checkpoint adapted to the compact 222/310 observation contract",
         scope="one disposable complete PPO update; resource-capacity evidence only",
         limitations=["No continuous-training stability or policy-improvement claim",
@@ -128,6 +131,10 @@ def main():
             options["reference_kl_config"] = None
 
         def progress(step, metrics):
+            # The production metric aggregator also emits callbacks during a
+            # rollout. Only the completed-update callback ends this preflight.
+            if "training/rollout_reward_mean" not in metrics:
+                return
             record = dict(step=int(step), elapsed_seconds=time.monotonic()-started,
                           metrics={name: float(np.asarray(value)) for name, value in metrics.items()},
                           allocator=device.memory_stats(), gpu=gpu_sample(args.gpu_index))
@@ -140,7 +147,8 @@ def main():
             wrap_env_fn=wrap_for_cat_wholebody_training, network_factory=factory,
             restore_params=target, restore_value_fn=True,
             runtime_checkpoint_fn=None, scored_checkpoint_fn=None, save_checkpoint_path=None,
-            log_training_metrics=False, progress_fn=progress,
+            log_training_metrics=True, training_metrics_buffer_size=1000,
+            training_metrics_steps=report["batch_geometry"]["transitions_per_update"], progress_fn=progress,
             should_stop_fn=lambda: len(report["updates"]) >= 1)
         print("Compiling and executing exactly one complete disposable PPO update...", flush=True)
         _, parameters, metrics = native_ppo.train(**options)
