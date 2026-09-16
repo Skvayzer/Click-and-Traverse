@@ -1,0 +1,211 @@
+{
+  "schema_version": 1,
+  "fetched_at_utc": "2026-09-16T12:17:44.718280+00:00",
+  "purpose": "Visual rendering assets; training geometry is unchanged by this downloader.",
+  "license": "CC0-1.0",
+  "license_url": "https://polyhaven.com/license",
+  "assets": {
+    "wooden_table_02": {
+      "asset_id": "wooden_table_02",
+      "name": "Wooden Table 02",
+      "kind": "model",
+      "resolution": "2k",
+      "source_page": "https://polyhaven.com/a/wooden_table_02",
+      "license": "CC0-1.0",
+      "license_url": "https://polyhaven.com/license",
+      "authors": {
+        "Serhii Khromov": "All"
+      },
+      "api_sources": [
+        {
+          "path": "wooden_table_02/api_files.json",
+          "url": "https://api.polyhaven.com/files/wooden_table_02",
+          "sha256": "224a7296ed197cd0665ee24cd5f2756fd46195d978efea08fea486806ef80b37"
+        },
+        {
+          "path": "wooden_table_02/api_info.json",
+          "url": "https://api.polyhaven.com/info/wooden_table_02",
+          "sha256": "7598f7ef59bedab4ab9cb87a154c11af81e5c0b13bbb094c802938e8add60cc8"
+        }
+      ],
+      "physical_dimensions_mm": [
+        1134.41663980484,
+        706.0248255729675,
+        799.5428870490286
+      ],
+      "files": [
+        {
+          "path": "wooden_table_02/wooden_table_02_2k.gltf",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/2k/wooden_table_02/wooden_table_02_2k.gltf",
+          "size_bytes": 2687,
+          "md5": "5bf0f5462b03210cb352d81c074b9a5f",
+          "sha256": "5c7551f78030d5c78a525ebd488e1c1db249a4f627591add1f741aa0c43742ac"
+        },
+        {
+          "path": "wooden_table_02/wooden_table_02.bin",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/4k/wooden_table_02/wooden_table_02.bin",
+          "size_bytes": 7576,
+          "md5": "a17c24e5366a0f7ad5522b88a4a9ea85",
+          "sha256": "52ed7cc67b3aa403375cf9bd18050e8cc21bcced6532a0183c1a733f0965df6d"
+        },
+        {
+          "path": "wooden_table_02/textures/wooden_table_02_nor_gl_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/2k/wooden_table_02/wooden_table_02_nor_gl_2k.jpg",
+          "size_bytes": 543822,
+          "md5": "f3bbfc11f954c5799f24b6b8f23cc3db",
+          "sha256": "be892284bce8dca4e9a1135e59e801d0db446efdf4fb9ec8db2b63a4b64dbb91"
+        },
+        {
+          "path": "wooden_table_02/textures/wooden_table_02_diff_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/2k/wooden_table_02/wooden_table_02_diff_2k.jpg",
+          "size_bytes": 711929,
+          "md5": "2a346503ce15e4df59c0fd4ed1891047",
+          "sha256": "cb0a767c4671866a3ae6b85d0d163f814bf95398137e3c4a9d9af5b8e011f191"
+        },
+        {
+          "path": "wooden_table_02/textures/wooden_table_02_arm_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/2k/wooden_table_02/wooden_table_02_arm_2k.jpg",
+          "size_bytes": 681917,
+          "md5": "740c00078718bdcf8660e17851e62c8e",
+          "sha256": "39f046a0f452a92f9a0640a2c0436d26e93e77736670e05123a7744782fa68a6"
+        }
+      ],
+      "main_path": "wooden_table_02/wooden_table_02_2k.gltf",
+      "total_bytes": 1947931
+    },
+    "SchoolChair_01": {
+      "asset_id": "SchoolChair_01",
+      "name": "School Chair 01",
+      "kind": "model",
+      "resolution": "2k",
+      "source_page": "https://polyhaven.com/a/SchoolChair_01",
+      "license": "CC0-1.0",
+      "license_url": "https://polyhaven.com/license",
+      "authors": {
+        "Ethan Place": "All"
+      },
+      "api_sources": [
+        {
+          "path": "SchoolChair_01/api_files.json",
+          "url": "https://api.polyhaven.com/files/SchoolChair_01",
+          "sha256": "4b7c2ce1876c3e57d6bee16c783d7e6eeaa62734ccf2dc393f5198e2e16ababb"
+        },
+        {
+          "path": "SchoolChair_01/api_info.json",
+          "url": "https://api.polyhaven.com/info/SchoolChair_01",
+          "sha256": "fca59eaee530fe37fa3208e38c1db93443fa3f61e8c33bdd7492b975ffc8f754"
+        }
+      ],
+      "physical_dimensions_mm": [
+        565.8532977104187,
+        675.2548813819885,
+        1006.035539903678
+      ],
+      "files": [
+        {
+          "path": "SchoolChair_01/SchoolChair_01_2k.gltf",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/2k/SchoolChair_01/SchoolChair_01_2k.gltf",
+          "size_bytes": 2695,
+          "md5": "016fdd2aba321eab4403cfd9dc3a8539",
+          "sha256": "f072f367f9282032bcc6fefb9ceb01cc2776166d9026a75583f2c8a7767e9693"
+        },
+        {
+          "path": "SchoolChair_01/textures/SchoolChair_01_arm_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/2k/SchoolChair_01/SchoolChair_01_arm_2k.jpg",
+          "size_bytes": 325085,
+          "md5": "af75fdea20a3b4243284819a8f6f40e2",
+          "sha256": "270a10398ee3a5753dd4208f2eb3ee97edcb00ccf3ac3227d00b276403d00df4"
+        },
+        {
+          "path": "SchoolChair_01/textures/SchoolChair_01_nor_gl_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/2k/SchoolChair_01/SchoolChair_01_nor_gl_2k.jpg",
+          "size_bytes": 915279,
+          "md5": "267db01c1df22cae446bd0e948ff9b29",
+          "sha256": "c7f018f35c03f3d42728da0e2aa032c0deea20210cd6b49328c56bde279e60ad"
+        },
+        {
+          "path": "SchoolChair_01/textures/SchoolChair_01_diff_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/jpg/2k/SchoolChair_01/SchoolChair_01_diff_2k.jpg",
+          "size_bytes": 174857,
+          "md5": "f21246498e86dd86c79fdc8e24591def",
+          "sha256": "7fabb6303317102d68afd3ccc9de247c3ec16577133f45a2d0cd13e550728a89"
+        },
+        {
+          "path": "SchoolChair_01/SchoolChair_01.bin",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Models/gltf/4k/SchoolChair_01/SchoolChair_01.bin",
+          "size_bytes": 134912,
+          "md5": "d1f13f71f9f9979cde18c798e25dd9d3",
+          "sha256": "7d64d556ba88d3962778085b9a190f1adb0d84e667bca8ef032c0ae34b31a9fe"
+        }
+      ],
+      "main_path": "SchoolChair_01/SchoolChair_01_2k.gltf",
+      "total_bytes": 1552828
+    },
+    "floor_tiles_02": {
+      "asset_id": "floor_tiles_02",
+      "name": "Floor Tiles 02",
+      "kind": "texture",
+      "resolution": "2k",
+      "source_page": "https://polyhaven.com/a/floor_tiles_02",
+      "license": "CC0-1.0",
+      "license_url": "https://polyhaven.com/license",
+      "authors": {
+        "Rob Tuytel": "All"
+      },
+      "api_sources": [
+        {
+          "path": "floor_tiles_02/api_files.json",
+          "url": "https://api.polyhaven.com/files/floor_tiles_02",
+          "sha256": "ad42babbcba89f5f11e07f00863c27fcd4acac5bd61c8282e09729f7e8dc5f96"
+        },
+        {
+          "path": "floor_tiles_02/api_info.json",
+          "url": "https://api.polyhaven.com/info/floor_tiles_02",
+          "sha256": "00136d2d4d95227d19112e94aabc148cf6c67c69cf8c88c2c5c17fabff465493"
+        }
+      ],
+      "physical_dimensions_mm": [
+        4000,
+        4000
+      ],
+      "files": [
+        {
+          "path": "floor_tiles_02/floor_tiles_02_diff_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/floor_tiles_02/floor_tiles_02_diff_2k.jpg",
+          "size_bytes": 1381118,
+          "md5": "9266824013917ad1a25678fd95c866c1",
+          "sha256": "9a4e5acbb6c71e03979cc75fe1121ae0dc66583153cab9f32116c79e33707634"
+        },
+        {
+          "path": "floor_tiles_02/floor_tiles_02_nor_gl_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/floor_tiles_02/floor_tiles_02_nor_gl_2k.jpg",
+          "size_bytes": 540151,
+          "md5": "358c5f021781a448e2e3357d42bd1f81",
+          "sha256": "0c0d11a6ee43f523131db810720e4232ff35f05c126a7959d499a715294a1ad6"
+        },
+        {
+          "path": "floor_tiles_02/floor_tiles_02_rough_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/floor_tiles_02/floor_tiles_02_rough_2k.jpg",
+          "size_bytes": 1214592,
+          "md5": "0c9b0ec7f5fabc3f1708c8193a1807ff",
+          "sha256": "95007052c6cc7a92284a5cea92ebdaecbfae6fcdd6dfd6ac443e2af43ddcd9a6"
+        },
+        {
+          "path": "floor_tiles_02/floor_tiles_02_disp_2k.jpg",
+          "url": "https://dl.polyhaven.org/file/ph-assets/Textures/jpg/2k/floor_tiles_02/floor_tiles_02_disp_2k.jpg",
+          "size_bytes": 302553,
+          "md5": "deb4babfd83d70bbf3cbb1fd43f83d69",
+          "sha256": "430e09bfbbf0edd6661fabd18dfb66766fa4cf4c2838146cf6bab578739b472f"
+        }
+      ],
+      "texture_paths": {
+        "base_color": "floor_tiles_02/floor_tiles_02_diff_2k.jpg",
+        "normal_gl": "floor_tiles_02/floor_tiles_02_nor_gl_2k.jpg",
+        "roughness": "floor_tiles_02/floor_tiles_02_rough_2k.jpg",
+        "displacement": "floor_tiles_02/floor_tiles_02_disp_2k.jpg"
+      },
+      "total_bytes": 3438414
+    }
+  },
+  "total_bytes": 6939173
+}

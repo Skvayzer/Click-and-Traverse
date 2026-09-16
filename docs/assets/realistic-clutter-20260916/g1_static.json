@@ -1,0 +1,2010 @@
+{
+  "source": "Native compact CAT assemble_training_xml; MuJoCo FK; fixed Dex3 hands",
+  "policy_loaded": false,
+  "simulation_steps": 0,
+  "qpos": [
+    0.0,
+    0.0,
+    0.800000011920929,
+    1.0,
+    0.0,
+    0.0,
+    0.0,
+    -0.10000000149011612,
+    0.0,
+    0.0,
+    0.30000001192092896,
+    -0.20000000298023224,
+    0.0,
+    -0.10000000149011612,
+    0.0,
+    0.0,
+    0.30000001192092896,
+    -0.20000000298023224,
+    0.0,
+    0.0,
+    0.0,
+    0.0,
+    0.20000000298023224,
+    0.30000001192092896,
+    0.0,
+    1.2799999713897705,
+    0.0,
+    0.0,
+    0.0,
+    0.20000000298023224,
+    -0.30000001192092896,
+    0.0,
+    1.2799999713897705,
+    0.0,
+    0.0,
+    0.0
+  ],
+  "source_xml_sha256": "85691b345f97ff9cb64da8e4e9221da6394e3cf6b262b3968bf9180a0fd2b045",
+  "compiled_xml_sha256": "55d81c4aefd2f7a29545bc352a7f009e7610aac3d1a725d3fe3165810ef9c723",
+  "compiled_xml_hash_method": "mujoco.mj_saveLastXML after compilation",
+  "gltf_axis_conversion": "R_x(-pi/2): native(x,y,z) -> glTF(x,z,-y)",
+  "mesh_count": 69,
+  "bounds_mujoco_zup_m": [
+    [
+      -0.09184297656879035,
+      -0.3298185564706159,
+      0.015388686677540397
+    ],
+    [
+      0.11636374741396625,
+      0.3298317053396301,
+      1.3305726024684643
+    ]
+  ],
+  "bounds_gltf_yup_m": [
+    [
+      -0.09184297656879035,
+      0.015388686677540397,
+      -0.3298317053396301
+    ],
+    [
+      0.11636374741396625,
+      1.3305726024684643,
+      0.3298185564706159
+    ]
+  ],
+  "finite_vertices_checked_before_and_after_glb_reload": true,
+  "glb_path": "/Users/konstantinsmirnov/research/CAT-Realistic-Clutter-20260916/g1_static.glb",
+  "glb_sha256": "da7a36042fcd7d5be02900c6c0305c8e15b9b61830278ad17224d3cef617c14a",
+  "glb_size_bytes": 12651588,
+  "meshes": [
+    {
+      "name": "pelvis_geom_1",
+      "body": "pelvis",
+      "geom_id": 1,
+      "mesh_id": 0,
+      "vertex_count": 10620,
+      "triangle_count": 21216,
+      "native_rgba": [
+        0.20000000298023224,
+        0.20000000298023224,
+        0.20000000298023224,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.04875030205506759,
+          -0.06445248025612187,
+          0.6525499977411571
+        ],
+        [
+          0.04875050897508005,
+          0.06445248041623337,
+          0.8025000189403516
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "85185245661e7dd1857fa7d9f0a3e3ff9015229c86a6d2ec1c650916827d9d5e",
+      "triangles_sha256": "8148688b1ae3068105b43589191b2468562ffd63101ba4e500741b9a901a6473"
+    },
+    {
+      "name": "pelvis_geom_2",
+      "body": "pelvis",
+      "geom_id": 2,
+      "mesh_id": 1,
+      "vertex_count": 18055,
+      "triangle_count": 36102,
+      "native_rgba": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.05812805127275462,
+          -0.06776073367944674,
+          0.6479945317952571
+        ],
+        [
+          0.061431242668882675,
+          0.0677763880013713,
+          0.772236114325916
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "74cc41b0500fd4f2383b8dfe7109eb344d490cdd37d1ea3220b6f50d59627ffb",
+      "triangles_sha256": "4f400f8276c1c21005228c07a14bd69b683d8cf981a50c40c61a58a34e535284"
+    },
+    {
+      "name": "pelvis_geom_3",
+      "body": "pelvis",
+      "geom_id": 3,
+      "mesh_id": 1,
+      "vertex_count": 18055,
+      "triangle_count": 36102,
+      "native_rgba": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.05812805127275462,
+          -0.06776073367944674,
+          0.6479945317952571
+        ],
+        [
+          0.061431242668882675,
+          0.0677763880013713,
+          0.772236114325916
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "74cc41b0500fd4f2383b8dfe7109eb344d490cdd37d1ea3220b6f50d59627ffb",
+      "triangles_sha256": "4f400f8276c1c21005228c07a14bd69b683d8cf981a50c40c61a58a34e535284"
+    },
+    {
+      "name": "left_hip_pitch_link_geom_4",
+      "body": "left_hip_pitch_link",
+      "geom_id": 4,
+      "mesh_id": 2,
+      "vertex_count": 1811,
+      "triangle_count": 3632,
+      "native_rgba": [
+        0.20000000298023224,
+        0.20000000298023224,
+        0.20000000298023224,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.04208875995656859,
+          0.06445199792898304,
+          0.6167228223376134
+        ],
+        [
+          0.04703736155119526,
+          0.163262813174527,
+          0.7360814724692114
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "4de0e165d525001a13cf2dc67b0295a3bef4528fd2829256d41914dec66b29ab",
+      "triangles_sha256": "635d62d1a3251b1aa311f976ed957b7fb3aa690d237c8738abd514e82faf4577"
+    },
+    {
+      "name": "left_hip_pitch_link_geom_5",
+      "body": "left_hip_pitch_link",
+      "geom_id": 5,
+      "mesh_id": 2,
+      "vertex_count": 1811,
+      "triangle_count": 3632,
+      "native_rgba": [
+        0.20000000298023224,
+        0.20000000298023224,
+        0.20000000298023224,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.04208875995656859,
+          0.06445199792898304,
+          0.6167228223376134
+        ],
+        [
+          0.04703736155119526,
+          0.163262813174527,
+          0.7360814724692114
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "4de0e165d525001a13cf2dc67b0295a3bef4528fd2829256d41914dec66b29ab",
+      "triangles_sha256": "635d62d1a3251b1aa311f976ed957b7fb3aa690d237c8738abd514e82faf4577"
+    },
+    {
+      "name": "left_hip_roll_link_geom_6",
+      "body": "left_hip_roll_link",
+      "geom_id": 6,
+      "mesh_id": 3,
+      "vertex_count": 1925,
+      "triangle_count": 3842,
+      "native_rgba": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          0.004774926333845408,
+          0.06733545198234522,
+          0.5407422508001442
+        ],
+        [
+          0.11117443225006064,
+          0.1652262005504575,
+          0.7212130489377522
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "8265a80b69b812f97942395307628b2fcdc92bbfb5714b5d76a6b76c84db1f83",
+      "triangles_sha256": "2f446215415c913bd4cce75ea6694ab7e433ebd3ca6062b514415d23a6d069b4"
+    },
+    {
+      "name": "left_hip_roll_link_geom_7",
+      "body": "left_hip_roll_link",
+      "geom_id": 7,
+      "mesh_id": 3,
+      "vertex_count": 1925,
+      "triangle_count": 3842,
+      "native_rgba": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          0.004774926333845408,
+          0.06733545198234522,
+          0.5407422508001442
+        ],
+        [
+          0.11117443225006064,
+          0.1652262005504575,
+          0.7212130489377522
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "8265a80b69b812f97942395307628b2fcdc92bbfb5714b5d76a6b76c84db1f83",
+      "triangles_sha256": "2f446215415c913bd4cce75ea6694ab7e433ebd3ca6062b514415d23a6d069b4"
+    },
+    {
+      "name": "left_hip_yaw_link_geom_9",
+      "body": "left_hip_yaw_link",
+      "geom_id": 9,
+      "mesh_id": 4,
+      "vertex_count": 2987,
+      "triangle_count": 5924,
+      "native_rgba": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.015564573212012142,
+          0.07106871787800453,
+          0.3134894607998667
+        ],
+        [
+          0.11515992946219827,
+          0.1597513600769669,
+          0.5680493629262062
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "58bd403df854a751b02d50ca30bc8dae7bc74b182a267492530ce407491f2502",
+      "triangles_sha256": "1b34959a49a13a91efeaf53e51a7a0095d951ab9058912cbc6f8fd2e8d7a3838"
+    },
+    {
+      "name": "left_hip_yaw_link_geom_10",
+      "body": "left_hip_yaw_link",
+      "geom_id": 10,
+      "mesh_id": 4,
+      "vertex_count": 2987,
+      "triangle_count": 5924,
+      "native_rgba": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.015564573212012142,
+          0.07106871787800453,
+          0.3134894607998667
+        ],
+        [
+          0.11515992946219827,
+          0.1597513600769669,
+          0.5680493629262062
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "58bd403df854a751b02d50ca30bc8dae7bc74b182a267492530ce407491f2502",
+      "triangles_sha256": "1b34959a49a13a91efeaf53e51a7a0095d951ab9058912cbc6f8fd2e8d7a3838"
+    },
+    {
+      "name": "left_knee_link_geom_11",
+      "body": "left_knee_link",
+      "geom_id": 11,
+      "mesh_id": 5,
+      "vertex_count": 8558,
+      "triangle_count": 17096,
+      "native_rgba": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.038261566125946445,
+          0.08271448351651106,
+          0.04874092511692574
+        ],
+        [
+          0.09953574216668752,
+          0.1544135943921595,
+          0.40237751790219545
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "22a0c46efb47509d753a7f2bcf053ba1d11242aa1477cf5dc20f6d0550ded879",
+      "triangles_sha256": "9f058d4bbc4efd93ba4d92a5f608f8de8b5735fed3ef90060f247ccc2c582aaf"
+    },
+    {
+      "name": "left_knee_link_geom_12",
+      "body": "left_knee_link",
+      "geom_id": 12,
+      "mesh_id": 5,
+      "vertex_count": 8558,
+      "triangle_count": 17096,
+      "native_rgba": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.038261566125946445,
+          0.08271448351651106,
+          0.04874092511692574
+        ],
+        [
+          0.09953574216668752,
+          0.1544135943921595,
+          0.40237751790219545
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "22a0c46efb47509d753a7f2bcf053ba1d11242aa1477cf5dc20f6d0550ded879",
+      "triangles_sha256": "9f058d4bbc4efd93ba4d92a5f608f8de8b5735fed3ef90060f247ccc2c582aaf"
+    },
+    {
+      "name": "left_ankle_pitch_link_geom_14",
+      "body": "left_ankle_pitch_link",
+      "geom_id": 14,
+      "mesh_id": 6,
+      "vertex_count": 714,
+      "triangle_count": 1422,
+      "native_rgba": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.05050160328518799,
+          0.1120642699992778,
+          0.04379792124993129
+        ],
+        [
+          -0.014501586064577528,
+          0.12506428470299863,
+          0.08124580394543751
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "a31c257896281807fa85dcf87307632e2d8c97315ceca83c6c13d5cd0c3412b0",
+      "triangles_sha256": "94ff36e4ed290c302b2768227cc4e5f817cbc19e3a67398c21f607bb94fa0be5"
+    },
+    {
+      "name": "left_ankle_roll_link_geom_15",
+      "body": "left_ankle_roll_link",
+      "geom_id": 15,
+      "mesh_id": 7,
+      "vertex_count": 6543,
+      "triangle_count": 13066,
+      "native_rgba": [
+        0.20000000298023224,
+        0.20000000298023224,
+        0.20000000298023224,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.09184297602931202,
+          0.08076466494949162,
+          0.015388686804312064
+        ],
+        [
+          0.11636374590007073,
+          0.15634735710890613,
+          0.07438173261562259
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "a206ecd8d4b4da79e63b8ead3b15567dcae9ae75079a3fb73294501860356340",
+      "triangles_sha256": "89edd305e17ad1fed4bc31dc283cc0a43b657a29781091d01a726e71de1dad0c"
+    },
+    {
+      "name": "right_hip_pitch_link_geom_17",
+      "body": "right_hip_pitch_link",
+      "geom_id": 17,
+      "mesh_id": 8,
+      "vertex_count": 1807,
+      "triangle_count": 3624,
+      "native_rgba": [
+        0.20000000298023224,
+        0.20000000298023224,
+        0.20000000298023224,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.04208875798557872,
+          -0.16326281485032107,
+          0.6167228220386586
+        ],
+        [
+          0.047037361195518136,
+          -0.064451998415399,
+          0.7360812329636887
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "692ed9aa3c59f9b391d8a6470943345535eb2a575064939db00eaf792229d5ba",
+      "triangles_sha256": "a5fb63bff9daa7998fc965d9594c12e80cfe511d998131bc92982167bbe10601"
+    },
+    {
+      "name": "right_hip_pitch_link_geom_18",
+      "body": "right_hip_pitch_link",
+      "geom_id": 18,
+      "mesh_id": 8,
+      "vertex_count": 1807,
+      "triangle_count": 3624,
+      "native_rgba": [
+        0.20000000298023224,
+        0.20000000298023224,
+        0.20000000298023224,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.04208875798557872,
+          -0.16326281485032107,
+          0.6167228220386586
+        ],
+        [
+          0.047037361195518136,
+          -0.064451998415399,
+          0.7360812329636887
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "692ed9aa3c59f9b391d8a6470943345535eb2a575064939db00eaf792229d5ba",
+      "triangles_sha256": "a5fb63bff9daa7998fc965d9594c12e80cfe511d998131bc92982167bbe10601"
+    },
+    {
+      "name": "right_hip_roll_link_geom_19",
+      "body": "right_hip_roll_link",
+      "geom_id": 19,
+      "mesh_id": 9,
+      "vertex_count": 1930,
+      "triangle_count": 3852,
+      "native_rgba": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          0.0047749244179995515,
+          -0.16522619996917828,
+          0.5407422493744741
+        ],
+        [
+          0.11117443050780998,
+          -0.06733545267829295,
+          0.7212130488457552
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "005b5ca1f3a0c3a7dd6282791b67a287ced83a8b4e993f89f4bfc6278a0ac967",
+      "triangles_sha256": "58618597a520de23eb568fdf0f7be9544dbface10652a5a3928e1febd6ffe55a"
+    },
+    {
+      "name": "right_hip_roll_link_geom_20",
+      "body": "right_hip_roll_link",
+      "geom_id": 20,
+      "mesh_id": 9,
+      "vertex_count": 1930,
+      "triangle_count": 3852,
+      "native_rgba": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          0.0047749244179995515,
+          -0.16522619996917828,
+          0.5407422493744741
+        ],
+        [
+          0.11117443050780998,
+          -0.06733545267829295,
+          0.7212130488457552
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "005b5ca1f3a0c3a7dd6282791b67a287ced83a8b4e993f89f4bfc6278a0ac967",
+      "triangles_sha256": "58618597a520de23eb568fdf0f7be9544dbface10652a5a3928e1febd6ffe55a"
+    },
+    {
+      "name": "right_hip_yaw_link_geom_22",
+      "body": "right_hip_yaw_link",
+      "geom_id": 22,
+      "mesh_id": 10,
+      "vertex_count": 2987,
+      "triangle_count": 5924,
+      "native_rgba": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.015564571045615427,
+          -0.15975135891460107,
+          0.31348945986933474
+        ],
+        [
+          0.11515992983060577,
+          -0.07106871645649018,
+          0.5680493674426497
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "8375ba76b4fea0bf0ad34fe8e90ec991bef2692fab10d9617d68ceab577d2294",
+      "triangles_sha256": "c41e712d27a168f638476a37bce9b7c876e29ee5f4ad7fe80de997451acadaa9"
+    },
+    {
+      "name": "right_hip_yaw_link_geom_23",
+      "body": "right_hip_yaw_link",
+      "geom_id": 23,
+      "mesh_id": 10,
+      "vertex_count": 2987,
+      "triangle_count": 5924,
+      "native_rgba": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.015564571045615427,
+          -0.15975135891460107,
+          0.31348945986933474
+        ],
+        [
+          0.11515992983060577,
+          -0.07106871645649018,
+          0.5680493674426497
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "8375ba76b4fea0bf0ad34fe8e90ec991bef2692fab10d9617d68ceab577d2294",
+      "triangles_sha256": "c41e712d27a168f638476a37bce9b7c876e29ee5f4ad7fe80de997451acadaa9"
+    },
+    {
+      "name": "right_knee_link_geom_24",
+      "body": "right_knee_link",
+      "geom_id": 24,
+      "mesh_id": 11,
+      "vertex_count": 8532,
+      "triangle_count": 17044,
+      "native_rgba": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.03826157016976384,
+          -0.1544140683442866,
+          0.048740928937759775
+        ],
+        [
+          0.09953574800823334,
+          -0.08271808927664509,
+          0.40237776189658236
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "abf9980ab854129a3145444c74ae7355f8a7ff720e6c9911be311f985f1a4c29",
+      "triangles_sha256": "1defc26990fcda20dfba13a81d4a4cb58492a34b0d44725e81f3057abcbb1c71"
+    },
+    {
+      "name": "right_knee_link_geom_25",
+      "body": "right_knee_link",
+      "geom_id": 25,
+      "mesh_id": 11,
+      "vertex_count": 8532,
+      "triangle_count": 17044,
+      "native_rgba": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.03826157016976384,
+          -0.1544140683442866,
+          0.048740928937759775
+        ],
+        [
+          0.09953574800823334,
+          -0.08271808927664509,
+          0.40237776189658236
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "abf9980ab854129a3145444c74ae7355f8a7ff720e6c9911be311f985f1a4c29",
+      "triangles_sha256": "1defc26990fcda20dfba13a81d4a4cb58492a34b0d44725e81f3057abcbb1c71"
+    },
+    {
+      "name": "right_ankle_pitch_link_geom_27",
+      "body": "right_ankle_pitch_link",
+      "geom_id": 27,
+      "mesh_id": 12,
+      "vertex_count": 714,
+      "triangle_count": 1422,
+      "native_rgba": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.050501603535500456,
+          -0.12506428489540142,
+          0.04379792203638394
+        ],
+        [
+          -0.014501585622869803,
+          -0.1120642701916806,
+          0.08124580416342553
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "3b15780a9f57b37dfd5b6ba59cc93571f8629b4f8a1ff59118126b5feac8f7a8",
+      "triangles_sha256": "e4ed421156c9b3ef9b399d1d03a12b3ee56da8541b79610cd6273605f135bee5"
+    },
+    {
+      "name": "right_ankle_roll_link_geom_28",
+      "body": "right_ankle_roll_link",
+      "geom_id": 28,
+      "mesh_id": 13,
+      "vertex_count": 6547,
+      "triangle_count": 13074,
+      "native_rgba": [
+        0.20000000298023224,
+        0.20000000298023224,
+        0.20000000298023224,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.09184297656879035,
+          -0.1563473574708045,
+          0.015388686677540397
+        ],
+        [
+          0.11636374741396625,
+          -0.08076466280144151,
+          0.0743817321594584
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "cad3a06d28a176c251550c5cf2e99fba24ff421f61743e7a219b54f5cc1758b1",
+      "triangles_sha256": "3e996e28773be534bebf063f1ead1da10700c265730f293446130d010ae5ef1b"
+    },
+    {
+      "name": "waist_yaw_link_geom_30",
+      "body": "waist_yaw_link",
+      "geom_id": 30,
+      "mesh_id": 14,
+      "vertex_count": 6100,
+      "triangle_count": 12398,
+      "native_rgba": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.04249988295288592,
+          -0.04246886842110284,
+          0.7997994336889535
+        ],
+        [
+          0.042368575479073106,
+          0.0424622786528909,
+          0.8539998334537926
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "c64c32725cbe1de5e96d6689a78ad95160100f2b38253b03826e89cd42caeb3f",
+      "triangles_sha256": "ff590d5366bbe740f8fa8db1662a6a825f5f3eb1458f89d21a77063aede8b3a7"
+    },
+    {
+      "name": "waist_roll_link_geom_31",
+      "body": "waist_roll_link",
+      "geom_id": 31,
+      "mesh_id": 15,
+      "vertex_count": 858,
+      "triangle_count": 1716,
+      "native_rgba": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.020964262558473945,
+          -0.010001894331860104,
+          0.8320066034796886
+        ],
+        [
+          0.013037262933002202,
+          0.010001894772661222,
+          0.8559934049847774
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "b373a9fd0d5d42527e284f981198ae1217cd1cf0ef7d36e28b921d633790de90",
+      "triangles_sha256": "63ff6f3cc0db52242c9bea04cccdacbd9490d0c11c93c21c7138ab50c60edb29"
+    },
+    {
+      "name": "torso_link_geom_32",
+      "body": "torso_link",
+      "geom_id": 32,
+      "mesh_id": 16,
+      "vertex_count": 25663,
+      "triangle_count": 51410,
+      "native_rgba": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.07060625965214908,
+          -0.10771311562199995,
+          0.8350913203330013
+        ],
+        [
+          0.07966358292757791,
+          0.10771439411275689,
+          1.155619439934571
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "7a073da9da8b8ea204e2f36717a5158f3e2cf2039fad58928b074846f5269454",
+      "triangles_sha256": "224b38f11132aac4db82a69f1617659070d697411853fcb85a1b2de165666e74"
+    },
+    {
+      "name": "torso_link_geom_33",
+      "body": "torso_link",
+      "geom_id": 33,
+      "mesh_id": 16,
+      "vertex_count": 25663,
+      "triangle_count": 51410,
+      "native_rgba": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.07060625965214908,
+          -0.10771311562199995,
+          0.8350913203330013
+        ],
+        [
+          0.07966358292757791,
+          0.10771439411275689,
+          1.155619439934571
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "7a073da9da8b8ea204e2f36717a5158f3e2cf2039fad58928b074846f5269454",
+      "triangles_sha256": "224b38f11132aac4db82a69f1617659070d697411853fcb85a1b2de165666e74"
+    },
+    {
+      "name": "torso_link_geom_34",
+      "body": "torso_link",
+      "geom_id": 34,
+      "mesh_id": 17,
+      "vertex_count": 2462,
+      "triangle_count": 4866,
+      "native_rgba": [
+        0.20000000298023224,
+        0.20000000298023224,
+        0.20000000298023224,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.07257411861845639,
+          -0.07450834359057379,
+          1.056978791892737
+        ],
+        [
+          0.07682295005346777,
+          0.07480008736538896,
+          1.086172938737957
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "98dbb97924818a8ed5372d403969f9a1ec7600dc627b12056099184705688d01",
+      "triangles_sha256": "ac6e2f8d80c5c9de2230f7e3a5e3b8dd0946148b5794d478099e18de3ea7ce06"
+    },
+    {
+      "name": "torso_link_geom_35",
+      "body": "torso_link",
+      "geom_id": 35,
+      "mesh_id": 17,
+      "vertex_count": 2462,
+      "triangle_count": 4866,
+      "native_rgba": [
+        0.20000000298023224,
+        0.20000000298023224,
+        0.20000000298023224,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.07257411861845639,
+          -0.07450834359057379,
+          1.056978791892737
+        ],
+        [
+          0.07682295005346777,
+          0.07480008736538896,
+          1.086172938737957
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "98dbb97924818a8ed5372d403969f9a1ec7600dc627b12056099184705688d01",
+      "triangles_sha256": "ac6e2f8d80c5c9de2230f7e3a5e3b8dd0946148b5794d478099e18de3ea7ce06"
+    },
+    {
+      "name": "torso_link_geom_36",
+      "body": "torso_link",
+      "geom_id": 36,
+      "mesh_id": 18,
+      "vertex_count": 9327,
+      "triangle_count": 18654,
+      "native_rgba": [
+        0.20000000298023224,
+        0.20000000298023224,
+        0.20000000298023224,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.06635622193364174,
+          -0.07777460779179964,
+          1.1247958834874368
+        ],
+        [
+          0.07398402471680533,
+          0.07781664265353673,
+          1.3305726024684643
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "690f99592a74f40cab746769a4c72444c011d8091749b43b090638664237c27e",
+      "triangles_sha256": "11742e726a31ee32d7fbb693f7c870f6648cf90a6d9e4a01370a1ffd54daf0cc"
+    },
+    {
+      "name": "torso_link_geom_37",
+      "body": "torso_link",
+      "geom_id": 37,
+      "mesh_id": 18,
+      "vertex_count": 9327,
+      "triangle_count": 18654,
+      "native_rgba": [
+        0.20000000298023224,
+        0.20000000298023224,
+        0.20000000298023224,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.06635622193364174,
+          -0.07777460779179964,
+          1.1247958834874368
+        ],
+        [
+          0.07398402471680533,
+          0.07781664265353673,
+          1.3305726024684643
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "690f99592a74f40cab746769a4c72444c011d8091749b43b090638664237c27e",
+      "triangles_sha256": "11742e726a31ee32d7fbb693f7c870f6648cf90a6d9e4a01370a1ffd54daf0cc"
+    },
+    {
+      "name": "left_shoulder_pitch_link_geom_38",
+      "body": "left_shoulder_pitch_link",
+      "geom_id": 38,
+      "mesh_id": 19,
+      "vertex_count": 1770,
+      "triangle_count": 3534,
+      "native_rgba": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.03947898367660993,
+          0.09237987730512226,
+          1.0491908299378454
+        ],
+        [
+          0.03429147808100949,
+          0.17742776469895427,
+          1.1334662590479563
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "96f20c6cb1c432a4f6761e6b9d177a9a81e218295e3fdb17c040e888ea3492ef",
+      "triangles_sha256": "33667c892681c1d000c2da391bd77226f7ad1750b14f29c81efc9dbc3a8c31bc"
+    },
+    {
+      "name": "left_shoulder_roll_link_geom_40",
+      "body": "left_shoulder_roll_link",
+      "geom_id": 40,
+      "mesh_id": 20,
+      "vertex_count": 4004,
+      "triangle_count": 8004,
+      "native_rgba": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.04896507348775931,
+          0.10575669153148035,
+          0.9860300906508143
+        ],
+        [
+          0.040460598261723234,
+          0.19931760792992806,
+          1.1284438274695876
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "b4a2a95ae896d7f11a91db09220a07d478b632b5d9e676d85124835152b8d024",
+      "triangles_sha256": "627a57e7198bd14b609d90c195541069f0674bffcbc81d2a8f77140e13091525"
+    },
+    {
+      "name": "left_shoulder_yaw_link_geom_42",
+      "body": "left_shoulder_yaw_link",
+      "geom_id": 42,
+      "mesh_id": 21,
+      "vertex_count": 2493,
+      "triangle_count": 4982,
+      "native_rgba": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.06779072416427152,
+          0.13713878169508473,
+          0.8767464539369869
+        ],
+        [
+          0.014608980320691304,
+          0.2318498025983946,
+          1.0357218062242999
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "4f528e3c5baf75ed9f0bba0ceae1d4c56aadf514f069873c963e835ecf349f2d",
+      "triangles_sha256": "e3a918957c7a38f6c007ffc0cb691efa3a3809d17127da3dde9532dd47dee6d8"
+    },
+    {
+      "name": "left_shoulder_yaw_link_geom_43",
+      "body": "left_shoulder_yaw_link",
+      "geom_id": 43,
+      "mesh_id": 21,
+      "vertex_count": 2493,
+      "triangle_count": 4982,
+      "native_rgba": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.06779072416427152,
+          0.13713878169508473,
+          0.8767464539369869
+        ],
+        [
+          0.014608980320691304,
+          0.2318498025983946,
+          1.0357218062242999
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "4f528e3c5baf75ed9f0bba0ceae1d4c56aadf514f069873c963e835ecf349f2d",
+      "triangles_sha256": "e3a918957c7a38f6c007ffc0cb691efa3a3809d17127da3dde9532dd47dee6d8"
+    },
+    {
+      "name": "left_elbow_link_geom_44",
+      "body": "left_elbow_link",
+      "geom_id": 44,
+      "mesh_id": 22,
+      "vertex_count": 905,
+      "triangle_count": 1774,
+      "native_rgba": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.06435772795652651,
+          0.18556500813303378,
+          0.8130182276823782
+        ],
+        [
+          0.006774604388422315,
+          0.2594067178867967,
+          0.9521296338779548
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "b92751e736206af6226ea62209d5d534bef0e91a9c88567805112586184c5b43",
+      "triangles_sha256": "1ab86c884c6810afdd9e6022eeea60f51283239574f0d0fac9e2243a43373b25"
+    },
+    {
+      "name": "left_elbow_link_geom_45",
+      "body": "left_elbow_link",
+      "geom_id": 45,
+      "mesh_id": 22,
+      "vertex_count": 905,
+      "triangle_count": 1774,
+      "native_rgba": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.06435772795652651,
+          0.18556500813303378,
+          0.8130182276823782
+        ],
+        [
+          0.006774604388422315,
+          0.2594067178867967,
+          0.9521296338779548
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "b92751e736206af6226ea62209d5d534bef0e91a9c88567805112586184c5b43",
+      "triangles_sha256": "1ab86c884c6810afdd9e6022eeea60f51283239574f0d0fac9e2243a43373b25"
+    },
+    {
+      "name": "left_wrist_roll_link_geom_46",
+      "body": "left_wrist_roll_link",
+      "geom_id": 46,
+      "mesh_id": 23,
+      "vertex_count": 3563,
+      "triangle_count": 7122,
+      "native_rgba": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.05437322493145464,
+          0.2033528371140167,
+          0.7600260756607368
+        ],
+        [
+          0.006071033157149745,
+          0.27323138974650335,
+          0.8295176271061544
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "a012dc437861b091e278df530b8e13564f188c75be99afdd6242bbc27c94538b",
+      "triangles_sha256": "176508261b71d90c958605a5a7a31b8ef2e1221c00c7f4b2a2dfe0bc69ccd6cd"
+    },
+    {
+      "name": "left_wrist_roll_link_geom_47",
+      "body": "left_wrist_roll_link",
+      "geom_id": 47,
+      "mesh_id": 23,
+      "vertex_count": 3563,
+      "triangle_count": 7122,
+      "native_rgba": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.05437322493145464,
+          0.2033528371140167,
+          0.7600260756607368
+        ],
+        [
+          0.006071033157149745,
+          0.27323138974650335,
+          0.8295176271061544
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "a012dc437861b091e278df530b8e13564f188c75be99afdd6242bbc27c94538b",
+      "triangles_sha256": "176508261b71d90c958605a5a7a31b8ef2e1221c00c7f4b2a2dfe0bc69ccd6cd"
+    },
+    {
+      "name": "left_wrist_pitch_link_geom_48",
+      "body": "left_wrist_pitch_link",
+      "geom_id": 48,
+      "mesh_id": 24,
+      "vertex_count": 861,
+      "triangle_count": 1718,
+      "native_rgba": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.04975474255906698,
+          0.21444786764560647,
+          0.7106783313547251
+        ],
+        [
+          0.007397616555743284,
+          0.2858056516148215,
+          0.8166033232936408
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "d8fa00a1e5d8003ffa7fbfbf38447ddcad18d3f187693f9d1b593305f20966fe",
+      "triangles_sha256": "d6204f6726da132714e93301c6834d3d5ea6faf07142d30489e6a631717e11bb"
+    },
+    {
+      "name": "left_wrist_pitch_link_geom_49",
+      "body": "left_wrist_pitch_link",
+      "geom_id": 49,
+      "mesh_id": 24,
+      "vertex_count": 861,
+      "triangle_count": 1718,
+      "native_rgba": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.04975474255906698,
+          0.21444786764560647,
+          0.7106783313547251
+        ],
+        [
+          0.007397616555743284,
+          0.2858056516148215,
+          0.8166033232936408
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "d8fa00a1e5d8003ffa7fbfbf38447ddcad18d3f187693f9d1b593305f20966fe",
+      "triangles_sha256": "d6204f6726da132714e93301c6834d3d5ea6faf07142d30489e6a631717e11bb"
+    },
+    {
+      "name": "left_wrist_yaw_link_geom_50",
+      "body": "left_wrist_yaw_link",
+      "geom_id": 50,
+      "mesh_id": 25,
+      "vertex_count": 3188,
+      "triangle_count": 6372,
+      "native_rgba": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.04747167674135426,
+          0.23801885141201096,
+          0.6953058385767746
+        ],
+        [
+          0.0161015823969268,
+          0.2959243346176873,
+          0.7606461062125786
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "5a83ddbbf0ca153e2ed629587cea9c7ac67afcc17c67f5c6479abd01c63a33d8",
+      "triangles_sha256": "62905da81769de328410604ca5d58af175cd88476d73d0c40a2a7e3d948fc564"
+    },
+    {
+      "name": "left_wrist_yaw_link_geom_51",
+      "body": "left_wrist_yaw_link",
+      "geom_id": 51,
+      "mesh_id": 33,
+      "vertex_count": 21392,
+      "triangle_count": 42802,
+      "native_rgba": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.05086133853080717,
+          0.25420253273669174,
+          0.6138437766897712
+        ],
+        [
+          0.03672824496321528,
+          0.31398712494159065,
+          0.7077193181448486
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "0ae2c4039cd777de1adddd65e066d410419fbd7d5ddc06df95d2a57c49a984fa",
+      "triangles_sha256": "d8ab4e815446da9ece601ee1025494a27269ff9ee92f6a3bd18de2bf85f09e37"
+    },
+    {
+      "name": "left_hand_thumb_0_link_geom_54",
+      "body": "left_hand_thumb_0_link",
+      "geom_id": 54,
+      "mesh_id": 34,
+      "vertex_count": 94,
+      "triangle_count": 176,
+      "native_rgba": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.021497652450765813,
+          0.2508214793222656,
+          0.6597988780717902
+        ],
+        [
+          -0.0005354550394877436,
+          0.2824118290706143,
+          0.6894274903153723
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "ef3d972366705d24b9292a76f90bf428a085313b7acd4f43de0b40e87a0740ff",
+      "triangles_sha256": "24b0d68e58d16f9629d1261f550953f56b77f0fbd15ea013a9040ef8a681b226"
+    },
+    {
+      "name": "left_hand_thumb_1_link_geom_55",
+      "body": "left_hand_thumb_1_link",
+      "geom_id": 55,
+      "mesh_id": 35,
+      "vertex_count": 4761,
+      "triangle_count": 9518,
+      "native_rgba": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.024702169038098964,
+          0.23578204246671558,
+          0.6202079094181778
+        ],
+        [
+          0.005278740650500812,
+          0.26955728158708975,
+          0.6810471510384115
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "3d58eceadefb8662e2836efaa011517269156852462dfe7808d89e660f15f20e",
+      "triangles_sha256": "648f64a38ee27ea3997a55dc072f52cfb70664e163ec8f519a4dd8172bffcffe"
+    },
+    {
+      "name": "left_hand_thumb_2_link_geom_56",
+      "body": "left_hand_thumb_2_link",
+      "geom_id": 56,
+      "mesh_id": 36,
+      "vertex_count": 15221,
+      "triangle_count": 30434,
+      "native_rgba": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.021266039360968682,
+          0.23383900187811565,
+          0.5797709432970657
+        ],
+        [
+          0.006962314637696351,
+          0.2565521111262186,
+          0.6380439277918375
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "304388f7b775639194e61690e47f96cc334cdc5e646a605a4db45652d17bf768",
+      "triangles_sha256": "51c455abec468fd02cb0589b5df5c72e41a4f675c66a891504a61f80016aa725"
+    },
+    {
+      "name": "left_hand_middle_0_link_geom_57",
+      "body": "left_hand_middle_0_link",
+      "geom_id": 57,
+      "mesh_id": 37,
+      "vertex_count": 4761,
+      "triangle_count": 9518,
+      "native_rgba": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.04779621529531528,
+          0.2893467371690214,
+          0.5728100768947164
+        ],
+        [
+          -0.016689464382089944,
+          0.3247626827300306,
+          0.6342301832357509
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "fad034ad42511bcddd72cd0ddf037804f956d1d99a15fcd97eec985abd208ebd",
+      "triangles_sha256": "648f64a38ee27ea3997a55dc072f52cfb70664e163ec8f519a4dd8172bffcffe"
+    },
+    {
+      "name": "left_hand_middle_1_link_geom_58",
+      "body": "left_hand_middle_1_link",
+      "geom_id": 58,
+      "mesh_id": 38,
+      "vertex_count": 15221,
+      "triangle_count": 30434,
+      "native_rgba": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.04387693065270254,
+          0.30377755807026047,
+          0.5335711087481126
+        ],
+        [
+          -0.015509226364582853,
+          0.3298317053396301,
+          0.5891704064429398
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "595ec46a8637aaac5f69e67790aa51cb18ccbcb13ba0554a2a9151b4833ba64e",
+      "triangles_sha256": "51c455abec468fd02cb0589b5df5c72e41a4f675c66a891504a61f80016aa725"
+    },
+    {
+      "name": "left_hand_index_0_link_geom_59",
+      "body": "left_hand_index_0_link",
+      "geom_id": 59,
+      "mesh_id": 39,
+      "vertex_count": 4761,
+      "triangle_count": 9518,
+      "native_rgba": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          0.008968225080887165,
+          0.287586020748234,
+          0.577678155207781
+        ],
+        [
+          0.040074975994112506,
+          0.32300196630924327,
+          0.6390982615488154
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "4bc6528e0534a76eb1b32c43986356c130d7c5093f7636620a6f79a56dff62cf",
+      "triangles_sha256": "648f64a38ee27ea3997a55dc072f52cfb70664e163ec8f519a4dd8172bffcffe"
+    },
+    {
+      "name": "left_hand_index_1_link_geom_60",
+      "body": "left_hand_index_1_link",
+      "geom_id": 60,
+      "mesh_id": 40,
+      "vertex_count": 15221,
+      "triangle_count": 30434,
+      "native_rgba": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          0.012887509723499904,
+          0.30201684164947307,
+          0.5384391870611772
+        ],
+        [
+          0.04125521401161959,
+          0.3280709889188427,
+          0.5940384847560044
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "da899a47a4403a7688f1eb277396ceace6bbd6bcc278d3748a858584638344e5",
+      "triangles_sha256": "51c455abec468fd02cb0589b5df5c72e41a4f675c66a891504a61f80016aa725"
+    },
+    {
+      "name": "right_shoulder_pitch_link_geom_61",
+      "body": "right_shoulder_pitch_link",
+      "geom_id": 61,
+      "mesh_id": 26,
+      "vertex_count": 1770,
+      "triangle_count": 3534,
+      "native_rgba": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.03947898478792581,
+          -0.17741776384080926,
+          1.049190830150365
+        ],
+        [
+          0.0342914767852812,
+          -0.09236987892159523,
+          1.133467016458368
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "041b5ead026418a9626da22684c388c478a0ab4cc8c422eb17f4cf51d5a72208",
+      "triangles_sha256": "1298bea04d88f1bcf61ca0c490f56f104e9e3ead4154a76aa507b6569ae66376"
+    },
+    {
+      "name": "right_shoulder_roll_link_geom_63",
+      "body": "right_shoulder_roll_link",
+      "geom_id": 63,
+      "mesh_id": 27,
+      "vertex_count": 4020,
+      "triangle_count": 8036,
+      "native_rgba": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.04895427229459734,
+          -0.19930760844924036,
+          0.9860300916383846
+        ],
+        [
+          0.04046073479466106,
+          -0.10574669132805252,
+          1.1284439536992812
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "e3279c355de6458eb9ea2f9a7f3f4246a16cac173fa9433ac26b499eda3582c1",
+      "triangles_sha256": "af9f0ae755416db33a6b8d467218d6f5696f533b6dd295bb1e2c52d38cb87d98"
+    },
+    {
+      "name": "right_shoulder_yaw_link_geom_65",
+      "body": "right_shoulder_yaw_link",
+      "geom_id": 65,
+      "mesh_id": 28,
+      "vertex_count": 2501,
+      "triangle_count": 4998,
+      "native_rgba": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.06780589420910392,
+          -0.23183980249278238,
+          0.8767464551598902
+        ],
+        [
+          0.014608982467804319,
+          -0.1371287845221201,
+          1.0357218014009
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "f7917a8f7152ce6eff2c4de3495b54cb950982df3487fa1a078be86af7c01c70",
+      "triangles_sha256": "d207f3f333c6c775ff1a82f9b066f06254363cc494c302146b9b6e99670d3002"
+    },
+    {
+      "name": "right_shoulder_yaw_link_geom_66",
+      "body": "right_shoulder_yaw_link",
+      "geom_id": 66,
+      "mesh_id": 28,
+      "vertex_count": 2501,
+      "triangle_count": 4998,
+      "native_rgba": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.06780589420910392,
+          -0.23183980249278238,
+          0.8767464551598902
+        ],
+        [
+          0.014608982467804319,
+          -0.1371287845221201,
+          1.0357218014009
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "f7917a8f7152ce6eff2c4de3495b54cb950982df3487fa1a078be86af7c01c70",
+      "triangles_sha256": "d207f3f333c6c775ff1a82f9b066f06254363cc494c302146b9b6e99670d3002"
+    },
+    {
+      "name": "right_elbow_link_geom_67",
+      "body": "right_elbow_link",
+      "geom_id": 67,
+      "mesh_id": 29,
+      "vertex_count": 889,
+      "triangle_count": 1774,
+      "native_rgba": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.06435772796634934,
+          -0.25939671783718715,
+          0.8130182263420337
+        ],
+        [
+          0.006774604595705291,
+          -0.18555501045611514,
+          0.9521296299572715
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "38b7854b568146452efb2262e1f0768c136299dc4805d6c2abf778b2e8cc0e75",
+      "triangles_sha256": "6e32a1a48fa6c7bb4634b3666ceec949d536872fd60956ea74610d2636c17187"
+    },
+    {
+      "name": "right_elbow_link_geom_68",
+      "body": "right_elbow_link",
+      "geom_id": 68,
+      "mesh_id": 29,
+      "vertex_count": 889,
+      "triangle_count": 1774,
+      "native_rgba": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.06435772796634934,
+          -0.25939671783718715,
+          0.8130182263420337
+        ],
+        [
+          0.006774604595705291,
+          -0.18555501045611514,
+          0.9521296299572715
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "38b7854b568146452efb2262e1f0768c136299dc4805d6c2abf778b2e8cc0e75",
+      "triangles_sha256": "6e32a1a48fa6c7bb4634b3666ceec949d536872fd60956ea74610d2636c17187"
+    },
+    {
+      "name": "right_wrist_roll_link_geom_69",
+      "body": "right_wrist_roll_link",
+      "geom_id": 69,
+      "mesh_id": 30,
+      "vertex_count": 3562,
+      "triangle_count": 7120,
+      "native_rgba": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.05437322476845169,
+          -0.27322138866333157,
+          0.7600260912661111
+        ],
+        [
+          0.006071033028361476,
+          -0.20334280416926453,
+          0.8295177128168421
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "b63e7315749076ef05cac9d87eba19e3dbee9f67616375efbda49fe7e611fc3c",
+      "triangles_sha256": "daa093962cbec35b4904bbd96a61eabd42ece65b4a0f8d8b65fcfc02e8ab8025"
+    },
+    {
+      "name": "right_wrist_roll_link_geom_70",
+      "body": "right_wrist_roll_link",
+      "geom_id": 70,
+      "mesh_id": 30,
+      "vertex_count": 3562,
+      "triangle_count": 7120,
+      "native_rgba": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.05437322476845169,
+          -0.27322138866333157,
+          0.7600260912661111
+        ],
+        [
+          0.006071033028361476,
+          -0.20334280416926453,
+          0.8295177128168421
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "b63e7315749076ef05cac9d87eba19e3dbee9f67616375efbda49fe7e611fc3c",
+      "triangles_sha256": "daa093962cbec35b4904bbd96a61eabd42ece65b4a0f8d8b65fcfc02e8ab8025"
+    },
+    {
+      "name": "right_wrist_pitch_link_geom_71",
+      "body": "right_wrist_pitch_link",
+      "geom_id": 71,
+      "mesh_id": 31,
+      "vertex_count": 797,
+      "triangle_count": 1590,
+      "native_rgba": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.04975474138850037,
+          -0.2857956511475337,
+          0.710678336668288
+        ],
+        [
+          0.007397616851479667,
+          -0.21443786790053032,
+          0.8166033185373601
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "7361e76eec43df3ffcf3fe8126f954fbd1e24b8921aef65b932a005e8984d928",
+      "triangles_sha256": "e4c5106e60b167d9e161f015476eb6b8fd96b9192717e2af2becd88bf88d7fcf"
+    },
+    {
+      "name": "right_wrist_pitch_link_geom_72",
+      "body": "right_wrist_pitch_link",
+      "geom_id": 72,
+      "mesh_id": 31,
+      "vertex_count": 797,
+      "triangle_count": 1590,
+      "native_rgba": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.04975474138850037,
+          -0.2857956511475337,
+          0.710678336668288
+        ],
+        [
+          0.007397616851479667,
+          -0.21443786790053032,
+          0.8166033185373601
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "7361e76eec43df3ffcf3fe8126f954fbd1e24b8921aef65b932a005e8984d928",
+      "triangles_sha256": "e4c5106e60b167d9e161f015476eb6b8fd96b9192717e2af2becd88bf88d7fcf"
+    },
+    {
+      "name": "right_wrist_yaw_link_geom_73",
+      "body": "right_wrist_yaw_link",
+      "geom_id": 73,
+      "mesh_id": 32,
+      "vertex_count": 3425,
+      "triangle_count": 6828,
+      "native_rgba": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.04747168771513893,
+          -0.2959143287702563,
+          0.6953058444753752
+        ],
+        [
+          0.01610157980711128,
+          -0.2380062548409081,
+          0.7606462312942955
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "41ab964b6c03ca27ebe0b903ddd5c0042d3c559684162154ea55680653bdbf98",
+      "triangles_sha256": "19e5245a015809ec8fe2ccbdd048a452725b66fe0fb481582525d761e8161975"
+    },
+    {
+      "name": "right_wrist_yaw_link_geom_74",
+      "body": "right_wrist_yaw_link",
+      "geom_id": 74,
+      "mesh_id": 41,
+      "vertex_count": 21392,
+      "triangle_count": 42802,
+      "native_rgba": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.05086311225259725,
+          -0.3139771816172008,
+          0.6138437774520694
+        ],
+        [
+          0.036726468572505166,
+          -0.2541940118601406,
+          0.707720376242787
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "62b93f7d4c2b9d37b9751907ab65b26d70e229f00d49ada8fd217eccfd71a4d0",
+      "triangles_sha256": "6cbd5a22b3e8987d43f6bbead1e54d1d444fb46b8761ee9ad0f617acb02c1e64"
+    },
+    {
+      "name": "right_hand_thumb_0_link_geom_77",
+      "body": "right_hand_thumb_0_link",
+      "geom_id": 77,
+      "mesh_id": 42,
+      "vertex_count": 94,
+      "triangle_count": 176,
+      "native_rgba": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.021497652450765813,
+          -0.2824018290706143,
+          0.6597988780717902
+        ],
+        [
+          -0.0005354550394877436,
+          -0.2508114793222656,
+          0.6894274903153723
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "b736d8c45bfd7c41c077c2a2edbe6a19504ddea43a6c195bc6cece528d09c2b1",
+      "triangles_sha256": "24b0d68e58d16f9629d1261f550953f56b77f0fbd15ea013a9040ef8a681b226"
+    },
+    {
+      "name": "right_hand_thumb_1_link_geom_78",
+      "body": "right_hand_thumb_1_link",
+      "geom_id": 78,
+      "mesh_id": 43,
+      "vertex_count": 4761,
+      "triangle_count": 9518,
+      "native_rgba": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.024466506551305677,
+          -0.2695101686947219,
+          0.6202079100422959
+        ],
+        [
+          0.005525629157107508,
+          -0.23576895328627218,
+          0.6825484690003032
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "f2092be55a2285ca885c939d488376b17c220ef7bc8c93ce16ef2952b1b32166",
+      "triangles_sha256": "648f64a38ee27ea3997a55dc072f52cfb70664e163ec8f519a4dd8172bffcffe"
+    },
+    {
+      "name": "right_hand_thumb_2_link_geom_79",
+      "body": "right_hand_thumb_2_link",
+      "geom_id": 79,
+      "mesh_id": 44,
+      "vertex_count": 15221,
+      "triangle_count": 30434,
+      "native_rgba": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.021202813366514573,
+          -0.25724638974401604,
+          0.579762324105547
+        ],
+        [
+          0.007161616063267765,
+          -0.23383217501902773,
+          0.6365682427401906
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "57288f71ac428e15d24f3ef6187ab928c7cbcdddc657a7cae82d973157541761",
+      "triangles_sha256": "51c455abec468fd02cb0589b5df5c72e41a4f675c66a891504a61f80016aa725"
+    },
+    {
+      "name": "right_hand_middle_0_link_geom_80",
+      "body": "right_hand_middle_0_link",
+      "geom_id": 80,
+      "mesh_id": 45,
+      "vertex_count": 4761,
+      "triangle_count": 9518,
+      "native_rgba": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.04803187808519616,
+          -0.3247557713266437,
+          0.5728100781602631
+        ],
+        [
+          -0.016789052052566002,
+          -0.2893738719821085,
+          0.6327288633403884
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "f3e7484e04dbc88b0f6d6610bd09016caa361a3ceaeef5f32d26b2b2507189f4",
+      "triangles_sha256": "648f64a38ee27ea3997a55dc072f52cfb70664e163ec8f519a4dd8172bffcffe"
+    },
+    {
+      "name": "right_hand_middle_1_link_geom_81",
+      "body": "right_hand_middle_1_link",
+      "geom_id": 81,
+      "mesh_id": 46,
+      "vertex_count": 15221,
+      "triangle_count": 30434,
+      "native_rgba": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          -0.04394015639688721,
+          -0.3298185564706159,
+          0.5335797064604048
+        ],
+        [
+          -0.01570852817163821,
+          -0.30306327939893807,
+          0.5906460916621898
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "4bb7a32bb93bedca867cedb2ab702e0c9db857e92dfcf13395e56e7bcea4990d",
+      "triangles_sha256": "51c455abec468fd02cb0589b5df5c72e41a4f675c66a891504a61f80016aa725"
+    },
+    {
+      "name": "right_hand_index_0_link_geom_82",
+      "body": "right_hand_index_0_link",
+      "geom_id": 82,
+      "mesh_id": 47,
+      "vertex_count": 4761,
+      "triangle_count": 9518,
+      "native_rgba": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          0.00873256229100628,
+          -0.3229950549058563,
+          0.5776781564733277
+        ],
+        [
+          0.03997538832363644,
+          -0.2876131555613211,
+          0.6375969416534529
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "5051e67546cc2cd948e00f19dbc8f8b5419dddfb86603ce5aee168472663c1f0",
+      "triangles_sha256": "648f64a38ee27ea3997a55dc072f52cfb70664e163ec8f519a4dd8172bffcffe"
+    },
+    {
+      "name": "right_hand_index_1_link_geom_83",
+      "body": "right_hand_index_1_link",
+      "geom_id": 83,
+      "mesh_id": 48,
+      "vertex_count": 15221,
+      "triangle_count": 30434,
+      "native_rgba": [
+        0.699999988079071,
+        0.699999988079071,
+        0.699999988079071,
+        1.0
+      ],
+      "bounds_mujoco_zup_m": [
+        [
+          0.012824283979315232,
+          -0.3280578400498285,
+          0.5384477847734693
+        ],
+        [
+          0.041055912204564234,
+          -0.30130256297815067,
+          0.5955141699752544
+        ]
+      ],
+      "vertices_gltf_yup_sha256": "226706f1bcf0c1aa38ede8d336b561d54dfd22817cd1b099f7dee505d361c05e",
+      "triangles_sha256": "51c455abec468fd02cb0589b5df5c72e41a4f675c66a891504a61f80016aa725"
+    }
+  ]
+}
