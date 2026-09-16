@@ -1,0 +1,515 @@
+{
+  "schema": "cat-recorded-route-audit-v1",
+  "bank": "/home/konstantinsmirnov/robotics/Click-and-Traverse-WholeBody/analysis/clutter-checkpoint-evaluation-20260916/bank",
+  "audit": "read-only; no regeneration, source edits, or training changes",
+  "raw_gf_sampling": "Actual ws008090 gf.npy arrays, CPU NumPy reproduction of CAT corner order/weighting at nominal root XYZ. Float64 arithmetic diagnostic; not full body-corrected command or policy trace.",
+  "route_role": "Admission certificate only. route_used_for_guidance=false. CAT uses independent uninflated 3D FMM and body-field command projection.",
+  "limitations": [
+    "Root route certificate does not validate whole body or dynamic traversal.",
+    "Missing legs are diagnosed in exact 4cm center-sampled rasterization; causal attribution for recorded failures not established.",
+    "Initial GF differences prove separate guidance, not that every alternative guidance path is invalid."
+  ],
+  "scenes": [
+    {
+      "scene_seed": 4001,
+      "scene_id": "random-furniture-dense-train-004001-5ef9779babcf",
+      "scene_file": "/Users/konstantinsmirnov/research/CAT-Clutter-Rollouts-20260916/episodes/scene-4001-seed-00/scene.json",
+      "route": [
+        [
+          2.2,
+          5.24
+        ],
+        [
+          2.2,
+          6.2
+        ],
+        [
+          2.84,
+          6.84
+        ],
+        [
+          6.76,
+          6.84
+        ],
+        [
+          7.0,
+          6.92
+        ]
+      ],
+      "route_length_m": 6.03807889273225,
+      "recomputed_certificate": {
+        "method": "analytic-obb-root-cylinder-route-samples-with-lipschitz-bound",
+        "root_radius_m": 0.23,
+        "root_z_interval_m": [
+          0.35,
+          1.05
+        ],
+        "sample_spacing_max_m": 0.04,
+        "sampled_center_clearance_min_m": 0.3425747357841974,
+        "center_clearance_lower_bound_m": 0.3225747357841974,
+        "root_margin_lower_bound_m": 0.09257473578419737,
+        "root_route_validated": true,
+        "full_body_validated": false,
+        "dynamic_feasibility_validated": false,
+        "explanation": "Root cylinder only; limb clearance, crouching and tracking remain unvalidated."
+      },
+      "boxes_with_zero_occupied_voxels": [
+        {
+          "name": "chair_28_leg_0",
+          "category": "chair_leg",
+          "center": [
+            1.62125872,
+            2.10165938,
+            0.211
+          ],
+          "half_size": [
+            0.023,
+            0.023,
+            0.211
+          ],
+          "yaw": -2.79396528
+        },
+        {
+          "name": "chair_01_leg_3",
+          "category": "chair_leg",
+          "center": [
+            4.299328558,
+            10.377343365,
+            0.211
+          ],
+          "half_size": [
+            0.023,
+            0.023,
+            0.211
+          ],
+          "yaw": 0.767624642
+        },
+        {
+          "name": "chair_13_leg_0",
+          "category": "chair_leg",
+          "center": [
+            0.618448567,
+            3.535788689,
+            0.211
+          ],
+          "half_size": [
+            0.023,
+            0.023,
+            0.211
+          ],
+          "yaw": 0.961052524
+        },
+        {
+          "name": "chair_03_leg_0",
+          "category": "chair_leg",
+          "center": [
+            8.258042566,
+            5.57926675,
+            0.211
+          ],
+          "half_size": [
+            0.023,
+            0.023,
+            0.211
+          ],
+          "yaw": 2.451518451
+        },
+        {
+          "name": "chair_03_leg_1",
+          "category": "chair_leg",
+          "center": [
+            8.060698299,
+            5.340195128,
+            0.211
+          ],
+          "half_size": [
+            0.023,
+            0.023,
+            0.211
+          ],
+          "yaw": 2.451518451
+        },
+        {
+          "name": "chair_17_leg_2",
+          "category": "chair_leg",
+          "center": [
+            6.458054105,
+            5.379389427,
+            0.211
+          ],
+          "half_size": [
+            0.023,
+            0.023,
+            0.211
+          ],
+          "yaw": -0.295054658
+        },
+        {
+          "name": "chair_30_leg_0",
+          "category": "chair_leg",
+          "center": [
+            2.81862594,
+            0.934958383,
+            0.211
+          ],
+          "half_size": [
+            0.023,
+            0.023,
+            0.211
+          ],
+          "yaw": -2.25625458
+        },
+        {
+          "name": "chair_30_leg_1",
+          "category": "chair_leg",
+          "center": [
+            3.058605943,
+            0.738719757,
+            0.211
+          ],
+          "half_size": [
+            0.023,
+            0.023,
+            0.211
+          ],
+          "yaw": -2.25625458
+        }
+      ],
+      "nominal_root_xyz": [
+        2.2,
+        5.24,
+        0.8
+      ],
+      "raw_root_gf_from_actual_ws_bank": [
+        0.5714389979839324,
+        0.18260107189416885,
+        -0.010600402951240559
+      ],
+      "astar_initial_delta_xy": [
+        0.0,
+        0.96
+      ],
+      "initial_gf_vs_astar_angle_degrees": 72.27892518093209
+    },
+    {
+      "scene_seed": 4002,
+      "scene_id": "random-furniture-dense-train-004002-4f7ed1085e60",
+      "scene_file": "/Users/konstantinsmirnov/research/CAT-Clutter-Rollouts-20260916/episodes/scene-4002-seed-00/scene.json",
+      "route": [
+        [
+          7.88,
+          2.6
+        ],
+        [
+          8.36,
+          3.32
+        ],
+        [
+          9.16,
+          4.2
+        ],
+        [
+          9.4,
+          5.32
+        ],
+        [
+          9.48,
+          5.4
+        ],
+        [
+          9.48,
+          7.32
+        ],
+        [
+          8.76,
+          8.04
+        ],
+        [
+          7.72,
+          8.04
+        ],
+        [
+          7.08,
+          7.4
+        ],
+        [
+          6.04,
+          7.4
+        ],
+        [
+          4.84,
+          8.6
+        ],
+        [
+          4.84,
+          8.92
+        ]
+      ],
+      "route_length_m": 11.253567295623917,
+      "recomputed_certificate": {
+        "method": "analytic-obb-root-cylinder-route-samples-with-lipschitz-bound",
+        "root_radius_m": 0.23,
+        "root_z_interval_m": [
+          0.35,
+          1.05
+        ],
+        "sample_spacing_max_m": 0.04,
+        "sampled_center_clearance_min_m": 0.3206478178328235,
+        "center_clearance_lower_bound_m": 0.30064781783282346,
+        "root_margin_lower_bound_m": 0.07064781783282345,
+        "root_route_validated": true,
+        "full_body_validated": false,
+        "dynamic_feasibility_validated": false,
+        "explanation": "Root cylinder only; limb clearance, crouching and tracking remain unvalidated."
+      },
+      "boxes_with_zero_occupied_voxels": [
+        {
+          "name": "chair_03_leg_0",
+          "category": "chair_leg",
+          "center": [
+            8.334156125,
+            0.899288629,
+            0.211
+          ],
+          "half_size": [
+            0.023,
+            0.023,
+            0.211
+          ],
+          "yaw": -0.686595502
+        },
+        {
+          "name": "chair_01_leg_2",
+          "category": "chair_leg",
+          "center": [
+            3.338742681,
+            3.226049818,
+            0.211
+          ],
+          "half_size": [
+            0.023,
+            0.023,
+            0.211
+          ],
+          "yaw": -2.350150439
+        },
+        {
+          "name": "chair_30_leg_2",
+          "category": "chair_leg",
+          "center": [
+            2.821672716,
+            9.624152037,
+            0.211
+          ],
+          "half_size": [
+            0.023,
+            0.023,
+            0.211
+          ],
+          "yaw": 0.966644395
+        },
+        {
+          "name": "chair_27_leg_1",
+          "category": "chair_leg",
+          "center": [
+            3.422343451,
+            0.898596903,
+            0.211
+          ],
+          "half_size": [
+            0.023,
+            0.023,
+            0.211
+          ],
+          "yaw": -2.008964203
+        },
+        {
+          "name": "chair_13_leg_3",
+          "category": "chair_leg",
+          "center": [
+            3.139751763,
+            3.746130283,
+            0.211
+          ],
+          "half_size": [
+            0.023,
+            0.023,
+            0.211
+          ],
+          "yaw": -2.479640197
+        }
+      ],
+      "nominal_root_xyz": [
+        7.88,
+        2.6,
+        0.8
+      ],
+      "raw_root_gf_from_actual_ws_bank": [
+        -0.2588130682706833,
+        0.5409422218799591,
+        0.019884638488292694
+      ],
+      "astar_initial_delta_xy": [
+        0.47999999999999954,
+        0.7199999999999998
+      ],
+      "initial_gf_vs_astar_angle_degrees": 59.25878760226195
+    },
+    {
+      "scene_seed": 5001,
+      "scene_id": "random-generic_clutter-dense-train-005001-1eaef5f4115f",
+      "scene_file": "/Users/konstantinsmirnov/research/CAT-Clutter-Rollouts-20260916/episodes/scene-5001-seed-00/scene.json",
+      "route": [
+        [
+          2.2,
+          4.6
+        ],
+        [
+          2.84,
+          4.04
+        ],
+        [
+          3.64,
+          4.04
+        ],
+        [
+          4.52,
+          4.92
+        ],
+        [
+          4.92,
+          5.0
+        ],
+        [
+          6.04,
+          5.08
+        ],
+        [
+          7.08,
+          5.48
+        ],
+        [
+          7.24,
+          5.48
+        ]
+      ],
+      "route_length_m": 5.699965730978704,
+      "recomputed_certificate": {
+        "method": "analytic-obb-root-cylinder-route-samples-with-lipschitz-bound",
+        "root_radius_m": 0.23,
+        "root_z_interval_m": [
+          0.35,
+          1.05
+        ],
+        "sample_spacing_max_m": 0.03979539507766892,
+        "sampled_center_clearance_min_m": 0.33257577739120203,
+        "center_clearance_lower_bound_m": 0.31267807985236756,
+        "root_margin_lower_bound_m": 0.08267807985236755,
+        "root_route_validated": true,
+        "full_body_validated": false,
+        "dynamic_feasibility_validated": false,
+        "explanation": "Root cylinder only; limb clearance, crouching and tracking remain unvalidated."
+      },
+      "boxes_with_zero_occupied_voxels": [],
+      "nominal_root_xyz": [
+        2.2,
+        4.6,
+        0.8
+      ],
+      "raw_root_gf_from_actual_ws_bank": [
+        0.58837029337883,
+        0.09914669394493107,
+        0.06314505077898477
+      ],
+      "astar_initial_delta_xy": [
+        0.6399999999999997,
+        -0.5599999999999996
+      ],
+      "initial_gf_vs_astar_angle_degrees": 50.75101668402909
+    },
+    {
+      "scene_seed": 5002,
+      "scene_id": "random-generic_clutter-dense-train-005002-d4f59651508b",
+      "scene_file": "/Users/konstantinsmirnov/research/CAT-Clutter-Rollouts-20260916/episodes/scene-5002-seed-00/scene.json",
+      "route": [
+        [
+          4.52,
+          1.96
+        ],
+        [
+          4.52,
+          0.92
+        ],
+        [
+          4.04,
+          0.44
+        ],
+        [
+          3.08,
+          0.44
+        ],
+        [
+          2.84,
+          0.68
+        ],
+        [
+          2.84,
+          1.56
+        ],
+        [
+          2.52,
+          1.8
+        ],
+        [
+          2.52,
+          2.84
+        ],
+        [
+          2.84,
+          3.24
+        ],
+        [
+          2.84,
+          7.48
+        ],
+        [
+          2.36,
+          8.2
+        ]
+      ],
+      "route_length_m": 10.955816010014614,
+      "recomputed_certificate": {
+        "method": "analytic-obb-root-cylinder-route-samples-with-lipschitz-bound",
+        "root_radius_m": 0.23,
+        "root_z_interval_m": [
+          0.35,
+          1.05
+        ],
+        "sample_spacing_max_m": 0.04,
+        "sampled_center_clearance_min_m": 0.32199578183117317,
+        "center_clearance_lower_bound_m": 0.30199578183117315,
+        "root_margin_lower_bound_m": 0.07199578183117314,
+        "root_route_validated": true,
+        "full_body_validated": false,
+        "dynamic_feasibility_validated": false,
+        "explanation": "Root cylinder only; limb clearance, crouching and tracking remain unvalidated."
+      },
+      "boxes_with_zero_occupied_voxels": [],
+      "nominal_root_xyz": [
+        4.52,
+        1.96,
+        0.8
+      ],
+      "raw_root_gf_from_actual_ws_bank": [
+        -0.16847894340753525,
+        0.5754218995571136,
+        0.02014329424127908
+      ],
+      "astar_initial_delta_xy": [
+        0.0,
+        -1.04
+      ],
+      "initial_gf_vs_astar_angle_degrees": 163.6803900783052
+    }
+  ]
+}

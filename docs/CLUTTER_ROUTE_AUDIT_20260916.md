@@ -22,3 +22,18 @@ All four saved routes pass the analytic root-cylinder check. Their conservative 
 This reveals a gap between room admission and actual policy guidance. It does not establish that every collision is caused by the guidance field; policy tracking and sparse body collision checks also contribute and must be distinguished. No training or generated scene was modified by this audit.
 
 Source locations: `cat_ppo/furniture/random_rooms.py`, `cat_ppo/furniture/scenes.py::_route_clearance`, `cat_ppo/furniture/generalist_fields.py::make_clutter_fields`, `procedural_obstacle_generation/pf_modular.py::make_guidance_field_progressive`, `cat_ppo/envs/g1/env_cat.py::compute_cmd_from_rtf`.
+
+## Actual guidance checked in the active field bank
+
+Raw guidance was sampled directly from the ws008090 arrays at the nominal start XY and z=0.8 m, using CAT’s runtime interpolation ordering. No fields were regenerated. The initial horizontal directions disagree with the checked A* routes:
+
+| Room | A* first direction | Raw root guidance | Angle between them |
+| --- | --- | --- | ---: |
+| 4001 | Up | Right/up | 72.3° |
+| 4002 | Right/up | Left/up | 59.3° |
+| 5001 | Right/down | Right/up | 50.8° |
+| 5002 | Down | Left/up | 163.7° |
+
+These are local field vectors at a nominal point, not complete commanded trajectories. CAT’s body-field projection and the policy further affect movement. The measurements establish disagreement between the admission route and actual guidance before learned control; they do not alone assign the cause of each collision.
+
+A separate rasterization check found that center-sampling the 4 cm grid entirely omits 8 chair-leg boxes in 4001 and 5 in 4002. No complete primitive boxes are omitted in the two generic clutter rooms. This is a concrete geometry-representation issue, although its contribution to the selected failures remains unproven. Full vectors, certificates and missing-leg identities are in `route-audit.json`.
