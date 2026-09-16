@@ -1,4 +1,4 @@
-"""Replay the stabilized fixed benchmark and save faithful clutter trajectories.
+"""Replay the stabilized fixed benchmark and record CAT or clutter trajectories.
 
 Uses the frozen training source and RetentionValidator's actual step/termination
 implementation. The derived field bank contains byte-identical selected scenes.
@@ -20,12 +20,31 @@ import xml.etree.ElementTree as ET
 os.environ.setdefault("XLA_PYTHON_CLIENT_PREALLOCATE", "false")
 
 
+def cat_obstacle_mesh(occupancy, dx):
+    """Native main.better_mesh / utills.marching_cubes_mesh arithmetic.
+
+    Importing upstream utills also imports unused torch visualization helpers;
+    retain its exact NumPy/skimage/trimesh path without that extra dependency.
+    """
+    import numpy as np
+    from skimage import measure
+    import trimesh
+    inverted = 1 - occupancy
+    if inverted.sum() == 0:
+        raise ValueError("occupancy is empty.")
+    vertices, faces, normals, _ = measure.marching_cubes(
+        inverted.astype(np.uint8), level=.5, spacing=(dx, dx, dx))
+    return trimesh.Trimesh(vertices=vertices, faces=faces, vertex_normals=normals, process=True)
+
+
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source-root", type=Path, required=True)
     parser.add_argument("--evaluation-dir", type=Path, required=True)
     parser.add_argument("--bank-manifest", type=Path, help="Optional complete bank for regression evaluation")
     parser.add_argument("--seeds", type=int, nargs="+", default=list(range(16)))
+    parser.add_argument("--record-scene-ids", nargs="+", help="Record these benchmark scenes instead of the default clutter scenes")
+    parser.add_argument("--deterministic-only", action="store_true", help="Record deployment rollouts without a stochastic benchmark")
     parser.add_argument("--test-corrected-navigation", action="store_true",
                         help="Explicitly evaluate old weights under corrected room navigation; not a historical-score replay")
     args = parser.parse_args()
@@ -67,16 +86,20 @@ def main():
     params = jax.tree.map(jp.asarray, load_native(native))
     if not all(np.isfinite(np.asarray(x)).all() for x in jax.tree.leaves(params)):
         raise ValueError("Nonfinite checkpoint parameters")
-    # Keep all 16 original benchmark ordinals and 16 seeds, including CAT
-    # retention scenes. Field-bank indices may change; seed ordinals must not.
+    # Keep all 16 benchmark ordinals, including CAT retention scenes. Requested
+    # reset seeds may vary; field-bank indices must not change their keys.
     validator = RetentionValidator(env, factory, chunk_steps=1, seeds=args.seeds)
     fields = validator.binding.values
     initial = validator._reset(fields)
     jax.block_until_ready(initial)
     n = validator.count
-    clutter_rows = [i for i, (scene_index, _) in enumerate(validator.pairs)
-                    if env.field_bank_manifest["scenes"][scene_index]["family"] in ("furniture", "generic_clutter")]
-    trace_indices = jp.asarray(clutter_rows)
+    records = env.field_bank_manifest["scenes"]
+    if args.record_scene_ids and set(args.record_scene_ids) - {records[index]["scene_id"] for index, _ in validator.pairs}:
+        raise ValueError("Requested recordings must belong to the fixed benchmark")
+    recorded_rows = [i for i, (scene_index, _) in enumerate(validator.pairs)
+                     if (records[scene_index]["scene_id"] in args.record_scene_ids if args.record_scene_ids
+                         else records[scene_index]["family"] in ("furniture", "generic_clutter"))]
+    trace_indices = jp.asarray(recorded_rows)
 
     def advance_chunk(state, acc, active, index, params, stochastic, fields):
         def one(carry, _):
@@ -98,7 +121,7 @@ def main():
     advance_chunk = jax.jit(advance_chunk)
     modes, episode_rows, deterministic_traces = {}, {}, None
     started = time.monotonic()
-    for mode in ("deterministic", "stochastic"):
+    for mode in (("deterministic",) if args.deterministic_only else ("deterministic", "stochastic")):
         zero, false = jp.zeros(n), jp.zeros(n, dtype=bool)
         acc = dict(length=jp.zeros(n, dtype=jp.int32), **{"return": zero},
                    timeout=false, unexplained_done=false, goal_reached=false,
@@ -142,7 +165,7 @@ def main():
                               clutter=modes[mode]["clutter_goal_success_rate"], cat=modes[mode]["cat_goal_success_rate"])), flush=True)
 
     baseline = json.loads((output / "validation_baseline.json").read_text())["result"]
-    if args.test_corrected_navigation or args.seeds != list(range(16)):
+    if args.test_corrected_navigation or args.seeds != list(range(16)) or args.deterministic_only:
         selection = dict(eligible=False, reason="Changed navigation or seed set: diagnostic regression only; no historical selection comparison")
     else:
         selection = retention_selection(modes, baseline["modes"])
@@ -154,7 +177,8 @@ def main():
                     scenes="Fixed 16 layouts; explicitly listed reset/noise seeds",
                     stopping="Shared RetentionValidator implementation; first clean goal/fault/native horizon",
                     generalization="Fixed training-bank regression scenes, not unseen layouts",
-                    recording="All 64 deterministic clutter episodes; videos selected after evaluation",
+                    recording=dict(episodes=len(recorded_rows), scene_ids=args.record_scene_ids,
+                                   inference="deterministic", selection="Explicit scenes/seeds; outcomes reported without filtering"),
                     devices=[str(d) for d in jax.devices()], evaluation_seconds=time.monotonic()-started)
     result = ValidationResult(selected["step"], {}, modes, episode_rows, selection, metadata).as_dict()
     (output / "evaluation.json").write_text(json.dumps(result, indent=2)+"\n")
@@ -170,17 +194,31 @@ def main():
                "chair_leg": ".20 .26 .30 1", "chair_armrest": ".20 .36 .40 1",
                "wall": ".62 .66 .70 1", "crate": ".68 .47 .29 1",
                "partition": ".43 .54 .66 1", "shelf_edge": ".47 .58 .42 1"}
-    for trace_row, full_row in enumerate(clutter_rows):
+    for trace_row, full_row in enumerate(recorded_rows):
         scene_index, seed = validator.pairs[full_row]
         record = env.field_bank_manifest["scenes"][scene_index]
         scene_path = bank_manifest.parent / record["path"] / "scene.json"
-        scene = json.loads(scene_path.read_text())
+        is_cat = record.get("task_kind") == "cat"
+        scene = (dict(scene_id=record["scene_id"], seed=record["source"].get("generation_parameters", {}).get("seed"),
+                      source=record["source"]) if is_cat else json.loads(scene_path.read_text()))
         row = episode_rows["deterministic"][full_row]
-        directory = episode_root / f"scene-{scene['seed']}-seed-{seed:02d}"
+        directory = episode_root / (f"{record['scene_id']}-seed-{seed:02d}" if is_cat
+                                    else f"scene-{scene['seed']}-seed-{seed:02d}")
         directory.mkdir(exist_ok=False)
         xml = ET.fromstring(xml_template)
         world = xml.find("worldbody")
-        for i, part in enumerate(scene["boxes"]):
+        if is_cat:
+            # Match CAT's original mesh extraction and scene placement exactly.
+            # Generate a display asset from immutable saved occupancy, never a
+            # replacement collision field or a newly randomized obstacle scene.
+            obstacle_source = bank_manifest.parent / record["path"] / "obs.npy"
+            occupancy = np.load(obstacle_source, allow_pickle=False)
+            cat_obstacle_mesh(occupancy, record["dx"]).export(directory / "obs.obj")
+            ET.SubElement(xml.find("asset"), "mesh", name="recorded_cat_obstacle", file="obs.obj")
+            ET.SubElement(world, "geom", name="recorded_cat_obstacle", type="mesh", mesh="recorded_cat_obstacle",
+                          pos=" ".join(map(str, record["origin"])), contype="0", conaffinity="0",
+                          group="1", rgba=".37 .52 .61 1")
+        for i, part in enumerate(scene.get("boxes", [])):
             yaw = part["yaw"]
             ET.SubElement(world, "geom", name=f"clutter_box_{i}", type="box",
                           pos=" ".join(map(str, part["center"])), size=" ".join(map(str, part["half_size"])),
@@ -188,7 +226,10 @@ def main():
                           rgba=palette.get(part["category"], ".60 .40 .35 1"),
                           contype="0", conaffinity="0", group="4" if part["category"] == "wall" else "0")
         (directory / "model.xml").write_text(ET.tostring(xml, encoding="unicode"))
-        (directory / "scene.json").write_bytes(scene_path.read_bytes())
+        if is_cat:
+            (directory / "scene.json").write_text(json.dumps(scene, indent=2) + "\n")
+        else:
+            (directory / "scene.json").write_bytes(scene_path.read_bytes())
         length = row["length"]
         trace = {}
         for key in ("qpos", "qvel", "time"):
@@ -205,12 +246,21 @@ def main():
                     source_run="de6ae369", original_bank_sha256=run["bank_sha256"],
                     corrected_navigation_regression=args.test_corrected_navigation,
                     evaluation_bank_sha256=metadata["evaluation_bank_sha256"],
-                    scene_sha256=record["scene_sha256"],
+                    scene_sha256=record.get("scene_sha256"),
                     trajectory_sha256=hashlib.sha256((directory/"trajectory.npz").read_bytes()).hexdigest(),
                     reset="Exact validation reset key using full benchmark ordinal; native randomization retained",
-                    geometry="Actual primitive training scene; display-only obstacle geoms")
+                    geometry="Actual saved CAT occupancy; original marching-cubes mesh and origin" if is_cat else
+                             "Actual primitive training scene; display-only obstacle geoms")
+        if is_cat:
+            meta.update(label="Saved best whole-body CAT", scene_name=record["scene_id"],
+                        task="CAT procedural obstacle traversal", mesh_sha256=hashlib.sha256((directory / "obs.obj").read_bytes()).hexdigest(),
+                        occupancy_sha256=hashlib.sha256(obstacle_source.read_bytes()).hexdigest(),
+                        mesh_translation=record["origin"],
+                        outcome=dict(row, strict_success=row["goal_reached"], termination_reason=(
+                            "passed" if row["goal_reached"] else "+".join(key for key in
+                            ("fall", "obstacle", "self_contact", "numerical", "outside_bounds", "timeout") if row[key]))))
         (directory / "metadata.json").write_text(json.dumps(meta, indent=2)+"\n")
-    print(json.dumps(dict(event="finished", output=str(output), episodes_recorded=len(clutter_rows),
+    print(json.dumps(dict(event="finished", output=str(output), episodes_recorded=len(recorded_rows),
                           seconds=time.monotonic()-started)), flush=True)
 
 
