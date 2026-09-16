@@ -1,0 +1,58 @@
+{
+  "checkpoint": "/home/konstantinsmirnov/robotics/Click-and-Traverse-WholeBody/analysis/clutter-checkpoint-evaluation-20260916/checkpoint/native",
+  "checkpoint_selection_rules": {
+    "eligible": true,
+    "max_cat_drop": 0.05,
+    "max_scene_drop": 0.125,
+    "ordering": [
+      "minimum_mode_clutter_goal_success",
+      "negative_maximum_mode_clutter_hand_violation",
+      "minimum_mode_cat_goal_success",
+      "minimum_mode_clutter_mean_min_hand_clearance"
+    ]
+  },
+  "checkpoint_selection_score": [
+    0.265625,
+    -0.5,
+    0.578125,
+    0.024778193444944918
+  ],
+  "checkpoint_selection_sha256": "1ea989aa4622032da0be6c2a6336da0dcb851dce8a2a8accf0d449a066bb1d8d",
+  "checkpoint_source_generation": "/home/konstantinsmirnov/robotics/Click-and-Traverse-WholeBody/outputs/cat_compact_stabilized_20260916/.checkpoint-generations/candidate-jgz0fb5r",
+  "checkpoint_step": 157286400,
+  "created_utc": "2026-09-16T12:35:37.979625+00:00",
+  "hardlinked_bytes": 634985862,
+  "hardlinked_files": 243,
+  "latest_observed_training_step": 339214336,
+  "notes": [
+    "Only the selected best model was frozen; the rolling resume was not copied.",
+    "Subset scenes and files are unchanged; original identities/order are retained.",
+    "Do not edit hardlinked immutable fields or scene metadata.",
+    "This is fixed training-bank evaluation, not held-out generalization."
+  ],
+  "observed_peak_deterministic_clutter_validation": {
+    "global_step": 288358400,
+    "selection/best_updated": 0.0,
+    "validation/cat_goal_success_rate": 0.5729166666666666,
+    "validation/clutter_goal_success_rate": 0.3125,
+    "validation/retention_eligible": 1.0,
+    "validation/stochastic/cat_goal_success_rate": 0.5572916666666666,
+    "validation/stochastic/clutter_goal_success_rate": 0.140625
+  },
+  "source_bank": "/home/konstantinsmirnov/robotics/Click-and-Traverse-WholeBody/data/furniture/cat_diversity_v2_20260916/manifest.json",
+  "source_manifest_file_sha256": "dc97e6e19c7767c5d5b567f5abdde0a4fb8a85873893be22adff7863e1b8f6c0",
+  "source_manifest_sha256": "7fb43ee27324057f5a026eab05d837d380e208a45637a1f6e584208b1fa10967",
+  "source_run": "/home/konstantinsmirnov/robotics/Click-and-Traverse-WholeBody/outputs/cat_compact_stabilized_20260916",
+  "subset_family_counts": {
+    "furniture": 2,
+    "generic_clutter": 2,
+    "original_cat": 37,
+    "procedural_cat": 4,
+    "published_cat": 6
+  },
+  "subset_fields_bytes": 617490144,
+  "subset_manifest": "/home/konstantinsmirnov/robotics/Click-and-Traverse-WholeBody/analysis/clutter-checkpoint-evaluation-20260916/bank/manifest.json",
+  "subset_manifest_sha256": "6d8de61d9e03285622fb82f84ad2d417ef6ef288bedb3c2ef461ea112f6473cc",
+  "subset_scene_count": 51,
+  "training_source": "/home/konstantinsmirnov/robotics/Click-and-Traverse-WholeBody/outputs/sources/cat_compact_stabilized_20260916"
+}

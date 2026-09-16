@@ -1,0 +1,111 @@
+{
+  "schema": "cat-clutter-video-verification-v1",
+  "full_decode_all_passed": true,
+  "number_of_videos": 6,
+  "total_video_bytes": 13507151,
+  "videos": [
+    {
+      "file": "01_furniture4001_success_seed09.mp4",
+      "bytes": 3980973,
+      "frames": 301,
+      "recorded_seconds": 9.979641914367676,
+      "video_seconds": 12.04,
+      "fps": 25,
+      "playback_speed": 1.0,
+      "full_decode_passed": true,
+      "camera": {
+        "azimuth": -8.928767595198948,
+        "elevation": -27.0,
+        "distance": 3.9,
+        "target_height": 0.72
+      },
+      "sha256": "373a2a9822b18fd41a154aaa80ec4196295025b530089d2e4b212e45b4e9cac3"
+    },
+    {
+      "file": "02_furniture4001_failure_seed00.mp4",
+      "bytes": 2056007,
+      "frames": 210,
+      "recorded_seconds": 6.359903812408447,
+      "video_seconds": 8.4,
+      "fps": 25,
+      "playback_speed": 1.0,
+      "full_decode_passed": true,
+      "camera": {
+        "azimuth": -40.46487642841633,
+        "elevation": -27.0,
+        "distance": 3.9,
+        "target_height": 0.72
+      },
+      "sha256": "bd5341b498907519dea382c3d11a831ce29a4c919b51f16854bbdf782f5fdf79"
+    },
+    {
+      "file": "03_furniture4002_success_seed02.mp4",
+      "bytes": 3168952,
+      "frames": 257,
+      "recorded_seconds": 8.219769477844238,
+      "video_seconds": 10.28,
+      "fps": 25,
+      "playback_speed": 1.0,
+      "full_decode_passed": true,
+      "camera": {
+        "azimuth": 90.85570082119611,
+        "elevation": -27.0,
+        "distance": 3.9,
+        "target_height": 0.72
+      },
+      "sha256": "a3eadc6cdc3a4ed76bda8a32e6e53df6e2a56af9e6145cc4f8a0e86d026aa532"
+    },
+    {
+      "file": "04_furniture4002_failure_seed08.mp4",
+      "bytes": 1740129,
+      "frames": 180,
+      "recorded_seconds": 5.1599907875061035,
+      "video_seconds": 7.2,
+      "fps": 25,
+      "playback_speed": 1.0,
+      "full_decode_passed": true,
+      "camera": {
+        "azimuth": 135.0,
+        "elevation": -33.0,
+        "distance": 3.9,
+        "target_height": 0.72
+      },
+      "sha256": "fb1215f2ab06b62fe89277c46dc92f4ce94b39e3052e50bc9a6d160d5937bf52"
+    },
+    {
+      "file": "05_mixed_clutter5001_success_seed14.mp4",
+      "bytes": 1837380,
+      "frames": 222,
+      "recorded_seconds": 6.839869022369385,
+      "video_seconds": 8.88,
+      "fps": 25,
+      "playback_speed": 1.0,
+      "full_decode_passed": true,
+      "camera": {
+        "azimuth": -23.756699641540184,
+        "elevation": -35.0,
+        "distance": 3.9,
+        "target_height": 0.72
+      },
+      "sha256": "634eef236a2eb47834a40b05bba7a2e34a0549ddf8d41f22a09cc989b4f82207"
+    },
+    {
+      "file": "06_mixed_clutter5002_failure_seed12.mp4",
+      "bytes": 723710,
+      "frames": 143,
+      "recorded_seconds": 3.6800599098205566,
+      "video_seconds": 5.72,
+      "fps": 25,
+      "playback_speed": 1.0,
+      "full_decode_passed": true,
+      "camera": {
+        "azimuth": -120.0,
+        "elevation": -38.0,
+        "distance": 3.9,
+        "target_height": 0.72
+      },
+      "sha256": "d241031da9ee99416d7f1d7aede0b095726cf341a20025981c7793d453bc0c8c"
+    }
+  ],
+  "note": "Saved poses replay at real time; 2s terminal hold plus frame-grid rounding (<2 frames)."
+}

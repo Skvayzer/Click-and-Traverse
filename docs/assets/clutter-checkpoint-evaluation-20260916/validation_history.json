@@ -1,0 +1,121 @@
+[
+  {
+    "baseline/cat_goal_success_rate": 0.5260416666666666,
+    "baseline/clutter_goal_success_rate": 0.09375,
+    "baseline/stochastic/cat_goal_success_rate": 0.5260416666666666,
+    "baseline/stochastic/clutter_goal_success_rate": 0.078125,
+    "global_step": 0,
+    "validation/cat_goal_success_rate": 0.5260416666666666,
+    "validation/clutter_goal_success_rate": 0.09375,
+    "validation/stochastic/cat_goal_success_rate": 0.5260416666666666,
+    "validation/stochastic/clutter_goal_success_rate": 0.078125
+  },
+  {
+    "global_step": 26214400,
+    "selection/best_updated": 1.0,
+    "validation/cat_goal_success_rate": 0.5520833333333334,
+    "validation/clutter_goal_success_rate": 0.078125,
+    "validation/retention_eligible": 1.0,
+    "validation/stochastic/cat_goal_success_rate": 0.5572916666666666,
+    "validation/stochastic/clutter_goal_success_rate": 0.09375
+  },
+  {
+    "global_step": 52428800,
+    "selection/best_updated": 0.0,
+    "validation/cat_goal_success_rate": 0.5677083333333334,
+    "validation/clutter_goal_success_rate": 0.09375,
+    "validation/retention_eligible": 0.0,
+    "validation/stochastic/cat_goal_success_rate": 0.515625,
+    "validation/stochastic/clutter_goal_success_rate": 0.140625
+  },
+  {
+    "global_step": 78643200,
+    "selection/best_updated": 1.0,
+    "validation/cat_goal_success_rate": 0.5677083333333334,
+    "validation/clutter_goal_success_rate": 0.125,
+    "validation/retention_eligible": 1.0,
+    "validation/stochastic/cat_goal_success_rate": 0.5416666666666666,
+    "validation/stochastic/clutter_goal_success_rate": 0.140625
+  },
+  {
+    "global_step": 104857600,
+    "selection/best_updated": 1.0,
+    "validation/cat_goal_success_rate": 0.5677083333333334,
+    "validation/clutter_goal_success_rate": 0.234375,
+    "validation/retention_eligible": 1.0,
+    "validation/stochastic/cat_goal_success_rate": 0.5729166666666666,
+    "validation/stochastic/clutter_goal_success_rate": 0.171875
+  },
+  {
+    "global_step": 131072000,
+    "selection/best_updated": 1.0,
+    "validation/cat_goal_success_rate": 0.5572916666666666,
+    "validation/clutter_goal_success_rate": 0.296875,
+    "validation/retention_eligible": 1.0,
+    "validation/stochastic/cat_goal_success_rate": 0.5416666666666666,
+    "validation/stochastic/clutter_goal_success_rate": 0.203125
+  },
+  {
+    "global_step": 157286400,
+    "selection/best_updated": 1.0,
+    "validation/cat_goal_success_rate": 0.578125,
+    "validation/clutter_goal_success_rate": 0.296875,
+    "validation/retention_eligible": 1.0,
+    "validation/stochastic/cat_goal_success_rate": 0.5833333333333334,
+    "validation/stochastic/clutter_goal_success_rate": 0.265625
+  },
+  {
+    "global_step": 183500800,
+    "selection/best_updated": 0.0,
+    "validation/cat_goal_success_rate": 0.5677083333333334,
+    "validation/clutter_goal_success_rate": 0.25,
+    "validation/retention_eligible": 1.0,
+    "validation/stochastic/cat_goal_success_rate": 0.5520833333333334,
+    "validation/stochastic/clutter_goal_success_rate": 0.203125
+  },
+  {
+    "global_step": 209715200,
+    "selection/best_updated": 0.0,
+    "validation/cat_goal_success_rate": 0.578125,
+    "validation/clutter_goal_success_rate": 0.296875,
+    "validation/retention_eligible": 1.0,
+    "validation/stochastic/cat_goal_success_rate": 0.5520833333333334,
+    "validation/stochastic/clutter_goal_success_rate": 0.15625
+  },
+  {
+    "global_step": 235929600,
+    "selection/best_updated": 0.0,
+    "validation/cat_goal_success_rate": 0.578125,
+    "validation/clutter_goal_success_rate": 0.28125,
+    "validation/retention_eligible": 1.0,
+    "validation/stochastic/cat_goal_success_rate": 0.5572916666666666,
+    "validation/stochastic/clutter_goal_success_rate": 0.109375
+  },
+  {
+    "global_step": 262144000,
+    "selection/best_updated": 0.0,
+    "validation/cat_goal_success_rate": 0.5885416666666666,
+    "validation/clutter_goal_success_rate": 0.265625,
+    "validation/retention_eligible": 1.0,
+    "validation/stochastic/cat_goal_success_rate": 0.5572916666666666,
+    "validation/stochastic/clutter_goal_success_rate": 0.15625
+  },
+  {
+    "global_step": 288358400,
+    "selection/best_updated": 0.0,
+    "validation/cat_goal_success_rate": 0.5729166666666666,
+    "validation/clutter_goal_success_rate": 0.3125,
+    "validation/retention_eligible": 1.0,
+    "validation/stochastic/cat_goal_success_rate": 0.5572916666666666,
+    "validation/stochastic/clutter_goal_success_rate": 0.140625
+  },
+  {
+    "global_step": 314572800,
+    "selection/best_updated": 0.0,
+    "validation/cat_goal_success_rate": 0.5833333333333334,
+    "validation/clutter_goal_success_rate": 0.21875,
+    "validation/retention_eligible": 1.0,
+    "validation/stochastic/cat_goal_success_rate": 0.5572916666666666,
+    "validation/stochastic/clutter_goal_success_rate": 0.140625
+  }
+]
