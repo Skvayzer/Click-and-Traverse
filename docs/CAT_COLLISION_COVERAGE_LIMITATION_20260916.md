@@ -42,3 +42,7 @@ Existing video `PASS` labels, metadata `strict_success` fields and validation su
 An evaluation geometry audit can expose missed collisions and distinguish goal completion from geometrically clear traversal. **Evaluation alone cannot correct the training signal:** an intersection that no training check detects may produce no corresponding termination or collision penalty.
 
 Resolving that learning limitation requires broader **training-side** body coverage, for example validated body collision proxies or additional internal surface checks. Those checks can affect reward or termination **without adding observations or feeding mesh data to the policy**. Such a change would be an explicit extension beyond released CAT and requires separate implementation, coverage validation and GPU-capacity measurement. No such additional change has been applied by this report, and no full-body collision-free guarantee is claimed.
+
+A [mesh-fitted collision-shape proposal](COLLISION_PROXY_PROPOSAL_20260916.md) is
+available for visual review, including flat foot boxes and close-up foot views.
+It is not enabled in training and does not resolve the limitation by itself.

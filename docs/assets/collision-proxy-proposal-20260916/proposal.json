@@ -1,0 +1,3500 @@
+{
+  "schema": "cat-offline-collision-proxy-proposal-v1",
+  "status": "offline_review_only_not_enabled_in_training",
+  "shapes": [
+    {
+      "id": "pelvis",
+      "body_id": 1,
+      "body_name": "pelvis",
+      "group": "trunk",
+      "kind": "box",
+      "center": [
+        0.001651595698064029,
+        7.827160962280144e-06,
+        -0.07475273655312459
+      ],
+      "quat": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "half_size": [
+        0.06277964697081864,
+        0.07076856084040903,
+        0.08025274357254725
+      ],
+      "margin_m": 0.003,
+      "mesh_assignments": [
+        {
+          "geom_id": 1,
+          "geom_name": "unnamed_geom_1",
+          "mesh_name": "pelvis",
+          "body_name": "pelvis",
+          "duplicate_geom_ids": []
+        },
+        {
+          "geom_id": 2,
+          "geom_name": "unnamed_geom_2",
+          "mesh_name": "pelvis_contour_link",
+          "body_name": "pelvis",
+          "duplicate_geom_ids": [
+            3
+          ]
+        }
+      ],
+      "assigned_geom_ids": [
+        1,
+        2
+      ],
+      "assigned_geom_names": [
+        "unnamed_geom_1",
+        "unnamed_geom_2"
+      ],
+      "assigned_mesh_names": [
+        "pelvis",
+        "pelvis_contour_link"
+      ],
+      "preserves_existing_hand_sphere": false,
+      "mesh_piece_bounds_body_local": [
+        [
+          -0.05812805127275462,
+          -0.06776073367944674,
+          -0.15200548012567183
+        ],
+        [
+          0.061431242668882675,
+          0.0677763880013713,
+          0.0025000070194226565
+        ]
+      ]
+    },
+    {
+      "id": "left_hip_pitch_link",
+      "body_id": 2,
+      "body_name": "left_hip_pitch_link",
+      "group": "legs",
+      "kind": "capsule",
+      "center": [
+        -0.0054143027173513885,
+        0.03773581846053676,
+        -0.019642711330322228
+      ],
+      "quat": [
+        -0.22485282337918974,
+        0.6704037647704605,
+        0.5734338218540925,
+        0.4137313765643221
+      ],
+      "endpoints": [
+        [
+          -0.01050248611655505,
+          0.024435419924583566,
+          -0.01010362053785513
+        ],
+        [
+          -0.00032611931814772663,
+          0.05103621699648995,
+          -0.029181802122789327
+        ]
+      ],
+      "radius": 0.06255533290829408,
+      "margin_m": 0.003,
+      "mesh_assignments": [
+        {
+          "geom_id": 4,
+          "geom_name": "unnamed_geom_4",
+          "mesh_name": "left_hip_pitch_link",
+          "body_name": "left_hip_pitch_link",
+          "duplicate_geom_ids": [
+            5
+          ]
+        }
+      ],
+      "assigned_geom_ids": [
+        4
+      ],
+      "assigned_geom_names": [
+        "unnamed_geom_4"
+      ],
+      "assigned_mesh_names": [
+        "left_hip_pitch_link"
+      ],
+      "preserves_existing_hand_sphere": false,
+      "mesh_piece_bounds_body_local": [
+        [
+          -0.04231603082267424,
+          -2.0710169551518827e-09,
+          -0.08004375708008513
+        ],
+        [
+          0.040240695659643784,
+          0.098810813174527,
+          0.03712092123475424
+        ]
+      ]
+    },
+    {
+      "id": "left_hip_roll_link",
+      "body_id": 3,
+      "body_name": "left_hip_roll_link",
+      "group": "legs",
+      "kind": "capsule",
+      "center": [
+        0.026920771357695147,
+        -0.00017117373359862298,
+        -0.059628821463701645
+      ],
+      "quat": [
+        -0.7071067811865475,
+        0.0,
+        0.0,
+        0.7071067811865475
+      ],
+      "endpoints": [
+        [
+          0.026920771357695147,
+          -0.00017117373359862298,
+          -0.10940748772555493
+        ],
+        [
+          0.026920771357695147,
+          -0.00017117373359862298,
+          -0.009850155201848353
+        ]
+      ],
+      "radius": 0.06155571998071715,
+      "margin_m": 0.003,
+      "mesh_assignments": [
+        {
+          "geom_id": 6,
+          "geom_name": "unnamed_geom_6",
+          "mesh_name": "left_hip_roll_link",
+          "body_name": "left_hip_roll_link",
+          "duplicate_geom_ids": [
+            7
+          ]
+        }
+      ],
+      "assigned_geom_ids": [
+        6
+      ],
+      "assigned_geom_names": [
+        "unnamed_geom_6"
+      ],
+      "assigned_mesh_names": [
+        "left_hip_roll_link"
+      ],
+      "preserves_existing_hand_sphere": false,
+      "mesh_piece_bounds_body_local": [
+        [
+          -0.026318852840993737,
+          -0.04911654801765476,
+          -0.12412407819209527
+        ],
+        [
+          0.08016039555638403,
+          0.04877420055045752,
+          0.046484774878133704
+        ]
+      ]
+    },
+    {
+      "id": "left_hip_yaw_link",
+      "body_id": 4,
+      "body_name": "left_hip_yaw_link",
+      "group": "legs",
+      "kind": "capsule",
+      "center": [
+        -0.036416473536007535,
+        -0.0019406978090152165,
+        -0.09982786814211954
+      ],
+      "quat": [
+        0.9804286097022232,
+        -0.007708654582466696,
+        0.1967178833684357,
+        0.0015467013080552726
+      ],
+      "endpoints": [
+        [
+          -0.06994099443959899,
+          -0.0033073731957229255,
+          -0.18000657908361806
+        ],
+        [
+          -0.0028919526324160862,
+          -0.0005740224223075075,
+          -0.019649157200621017
+        ]
+      ],
+      "radius": 0.06510682907618184,
+      "margin_m": 0.003,
+      "mesh_assignments": [
+        {
+          "geom_id": 9,
+          "geom_name": "unnamed_geom_9",
+          "mesh_name": "left_hip_yaw_link",
+          "body_name": "left_hip_yaw_link",
+          "duplicate_geom_ids": [
+            10
+          ]
+        }
+      ],
+      "assigned_geom_ids": [
+        9
+      ],
+      "assigned_geom_names": [
+        "unnamed_geom_9"
+      ],
+      "assigned_mesh_names": [
+        "left_hip_yaw_link"
+      ],
+      "preserves_existing_hand_sphere": false,
+      "mesh_piece_bounds_body_local": [
+        [
+          -0.12724931520519545,
+          -0.04538328212199545,
+          -0.2262307808038601
+        ],
+        [
+          0.052384679179326675,
+          0.0432993600769669,
+          6.643366324026644e-09
+        ]
+      ]
+    },
+    {
+      "id": "left_knee_link",
+      "body_id": 5,
+      "body_name": "left_knee_link",
+      "group": "legs",
+      "kind": "capsule",
+      "center": [
+        0.010770643685662409,
+        -0.002417923175157743,
+        -0.13614505888379486
+      ],
+      "quat": [
+        -0.7067698064336911,
+        0.02182752193178716,
+        0.015786367944233153,
+        0.7069305415577469
+      ],
+      "endpoints": [
+        [
+          0.009663766369784409,
+          -0.009304645366035392,
+          -0.26547054858754976
+        ],
+        [
+          0.011877521001540407,
+          0.004468799015719905,
+          -0.006819569180039965
+        ]
+      ],
+      "radius": 0.06138193169002817,
+      "margin_m": 0.003,
+      "mesh_assignments": [
+        {
+          "geom_id": 11,
+          "geom_name": "unnamed_geom_11",
+          "mesh_name": "left_knee_link",
+          "body_name": "left_knee_link",
+          "duplicate_geom_ids": [
+            12
+          ]
+        }
+      ],
+      "assigned_geom_ids": [
+        11
+      ],
+      "assigned_geom_names": [
+        "unnamed_geom_11"
+      ],
+      "assigned_mesh_names": [
+        "left_knee_link"
+      ],
+      "preserves_existing_hand_sphere": false,
+      "mesh_piece_bounds_body_local": [
+        [
+          -0.03989659286338516,
+          -0.03588641648348893,
+          -0.31507275042167865
+        ],
+        [
+          0.063919617089859,
+          0.03581269439215951,
+          0.0400492783295662
+        ]
+      ]
+    },
+    {
+      "id": "left_ankle_pitch_link",
+      "body_id": 6,
+      "body_name": "left_ankle_pitch_link",
+      "group": "legs",
+      "kind": "box",
+      "center": [
+        -0.006499990797863708,
+        5.7822351138228645e-05,
+        -0.005833967662941439
+      ],
+      "quat": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "half_size": [
+        0.021000008608442488,
+        0.009500007351860417,
+        0.02172394141491159
+      ],
+      "margin_m": 0.003,
+      "mesh_assignments": [
+        {
+          "geom_id": 14,
+          "geom_name": "unnamed_geom_14",
+          "mesh_name": "left_ankle_pitch_link",
+          "body_name": "left_ankle_pitch_link",
+          "duplicate_geom_ids": []
+        }
+      ],
+      "assigned_geom_ids": [
+        14
+      ],
+      "assigned_geom_names": [
+        "unnamed_geom_14"
+      ],
+      "assigned_mesh_names": [
+        "left_ankle_pitch_link"
+      ],
+      "preserves_existing_hand_sphere": false,
+      "mesh_piece_bounds_body_local": [
+        [
+          -0.024499999406306195,
+          -0.006442185000722189,
+          -0.024557909077853032
+        ],
+        [
+          0.011500017810578779,
+          0.0065578297029986465,
+          0.012889973751970154
+        ]
+      ]
+    },
+    {
+      "id": "left_sole",
+      "body_id": 7,
+      "body_name": "left_ankle_roll_link",
+      "group": "feet",
+      "kind": "box",
+      "center": [
+        0.03826198904017971,
+        4.9556029198892515e-05,
+        -0.021704571930467386
+      ],
+      "quat": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "half_size": [
+        0.1071033609140149,
+        0.040791346079707254,
+        0.016704571930467385
+      ],
+      "margin_m": 0.003,
+      "mesh_assignments": [
+        {
+          "geom_id": 15,
+          "geom_name": "unnamed_geom_15",
+          "mesh_name": "left_ankle_roll_link",
+          "body_name": "left_ankle_roll_link",
+          "duplicate_geom_ids": [],
+          "clip": {
+            "axis": 2,
+            "position_m": -0.008,
+            "side": "lower"
+          }
+        }
+      ],
+      "assigned_geom_ids": [
+        15
+      ],
+      "assigned_geom_names": [
+        "unnamed_geom_15"
+      ],
+      "assigned_mesh_names": [
+        "left_ankle_roll_link"
+      ],
+      "preserves_existing_hand_sphere": false,
+      "mesh_piece_bounds_body_local": [
+        [
+          -0.0658413718738352,
+          -0.03774179005050836,
+          -0.03540914386093477
+        ],
+        [
+          0.14236534995419461,
+          0.037840902108906144,
+          -0.008
+        ]
+      ]
+    },
+    {
+      "id": "left_upper_foot",
+      "body_id": 7,
+      "body_name": "left_ankle_roll_link",
+      "group": "feet",
+      "kind": "box",
+      "center": [
+        0.020428997562750146,
+        9.742079515374924e-05,
+        0.007791951356907549
+      ],
+      "quat": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "half_size": [
+        0.08474197575447999,
+        0.03370071930953932,
+        0.01879195135690755
+      ],
+      "margin_m": 0.003,
+      "mesh_assignments": [
+        {
+          "geom_id": 15,
+          "geom_name": "unnamed_geom_15",
+          "mesh_name": "left_ankle_roll_link",
+          "body_name": "left_ankle_roll_link",
+          "duplicate_geom_ids": [],
+          "clip": {
+            "axis": 2,
+            "position_m": -0.008,
+            "side": "upper"
+          }
+        }
+      ],
+      "assigned_geom_ids": [
+        15
+      ],
+      "assigned_geom_names": [
+        "unnamed_geom_15"
+      ],
+      "assigned_mesh_names": [
+        "left_ankle_roll_link"
+      ],
+      "preserves_existing_hand_sphere": false,
+      "mesh_piece_bounds_body_local": [
+        [
+          -0.06131297819172984,
+          -0.03060329851438557,
+          -0.008
+        ],
+        [
+          0.10217097331723013,
+          0.03079814010469307,
+          0.023583902713815098
+        ]
+      ]
+    },
+    {
+      "id": "right_hip_pitch_link",
+      "body_id": 8,
+      "body_name": "right_hip_pitch_link",
+      "group": "legs",
+      "kind": "capsule",
+      "center": [
+        -0.005451809544349529,
+        -0.0376733535596345,
+        -0.019672539848329958
+      ],
+      "quat": [
+        0.6698765400027628,
+        -0.2264186855229202,
+        -0.41496724231518395,
+        -0.5725401189482983
+      ],
+      "endpoints": [
+        [
+          -0.0003557605035990098,
+          -0.05104558633781072,
+          -0.02917244581326051
+        ],
+        [
+          -0.010547858585100049,
+          -0.02430112078145827,
+          -0.010172633883399404
+        ]
+      ],
+      "radius": 0.0625756211016403,
+      "margin_m": 0.003,
+      "mesh_assignments": [
+        {
+          "geom_id": 17,
+          "geom_name": "unnamed_geom_17",
+          "mesh_name": "right_hip_pitch_link",
+          "body_name": "right_hip_pitch_link",
+          "duplicate_geom_ids": [
+            18
+          ]
+        }
+      ],
+      "assigned_geom_ids": [
+        17
+      ],
+      "assigned_geom_names": [
+        "unnamed_geom_17"
+      ],
+      "assigned_mesh_names": [
+        "right_hip_pitch_link"
+      ],
+      "preserves_existing_hand_sphere": false,
+      "mesh_piece_bounds_body_local": [
+        [
+          -0.042316028844032974,
+          -0.09881081485032106,
+          -0.08004375473640626
+        ],
+        [
+          0.040240695158927475,
+          1.5846009920883473e-09,
+          0.037120087873097236
+        ]
+      ]
+    },
+    {
+      "id": "right_hip_roll_link",
+      "body_id": 9,
+      "body_name": "right_hip_roll_link",
+      "group": "legs",
+      "kind": "capsule",
+      "center": [
+        0.026920771370604286,
+        0.00017117367626436758,
+        -0.059628828216700645
+      ],
+      "quat": [
+        -0.7071067811865475,
+        0.0,
+        0.0,
+        0.7071067811865475
+      ],
+      "endpoints": [
+        [
+          0.026920771370604286,
+          0.00017117367626436758,
+          -0.10940750440376917
+        ],
+        [
+          0.026920771370604286,
+          0.00017117367626436758,
+          -0.00985015202963212
+        ]
+      ],
+      "radius": 0.06155571760091579,
+      "margin_m": 0.003,
+      "mesh_assignments": [
+        {
+          "geom_id": 19,
+          "geom_name": "unnamed_geom_19",
+          "mesh_name": "right_hip_roll_link",
+          "body_name": "right_hip_roll_link",
+          "duplicate_geom_ids": [
+            20
+          ]
+        }
+      ],
+      "assigned_geom_ids": [
+        19
+      ],
+      "assigned_geom_names": [
+        "unnamed_geom_19"
+      ],
+      "assigned_mesh_names": [
+        "right_hip_roll_link"
+      ],
+      "preserves_existing_hand_sphere": false,
+      "mesh_piece_bounds_body_local": [
+        [
+          -0.026318852376078755,
+          -0.0487741999691783,
+          -0.12412408005794283
+        ],
+        [
+          0.08016039511728733,
+          0.04911654732170703,
+          0.046484774365783674
+        ]
+      ]
+    },
+    {
+      "id": "right_hip_yaw_link",
+      "body_id": 10,
+      "body_name": "right_hip_yaw_link",
+      "group": "legs",
+      "kind": "capsule",
+      "center": [
+        -0.03646820706517523,
+        0.0018261160464697179,
+        -0.09989776097968385
+      ],
+      "quat": [
+        0.9804922903715995,
+        0.007177481387297643,
+        0.1964211924536291,
+        -0.0014378587845626236
+      ],
+      "endpoints": [
+        [
+          -0.0699105307176876,
+          0.003097251442516947,
+          -0.18001646342747904
+        ],
+        [
+          -0.003025883412662851,
+          0.0005549806504224887,
+          -0.019779058531888657
+        ]
+      ],
+      "radius": 0.06524411385704354,
+      "margin_m": 0.003,
+      "mesh_assignments": [
+        {
+          "geom_id": 22,
+          "geom_name": "unnamed_geom_22",
+          "mesh_name": "right_hip_yaw_link",
+          "body_name": "right_hip_yaw_link",
+          "duplicate_geom_ids": [
+            23
+          ]
+        }
+      ],
+      "assigned_geom_ids": [
+        22
+      ],
+      "assigned_geom_names": [
+        "unnamed_geom_22"
+      ],
+      "assigned_mesh_names": [
+        "right_hip_yaw_link"
+      ],
+      "preserves_existing_hand_sphere": false,
+      "mesh_piece_bounds_body_local": [
+        [
+          -0.1272493154904235,
+          -0.043299358914601085,
+          -0.22623079110129582
+        ],
+        [
+          0.05238468432269532,
+          0.0453832835435098,
+          8.0422400343844e-09
+        ]
+      ]
+    },
+    {
+      "id": "right_knee_link",
+      "body_id": 11,
+      "body_name": "right_knee_link",
+      "group": "legs",
+      "kind": "capsule",
+      "center": [
+        0.010633413266025833,
+        0.00240005260969367,
+        -0.13612665137801339
+      ],
+      "quat": [
+        0.7069409750664472,
+        0.015312013979255835,
+        0.022021214998006636,
+        -0.7067637979480922
+      ],
+      "endpoints": [
+        [
+          0.00940272230027835,
+          0.009243283841045703,
+          -0.26560328901795266
+        ],
+        [
+          0.011864104231773316,
+          -0.0044431786216583636,
+          -0.006650013738074131
+        ]
+      ],
+      "radius": 0.0613149000445236,
+      "margin_m": 0.003,
+      "mesh_assignments": [
+        {
+          "geom_id": 24,
+          "geom_name": "unnamed_geom_24",
+          "mesh_name": "right_knee_link",
+          "body_name": "right_knee_link",
+          "duplicate_geom_ids": [
+            25
+          ]
+        }
+      ],
+      "assigned_geom_ids": [
+        24
+      ],
+      "assigned_geom_names": [
+        "unnamed_geom_24"
+      ],
+      "assigned_mesh_names": [
+        "right_knee_link"
+      ],
+      "preserves_existing_hand_sphere": false,
+      "mesh_piece_bounds_body_local": [
+        [
+          -0.03989659284607854,
+          -0.03581316834428661,
+          -0.3150727483584479
+        ],
+        [
+          0.06391962069788398,
+          0.0358828107233549,
+          0.040049270559141724
+        ]
+      ]
+    },
+    {
+      "id": "right_ankle_pitch_link",
+      "body_id": 12,
+      "body_name": "right_ankle_pitch_link",
+      "group": "legs",
+      "kind": "box",
+      "center": [
+        -0.006499990702166079,
+        -5.782254354102373e-05,
+        -0.005833967160721103
+      ],
+      "quat": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "half_size": [
+        0.021000008954452584,
+        0.00950000735186041,
+        0.021723941130679273
+      ],
+      "margin_m": 0.003,
+      "mesh_assignments": [
+        {
+          "geom_id": 27,
+          "geom_name": "unnamed_geom_27",
+          "mesh_name": "right_ankle_pitch_link",
+          "body_name": "right_ankle_pitch_link",
+          "duplicate_geom_ids": []
+        }
+      ],
+      "assigned_geom_ids": [
+        27
+      ],
+      "assigned_geom_names": [
+        "unnamed_geom_27"
+      ],
+      "assigned_mesh_names": [
+        "right_ankle_pitch_link"
+      ],
+      "preserves_existing_hand_sphere": false,
+      "mesh_piece_bounds_body_local": [
+        [
+          -0.024499999656618664,
+          -0.006557829895401435,
+          -0.024557908291400376
+        ],
+        [
+          0.011500018252286505,
+          0.006442184808319387,
+          0.01288997396995817
+        ]
+      ]
+    },
+    {
+      "id": "right_sole",
+      "body_id": 13,
+      "body_name": "right_ankle_roll_link",
+      "group": "feet",
+      "kind": "box",
+      "center": [
+        0.038261989527388296,
+        -4.9555136123022314e-05,
+        -0.021704571993853214
+      ],
+      "quat": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "half_size": [
+        0.10710336194070183,
+        0.040791347334681496,
+        0.016704571993853213
+      ],
+      "margin_m": 0.003,
+      "mesh_assignments": [
+        {
+          "geom_id": 28,
+          "geom_name": "unnamed_geom_28",
+          "mesh_name": "right_ankle_roll_link",
+          "body_name": "right_ankle_roll_link",
+          "duplicate_geom_ids": [],
+          "clip": {
+            "axis": 2,
+            "position_m": -0.008,
+            "side": "lower"
+          }
+        }
+      ],
+      "assigned_geom_ids": [
+        28
+      ],
+      "assigned_geom_names": [
+        "unnamed_geom_28"
+      ],
+      "assigned_mesh_names": [
+        "right_ankle_roll_link"
+      ],
+      "preserves_existing_hand_sphere": false,
+      "mesh_piece_bounds_body_local": [
+        [
+          -0.06584137241331353,
+          -0.037840902470804516,
+          -0.03540914398770643
+        ],
+        [
+          0.14236535146809012,
+          0.03774179219855847,
+          -0.008
+        ]
+      ]
+    },
+    {
+      "id": "right_upper_foot",
+      "body_id": 13,
+      "body_name": "right_ankle_roll_link",
+      "group": "feet",
+      "kind": "box",
+      "center": [
+        0.020435002706612877,
+        -9.759679200900193e-05,
+        0.007791951128825452
+      ],
+      "quat": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "half_size": [
+        0.08474798093467824,
+        0.03370094658612561,
+        0.01879195112882545
+      ],
+      "margin_m": 0.003,
+      "mesh_assignments": [
+        {
+          "geom_id": 28,
+          "geom_name": "unnamed_geom_28",
+          "mesh_name": "right_ankle_roll_link",
+          "body_name": "right_ankle_roll_link",
+          "duplicate_geom_ids": [],
+          "clip": {
+            "axis": 2,
+            "position_m": -0.008,
+            "side": "upper"
+          }
+        }
+      ],
+      "assigned_geom_ids": [
+        28
+      ],
+      "assigned_geom_names": [
+        "unnamed_geom_28"
+      ],
+      "assigned_mesh_names": [
+        "right_ankle_roll_link"
+      ],
+      "preserves_existing_hand_sphere": false,
+      "mesh_piece_bounds_body_local": [
+        [
+          -0.061312978228065355,
+          -0.03079854337813461,
+          -0.008
+        ],
+        [
+          0.10218298364129111,
+          0.030603349794116608,
+          0.023583902257650904
+        ]
+      ]
+    },
+    {
+      "id": "waist_yaw_link",
+      "body_id": 14,
+      "body_name": "waist_yaw_link",
+      "group": "trunk",
+      "kind": "box",
+      "center": [
+        -6.565373690640627e-05,
+        -3.2948841059698974e-06,
+        0.026899621650444072
+      ],
+      "quat": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "half_size": [
+        0.04543422921597952,
+        0.04546557353699687,
+        0.030100199882419573
+      ],
+      "margin_m": 0.003,
+      "mesh_assignments": [
+        {
+          "geom_id": 30,
+          "geom_name": "unnamed_geom_30",
+          "mesh_name": "waist_yaw_link",
+          "body_name": "waist_yaw_link",
+          "duplicate_geom_ids": []
+        }
+      ],
+      "assigned_geom_ids": [
+        30
+      ],
+      "assigned_geom_names": [
+        "unnamed_geom_30"
+      ],
+      "assigned_mesh_names": [
+        "waist_yaw_link"
+      ],
+      "preserves_existing_hand_sphere": false,
+      "mesh_piece_bounds_body_local": [
+        [
+          -0.04249988295288592,
+          -0.04246886842110284,
+          -0.00020057823197550118
+        ],
+        [
+          0.042368575479073106,
+          0.0424622786528909,
+          0.053999821532863646
+        ]
+      ]
+    },
+    {
+      "id": "waist_roll_link",
+      "body_id": 15,
+      "body_name": "waist_roll_link",
+      "group": "trunk",
+      "kind": "box",
+      "center": [
+        1.872641295502797e-10,
+        2.2040055891459076e-10,
+        -7.688696013197216e-09
+      ],
+      "quat": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "half_size": [
+        0.02000076274573807,
+        0.013001894552260664,
+        0.014993400752544402
+      ],
+      "margin_m": 0.003,
+      "mesh_assignments": [
+        {
+          "geom_id": 31,
+          "geom_name": "unnamed_geom_31",
+          "mesh_name": "waist_roll_link",
+          "body_name": "waist_roll_link",
+          "duplicate_geom_ids": []
+        }
+      ],
+      "assigned_geom_ids": [
+        31
+      ],
+      "assigned_geom_names": [
+        "unnamed_geom_31"
+      ],
+      "assigned_mesh_names": [
+        "waist_roll_link"
+      ],
+      "preserves_existing_hand_sphere": false,
+      "mesh_piece_bounds_body_local": [
+        [
+          -0.017000762558473943,
+          -0.010001894331860104,
+          -0.011993408441240416
+        ],
+        [
+          0.017000762933002202,
+          0.010001894772661222,
+          0.01199339306384839
+        ]
+      ]
+    },
+    {
+      "id": "torso",
+      "body_id": 16,
+      "body_name": "torso_link",
+      "group": "trunk",
+      "kind": "box",
+      "center": [
+        0.007508232154560757,
+        6.392453784712093e-07,
+        0.1513553682128571
+      ],
+      "quat": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "half_size": [
+        0.07911885077301715,
+        0.11071375486737842,
+        0.16326405980078484
+      ],
+      "margin_m": 0.003,
+      "mesh_assignments": [
+        {
+          "geom_id": 32,
+          "geom_name": "unnamed_geom_32",
+          "mesh_name": "torso_link",
+          "body_name": "torso_link",
+          "duplicate_geom_ids": [
+            33
+          ]
+        },
+        {
+          "geom_id": 34,
+          "geom_name": "unnamed_geom_34",
+          "mesh_name": "logo_link",
+          "body_name": "torso_link",
+          "duplicate_geom_ids": [
+            35
+          ]
+        }
+      ],
+      "assigned_geom_ids": [
+        32,
+        34
+      ],
+      "assigned_geom_names": [
+        "unnamed_geom_32",
+        "unnamed_geom_34"
+      ],
+      "assigned_mesh_names": [
+        "torso_link",
+        "logo_link"
+      ],
+      "preserves_existing_hand_sphere": false,
+      "mesh_piece_bounds_body_local": [
+        [
+          -0.0686106186184564,
+          -0.10771311562199995,
+          -0.00890869158792773
+        ],
+        [
+          0.08362708292757791,
+          0.10771439411275689,
+          0.31161942801364195
+        ]
+      ]
+    },
+    {
+      "id": "head",
+      "body_id": 16,
+      "body_name": "torso_link",
+      "group": "head",
+      "kind": "box",
+      "center": [
+        0.0077774013915817945,
+        2.101743086854735e-05,
+        0.38368423105702154
+      ],
+      "quat": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "half_size": [
+        0.07317012332522353,
+        0.08079562522266819,
+        0.10588835949051378
+      ],
+      "margin_m": 0.003,
+      "mesh_assignments": [
+        {
+          "geom_id": 36,
+          "geom_name": "unnamed_geom_36",
+          "mesh_name": "head_link",
+          "body_name": "torso_link",
+          "duplicate_geom_ids": [
+            37
+          ]
+        }
+      ],
+      "assigned_geom_ids": [
+        36
+      ],
+      "assigned_geom_names": [
+        "unnamed_geom_36"
+      ],
+      "assigned_mesh_names": [
+        "head_link"
+      ],
+      "preserves_existing_hand_sphere": false,
+      "mesh_piece_bounds_body_local": [
+        [
+          -0.06239272193364174,
+          -0.07777460779179964,
+          0.28079587156650776
+        ],
+        [
+          0.07794752471680533,
+          0.07781664265353673,
+          0.4865725905475353
+        ]
+      ]
+    },
+    {
+      "id": "left_shoulder_pitch_link",
+      "body_id": 17,
+      "body_name": "left_shoulder_pitch_link",
+      "group": "arms",
+      "kind": "capsule",
+      "center": [
+        0.00018680898121373874,
+        0.030033339129014448,
+        -0.005662626996994394
+      ],
+      "quat": [
+        0.6701084483639451,
+        0.22573140550500706,
+        0.2360491307591625,
+        -0.6665439279356191
+      ],
+      "endpoints": [
+        [
+          1.7426704145351258e-05,
+          0.03680548936425168,
+          -0.014294025530830503
+        ],
+        [
+          0.0003561912582821262,
+          0.023261188893777214,
+          0.0029687715368417163
+        ]
+      ],
+      "radius": 0.04951827918386405,
+      "margin_m": 0.003,
+      "mesh_assignments": [
+        {
+          "geom_id": 38,
+          "geom_name": "unnamed_geom_38",
+          "mesh_name": "left_shoulder_pitch_link",
+          "body_name": "left_shoulder_pitch_link",
+          "duplicate_geom_ids": []
+        }
+      ],
+      "assigned_geom_ids": [
+        38
+      ],
+      "assigned_geom_names": [
+        "unnamed_geom_38"
+      ],
+      "assigned_mesh_names": [
+        "left_shoulder_pitch_link"
+      ],
+      "preserves_existing_hand_sphere": false,
+      "mesh_piece_bounds_body_local": [
+        [
+          -0.03101241489327838,
+          -7.970830456363766e-09,
+          -0.05032986635009
+        ],
+        [
+          0.03103597166225973,
+          0.07449751267563291,
+          0.04004951272693328
+        ]
+      ]
+    },
+    {
+      "id": "left_shoulder_roll_link",
+      "body_id": 18,
+      "body_name": "left_shoulder_roll_link",
+      "group": "arms",
+      "kind": "capsule",
+      "center": [
+        0.00044156123583082366,
+        0.00351358139517079,
+        -0.03072373296106357
+      ],
+      "quat": [
+        -0.7071067811865475,
+        0.0,
+        0.0,
+        0.7071067811865475
+      ],
+      "endpoints": [
+        [
+          0.00044156123583082366,
+          0.00351358139517079,
+          -0.060799565992529385
+        ],
+        [
+          0.00044156123583082366,
+          0.00351358139517079,
+          -0.0006478999295977533
+        ]
+      ],
+      "radius": 0.0531330159386339,
+      "margin_m": 0.003,
+      "mesh_assignments": [
+        {
+          "geom_id": 40,
+          "geom_name": "unnamed_geom_40",
+          "mesh_name": "left_shoulder_roll_link",
+          "body_name": "left_shoulder_roll_link",
+          "duplicate_geom_ids": []
+        }
+      ],
+      "assigned_geom_ids": [
+        40
+      ],
+      "assigned_geom_names": [
+        "unnamed_geom_40"
+      ],
+      "assigned_mesh_names": [
+        "left_shoulder_roll_link"
+      ],
+      "preserves_existing_hand_sphere": false,
+      "mesh_piece_bounds_body_local": [
+        [
+          -0.04015264749602094,
+          -0.03291530984031061,
+          -0.10319999934515285
+        ],
+        [
+          0.04103576996768259,
+          0.03994247263065219,
+          0.03342677514519271
+        ]
+      ]
+    },
+    {
+      "id": "left_shoulder_yaw_link",
+      "body_id": 19,
+      "body_name": "left_shoulder_yaw_link",
+      "group": "arms",
+      "kind": "capsule",
+      "center": [
+        0.007782056267115124,
+        -0.004153067921484611,
+        -0.03639125882746751
+      ],
+      "quat": [
+        -0.7071067811865475,
+        0.0,
+        0.0,
+        0.7071067811865475
+      ],
+      "endpoints": [
+        [
+          0.007782056267115124,
+          -0.004153067921484611,
+          -0.07928647296821871
+        ],
+        [
+          0.007782056267115124,
+          -0.004153067921484611,
+          0.006503955313283696
+        ]
+      ],
+      "radius": 0.05164432676706439,
+      "margin_m": 0.003,
+      "mesh_assignments": [
+        {
+          "geom_id": 42,
+          "geom_name": "unnamed_geom_42",
+          "mesh_name": "left_shoulder_yaw_link",
+          "body_name": "left_shoulder_yaw_link",
+          "duplicate_geom_ids": [
+            43
+          ]
+        }
+      ],
+      "assigned_geom_ids": [
+        42
+      ],
+      "assigned_geom_names": [
+        "unnamed_geom_42"
+      ],
+      "assigned_mesh_names": [
+        "left_shoulder_yaw_link"
+      ],
+      "preserves_existing_hand_sphere": false,
+      "mesh_piece_bounds_body_local": [
+        [
+          -0.032810697178485816,
+          -0.04141250675347397,
+          -0.11369692765475398
+        ],
+        [
+          0.048374809712716065,
+          0.03310637091050475,
+          0.0315741525763492
+        ]
+      ]
+    },
+    {
+      "id": "left_elbow_link",
+      "body_id": 20,
+      "body_name": "left_elbow_link",
+      "group": "arms",
+      "kind": "capsule",
+      "center": [
+        0.044144170611630854,
+        0.01000656374560206,
+        -0.007773163915347277
+      ],
+      "quat": [
+        0.5274526472209115,
+        0.6185919479947997,
+        0.4431357781159348,
+        0.3778470444098203
+      ],
+      "endpoints": [
+        [
+          0.009170729689774814,
+          0.02189019295605329,
+          -0.0018608931343544856
+        ],
+        [
+          0.0791176115334869,
+          -0.00187706546484917,
+          -0.013685434696340067
+        ]
+      ],
+      "radius": 0.04235554713207224,
+      "margin_m": 0.003,
+      "mesh_assignments": [
+        {
+          "geom_id": 44,
+          "geom_name": "unnamed_geom_44",
+          "mesh_name": "left_elbow_link",
+          "body_name": "left_elbow_link",
+          "duplicate_geom_ids": [
+            45
+          ]
+        }
+      ],
+      "assigned_geom_ids": [
+        44
+      ],
+      "assigned_geom_names": [
+        "unnamed_geom_44"
+      ],
+      "assigned_mesh_names": [
+        "left_elbow_link"
+      ],
+      "preserves_existing_hand_sphere": false,
+      "mesh_piece_bounds_body_local": [
+        [
+          -0.029775111843183856,
+          -0.03125531290571398,
+          -0.04543027591538118
+        ],
+        [
+          0.10000001522651984,
+          0.034777161279369175,
+          0.029775116205400985
+        ]
+      ]
+    },
+    {
+      "id": "left_wrist_roll_link",
+      "body_id": 21,
+      "body_name": "left_wrist_roll_link",
+      "group": "arms",
+      "kind": "capsule",
+      "center": [
+        0.022555162650406264,
+        -0.00024713337255719003,
+        2.1832390582898764e-10
+      ],
+      "quat": [
+        0.7071067811865475,
+        0.0,
+        0.7071067811865475,
+        0.0
+      ],
+      "endpoints": [
+        [
+          0.008618170815124842,
+          -0.00024713337255719003,
+          2.1832390582898764e-10
+        ],
+        [
+          0.03649215448568768,
+          -0.00024713337255719003,
+          2.1832390582898764e-10
+        ]
+      ],
+      "radius": 0.03412025946363123,
+      "margin_m": 0.003,
+      "mesh_assignments": [
+        {
+          "geom_id": 46,
+          "geom_name": "unnamed_geom_46",
+          "mesh_name": "left_wrist_roll_link",
+          "body_name": "left_wrist_roll_link",
+          "duplicate_geom_ids": [
+            47
+          ]
+        }
+      ],
+      "assigned_geom_ids": [
+        46
+      ],
+      "assigned_geom_names": [
+        "unnamed_geom_46"
+      ],
+      "assigned_mesh_names": [
+        "left_wrist_roll_link"
+      ],
+      "preserves_existing_hand_sphere": false,
+      "mesh_piece_bounds_body_local": [
+        [
+          -9.454250378488529e-10,
+          -0.030494266884647018,
+          -0.02999999221712001
+        ],
+        [
+          0.05599305426880602,
+          0.030000000139532638,
+          0.02999999265376782
+        ]
+      ]
+    },
+    {
+      "id": "left_wrist_pitch_link",
+      "body_id": 22,
+      "body_name": "left_wrist_pitch_link",
+      "group": "arms",
+      "kind": "capsule",
+      "center": [
+        0.022999999062322942,
+        6.323080028319827e-10,
+        1.9745965279538424e-10
+      ],
+      "quat": [
+        0.7071067811865475,
+        0.0,
+        0.7071067811865475,
+        0.0
+      ],
+      "endpoints": [
+        [
+          -1.1763359695528275e-07,
+          6.323080028319827e-10,
+          1.9745965279538424e-10
+        ],
+        [
+          0.04600011575824284,
+          6.323080028319827e-10,
+          1.9745965279538424e-10
+        ]
+      ],
+      "radius": 0.03708724445731902,
+      "margin_m": 0.003,
+      "mesh_assignments": [
+        {
+          "geom_id": 48,
+          "geom_name": "unnamed_geom_48",
+          "mesh_name": "left_wrist_pitch_link",
+          "body_name": "left_wrist_pitch_link",
+          "duplicate_geom_ids": [
+            49
+          ]
+        }
+      ],
+      "assigned_geom_ids": [
+        48
+      ],
+      "assigned_geom_names": [
+        "unnamed_geom_48"
+      ],
+      "assigned_mesh_names": [
+        "left_wrist_pitch_link"
+      ],
+      "preserves_existing_hand_sphere": false,
+      "mesh_piece_bounds_body_local": [
+        [
+          -0.0285000014016109,
+          -0.028490660009265083,
+          -0.028490660802543873
+        ],
+        [
+          0.07450000257745683,
+          0.02849066127388109,
+          0.028490661197463178
+        ]
+      ]
+    },
+    {
+      "id": "left_wrist_yaw_link",
+      "body_id": 23,
+      "body_name": "left_wrist_yaw_link",
+      "group": "arms",
+      "kind": "capsule",
+      "center": [
+        0.01177281199517438,
+        -0.0017050126610113102,
+        -0.0008370877243123887
+      ],
+      "quat": [
+        0.46237441983200633,
+        0.4163596394825486,
+        0.5238539804999318,
+        0.581748703143681
+      ],
+      "endpoints": [
+        [
+          0.004880847357730708,
+          -0.003301797176442274,
+          -0.0015800378338665568
+        ],
+        [
+          0.018664776632618053,
+          -0.00010822814558034667,
+          -9.413761475822067e-05
+        ]
+      ],
+      "radius": 0.038000127640959475,
+      "margin_m": 0.003,
+      "mesh_assignments": [
+        {
+          "geom_id": 50,
+          "geom_name": "unnamed_geom_50",
+          "mesh_name": "left_wrist_yaw_link",
+          "body_name": "left_wrist_yaw_link",
+          "duplicate_geom_ids": []
+        }
+      ],
+      "assigned_geom_ids": [
+        50
+      ],
+      "assigned_geom_names": [
+        "unnamed_geom_50"
+      ],
+      "assigned_mesh_names": [
+        "left_wrist_yaw_link"
+      ],
+      "preserves_existing_hand_sphere": false,
+      "mesh_piece_bounds_body_local": [
+        [
+          -0.017992656349768224,
+          -0.023864509810887724,
+          -0.03049419173894964
+        ],
+        [
+          0.041500200506519105,
+          0.030000000868943603,
+          0.030000000248142603
+        ]
+      ]
+    },
+    {
+      "id": "left_hand",
+      "body_id": 23,
+      "body_name": "left_wrist_yaw_link",
+      "group": "hands",
+      "kind": "sphere",
+      "center": [
+        0.12923083770871163,
+        -0.022143624205178604,
+        8.903443813323975e-07
+      ],
+      "quat": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "radius": 0.10344617267582552,
+      "margin_m": 0.005,
+      "mesh_assignments": [
+        {
+          "geom_id": 51,
+          "geom_name": "unnamed_geom_51",
+          "mesh_name": "left_hand_palm_link",
+          "body_name": "left_wrist_yaw_link",
+          "duplicate_geom_ids": []
+        },
+        {
+          "geom_id": 54,
+          "geom_name": "unnamed_geom_54",
+          "mesh_name": "left_hand_thumb_0_link",
+          "body_name": "left_hand_thumb_0_link",
+          "duplicate_geom_ids": []
+        },
+        {
+          "geom_id": 55,
+          "geom_name": "unnamed_geom_55",
+          "mesh_name": "left_hand_thumb_1_link",
+          "body_name": "left_hand_thumb_1_link",
+          "duplicate_geom_ids": []
+        },
+        {
+          "geom_id": 56,
+          "geom_name": "unnamed_geom_56",
+          "mesh_name": "left_hand_thumb_2_link",
+          "body_name": "left_hand_thumb_2_link",
+          "duplicate_geom_ids": []
+        },
+        {
+          "geom_id": 57,
+          "geom_name": "unnamed_geom_57",
+          "mesh_name": "left_hand_middle_0_link",
+          "body_name": "left_hand_middle_0_link",
+          "duplicate_geom_ids": []
+        },
+        {
+          "geom_id": 58,
+          "geom_name": "unnamed_geom_58",
+          "mesh_name": "left_hand_middle_1_link",
+          "body_name": "left_hand_middle_1_link",
+          "duplicate_geom_ids": []
+        },
+        {
+          "geom_id": 59,
+          "geom_name": "unnamed_geom_59",
+          "mesh_name": "left_hand_index_0_link",
+          "body_name": "left_hand_index_0_link",
+          "duplicate_geom_ids": []
+        },
+        {
+          "geom_id": 60,
+          "geom_name": "unnamed_geom_60",
+          "mesh_name": "left_hand_index_1_link",
+          "body_name": "left_hand_index_1_link",
+          "duplicate_geom_ids": []
+        }
+      ],
+      "assigned_geom_ids": [
+        51,
+        54,
+        55,
+        56,
+        57,
+        58,
+        59,
+        60
+      ],
+      "assigned_geom_names": [
+        "unnamed_geom_51",
+        "unnamed_geom_54",
+        "unnamed_geom_55",
+        "unnamed_geom_56",
+        "unnamed_geom_57",
+        "unnamed_geom_58",
+        "unnamed_geom_59",
+        "unnamed_geom_60"
+      ],
+      "assigned_mesh_names": [
+        "left_hand_palm_link",
+        "left_hand_thumb_0_link",
+        "left_hand_thumb_1_link",
+        "left_hand_thumb_2_link",
+        "left_hand_middle_0_link",
+        "left_hand_middle_1_link",
+        "left_hand_index_0_link",
+        "left_hand_index_1_link"
+      ],
+      "preserves_existing_hand_sphere": true,
+      "mesh_piece_bounds_body_local": [
+        [
+          0.04149999832731315,
+          -0.06870346140644584,
+          -0.04389594664499769
+        ],
+        [
+          0.21696167621353935,
+          0.024416213762966273,
+          0.043897726929538215
+        ]
+      ]
+    },
+    {
+      "id": "right_shoulder_pitch_link",
+      "body_id": 31,
+      "body_name": "right_shoulder_pitch_link",
+      "group": "arms",
+      "kind": "capsule",
+      "center": [
+        0.00015125331595170863,
+        -0.03004411420123105,
+        -0.00568247332280944
+      ],
+      "quat": [
+        -0.6668278182888943,
+        0.2352459580015639,
+        0.22700855597217923,
+        0.6696768739589459
+      ],
+      "endpoints": [
+        [
+          1.62704882913347e-05,
+          -0.036809310450165555,
+          -0.014292559818975191
+        ],
+        [
+          0.00028623614361208255,
+          -0.023278917952296543,
+          0.0029276131733563106
+        ]
+      ],
+      "radius": 0.04951436738677296,
+      "margin_m": 0.003,
+      "mesh_assignments": [
+        {
+          "geom_id": 61,
+          "geom_name": "unnamed_geom_61",
+          "mesh_name": "right_shoulder_pitch_link",
+          "body_name": "right_shoulder_pitch_link",
+          "duplicate_geom_ids": []
+        }
+      ],
+      "assigned_geom_ids": [
+        61
+      ],
+      "assigned_geom_names": [
+        "unnamed_geom_61"
+      ],
+      "assigned_mesh_names": [
+        "right_shoulder_pitch_link"
+      ],
+      "preserves_existing_hand_sphere": false,
+      "mesh_piece_bounds_body_local": [
+        [
+          -0.031012414712648873,
+          -0.07449751256272799,
+          -0.05032986858786644
+        ],
+        [
+          0.031035971693382788,
+          8.029172542106004e-09,
+          0.04004951297429666
+        ]
+      ]
+    },
+    {
+      "id": "right_shoulder_roll_link",
+      "body_id": 32,
+      "body_name": "right_shoulder_roll_link",
+      "group": "arms",
+      "kind": "capsule",
+      "center": [
+        0.0004416274191364651,
+        -0.0035135820240320935,
+        -0.03072370872552205
+      ],
+      "quat": [
+        -0.7071067811865475,
+        0.0,
+        0.0,
+        0.7071067811865475
+      ],
+      "endpoints": [
+        [
+          0.0004416274191364651,
+          -0.0035135820240320935,
+          -0.06079952584737502
+        ],
+        [
+          0.0004416274191364651,
+          -0.0035135820240320935,
+          -0.0006478916036690829
+        ]
+      ],
+      "radius": 0.05313305840904213,
+      "margin_m": 0.003,
+      "mesh_assignments": [
+        {
+          "geom_id": 63,
+          "geom_name": "unnamed_geom_63",
+          "mesh_name": "right_shoulder_roll_link",
+          "body_name": "right_shoulder_roll_link",
+          "duplicate_geom_ids": []
+        }
+      ],
+      "assigned_geom_ids": [
+        63
+      ],
+      "assigned_geom_names": [
+        "unnamed_geom_63"
+      ],
+      "assigned_mesh_names": [
+        "right_shoulder_roll_link"
+      ],
+      "preserves_existing_hand_sphere": false,
+      "mesh_piece_bounds_body_local": [
+        [
+          -0.0401525175852603,
+          -0.03994247320709384,
+          -0.10319999965468443
+        ],
+        [
+          0.04103577242353323,
+          0.032915309159029654,
+          0.03342677638065595
+        ]
+      ]
+    },
+    {
+      "id": "right_shoulder_yaw_link",
+      "body_id": 33,
+      "body_name": "right_shoulder_yaw_link",
+      "group": "arms",
+      "kind": "capsule",
+      "center": [
+        0.007782056682672105,
+        0.004153067345333959,
+        -0.03639126523897571
+      ],
+      "quat": [
+        -0.7071067811865475,
+        0.0,
+        0.0,
+        0.7071067811865475
+      ],
+      "endpoints": [
+        [
+          0.007782056682672105,
+          0.004153067345333959,
+          -0.07928649565002317
+        ],
+        [
+          0.007782056682672105,
+          0.004153067345333959,
+          0.006503965172071743
+        ]
+      ],
+      "radius": 0.05164432307815626,
+      "margin_m": 0.003,
+      "mesh_assignments": [
+        {
+          "geom_id": 65,
+          "geom_name": "unnamed_geom_65",
+          "mesh_name": "right_shoulder_yaw_link",
+          "body_name": "right_shoulder_yaw_link",
+          "duplicate_geom_ids": [
+            66
+          ]
+        }
+      ],
+      "assigned_geom_ids": [
+        65
+      ],
+      "assigned_geom_names": [
+        "unnamed_geom_65"
+      ],
+      "assigned_mesh_names": [
+        "right_shoulder_yaw_link"
+      ],
+      "preserves_existing_hand_sphere": false,
+      "mesh_piece_bounds_body_local": [
+        [
+          -0.032810695366216676,
+          -0.033106371408459796,
+          -0.11369692337955757
+        ],
+        [
+          0.04837480873156089,
+          0.041412506099127715,
+          0.03157415543398588
+        ]
+      ]
+    },
+    {
+      "id": "right_elbow_link",
+      "body_id": 34,
+      "body_name": "right_elbow_link",
+      "group": "arms",
+      "kind": "capsule",
+      "center": [
+        0.04418897347019076,
+        -0.009776722466934274,
+        -0.0077457689943035155
+      ],
+      "quat": [
+        0.37893786099063126,
+        0.44571160348275624,
+        0.6178883421236754,
+        0.525320150666554
+      ],
+      "endpoints": [
+        [
+          0.009134745700297084,
+          -0.021431372858516286,
+          -0.001723909987072258
+        ],
+        [
+          0.07924320124008444,
+          0.001877927924647737,
+          -0.013767628001534773
+        ]
+      ],
+      "radius": 0.04234552444966041,
+      "margin_m": 0.003,
+      "mesh_assignments": [
+        {
+          "geom_id": 67,
+          "geom_name": "unnamed_geom_67",
+          "mesh_name": "right_elbow_link",
+          "body_name": "right_elbow_link",
+          "duplicate_geom_ids": [
+            68
+          ]
+        }
+      ],
+      "assigned_geom_ids": [
+        67
+      ],
+      "assigned_geom_names": [
+        "unnamed_geom_67"
+      ],
+      "assigned_mesh_names": [
+        "right_elbow_link"
+      ],
+      "preserves_existing_hand_sphere": false,
+      "mesh_piece_bounds_body_local": [
+        [
+          -0.02977511371992952,
+          -0.034777160343964074,
+          -0.04543027590149647
+        ],
+        [
+          0.10000001732647802,
+          0.03125531243430651,
+          0.02977511527332599
+        ]
+      ]
+    },
+    {
+      "id": "right_wrist_roll_link",
+      "body_id": 35,
+      "body_name": "right_wrist_roll_link",
+      "group": "arms",
+      "kind": "capsule",
+      "center": [
+        0.02255549881072204,
+        0.00024713398731834174,
+        3.6905890149485643e-10
+      ],
+      "quat": [
+        0.7071067811865475,
+        0.0,
+        0.7071067811865475,
+        0.0
+      ],
+      "endpoints": [
+        [
+          0.008619259181166516,
+          0.00024713398731834174,
+          3.6905890149485643e-10
+        ],
+        [
+          0.03649173844027756,
+          0.00024713398731834174,
+          3.6905890149485643e-10
+        ]
+      ],
+      "radius": 0.03412051847816093,
+      "margin_m": 0.003,
+      "mesh_assignments": [
+        {
+          "geom_id": 69,
+          "geom_name": "unnamed_geom_69",
+          "mesh_name": "right_wrist_roll_link",
+          "body_name": "right_wrist_roll_link",
+          "duplicate_geom_ids": [
+            70
+          ]
+        }
+      ],
+      "assigned_geom_ids": [
+        69
+      ],
+      "assigned_geom_names": [
+        "unnamed_geom_69"
+      ],
+      "assigned_mesh_names": [
+        "right_wrist_roll_link"
+      ],
+      "preserves_existing_hand_sphere": false,
+      "mesh_piece_bounds_body_local": [
+        [
+          -9.304127644655187e-10,
+          -0.029999999469509455,
+          -0.02999999180790158
+        ],
+        [
+          0.05599305250550942,
+          0.03049426744414614,
+          0.029999992546019382
+        ]
+      ]
+    },
+    {
+      "id": "right_wrist_pitch_link",
+      "body_id": 36,
+      "body_name": "right_wrist_pitch_link",
+      "group": "arms",
+      "kind": "capsule",
+      "center": [
+        0.02322752815338398,
+        0.0005213866150167387,
+        -0.00011792276467895433
+      ],
+      "quat": [
+        0.5043854649854721,
+        0.5069900484139837,
+        0.4955162579903481,
+        0.4929706193961446
+      ],
+      "endpoints": [
+        [
+          0.0004549960836724581,
+          0.0010427229683762018,
+          -5.995879939084205e-07
+        ],
+        [
+          0.0460000602230955,
+          5.026165727568616e-08,
+          -0.00023524594136400023
+        ]
+      ],
+      "radius": 0.036958812706151714,
+      "margin_m": 0.003,
+      "mesh_assignments": [
+        {
+          "geom_id": 71,
+          "geom_name": "unnamed_geom_71",
+          "mesh_name": "right_wrist_pitch_link",
+          "body_name": "right_wrist_pitch_link",
+          "duplicate_geom_ids": [
+            72
+          ]
+        }
+      ],
+      "assigned_geom_ids": [
+        71
+      ],
+      "assigned_geom_names": [
+        "unnamed_geom_71"
+      ],
+      "assigned_mesh_names": [
+        "right_wrist_pitch_link"
+      ],
+      "preserves_existing_hand_sphere": false,
+      "mesh_piece_bounds_body_local": [
+        [
+          -0.02850000167062124,
+          -0.028490660048043567,
+          -0.02849066090539349
+        ],
+        [
+          0.07450000349338515,
+          0.02849066067467212,
+          0.028490661536966753
+        ]
+      ]
+    },
+    {
+      "id": "right_wrist_yaw_link",
+      "body_id": 37,
+      "body_name": "right_wrist_yaw_link",
+      "group": "arms",
+      "kind": "capsule",
+      "center": [
+        0.015282772486862866,
+        -0.0030677444499881013,
+        -0.0002470965173696042
+      ],
+      "quat": [
+        0.7071067811865475,
+        0.0,
+        0.7071067811865475,
+        0.0
+      ],
+      "endpoints": [
+        [
+          0.004059752120328575,
+          -0.0030677444499881013,
+          -0.0002470965173696042
+        ],
+        [
+          0.02650579285339716,
+          -0.0030677444499881013,
+          -0.0002470965173696042
+        ]
+      ],
+      "radius": 0.03648086094414189,
+      "margin_m": 0.003,
+      "mesh_assignments": [
+        {
+          "geom_id": 73,
+          "geom_name": "unnamed_geom_73",
+          "mesh_name": "right_wrist_yaw_link",
+          "body_name": "right_wrist_yaw_link",
+          "duplicate_geom_ids": []
+        }
+      ],
+      "assigned_geom_ids": [
+        73
+      ],
+      "assigned_geom_names": [
+        "unnamed_geom_73"
+      ],
+      "assigned_mesh_names": [
+        "right_wrist_yaw_link"
+      ],
+      "preserves_existing_hand_sphere": false,
+      "mesh_piece_bounds_body_local": [
+        [
+          -0.017992655879838133,
+          -0.029999999203503065,
+          -0.030494193178368836
+        ],
+        [
+          0.041500200523232084,
+          0.023864510303526862,
+          0.030000000143629628
+        ]
+      ]
+    },
+    {
+      "id": "right_hand",
+      "body_id": 37,
+      "body_name": "right_wrist_yaw_link",
+      "group": "hands",
+      "kind": "sphere",
+      "center": [
+        0.12923083764296023,
+        0.022143624205178604,
+        -8.903443813323975e-07
+      ],
+      "quat": [
+        1.0,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "radius": 0.10344617273405537,
+      "margin_m": 0.005,
+      "mesh_assignments": [
+        {
+          "geom_id": 74,
+          "geom_name": "unnamed_geom_74",
+          "mesh_name": "right_hand_palm_link",
+          "body_name": "right_wrist_yaw_link",
+          "duplicate_geom_ids": []
+        },
+        {
+          "geom_id": 77,
+          "geom_name": "unnamed_geom_77",
+          "mesh_name": "right_hand_thumb_0_link",
+          "body_name": "right_hand_thumb_0_link",
+          "duplicate_geom_ids": []
+        },
+        {
+          "geom_id": 78,
+          "geom_name": "unnamed_geom_78",
+          "mesh_name": "right_hand_thumb_1_link",
+          "body_name": "right_hand_thumb_1_link",
+          "duplicate_geom_ids": []
+        },
+        {
+          "geom_id": 79,
+          "geom_name": "unnamed_geom_79",
+          "mesh_name": "right_hand_thumb_2_link",
+          "body_name": "right_hand_thumb_2_link",
+          "duplicate_geom_ids": []
+        },
+        {
+          "geom_id": 80,
+          "geom_name": "unnamed_geom_80",
+          "mesh_name": "right_hand_middle_0_link",
+          "body_name": "right_hand_middle_0_link",
+          "duplicate_geom_ids": []
+        },
+        {
+          "geom_id": 81,
+          "geom_name": "unnamed_geom_81",
+          "mesh_name": "right_hand_middle_1_link",
+          "body_name": "right_hand_middle_1_link",
+          "duplicate_geom_ids": []
+        },
+        {
+          "geom_id": 82,
+          "geom_name": "unnamed_geom_82",
+          "mesh_name": "right_hand_index_0_link",
+          "body_name": "right_hand_index_0_link",
+          "duplicate_geom_ids": []
+        },
+        {
+          "geom_id": 83,
+          "geom_name": "unnamed_geom_83",
+          "mesh_name": "right_hand_index_1_link",
+          "body_name": "right_hand_index_1_link",
+          "duplicate_geom_ids": []
+        }
+      ],
+      "assigned_geom_ids": [
+        74,
+        77,
+        78,
+        79,
+        80,
+        81,
+        82,
+        83
+      ],
+      "assigned_geom_names": [
+        "unnamed_geom_74",
+        "unnamed_geom_77",
+        "unnamed_geom_78",
+        "unnamed_geom_79",
+        "unnamed_geom_80",
+        "unnamed_geom_81",
+        "unnamed_geom_82",
+        "unnamed_geom_83"
+      ],
+      "assigned_mesh_names": [
+        "right_hand_palm_link",
+        "right_hand_thumb_0_link",
+        "right_hand_thumb_1_link",
+        "right_hand_thumb_2_link",
+        "right_hand_middle_0_link",
+        "right_hand_middle_1_link",
+        "right_hand_index_0_link",
+        "right_hand_index_1_link"
+      ],
+      "preserves_existing_hand_sphere": true,
+      "mesh_piece_bounds_body_local": [
+        [
+          0.041499998160331765,
+          -0.024416212396698896,
+          -0.043897725961162086
+        ],
+        [
+          0.21696167621353935,
+          0.0687034614064458,
+          0.0438959438982207
+        ]
+      ]
+    }
+  ],
+  "shape_counts": {
+    "box": 11,
+    "capsule": 22,
+    "sphere": 2
+  },
+  "group_counts": {
+    "trunk": 4,
+    "legs": 10,
+    "feet": 4,
+    "head": 1,
+    "arms": 14,
+    "hands": 2
+  },
+  "body_margin_m": 0.003,
+  "foot_split_body_z_m": -0.008,
+  "unique_mesh_geom_count": 49,
+  "unique_mesh_vertex_count": 314752,
+  "unique_mesh_triangle_count": 629338,
+  "observation_changes": false,
+  "physics_changes": false,
+  "training_changes": false,
+  "measured_runtime_cost": null,
+  "limitations": [
+    "Enclosing primitives include empty space around mesh surfaces; this is an approximation.",
+    "Coverage validates robot mesh enclosure, not obstacle clearance or continuous collision detection.",
+    "Meshes and poses are inspected offline; no collision checker is enabled by this proposal."
+  ],
+  "validation": {
+    "all_covered": true,
+    "missing_geom_ids": [],
+    "incomplete_mesh_geom_ids": [],
+    "shape_count": 35,
+    "covered_mesh_geom_count_including_duplicates": 69,
+    "minimum_margin_m": 0.002999999999999989,
+    "triangle_coverage_method": "Convex enclosure of full mesh triangles; foot triangles clipped at split plane before enclosure",
+    "shapes": [
+      {
+        "shape_id": "pelvis",
+        "minimum_margin_m": 0.0029999999999999957,
+        "required_margin_m": 0.003,
+        "checked_points": 28675,
+        "covered": true
+      },
+      {
+        "shape_id": "left_hip_pitch_link",
+        "minimum_margin_m": 0.0029999999999999957,
+        "required_margin_m": 0.003,
+        "checked_points": 1811,
+        "covered": true
+      },
+      {
+        "shape_id": "left_hip_roll_link",
+        "minimum_margin_m": 0.0030000000000000027,
+        "required_margin_m": 0.003,
+        "checked_points": 1925,
+        "covered": true
+      },
+      {
+        "shape_id": "left_hip_yaw_link",
+        "minimum_margin_m": 0.002999999999999989,
+        "required_margin_m": 0.003,
+        "checked_points": 2987,
+        "covered": true
+      },
+      {
+        "shape_id": "left_knee_link",
+        "minimum_margin_m": 0.0030000000000000027,
+        "required_margin_m": 0.003,
+        "checked_points": 8558,
+        "covered": true
+      },
+      {
+        "shape_id": "left_ankle_pitch_link",
+        "minimum_margin_m": 0.002999999999999999,
+        "required_margin_m": 0.003,
+        "checked_points": 714,
+        "covered": true
+      },
+      {
+        "shape_id": "left_sole",
+        "minimum_margin_m": 0.002999999999999999,
+        "required_margin_m": 0.003,
+        "checked_points": 3948,
+        "covered": true
+      },
+      {
+        "shape_id": "left_upper_foot",
+        "minimum_margin_m": 0.002999999999999999,
+        "required_margin_m": 0.003,
+        "checked_points": 4423,
+        "covered": true
+      },
+      {
+        "shape_id": "right_hip_pitch_link",
+        "minimum_margin_m": 0.0029999999999999957,
+        "required_margin_m": 0.003,
+        "checked_points": 1807,
+        "covered": true
+      },
+      {
+        "shape_id": "right_hip_roll_link",
+        "minimum_margin_m": 0.0030000000000000027,
+        "required_margin_m": 0.003,
+        "checked_points": 1930,
+        "covered": true
+      },
+      {
+        "shape_id": "right_hip_yaw_link",
+        "minimum_margin_m": 0.0030000000000000027,
+        "required_margin_m": 0.003,
+        "checked_points": 2987,
+        "covered": true
+      },
+      {
+        "shape_id": "right_knee_link",
+        "minimum_margin_m": 0.0030000000000000027,
+        "required_margin_m": 0.003,
+        "checked_points": 8532,
+        "covered": true
+      },
+      {
+        "shape_id": "right_ankle_pitch_link",
+        "minimum_margin_m": 0.002999999999999999,
+        "required_margin_m": 0.003,
+        "checked_points": 714,
+        "covered": true
+      },
+      {
+        "shape_id": "right_sole",
+        "minimum_margin_m": 0.002999999999999999,
+        "required_margin_m": 0.003,
+        "checked_points": 3946,
+        "covered": true
+      },
+      {
+        "shape_id": "right_upper_foot",
+        "minimum_margin_m": 0.002999999999999999,
+        "required_margin_m": 0.003,
+        "checked_points": 4417,
+        "covered": true
+      },
+      {
+        "shape_id": "waist_yaw_link",
+        "minimum_margin_m": 0.002999999999999999,
+        "required_margin_m": 0.003,
+        "checked_points": 6100,
+        "covered": true
+      },
+      {
+        "shape_id": "waist_roll_link",
+        "minimum_margin_m": 0.002999999999999999,
+        "required_margin_m": 0.003,
+        "checked_points": 858,
+        "covered": true
+      },
+      {
+        "shape_id": "torso",
+        "minimum_margin_m": 0.0030000000000000027,
+        "required_margin_m": 0.003,
+        "checked_points": 28125,
+        "covered": true
+      },
+      {
+        "shape_id": "head",
+        "minimum_margin_m": 0.0030000000000000027,
+        "required_margin_m": 0.003,
+        "checked_points": 9327,
+        "covered": true
+      },
+      {
+        "shape_id": "left_shoulder_pitch_link",
+        "minimum_margin_m": 0.0029999999999999957,
+        "required_margin_m": 0.003,
+        "checked_points": 1770,
+        "covered": true
+      },
+      {
+        "shape_id": "left_shoulder_roll_link",
+        "minimum_margin_m": 0.0029999999999999957,
+        "required_margin_m": 0.003,
+        "checked_points": 4004,
+        "covered": true
+      },
+      {
+        "shape_id": "left_shoulder_yaw_link",
+        "minimum_margin_m": 0.0030000000000000027,
+        "required_margin_m": 0.003,
+        "checked_points": 2493,
+        "covered": true
+      },
+      {
+        "shape_id": "left_elbow_link",
+        "minimum_margin_m": 0.0029999999999999957,
+        "required_margin_m": 0.003,
+        "checked_points": 905,
+        "covered": true
+      },
+      {
+        "shape_id": "left_wrist_roll_link",
+        "minimum_margin_m": 0.002999999999999999,
+        "required_margin_m": 0.003,
+        "checked_points": 3563,
+        "covered": true
+      },
+      {
+        "shape_id": "left_wrist_pitch_link",
+        "minimum_margin_m": 0.0030000000000000027,
+        "required_margin_m": 0.003,
+        "checked_points": 861,
+        "covered": true
+      },
+      {
+        "shape_id": "left_wrist_yaw_link",
+        "minimum_margin_m": 0.0030000000000000027,
+        "required_margin_m": 0.003,
+        "checked_points": 3188,
+        "covered": true
+      },
+      {
+        "shape_id": "left_hand",
+        "minimum_margin_m": 0.004999999917260564,
+        "required_margin_m": 0.005,
+        "checked_points": 81432,
+        "covered": true
+      },
+      {
+        "shape_id": "right_shoulder_pitch_link",
+        "minimum_margin_m": 0.0030000000000000027,
+        "required_margin_m": 0.003,
+        "checked_points": 1770,
+        "covered": true
+      },
+      {
+        "shape_id": "right_shoulder_roll_link",
+        "minimum_margin_m": 0.0030000000000000027,
+        "required_margin_m": 0.003,
+        "checked_points": 4020,
+        "covered": true
+      },
+      {
+        "shape_id": "right_shoulder_yaw_link",
+        "minimum_margin_m": 0.0030000000000000027,
+        "required_margin_m": 0.003,
+        "checked_points": 2501,
+        "covered": true
+      },
+      {
+        "shape_id": "right_elbow_link",
+        "minimum_margin_m": 0.0030000000000000027,
+        "required_margin_m": 0.003,
+        "checked_points": 889,
+        "covered": true
+      },
+      {
+        "shape_id": "right_wrist_roll_link",
+        "minimum_margin_m": 0.0030000000000000027,
+        "required_margin_m": 0.003,
+        "checked_points": 3562,
+        "covered": true
+      },
+      {
+        "shape_id": "right_wrist_pitch_link",
+        "minimum_margin_m": 0.0030000000000000027,
+        "required_margin_m": 0.003,
+        "checked_points": 797,
+        "covered": true
+      },
+      {
+        "shape_id": "right_wrist_yaw_link",
+        "minimum_margin_m": 0.0030000000000000027,
+        "required_margin_m": 0.003,
+        "checked_points": 3425,
+        "covered": true
+      },
+      {
+        "shape_id": "right_hand",
+        "minimum_margin_m": 0.004999999917260661,
+        "required_margin_m": 0.005,
+        "checked_points": 81432,
+        "covered": true
+      }
+    ]
+  },
+  "review_pose_validation": {
+    "all_covered": true,
+    "missing_geom_ids": [],
+    "incomplete_mesh_geom_ids": [],
+    "shape_count": 35,
+    "covered_mesh_geom_count_including_duplicates": 69,
+    "minimum_margin_m": 0.0029999999999998778,
+    "triangle_coverage_method": "Convex enclosure of full mesh triangles; foot triangles clipped at split plane before enclosure",
+    "shapes": [
+      {
+        "shape_id": "pelvis",
+        "minimum_margin_m": 0.0029999999999999957,
+        "required_margin_m": 0.003,
+        "checked_points": 28675,
+        "covered": true
+      },
+      {
+        "shape_id": "left_hip_pitch_link",
+        "minimum_margin_m": 0.0029999999999999957,
+        "required_margin_m": 0.003,
+        "checked_points": 1811,
+        "covered": true
+      },
+      {
+        "shape_id": "left_hip_roll_link",
+        "minimum_margin_m": 0.0030000000000000027,
+        "required_margin_m": 0.003,
+        "checked_points": 1925,
+        "covered": true
+      },
+      {
+        "shape_id": "left_hip_yaw_link",
+        "minimum_margin_m": 0.002999999999999989,
+        "required_margin_m": 0.003,
+        "checked_points": 2987,
+        "covered": true
+      },
+      {
+        "shape_id": "left_knee_link",
+        "minimum_margin_m": 0.0030000000000000027,
+        "required_margin_m": 0.003,
+        "checked_points": 8558,
+        "covered": true
+      },
+      {
+        "shape_id": "left_ankle_pitch_link",
+        "minimum_margin_m": 0.002999999999999999,
+        "required_margin_m": 0.003,
+        "checked_points": 714,
+        "covered": true
+      },
+      {
+        "shape_id": "left_sole",
+        "minimum_margin_m": 0.002999999999999999,
+        "required_margin_m": 0.003,
+        "checked_points": 3948,
+        "covered": true
+      },
+      {
+        "shape_id": "left_upper_foot",
+        "minimum_margin_m": 0.002999999999999999,
+        "required_margin_m": 0.003,
+        "checked_points": 4423,
+        "covered": true
+      },
+      {
+        "shape_id": "right_hip_pitch_link",
+        "minimum_margin_m": 0.0029999999999999957,
+        "required_margin_m": 0.003,
+        "checked_points": 1807,
+        "covered": true
+      },
+      {
+        "shape_id": "right_hip_roll_link",
+        "minimum_margin_m": 0.0030000000000000027,
+        "required_margin_m": 0.003,
+        "checked_points": 1930,
+        "covered": true
+      },
+      {
+        "shape_id": "right_hip_yaw_link",
+        "minimum_margin_m": 0.0030000000000000027,
+        "required_margin_m": 0.003,
+        "checked_points": 2987,
+        "covered": true
+      },
+      {
+        "shape_id": "right_knee_link",
+        "minimum_margin_m": 0.0030000000000000027,
+        "required_margin_m": 0.003,
+        "checked_points": 8532,
+        "covered": true
+      },
+      {
+        "shape_id": "right_ankle_pitch_link",
+        "minimum_margin_m": 0.002999999999999999,
+        "required_margin_m": 0.003,
+        "checked_points": 714,
+        "covered": true
+      },
+      {
+        "shape_id": "right_sole",
+        "minimum_margin_m": 0.002999999999999999,
+        "required_margin_m": 0.003,
+        "checked_points": 3946,
+        "covered": true
+      },
+      {
+        "shape_id": "right_upper_foot",
+        "minimum_margin_m": 0.002999999999999999,
+        "required_margin_m": 0.003,
+        "checked_points": 4417,
+        "covered": true
+      },
+      {
+        "shape_id": "waist_yaw_link",
+        "minimum_margin_m": 0.002999999999999999,
+        "required_margin_m": 0.003,
+        "checked_points": 6100,
+        "covered": true
+      },
+      {
+        "shape_id": "waist_roll_link",
+        "minimum_margin_m": 0.002999999999999999,
+        "required_margin_m": 0.003,
+        "checked_points": 858,
+        "covered": true
+      },
+      {
+        "shape_id": "torso",
+        "minimum_margin_m": 0.0030000000000000027,
+        "required_margin_m": 0.003,
+        "checked_points": 28125,
+        "covered": true
+      },
+      {
+        "shape_id": "head",
+        "minimum_margin_m": 0.0030000000000000027,
+        "required_margin_m": 0.003,
+        "checked_points": 9327,
+        "covered": true
+      },
+      {
+        "shape_id": "left_shoulder_pitch_link",
+        "minimum_margin_m": 0.0030000000000000443,
+        "required_margin_m": 0.003,
+        "checked_points": 1770,
+        "covered": true
+      },
+      {
+        "shape_id": "left_shoulder_roll_link",
+        "minimum_margin_m": 0.002999999999999989,
+        "required_margin_m": 0.003,
+        "checked_points": 4004,
+        "covered": true
+      },
+      {
+        "shape_id": "left_shoulder_yaw_link",
+        "minimum_margin_m": 0.0030000000000000027,
+        "required_margin_m": 0.003,
+        "checked_points": 2493,
+        "covered": true
+      },
+      {
+        "shape_id": "left_elbow_link",
+        "minimum_margin_m": 0.0030000000000000165,
+        "required_margin_m": 0.003,
+        "checked_points": 905,
+        "covered": true
+      },
+      {
+        "shape_id": "left_wrist_roll_link",
+        "minimum_margin_m": 0.0029999999999999506,
+        "required_margin_m": 0.003,
+        "checked_points": 3563,
+        "covered": true
+      },
+      {
+        "shape_id": "left_wrist_pitch_link",
+        "minimum_margin_m": 0.0030000000000000096,
+        "required_margin_m": 0.003,
+        "checked_points": 861,
+        "covered": true
+      },
+      {
+        "shape_id": "left_wrist_yaw_link",
+        "minimum_margin_m": 0.0030000000000000165,
+        "required_margin_m": 0.003,
+        "checked_points": 3188,
+        "covered": true
+      },
+      {
+        "shape_id": "left_hand",
+        "minimum_margin_m": 0.004999999917260689,
+        "required_margin_m": 0.005,
+        "checked_points": 81432,
+        "covered": true
+      },
+      {
+        "shape_id": "right_shoulder_pitch_link",
+        "minimum_margin_m": 0.0030000000000000443,
+        "required_margin_m": 0.003,
+        "checked_points": 1770,
+        "covered": true
+      },
+      {
+        "shape_id": "right_shoulder_roll_link",
+        "minimum_margin_m": 0.0029999999999998778,
+        "required_margin_m": 0.003,
+        "checked_points": 4020,
+        "covered": true
+      },
+      {
+        "shape_id": "right_shoulder_yaw_link",
+        "minimum_margin_m": 0.00299999999999994,
+        "required_margin_m": 0.003,
+        "checked_points": 2501,
+        "covered": true
+      },
+      {
+        "shape_id": "right_elbow_link",
+        "minimum_margin_m": 0.002999999999999982,
+        "required_margin_m": 0.003,
+        "checked_points": 889,
+        "covered": true
+      },
+      {
+        "shape_id": "right_wrist_roll_link",
+        "minimum_margin_m": 0.002999999999999982,
+        "required_margin_m": 0.003,
+        "checked_points": 3562,
+        "covered": true
+      },
+      {
+        "shape_id": "right_wrist_pitch_link",
+        "minimum_margin_m": 0.002999999999999954,
+        "required_margin_m": 0.003,
+        "checked_points": 797,
+        "covered": true
+      },
+      {
+        "shape_id": "right_wrist_yaw_link",
+        "minimum_margin_m": 0.002999999999999989,
+        "required_margin_m": 0.003,
+        "checked_points": 3425,
+        "covered": true
+      },
+      {
+        "shape_id": "right_hand",
+        "minimum_margin_m": 0.004999999917260675,
+        "required_margin_m": 0.005,
+        "checked_points": 81432,
+        "covered": true
+      }
+    ]
+  },
+  "additional_pose_validation": [
+    {
+      "name": "raised_arms",
+      "qpos": [
+        0.0,
+        0.0,
+        0.800000011920929,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        -0.10000000149011612,
+        0.0,
+        0.0,
+        0.30000001192092896,
+        -0.20000000298023224,
+        0.0,
+        -0.10000000149011612,
+        0.0,
+        0.0,
+        0.30000001192092896,
+        -0.20000000298023224,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        -0.8,
+        0.42,
+        0.0,
+        1.1,
+        0.0,
+        0.0,
+        0.0,
+        -0.8,
+        -0.42,
+        0.0,
+        1.1,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "validation": {
+        "all_covered": true,
+        "missing_geom_ids": [],
+        "incomplete_mesh_geom_ids": [],
+        "shape_count": 35,
+        "covered_mesh_geom_count_including_duplicates": 69,
+        "minimum_margin_m": 0.0029999999999998916,
+        "triangle_coverage_method": "Convex enclosure of full mesh triangles; foot triangles clipped at split plane before enclosure",
+        "shapes": [
+          {
+            "shape_id": "pelvis",
+            "minimum_margin_m": 0.0029999999999999957,
+            "required_margin_m": 0.003,
+            "checked_points": 28675,
+            "covered": true
+          },
+          {
+            "shape_id": "left_hip_pitch_link",
+            "minimum_margin_m": 0.0029999999999999957,
+            "required_margin_m": 0.003,
+            "checked_points": 1811,
+            "covered": true
+          },
+          {
+            "shape_id": "left_hip_roll_link",
+            "minimum_margin_m": 0.0030000000000000027,
+            "required_margin_m": 0.003,
+            "checked_points": 1925,
+            "covered": true
+          },
+          {
+            "shape_id": "left_hip_yaw_link",
+            "minimum_margin_m": 0.002999999999999989,
+            "required_margin_m": 0.003,
+            "checked_points": 2987,
+            "covered": true
+          },
+          {
+            "shape_id": "left_knee_link",
+            "minimum_margin_m": 0.0030000000000000027,
+            "required_margin_m": 0.003,
+            "checked_points": 8558,
+            "covered": true
+          },
+          {
+            "shape_id": "left_ankle_pitch_link",
+            "minimum_margin_m": 0.002999999999999999,
+            "required_margin_m": 0.003,
+            "checked_points": 714,
+            "covered": true
+          },
+          {
+            "shape_id": "left_sole",
+            "minimum_margin_m": 0.002999999999999999,
+            "required_margin_m": 0.003,
+            "checked_points": 3948,
+            "covered": true
+          },
+          {
+            "shape_id": "left_upper_foot",
+            "minimum_margin_m": 0.002999999999999999,
+            "required_margin_m": 0.003,
+            "checked_points": 4423,
+            "covered": true
+          },
+          {
+            "shape_id": "right_hip_pitch_link",
+            "minimum_margin_m": 0.0029999999999999957,
+            "required_margin_m": 0.003,
+            "checked_points": 1807,
+            "covered": true
+          },
+          {
+            "shape_id": "right_hip_roll_link",
+            "minimum_margin_m": 0.0030000000000000027,
+            "required_margin_m": 0.003,
+            "checked_points": 1930,
+            "covered": true
+          },
+          {
+            "shape_id": "right_hip_yaw_link",
+            "minimum_margin_m": 0.0030000000000000027,
+            "required_margin_m": 0.003,
+            "checked_points": 2987,
+            "covered": true
+          },
+          {
+            "shape_id": "right_knee_link",
+            "minimum_margin_m": 0.0030000000000000027,
+            "required_margin_m": 0.003,
+            "checked_points": 8532,
+            "covered": true
+          },
+          {
+            "shape_id": "right_ankle_pitch_link",
+            "minimum_margin_m": 0.002999999999999999,
+            "required_margin_m": 0.003,
+            "checked_points": 714,
+            "covered": true
+          },
+          {
+            "shape_id": "right_sole",
+            "minimum_margin_m": 0.002999999999999999,
+            "required_margin_m": 0.003,
+            "checked_points": 3946,
+            "covered": true
+          },
+          {
+            "shape_id": "right_upper_foot",
+            "minimum_margin_m": 0.002999999999999999,
+            "required_margin_m": 0.003,
+            "checked_points": 4417,
+            "covered": true
+          },
+          {
+            "shape_id": "waist_yaw_link",
+            "minimum_margin_m": 0.002999999999999999,
+            "required_margin_m": 0.003,
+            "checked_points": 6100,
+            "covered": true
+          },
+          {
+            "shape_id": "waist_roll_link",
+            "minimum_margin_m": 0.002999999999999999,
+            "required_margin_m": 0.003,
+            "checked_points": 858,
+            "covered": true
+          },
+          {
+            "shape_id": "torso",
+            "minimum_margin_m": 0.0030000000000000027,
+            "required_margin_m": 0.003,
+            "checked_points": 28125,
+            "covered": true
+          },
+          {
+            "shape_id": "head",
+            "minimum_margin_m": 0.0030000000000000027,
+            "required_margin_m": 0.003,
+            "checked_points": 9327,
+            "covered": true
+          },
+          {
+            "shape_id": "left_shoulder_pitch_link",
+            "minimum_margin_m": 0.003000000000000065,
+            "required_margin_m": 0.003,
+            "checked_points": 1770,
+            "covered": true
+          },
+          {
+            "shape_id": "left_shoulder_roll_link",
+            "minimum_margin_m": 0.0030000000000000304,
+            "required_margin_m": 0.003,
+            "checked_points": 4004,
+            "covered": true
+          },
+          {
+            "shape_id": "left_shoulder_yaw_link",
+            "minimum_margin_m": 0.002999999999999947,
+            "required_margin_m": 0.003,
+            "checked_points": 2493,
+            "covered": true
+          },
+          {
+            "shape_id": "left_elbow_link",
+            "minimum_margin_m": 0.002999999999999975,
+            "required_margin_m": 0.003,
+            "checked_points": 905,
+            "covered": true
+          },
+          {
+            "shape_id": "left_wrist_roll_link",
+            "minimum_margin_m": 0.00299999999999994,
+            "required_margin_m": 0.003,
+            "checked_points": 3563,
+            "covered": true
+          },
+          {
+            "shape_id": "left_wrist_pitch_link",
+            "minimum_margin_m": 0.00299999999999994,
+            "required_margin_m": 0.003,
+            "checked_points": 861,
+            "covered": true
+          },
+          {
+            "shape_id": "left_wrist_yaw_link",
+            "minimum_margin_m": 0.0030000000000000027,
+            "required_margin_m": 0.003,
+            "checked_points": 3188,
+            "covered": true
+          },
+          {
+            "shape_id": "left_hand",
+            "minimum_margin_m": 0.0049999999172606335,
+            "required_margin_m": 0.005,
+            "checked_points": 81432,
+            "covered": true
+          },
+          {
+            "shape_id": "right_shoulder_pitch_link",
+            "minimum_margin_m": 0.0030000000000000096,
+            "required_margin_m": 0.003,
+            "checked_points": 1770,
+            "covered": true
+          },
+          {
+            "shape_id": "right_shoulder_roll_link",
+            "minimum_margin_m": 0.0029999999999998916,
+            "required_margin_m": 0.003,
+            "checked_points": 4020,
+            "covered": true
+          },
+          {
+            "shape_id": "right_shoulder_yaw_link",
+            "minimum_margin_m": 0.002999999999999989,
+            "required_margin_m": 0.003,
+            "checked_points": 2501,
+            "covered": true
+          },
+          {
+            "shape_id": "right_elbow_link",
+            "minimum_margin_m": 0.002999999999999989,
+            "required_margin_m": 0.003,
+            "checked_points": 889,
+            "covered": true
+          },
+          {
+            "shape_id": "right_wrist_roll_link",
+            "minimum_margin_m": 0.002999999999999923,
+            "required_margin_m": 0.003,
+            "checked_points": 3562,
+            "covered": true
+          },
+          {
+            "shape_id": "right_wrist_pitch_link",
+            "minimum_margin_m": 0.002999999999999975,
+            "required_margin_m": 0.003,
+            "checked_points": 797,
+            "covered": true
+          },
+          {
+            "shape_id": "right_wrist_yaw_link",
+            "minimum_margin_m": 0.0029999999999999957,
+            "required_margin_m": 0.003,
+            "checked_points": 3425,
+            "covered": true
+          },
+          {
+            "shape_id": "right_hand",
+            "minimum_margin_m": 0.004999999917260592,
+            "required_margin_m": 0.005,
+            "checked_points": 81432,
+            "covered": true
+          }
+        ]
+      }
+    },
+    {
+      "name": "step_and_waist_turn",
+      "qpos": [
+        0.0,
+        0.0,
+        0.800000011920929,
+        1.0,
+        0.0,
+        0.0,
+        0.0,
+        -0.5,
+        0.0,
+        0.0,
+        0.7,
+        -0.2,
+        0.0,
+        -0.10000000149011612,
+        0.0,
+        0.0,
+        0.30000001192092896,
+        -0.20000000298023224,
+        0.0,
+        0.35,
+        0.0,
+        0.0,
+        0.0,
+        0.42,
+        0.0,
+        0.2,
+        0.0,
+        0.0,
+        0.0,
+        0.0,
+        -0.42,
+        0.0,
+        0.2,
+        0.0,
+        0.0,
+        0.0
+      ],
+      "validation": {
+        "all_covered": true,
+        "missing_geom_ids": [],
+        "incomplete_mesh_geom_ids": [],
+        "shape_count": 35,
+        "covered_mesh_geom_count_including_duplicates": 69,
+        "minimum_margin_m": 0.002999999999999947,
+        "triangle_coverage_method": "Convex enclosure of full mesh triangles; foot triangles clipped at split plane before enclosure",
+        "shapes": [
+          {
+            "shape_id": "pelvis",
+            "minimum_margin_m": 0.0029999999999999957,
+            "required_margin_m": 0.003,
+            "checked_points": 28675,
+            "covered": true
+          },
+          {
+            "shape_id": "left_hip_pitch_link",
+            "minimum_margin_m": 0.0029999999999999957,
+            "required_margin_m": 0.003,
+            "checked_points": 1811,
+            "covered": true
+          },
+          {
+            "shape_id": "left_hip_roll_link",
+            "minimum_margin_m": 0.002999999999999961,
+            "required_margin_m": 0.003,
+            "checked_points": 1925,
+            "covered": true
+          },
+          {
+            "shape_id": "left_hip_yaw_link",
+            "minimum_margin_m": 0.0030000000000000027,
+            "required_margin_m": 0.003,
+            "checked_points": 2987,
+            "covered": true
+          },
+          {
+            "shape_id": "left_knee_link",
+            "minimum_margin_m": 0.0030000000000000374,
+            "required_margin_m": 0.003,
+            "checked_points": 8558,
+            "covered": true
+          },
+          {
+            "shape_id": "left_ankle_pitch_link",
+            "minimum_margin_m": 0.003000000000000001,
+            "required_margin_m": 0.003,
+            "checked_points": 714,
+            "covered": true
+          },
+          {
+            "shape_id": "left_sole",
+            "minimum_margin_m": 0.002999999999999999,
+            "required_margin_m": 0.003,
+            "checked_points": 3948,
+            "covered": true
+          },
+          {
+            "shape_id": "left_upper_foot",
+            "minimum_margin_m": 0.002999999999999999,
+            "required_margin_m": 0.003,
+            "checked_points": 4423,
+            "covered": true
+          },
+          {
+            "shape_id": "right_hip_pitch_link",
+            "minimum_margin_m": 0.0029999999999999957,
+            "required_margin_m": 0.003,
+            "checked_points": 1807,
+            "covered": true
+          },
+          {
+            "shape_id": "right_hip_roll_link",
+            "minimum_margin_m": 0.0030000000000000027,
+            "required_margin_m": 0.003,
+            "checked_points": 1930,
+            "covered": true
+          },
+          {
+            "shape_id": "right_hip_yaw_link",
+            "minimum_margin_m": 0.0030000000000000027,
+            "required_margin_m": 0.003,
+            "checked_points": 2987,
+            "covered": true
+          },
+          {
+            "shape_id": "right_knee_link",
+            "minimum_margin_m": 0.0030000000000000027,
+            "required_margin_m": 0.003,
+            "checked_points": 8532,
+            "covered": true
+          },
+          {
+            "shape_id": "right_ankle_pitch_link",
+            "minimum_margin_m": 0.002999999999999999,
+            "required_margin_m": 0.003,
+            "checked_points": 714,
+            "covered": true
+          },
+          {
+            "shape_id": "right_sole",
+            "minimum_margin_m": 0.002999999999999999,
+            "required_margin_m": 0.003,
+            "checked_points": 3946,
+            "covered": true
+          },
+          {
+            "shape_id": "right_upper_foot",
+            "minimum_margin_m": 0.002999999999999999,
+            "required_margin_m": 0.003,
+            "checked_points": 4417,
+            "covered": true
+          },
+          {
+            "shape_id": "waist_yaw_link",
+            "minimum_margin_m": 0.002999999999999999,
+            "required_margin_m": 0.003,
+            "checked_points": 6100,
+            "covered": true
+          },
+          {
+            "shape_id": "waist_roll_link",
+            "minimum_margin_m": 0.0029999999999999923,
+            "required_margin_m": 0.003,
+            "checked_points": 858,
+            "covered": true
+          },
+          {
+            "shape_id": "torso",
+            "minimum_margin_m": 0.0030000000000000027,
+            "required_margin_m": 0.003,
+            "checked_points": 28125,
+            "covered": true
+          },
+          {
+            "shape_id": "head",
+            "minimum_margin_m": 0.002999999999999947,
+            "required_margin_m": 0.003,
+            "checked_points": 9327,
+            "covered": true
+          },
+          {
+            "shape_id": "left_shoulder_pitch_link",
+            "minimum_margin_m": 0.003000000000000065,
+            "required_margin_m": 0.003,
+            "checked_points": 1770,
+            "covered": true
+          },
+          {
+            "shape_id": "left_shoulder_roll_link",
+            "minimum_margin_m": 0.0029999999999999957,
+            "required_margin_m": 0.003,
+            "checked_points": 4004,
+            "covered": true
+          },
+          {
+            "shape_id": "left_shoulder_yaw_link",
+            "minimum_margin_m": 0.0030000000000000165,
+            "required_margin_m": 0.003,
+            "checked_points": 2493,
+            "covered": true
+          },
+          {
+            "shape_id": "left_elbow_link",
+            "minimum_margin_m": 0.0030000000000000165,
+            "required_margin_m": 0.003,
+            "checked_points": 905,
+            "covered": true
+          },
+          {
+            "shape_id": "left_wrist_roll_link",
+            "minimum_margin_m": 0.002999999999999961,
+            "required_margin_m": 0.003,
+            "checked_points": 3563,
+            "covered": true
+          },
+          {
+            "shape_id": "left_wrist_pitch_link",
+            "minimum_margin_m": 0.003000000000000065,
+            "required_margin_m": 0.003,
+            "checked_points": 861,
+            "covered": true
+          },
+          {
+            "shape_id": "left_wrist_yaw_link",
+            "minimum_margin_m": 0.0029999999999999957,
+            "required_margin_m": 0.003,
+            "checked_points": 3188,
+            "covered": true
+          },
+          {
+            "shape_id": "left_hand",
+            "minimum_margin_m": 0.004999999917260731,
+            "required_margin_m": 0.005,
+            "checked_points": 81432,
+            "covered": true
+          },
+          {
+            "shape_id": "right_shoulder_pitch_link",
+            "minimum_margin_m": 0.003000000000000065,
+            "required_margin_m": 0.003,
+            "checked_points": 1770,
+            "covered": true
+          },
+          {
+            "shape_id": "right_shoulder_roll_link",
+            "minimum_margin_m": 0.0030000000000000304,
+            "required_margin_m": 0.003,
+            "checked_points": 4020,
+            "covered": true
+          },
+          {
+            "shape_id": "right_shoulder_yaw_link",
+            "minimum_margin_m": 0.0030000000000000443,
+            "required_margin_m": 0.003,
+            "checked_points": 2501,
+            "covered": true
+          },
+          {
+            "shape_id": "right_elbow_link",
+            "minimum_margin_m": 0.0030000000000000096,
+            "required_margin_m": 0.003,
+            "checked_points": 889,
+            "covered": true
+          },
+          {
+            "shape_id": "right_wrist_roll_link",
+            "minimum_margin_m": 0.002999999999999989,
+            "required_margin_m": 0.003,
+            "checked_points": 3562,
+            "covered": true
+          },
+          {
+            "shape_id": "right_wrist_pitch_link",
+            "minimum_margin_m": 0.002999999999999982,
+            "required_margin_m": 0.003,
+            "checked_points": 797,
+            "covered": true
+          },
+          {
+            "shape_id": "right_wrist_yaw_link",
+            "minimum_margin_m": 0.002999999999999982,
+            "required_margin_m": 0.003,
+            "checked_points": 3425,
+            "covered": true
+          },
+          {
+            "shape_id": "right_hand",
+            "minimum_margin_m": 0.004999999917260675,
+            "required_margin_m": 0.005,
+            "checked_points": 81432,
+            "covered": true
+          }
+        ]
+      }
+    }
+  ],
+  "preview": {
+    "status": "Proposal for visual review; not active in training",
+    "training_changed": false,
+    "actor_observations": 222,
+    "critic_observations": 310,
+    "source_xml_sha256": "85691b345f97ff9cb64da8e4e9221da6394e3cf6b262b3968bf9180a0fd2b045",
+    "review_qpos": [
+      0.0,
+      0.0,
+      0.800000011920929,
+      1.0,
+      0.0,
+      0.0,
+      0.0,
+      -0.10000000149011612,
+      0.0,
+      0.0,
+      0.30000001192092896,
+      -0.20000000298023224,
+      0.0,
+      -0.10000000149011612,
+      0.0,
+      0.0,
+      0.30000001192092896,
+      -0.20000000298023224,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      0.42,
+      0.0,
+      0.2,
+      0.0,
+      0.0,
+      0.0,
+      0.0,
+      -0.42,
+      0.0,
+      0.2,
+      0.0,
+      0.0,
+      0.0
+    ],
+    "rendering": "Native MuJoCo forward kinematics; original meshes and mesh-fitted primitives"
+  }
+}
