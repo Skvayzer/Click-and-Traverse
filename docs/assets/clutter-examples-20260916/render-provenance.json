@@ -1,0 +1,58 @@
+{
+  "active_bank_sha256": "dc97e6e19c7767c5d5b567f5abdde0a4fb8a85873893be22adff7863e1b8f6c0",
+  "scenes": [
+    {
+      "seed": 4008,
+      "scene_id": "random-furniture-dense-train-004008-73ed3af356e1",
+      "scene_sha256": "d820cb1e3b614d4fa3c39794f55eb3555d3b6126a6c6c94428e4986a20850b6f",
+      "geometry_hash": "73ed3af356e128c426318ac1da3357c72037963d1901c9a8459bda1036e3536f",
+      "counts": {
+        "tables": 9,
+        "chairs": 35,
+        "generic_objects": 0,
+        "primitive_boxes": 289,
+        "bottlenecks": 0
+      },
+      "route_length_m": 9.970137560555678
+    },
+    {
+      "seed": 4016,
+      "scene_id": "random-furniture-dense-train-004016-93a493d7e5f0",
+      "scene_sha256": "c41fa415cf5c046f1993bbac2fb7d9d675e1bded9209099ace7235bb2c9f4cb9",
+      "geometry_hash": "93a493d7e5f079dbd78b571590444224c35a51674c3884614599b694f129458f",
+      "counts": {
+        "tables": 8,
+        "chairs": 36,
+        "generic_objects": 0,
+        "primitive_boxes": 290,
+        "bottlenecks": 0
+      },
+      "route_length_m": 8.051995087040757
+    },
+    {
+      "seed": 5001,
+      "scene_id": "random-generic_clutter-dense-train-005001-1eaef5f4115f",
+      "scene_sha256": "e772963fc032778763f446a7ede9b90cd02939af6e45a9b0730bb5e704387798",
+      "geometry_hash": "1eaef5f4115f28e02926428320450e5512a2db4fd7622989033f7ef29fa56300",
+      "counts": {
+        "tables": 0,
+        "chairs": 0,
+        "generic_objects": 43,
+        "primitive_boxes": 77,
+        "bottlenecks": 0
+      },
+      "route_length_m": 5.699965730978704
+    }
+  ],
+  "renderer": "MuJoCo static view of canonical boxes and current CAT G1 with fixed Dex3 hands",
+  "simulation_steps": 0,
+  "learned_policy": false,
+  "visual_changes": [
+    "wall cutaway",
+    "materials/colors",
+    "lighting",
+    "route/start/goal markers"
+  ],
+  "source_bundle_sha256": "7aa8d79849a7ac94d8b152da25c2de9a51fc8a8f2636ec52b06ecf551e94899e",
+  "image_sha256": "7e775f4d6824db735a5a32d1b5845d6b7049b931843ea4060a065c6763f073e4"
+}
