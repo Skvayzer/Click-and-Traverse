@@ -317,6 +317,7 @@ def test_public_ragged_task_reset_matches_original_generalist(config, tmp_path, 
 
 
 def test_expanded_compact_task_runs_all_families_through_real_autoreset(config, tmp_path, monkeypatch):
+    import json
     from cat_ppo.furniture import generalist_fields as fields
     from cat_ppo.furniture.generalist_training import wrap_for_cat_wholebody_training
 
@@ -334,6 +335,13 @@ def test_expanded_compact_task_runs_all_families_through_real_autoreset(config, 
             sampling_group="original_cat" if family == "published_cat" else family))
     manifest = dict(schema=fields.EXPANDED_SCHEMA, scenes=scenes,
                     sampling_group_masses=fields.DEFAULT_SAMPLING_GROUP_MASSES)
+    for scene in scenes:
+        if scene["task_kind"] == "room":
+            scene["source"] = dict(occupancy="conservative-voxel-cell-OBB-intersection-v1",
+                                   room_navigation="ordered-certified-route-v1")
+    from pathlib import Path
+    (Path(config.pf_config.path) / "scene.json").write_text(json.dumps(dict(
+        route=[[0., 0.], [2., 0.]], start=[0., 0., 0.], goal=[2., 0.], boxes=[])))
     # Real compact physics and wrappers; small deterministic fields isolate
     # scene routing from the independently tested on-disk provenance checks.
     monkeypatch.setattr(fields, "load_generalist_manifest", lambda path: manifest)

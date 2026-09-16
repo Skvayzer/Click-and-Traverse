@@ -24,6 +24,10 @@ def main():
     parser = argparse.ArgumentParser(description=__doc__)
     parser.add_argument("--source-root", type=Path, required=True)
     parser.add_argument("--evaluation-dir", type=Path, required=True)
+    parser.add_argument("--bank-manifest", type=Path, help="Optional complete bank for regression evaluation")
+    parser.add_argument("--seeds", type=int, nargs="+", default=list(range(16)))
+    parser.add_argument("--test-corrected-navigation", action="store_true",
+                        help="Explicitly evaluate old weights under corrected room navigation; not a historical-score replay")
     args = parser.parse_args()
     sys.path.insert(0, str(args.source_root.resolve()))
     import jax
@@ -47,10 +51,14 @@ def main():
         raw = (native / name).read_bytes()
         if len(raw) != record["size"] or hashlib.sha256(raw).hexdigest() != record["sha256"]:
             raise ValueError(f"Checkpoint mismatch: {name}")
+    bank_manifest = (args.bank_manifest or output / "bank/manifest.json").resolve()
     config = wholebody_config(ConfigDict(run["config"]["env_config"]),
-                             bank_manifest=output / "bank/manifest.json", stabilization=True)
+                             bank_manifest=bank_manifest, stabilization=True)
     env = G1CatWholeBodyEnv(config=config)
-    if env.observation_contract() != run["observation_contract"]:
+    actual_contract, saved_contract = env.observation_contract(), dict(run["observation_contract"])
+    if args.test_corrected_navigation:
+        saved_contract["room_navigation"] = "ordered-certified-route-v1"
+    if actual_contract != saved_contract:
         raise ValueError("Checkpoint observation contract mismatch")
     network_config = json.loads((native / "ppo_network_config.json").read_text())
     if network_config["normalize_observations"] or checkpoint_distribution_config(network_config) is None:
@@ -61,7 +69,7 @@ def main():
         raise ValueError("Nonfinite checkpoint parameters")
     # Keep all 16 original benchmark ordinals and 16 seeds, including CAT
     # retention scenes. Field-bank indices may change; seed ordinals must not.
-    validator = RetentionValidator(env, factory, chunk_steps=1)
+    validator = RetentionValidator(env, factory, chunk_steps=1, seeds=args.seeds)
     fields = validator.binding.values
     initial = validator._reset(fields)
     jax.block_until_ready(initial)
@@ -79,6 +87,11 @@ def main():
                      "time": state.data.time[trace_indices],
                      "hand_clearance": state.info["handsdf"][trace_indices],
                      "elbow_clearance": state.info["wholebody_elbow_clearance"][trace_indices]}
+            if "room_navigation" in state.info:
+                trace.update({"route_" + key: value[trace_indices]
+                              for key, value in state.info["room_navigation"].items()})
+                trace["command"] = state.info["command"][trace_indices]
+                trace["command_delay"] = state.info["command_delay"][trace_indices]
             return carry, trace
         return jax.lax.scan(one, (state, acc, active, index), None, length=25)
 
@@ -129,11 +142,16 @@ def main():
                               clutter=modes[mode]["clutter_goal_success_rate"], cat=modes[mode]["cat_goal_success_rate"])), flush=True)
 
     baseline = json.loads((output / "validation_baseline.json").read_text())["result"]
-    selection = retention_selection(modes, baseline["modes"])
+    if args.test_corrected_navigation or args.seeds != list(range(16)):
+        selection = dict(eligible=False, reason="Changed navigation or seed set: diagnostic regression only; no historical selection comparison")
+    else:
+        selection = retention_selection(modes, baseline["modes"])
     metadata = dict(source_root=str(args.source_root), checkpoint_step=selected["step"],
                     original_bank_sha256=run["bank_sha256"],
-                    evaluation_bank_sha256=hashlib.sha256((output/"bank/manifest.json").read_bytes()).hexdigest(),
-                    scenes="Same fixed 16 layouts and 16 reset/noise seeds as training validation",
+                    evaluation_bank_sha256=hashlib.sha256(bank_manifest.read_bytes()).hexdigest(),
+                    evaluation_bank=str(bank_manifest), seeds=args.seeds,
+                    corrected_navigation_regression=args.test_corrected_navigation,
+                    scenes="Fixed 16 layouts; explicitly listed reset/noise seeds",
                     stopping="Shared RetentionValidator implementation; first clean goal/fault/native horizon",
                     generalization="Fixed training-bank regression scenes, not unseen layouts",
                     recording="All 64 deterministic clutter episodes; videos selected after evaluation",
@@ -155,7 +173,7 @@ def main():
     for trace_row, full_row in enumerate(clutter_rows):
         scene_index, seed = validator.pairs[full_row]
         record = env.field_bank_manifest["scenes"][scene_index]
-        scene_path = output / "bank" / record["path"] / "scene.json"
+        scene_path = bank_manifest.parent / record["path"] / "scene.json"
         scene = json.loads(scene_path.read_text())
         row = episode_rows["deterministic"][full_row]
         directory = episode_root / f"scene-{scene['seed']}-seed-{seed:02d}"
@@ -180,10 +198,13 @@ def main():
             raise ValueError("Cannot render nonfinite trajectory")
         np.savez_compressed(directory / "trajectory.npz", **trace)
         np.savez_compressed(directory / "telemetry.npz", **{
-            key: deterministic_traces[key][:length, trace_row] for key in ("hand_clearance", "elbow_clearance")})
+            key: deterministic_traces[key][:length, trace_row]
+            for key in deterministic_traces if key not in ("qpos", "qvel", "time")})
         meta = dict(scene_id=record["scene_id"], scene_seed=scene["seed"], family=record["family"], seed=seed,
                     checkpoint_steps=selected["step"], outcome=row, dt=env.dt, inference="deterministic",
                     source_run="de6ae369", original_bank_sha256=run["bank_sha256"],
+                    corrected_navigation_regression=args.test_corrected_navigation,
+                    evaluation_bank_sha256=metadata["evaluation_bank_sha256"],
                     scene_sha256=record["scene_sha256"],
                     trajectory_sha256=hashlib.sha256((directory/"trajectory.npz").read_bytes()).hexdigest(),
                     reset="Exact validation reset key using full benchmark ordinal; native randomization retained",

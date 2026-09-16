@@ -187,7 +187,7 @@ class RetentionValidator:
                                    for index, seed in self.pairs])
         self.noise_keys = jax.vmap(lambda key: jax.random.fold_in(key, 0xCA7AB1))(self.reset_keys)
         self.binding = FieldArguments(environment)
-        if self.binding.names != ("sdf", "bf", "gf"):
+        if self.binding.names[:3] != ("sdf", "bf", "gf"):
             raise ValueError("Retention validation requires the existing scene-bank field buffers")
         contract = environment.observation_contract()
         self.network = network_factory(

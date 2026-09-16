@@ -200,6 +200,11 @@ class SamplePFWrapper(wrapper.Wrapper):
             state_reset.info["pf_episode_ema"] = state.info["pf_episode_ema"]
             state_reset.info["pf_success_ema"] = state.info["pf_success_ema"]
         done_exp = done[:, None]
+        room_transition = None
+        if "room_navigation" in state.info:
+            room_transition = (done > 0) & (
+                state.info["room_navigation"]["enabled"]
+                | state_reset.info["room_navigation"]["enabled"])
 
         def reset_obs_leaf(reset_leaf, leaf):
             done_shape = done.shape + (1,) * (leaf.ndim - done.ndim)
@@ -247,7 +252,7 @@ class SamplePFWrapper(wrapper.Wrapper):
         # Extension state must reset with its newly sampled scene. The original
         # CAT keys above deliberately retain their released wrapper semantics.
         for name in state_reset.info:
-            if name.startswith("wholebody_"):
+            if name.startswith("wholebody_") or name == "room_navigation":
                 state.info[name] = jax.tree_util.tree_map(
                     reset_obs_leaf, state_reset.info[name], state.info[name])
         qpos = jnp.where(done_exp, state_reset.data.qpos, state.data.qpos)
@@ -255,6 +260,23 @@ class SamplePFWrapper(wrapper.Wrapper):
         state = state.replace(
             data=state.data.replace(qpos=qpos, qvel=qvel),
         )
+        if room_transition is not None:
+            # Rooms reset metres apart. Retaining the old head/hand positions
+            # would manufacture enormous first-step velocities, while retained
+            # PD/odometry state would disagree with the fresh reset observation.
+            # Keep native CAT-to-CAT semantics and episode/sampler bookkeeping.
+            def reset_room_leaf(reset_leaf, leaf):
+                shape = room_transition.shape + (1,) * (leaf.ndim - room_transition.ndim)
+                return jnp.where(room_transition.reshape(shape), reset_leaf, leaf)
+
+            wrapper_keys = {"steps", "truncation", "episode_done", "episode_metrics",
+                            "first_state", "first_obs"}
+            for name in state_reset.info:
+                if name not in wrapper_keys and not name.startswith("pf_"):
+                    state.info[name] = jax.tree_util.tree_map(
+                        reset_room_leaf, state_reset.info[name], state.info[name])
+            state = state.replace(data=jax.tree_util.tree_map(
+                reset_room_leaf, state_reset.data, state.data))
         reward = jnp.where(done, state_reset.reward, state.reward)
         state = state.replace(reward=reward)
         return state

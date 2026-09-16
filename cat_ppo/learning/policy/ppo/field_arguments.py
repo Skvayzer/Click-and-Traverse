@@ -20,6 +20,8 @@ class FieldArguments:
     def __init__(self, environment):
         self.environment = getattr(environment, "unwrapped", environment)
         self.names = ("sdf", "bf", "gf") if hasattr(self.environment, "field_bank_manifest") else ()
+        if hasattr(self.environment, "_room_arrays"):
+            self.names += ("_room_arrays", "_room_scene_index")
         self.values = tuple(getattr(self.environment, name) for name in self.names)
 
     @contextmanager

@@ -31,6 +31,8 @@ Unlike fields/self-contact, falls and numerical faults have no 50-step grace.
         flags[label + "_field"] = grace & jp.any(info[key] < threshold)
     flags["elbows_field"] = (grace & jp.any(info["wholebody_elbow_clearance"] < threshold)
                              & env._config.terminate_on_elbow_collision)
+    navigation = info.get("room_navigation", {})
+    flags["room_root_field"] = navigation.get("enabled", jp.array(False)) & navigation.get("violation", jp.array(False))
     flags["fall"] = flags["fall_inverted"] | flags["fall_head_low"]
     flags["obstacle"] = jp.any(jp.stack([value for key, value in flags.items() if key.endswith("_field")]))
     flags["any"] = flags["fall"] | flags["self_contact"] | flags["obstacle"] | flags["numerical"]

@@ -1,0 +1,20 @@
+{
+  "builder": "cat-room-navigation-bank-migration-v1",
+  "plan_sha256": "5474d0776e115b89430e13bc08eb335f2fcf268b7bb1771010e4abf9ea868ce0",
+  "source_manifest_sha256": "7fb43ee27324057f5a026eab05d837d380e208a45637a1f6e584208b1fa10967",
+  "scene_count": 2338,
+  "rebuilt_room_count": 48,
+  "unchanged_cat_scene_count": 2290,
+  "hardlinked_file_count": 13694,
+  "hardlinked_logical_bytes": 9473010159,
+  "original_cat_and_procedural_hashes_identical": true,
+  "canonical_room_geometry_unchanged": true,
+  "scene_order_unchanged": true,
+  "retained_family_counts": {
+    "original_cat": 37,
+    "published_cat": 27,
+    "procedural_cat": 2226,
+    "furniture": 24,
+    "generic_clutter": 24
+  }
+}

@@ -1,0 +1,124 @@
+[
+  {
+    "scene_id": "random-furniture-dense-train-004001-5ef9779babcf",
+    "shape": [
+      236,
+      272,
+      60
+    ],
+    "old_occupied": 204142,
+    "new_occupied": 327554,
+    "added_occupied": 123412,
+    "lost_occupied": 0,
+    "old_seconds": 0.005284707993268967,
+    "new_seconds": 0.008025124960113317,
+    "recovered_missing_parts": [
+      {
+        "name": "chair_28_leg_0",
+        "new_voxels": 44
+      },
+      {
+        "name": "chair_01_leg_3",
+        "new_voxels": 44
+      },
+      {
+        "name": "chair_13_leg_0",
+        "new_voxels": 44
+      },
+      {
+        "name": "chair_03_leg_0",
+        "new_voxels": 44
+      },
+      {
+        "name": "chair_03_leg_1",
+        "new_voxels": 44
+      },
+      {
+        "name": "chair_17_leg_2",
+        "new_voxels": 44
+      },
+      {
+        "name": "chair_30_leg_0",
+        "new_voxels": 44
+      },
+      {
+        "name": "chair_30_leg_1",
+        "new_voxels": 44
+      }
+    ],
+    "still_missing": [],
+    "continuous_route_min_margin_m": 0.11232229661132728
+  },
+  {
+    "scene_id": "random-furniture-dense-train-004002-4f7ed1085e60",
+    "shape": [
+      260,
+      269,
+      60
+    ],
+    "old_occupied": 210308,
+    "new_occupied": 340426,
+    "added_occupied": 130118,
+    "lost_occupied": 0,
+    "old_seconds": 0.0052126250229775906,
+    "new_seconds": 0.007923625002149493,
+    "recovered_missing_parts": [
+      {
+        "name": "chair_03_leg_0",
+        "new_voxels": 44
+      },
+      {
+        "name": "chair_01_leg_2",
+        "new_voxels": 44
+      },
+      {
+        "name": "chair_30_leg_2",
+        "new_voxels": 44
+      },
+      {
+        "name": "chair_27_leg_1",
+        "new_voxels": 44
+      },
+      {
+        "name": "chair_13_leg_3",
+        "new_voxels": 44
+      }
+    ],
+    "still_missing": [],
+    "continuous_route_min_margin_m": 0.09050899927862735
+  },
+  {
+    "scene_id": "random-generic_clutter-dense-train-005001-1eaef5f4115f",
+    "shape": [
+      243,
+      241,
+      60
+    ],
+    "old_occupied": 333202,
+    "new_occupied": 470121,
+    "added_occupied": 136919,
+    "lost_occupied": 0,
+    "old_seconds": 0.001704542024526745,
+    "new_seconds": 0.0024289580178447068,
+    "recovered_missing_parts": [],
+    "still_missing": [],
+    "continuous_route_min_margin_m": 0.10208106434493744
+  },
+  {
+    "scene_id": "random-generic_clutter-dense-train-005002-d4f59651508b",
+    "shape": [
+      246,
+      257,
+      60
+    ],
+    "old_occupied": 327499,
+    "new_occupied": 459994,
+    "added_occupied": 132495,
+    "lost_occupied": 0,
+    "old_seconds": 0.0015235419850796461,
+    "new_seconds": 0.0021174169960431755,
+    "recovered_missing_parts": [],
+    "still_missing": [],
+    "continuous_route_min_margin_m": 0.09162234556849155
+  }
+]

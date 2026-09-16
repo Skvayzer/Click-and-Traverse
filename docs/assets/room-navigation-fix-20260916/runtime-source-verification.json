@@ -1,0 +1,17 @@
+{
+  "local_remote_runtime_identical": true,
+  "sha256": {
+    "cat_ppo/envs/g1/env_cat.py": "bda9387acb787e00dd9434c389c8d2e8fed7622d84292cce5f0f3264f24844d7",
+    "cat_ppo/envs/g1/env_cat_wholebody.py": "ad191827cc96c2a973459ff669b460b8e4aa26228df4e4b81bfde5bf2e309322",
+    "cat_ppo/envs/g1/room_navigation.py": "b2452d90cc25343d148485a2207206b46269d2c014b1b987affab68444a99367",
+    "cat_ppo/furniture/generalist_fields.py": "7a041bc1e9efa347f3011723e89cdc5a98f5f6042cf6ca0c4a11cf17d3ddcf29",
+    "cat_ppo/furniture/room_geometry.py": "060c5ba1aa8f4de059027ccc90fa99197a51d2d7016b46a1df14da4936fb10f6",
+    "cat_ppo/furniture/room_navigation.py": "ba26a33e6638d5b43397fda6317b385b8632b6405d14179b280bdb0be92f367d",
+    "cat_ppo/furniture/retention_validation.py": "237f10bd52f007a6f5ec613f84b3b0ac194492362e7358517e0f74f802c8fa0d",
+    "cat_ppo/furniture/wholebody_stability.py": "c1cad560d71af9c10f346bd5055990db9c65e73b0951f0fd6a69e31101acdfd8",
+    "cat_ppo/learning/policy/ppo/field_arguments.py": "a45e9f5cbafa429ab651e6a678eb739d4d4b25cc88f1e93b75e623ecb95d0474",
+    "cat_ppo/learning/train/pf_utils.py": "53919567ed97f1b2370188c114eff9c4424fe7bf8a9c549fc3bca0ee0a55053a",
+    "scripts/evaluate_clutter_checkpoint.py": "649af0f760445b052f6321a3732bd1ab6416d5f65dcf3d53f5bf3543284ff99e",
+    "scripts/rebuild_clutter_navigation_bank.py": "7cf77fad93bfd3325fcd7c829451200ef8b045aeb87b29dbaa5533538277ef66"
+  }
+}

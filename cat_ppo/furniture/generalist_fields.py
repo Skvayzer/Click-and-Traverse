@@ -250,9 +250,10 @@ def rasterize_boxes(boxes, shape, sample_origin, dx):
 
 
 def make_clutter_fields(scene, directory, *, dx=.04):
-    """Use CAT's unmodified three field functions on dense furniture occupancy."""
+    """Conservative room geometry; CAT fields plus ordered runtime navigation."""
     from scipy import ndimage
     from cat_ppo.furniture.scenes import validate_scene
+    from cat_ppo.furniture.room_geometry import conservative_rasterize_boxes
 
     validate_scene(scene)
     if not math.isfinite(dx) or dx <= 0:
@@ -263,7 +264,7 @@ def make_clutter_fields(scene, directory, *, dx=.04):
     shape = np.ceil((np.asarray(scene["room_dimensions"]) + [.2, .2, 0.]) / dx).astype(int)
     origin = np.asarray([-.1, -.1, 0.]) + .5 * dx
     axes = [origin[i] + np.arange(shape[i]) * dx for i in range(3)]
-    occupancy = rasterize_boxes(scene["boxes"], shape, origin, dx)
+    occupancy = conservative_rasterize_boxes(scene["boxes"], shape, origin, dx)
     if not occupancy.any() or occupancy.all():
         raise ValueError("Clutter must contain both obstacles and free space")
     start = np.asarray([*scene["start"][:2], .8])
@@ -292,7 +293,10 @@ def make_clutter_fields(scene, directory, *, dx=.04):
         upstream_commit=UPSTREAM_COMMIT, pf_modular_sha256=sha256(SOURCE_ROOT / "pf_modular.py"),
         grid_config_sha256=sha256(SOURCE_ROOT / "grid_config.py"),
         dx=dx, shape=shape.tolist(), sample_origin=origin.tolist(),
-        goal=goal.tolist(), route_used_for_guidance=False, physical_obstacles_in_training=False,
+        goal=goal.tolist(), route_used_for_guidance=True, physical_obstacles_in_training=False,
+        occupancy="conservative-voxel-cell-OBB-intersection-v1",
+        room_navigation="ordered-certified-route-v1",
+        stored_gf_role="local vertical body guidance; horizontal navigation overridden by ordered route",
         floor_in_obstacle_sdf=False, free_voxel_start_goal_connected=True,
         root_route_geometry_validated=bool(scene["feasibility"]["root_route_validated"]),
         dynamic_feasibility_validated=False, full_body_reset_clearance_validated=False)

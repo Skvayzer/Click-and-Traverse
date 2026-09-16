@@ -386,7 +386,8 @@ class G1CatEnv(G1LocoEnv):
             knees_pos,
             shlds_pos,
         ], axis=0)
-        all_gf, all_bf, all_df = self._sample_body_fields(all_poses)
+        navigation_info = self._update_navigation(data)
+        all_gf, all_bf, all_df = self._sample_body_fields(all_poses, root_xy=data.qpos[:2])
         all_gf = all_gf / (jp.linalg.norm(all_gf, axis=-1, keepdims=True) + EPS)
         all_bf = all_bf / (jp.linalg.norm(all_bf, axis=-1, keepdims=True) + EPS)
 
@@ -549,6 +550,7 @@ class G1CatEnv(G1LocoEnv):
             "shldsdf_delay": shldsdf.copy(),
         }
 
+        info.update(navigation_info)
         metrics = {}
         for k in self._config.reward_config.scales.keys():
             metrics[f"reward/{k}"] = jp.zeros(())
@@ -645,7 +647,8 @@ class G1CatEnv(G1LocoEnv):
             knees_pos,
             shlds_pos,
         ], axis=0)
-        all_gf, all_bf, all_df = self._sample_body_fields(all_poses)
+        state.info.update(self._update_navigation(data, state.info))
+        all_gf, all_bf, all_df = self._sample_body_fields(all_poses, root_xy=data.qpos[:2])
         headgf, pelvgf, torsgf, feetgf, handsgf, kneesgf, shldsgf = jp.split(all_gf, [1,2,3,5,7,9], axis=0)
         headbf, pelvbf, torsbf, feetbf, handsbf, kneesbf, shldsbf = jp.split(all_bf, [1,2,3,5,7,9], axis=0)
         headdf, pelvdf, torsdf, feetdf, handsdf, kneesdf, shldsdf = jp.split(all_df, [1,2,3,5,7,9], axis=0)
@@ -664,7 +667,7 @@ class G1CatEnv(G1LocoEnv):
         p_odom = odom_delay[:3]
         q_odom = odom_delay[3:7]
         all_poses_delay = delay_body_pos(p_gt, q_gt, p_odom, q_odom, all_poses)
-        all_gf_delay, all_bf_delay, all_df_delay = self._sample_body_fields(all_poses_delay)
+        all_gf_delay, all_bf_delay, all_df_delay = self._sample_body_fields(all_poses_delay, root_xy=p_odom[:2])
 
         # update gait
         self._update_phase(state)
@@ -779,7 +782,11 @@ class G1CatEnv(G1LocoEnv):
         state = state.replace(data=data, obs=obs, reward=reward, done=done)
         return state
 
-    def _sample_body_fields(self, positions):
+    def _update_navigation(self, data, info=None):
+        """No-op for released CAT; room tasks can maintain ordered route state."""
+        return {}
+
+    def _sample_body_fields(self, positions, *, root_xy=None):
         """Released point samples; extensions can account for body envelopes."""
         return (self.sample_field(self.gf, positions),
                 self.sample_field(self.bf, positions),

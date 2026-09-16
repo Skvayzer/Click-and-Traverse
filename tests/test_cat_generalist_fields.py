@@ -75,7 +75,9 @@ def test_clutter_uses_all_three_original_cat_field_functions(tmp_path, monkeypat
     assert scene["counts"]["tables"] == 9 and scene["counts"]["chairs"] == 36
     assert record["source"]["free_voxel_start_goal_connected"]
     assert record["source"]["root_route_geometry_validated"]
-    assert record["source"]["route_used_for_guidance"] is False
+    assert record["source"]["route_used_for_guidance"] is True
+    assert record["source"]["occupancy"] == "conservative-voxel-cell-OBB-intersection-v1"
+    assert record["source"]["room_navigation"] == "ordered-certified-route-v1"
     assert record["source"]["dynamic_feasibility_validated"] is False
     gf = np.load(tmp_path / "gf.npy")
     # The old route-lookahead supplied zero vertical guidance everywhere. CAT's

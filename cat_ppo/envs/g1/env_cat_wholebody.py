@@ -172,8 +172,8 @@ class _WholeBodyTask(G1CatEnv):
         mujoco.mj_forward(self.mj_model, data)
         self.hand_sphere_validation = validate_hand_spheres(self.mj_model, data)
 
-    def _sample_body_fields(self, positions):
-        gf, bf, clearance = super()._sample_body_fields(positions)
+    def _sample_body_fields(self, positions, *, root_xy=None):
+        gf, bf, clearance = super()._sample_body_fields(positions, root_xy=root_xy)
         if not self.compatibility_mode:
             # CAT orders its eleven samples as head/pelvis/torso/feet/hands/
             # knees/shoulders. Adjust fresh true OR delayed queries exactly once.
@@ -268,6 +268,8 @@ class _WholeBodyTask(G1CatEnv):
         guidance = self.sample_field(self.gf, positions)
         boundary = self.sample_field(self.bf, positions)
         clearance = self.sample_field(self.sdf, positions) - control.ELBOW_RADIUS_M
+        if hasattr(self, "_room_elbow_guidance"):
+            guidance = self._room_elbow_guidance(guidance, boundary, clearance, info, actor=actor)
         # Match CAT: reset normalizes vectors; later GF follows the move flag.
         move = (jp.asarray(info["step"]) == 0) | (info["command"][0] > 0.5)
         guidance = guidance * move / (jp.linalg.norm(guidance, axis=-1, keepdims=True) + EPS)
@@ -335,6 +337,7 @@ class _WholeBodyTask(G1CatEnv):
                                 & (info["step"] >= 50) & elbow_collision))
         from cat_ppo.furniture.wholebody_stability import goal_status, native_fault_flags
         flags = native_fault_flags(self, data, info)
+        done = done | flags["room_root_field"]
         info["wholebody_faults"] = flags
         episode = info["wholebody_episode"]
         goal = goal_status(self, data, info, episode["outside_bounds"])
@@ -354,7 +357,8 @@ class _WholeBodyTask(G1CatEnv):
 # metadata.  A ragged bank retains released fields without padding all 37 small
 # scenes to the dimensions of a furnished room.
 from cat_ppo.furniture.generalist_fields import RaggedSceneMixin  # noqa: E402
+from cat_ppo.envs.g1.room_navigation import RoomNavigationMixin  # noqa: E402
 
 
-class G1CatWholeBodyEnv(RaggedSceneMixin, _WholeBodyTask):
+class G1CatWholeBodyEnv(RoomNavigationMixin, RaggedSceneMixin, _WholeBodyTask):
     """One CAT generalist task containing original scenes and added room fields."""

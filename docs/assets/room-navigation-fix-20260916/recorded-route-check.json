@@ -1,0 +1,166 @@
+{
+  "episodes": [
+    {
+      "scene": "random-furniture-dense-train-004001-5ef9779babcf",
+      "seed": 0,
+      "success": true,
+      "steps": 317,
+      "segments": 4,
+      "root_collision": false,
+      "min_swept_clearance": 0.14438875019550323,
+      "max_cross_track": 0.36413276195526123
+    },
+    {
+      "scene": "random-furniture-dense-train-004001-5ef9779babcf",
+      "seed": 2,
+      "success": true,
+      "steps": 305,
+      "segments": 4,
+      "root_collision": false,
+      "min_swept_clearance": 0.1394479125738144,
+      "max_cross_track": 0.14969617128372192
+    },
+    {
+      "scene": "random-furniture-dense-train-004001-5ef9779babcf",
+      "seed": 8,
+      "success": true,
+      "steps": 326,
+      "segments": 4,
+      "root_collision": false,
+      "min_swept_clearance": 0.14350749552249908,
+      "max_cross_track": 0.19239261746406555
+    },
+    {
+      "scene": "random-furniture-dense-train-004001-5ef9779babcf",
+      "seed": 9,
+      "success": true,
+      "steps": 448,
+      "segments": 4,
+      "root_collision": false,
+      "min_swept_clearance": 0.09468667209148407,
+      "max_cross_track": 0.32119688391685486
+    },
+    {
+      "scene": "random-furniture-dense-train-004002-4f7ed1085e60",
+      "seed": 0,
+      "success": true,
+      "steps": 656,
+      "segments": 11,
+      "root_collision": false,
+      "min_swept_clearance": 0.04650174081325531,
+      "max_cross_track": 0.3030341565608978
+    },
+    {
+      "scene": "random-furniture-dense-train-004002-4f7ed1085e60",
+      "seed": 2,
+      "success": true,
+      "steps": 702,
+      "segments": 11,
+      "root_collision": false,
+      "min_swept_clearance": 0.05915479362010956,
+      "max_cross_track": 0.2385278046131134
+    },
+    {
+      "scene": "random-furniture-dense-train-004002-4f7ed1085e60",
+      "seed": 8,
+      "success": true,
+      "steps": 577,
+      "segments": 11,
+      "root_collision": false,
+      "min_swept_clearance": 0.09636496007442474,
+      "max_cross_track": 0.36816883087158203
+    },
+    {
+      "scene": "random-furniture-dense-train-004002-4f7ed1085e60",
+      "seed": 9,
+      "success": true,
+      "steps": 637,
+      "segments": 11,
+      "root_collision": false,
+      "min_swept_clearance": 0.07145114243030548,
+      "max_cross_track": 0.2484126091003418
+    },
+    {
+      "scene": "random-generic_clutter-dense-train-005001-1eaef5f4115f",
+      "seed": 0,
+      "success": true,
+      "steps": 300,
+      "segments": 7,
+      "root_collision": false,
+      "min_swept_clearance": 0.13565988838672638,
+      "max_cross_track": 0.20906352996826172
+    },
+    {
+      "scene": "random-generic_clutter-dense-train-005001-1eaef5f4115f",
+      "seed": 2,
+      "success": true,
+      "steps": 304,
+      "segments": 7,
+      "root_collision": false,
+      "min_swept_clearance": 0.14656414091587067,
+      "max_cross_track": 0.14969299733638763
+    },
+    {
+      "scene": "random-generic_clutter-dense-train-005001-1eaef5f4115f",
+      "seed": 8,
+      "success": true,
+      "steps": 310,
+      "segments": 7,
+      "root_collision": false,
+      "min_swept_clearance": 0.08106635510921478,
+      "max_cross_track": 0.14725233614444733
+    },
+    {
+      "scene": "random-generic_clutter-dense-train-005001-1eaef5f4115f",
+      "seed": 9,
+      "success": false,
+      "steps": 196,
+      "segments": 3,
+      "root_collision": false,
+      "min_swept_clearance": 0.011991947889328003,
+      "max_cross_track": 0.25166603922843933
+    },
+    {
+      "scene": "random-generic_clutter-dense-train-005002-d4f59651508b",
+      "seed": 0,
+      "success": false,
+      "steps": 358,
+      "segments": 7,
+      "root_collision": false,
+      "min_swept_clearance": 0.049986496567726135,
+      "max_cross_track": 0.4907931983470917
+    },
+    {
+      "scene": "random-generic_clutter-dense-train-005002-d4f59651508b",
+      "seed": 2,
+      "success": false,
+      "steps": 296,
+      "segments": 6,
+      "root_collision": false,
+      "min_swept_clearance": 0.025775566697120667,
+      "max_cross_track": 0.2490382194519043
+    },
+    {
+      "scene": "random-generic_clutter-dense-train-005002-d4f59651508b",
+      "seed": 8,
+      "success": true,
+      "steps": 660,
+      "segments": 10,
+      "root_collision": false,
+      "min_swept_clearance": 0.0012627989053726196,
+      "max_cross_track": 0.39725637435913086
+    },
+    {
+      "scene": "random-generic_clutter-dense-train-005002-d4f59651508b",
+      "seed": 9,
+      "success": false,
+      "steps": 276,
+      "segments": 6,
+      "root_collision": false,
+      "min_swept_clearance": 0.029339954257011414,
+      "max_cross_track": 0.23616719245910645
+    }
+  ],
+  "ordered_progress_all": true,
+  "successful_goals_route_complete": true
+}
