@@ -14,12 +14,18 @@ from cat_ppo.furniture.learning import dense_layers, feature_names, predict_nump
 
 
 def export_native_policy(params, contract, output_path, *, normalize_observations=False,
-                         metadata=None, native_inference=None, seed=0):
+                         metadata=None, native_inference=None, seed=0, action_distribution_config=None):
     import onnx
     from onnx import TensorProto, helper, numpy_helper
     import onnxruntime as ort
 
     action_count = len(contract["action_names"])
+    if action_distribution_config is not None:
+        from cat_ppo.learning.policy.ppo.wholebody_distribution import WholeBodyNormalTanhDistribution
+        restored_distribution = WholeBodyNormalTanhDistribution.from_config(action_distribution_config)
+        if restored_distribution.event_size != action_count:
+            raise ValueError("Export distribution action count differs from observation contract")
+        action_distribution_config = restored_distribution.config
     observation_count = len(feature_names(contract, "state"))
     names = dense_layers(params[1])
     if np.shape(params[1]["params"][names[0]]["kernel"])[0] != observation_count:
@@ -65,7 +71,10 @@ def export_native_policy(params, contract, output_path, *, normalize_observation
     export_contract = {**contract, "input": {"name": "obs", "dtype": "float32", "shape": [None, observation_count]},
         "output": {"name": "continuous_actions", "dtype": "float32", "shape": [None, action_count]},
         "normalize_observations": bool(normalize_observations), "activation": "swish",
-        "distribution": "NormalTanhDistribution", "deterministic_output": "tanh(mean)",
+        "distribution": (action_distribution_config["kind"] if action_distribution_config is not None
+                         else "NormalTanhDistribution"),
+        "distribution_config": action_distribution_config,
+        "deterministic_output": "tanh(mean)", "stochastic_sampling_embedded": False,
         "normalization_embedded": bool(normalize_observations),
         "native_reference_matmul_precision": "highest" if native_inference is not None else None}
     helper.set_model_props(model, {"cat_furniture_contract": json.dumps(export_contract, sort_keys=True),
@@ -115,6 +124,9 @@ def export_selected(run_dir, output_path=None):
     import jax.numpy as jnp
     from brax.training.agents.ppo import checkpoint as brax_checkpoint
     from cat_ppo.furniture.checkpoint import BestCheckpointStore
+    from cat_ppo.learning.policy.ppo.wholebody_distribution import (
+        checkpoint_distribution_config, load_checkpoint_policy,
+    )
 
     selected = BestCheckpointStore.open_existing(run_dir).selected(verify=True)
     if selected is None:
@@ -123,7 +135,8 @@ def export_selected(run_dir, output_path=None):
     contract = json.loads((native / "observation_contract.json").read_text())
     network_config = json.loads((native / "ppo_network_config.json").read_text())
     params = brax_checkpoint.load(native)
-    inference = brax_checkpoint.load_policy(native, deterministic=True)
+    action_distribution_config = checkpoint_distribution_config(network_config)
+    inference = load_checkpoint_policy(native, deterministic=True)
 
     def apply(observations):
         return inference(jax.tree.map(jnp.asarray, observations), jax.random.PRNGKey(0))[0]
@@ -135,7 +148,8 @@ def export_selected(run_dir, output_path=None):
                 "score": selected["score"], "native_files": selected["files"],
                 "native_network_config": network_config}
     return export_native_policy(params, contract, output_path,
-        normalize_observations=network_config["normalize_observations"], metadata=metadata, native_inference=apply)
+        normalize_observations=network_config["normalize_observations"], metadata=metadata,
+        native_inference=apply, action_distribution_config=action_distribution_config)
 
 
 if __name__ == "__main__":

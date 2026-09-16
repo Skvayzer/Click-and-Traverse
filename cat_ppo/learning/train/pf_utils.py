@@ -110,6 +110,12 @@ class SamplePFWrapper(wrapper.Wrapper):
         }
         for metric_name in state.metrics.keys():
             episode_metrics[metric_name] = jnp.zeros(rng.shape[:-1])
+        for key, value in state.info.get("wholebody_episode", {}).items():
+            episode_metrics["wb_" + key] = jnp.zeros_like(value, dtype=jnp.float32)
+        if "wholebody_telemetry" in state.info:
+            episode_metrics["wb_length"] = jnp.zeros(rng.shape[:-1])
+            for key, value in state.info["wholebody_telemetry"].items():
+                episode_metrics["wb_mean_" + key] = jnp.zeros_like(value)
         state.info["episode_metrics"] = episode_metrics
         state.info["first_state"] = state.data
         state.info["first_obs"] = state.obs
@@ -242,7 +248,8 @@ class SamplePFWrapper(wrapper.Wrapper):
         # CAT keys above deliberately retain their released wrapper semantics.
         for name in state_reset.info:
             if name.startswith("wholebody_"):
-                state.info[name] = reset_obs_leaf(state_reset.info[name], state.info[name])
+                state.info[name] = jax.tree_util.tree_map(
+                    reset_obs_leaf, state_reset.info[name], state.info[name])
         qpos = jnp.where(done_exp, state_reset.data.qpos, state.data.qpos)
         qvel = jnp.where(done_exp, state_reset.data.qvel, state.data.qvel)
         state = state.replace(

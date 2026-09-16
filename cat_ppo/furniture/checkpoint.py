@@ -39,6 +39,13 @@ def selection_score(metrics, source, *, max_fall_rate=0.0, max_contact_rate=0.0)
     """Return a lexicographic score; no final-step or tie-based replacement."""
     if source == "training_proxy":
         return (_scalar(metrics["proxy_score"]),), {"eligible": None, "proxy": "epoch_mean_training_reward"}
+    if source == "retention_validation":
+        selection = metrics["selection"]
+        score = tuple(_scalar(value) for value in selection["score"])
+        if len(score) != 4 or type(selection["eligible"]) is not bool:
+            raise ValueError("Malformed retention selection")
+        return score, {key: selection[key] for key in (
+            "eligible", "max_cat_drop", "max_scene_drop", "ordering")}
     if source != "validation":
         raise ValueError("Selection source must be validation or training_proxy")
     fall, contact, success = (_scalar(metrics[key]) for key in ("fall_rate", "contact_rate", "strict_success_rate"))
@@ -176,6 +183,8 @@ class BestCheckpointStore:
             raise ValueError("A learned checkpoint needs a positive integer training step")
         score, rules = selection_score(metrics, source, max_fall_rate=self.max_fall_rate,
                                        max_contact_rate=self.max_contact_rate)
+        if source == "retention_validation" and not rules["eligible"]:
+            return False
         # Reject malformed metadata before invoking any expensive checkpoint writer.
         json.dumps({"metrics": metrics, "contract": contract, "provenance": provenance}, allow_nan=False)
         with self._lock():

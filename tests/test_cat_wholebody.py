@@ -263,6 +263,27 @@ def test_wholebody_real_step_keeps_reward_scaling_and_state_tree(wholebody, whol
     assert float(state.reward) == pytest.approx(expected, rel=1e-6)
 
 
+def test_stabilization_uses_actual_two_step_target_history_and_preserves_leg_rewards(config):
+    task = _WholeBodyTask(config=wholebody_config(config, stabilization=True))
+    state0 = jax.jit(task.reset)(jax.random.PRNGKey(17))
+    advance = jax.jit(task.step)
+    state1 = advance(state0, jp.full(29, .2))
+    state2 = advance(state1, jp.full(29, -.2))
+    jax.block_until_ready(state2.reward)
+    np.testing.assert_array_equal(state1.info["wholebody_previous_previous_upper_target"], state0.info["motor_targets"][12:])
+    np.testing.assert_array_equal(state2.info["wholebody_previous_previous_upper_target"], state1.info["wholebody_applied_upper_target"])
+    np.testing.assert_array_equal(state2.info["wholebody_previous_upper_target"], state2.info["wholebody_applied_upper_target"])
+    actual_acceleration = (state2.info["wholebody_applied_upper_target"]
+        - 2 * state1.info["wholebody_applied_upper_target"] + state0.info["motor_targets"][12:]) / task.dt ** 2
+    assert float(state2.info["wholebody_telemetry"]["upper_target_acceleration_rms"]) == pytest.approx(float(jp.sqrt(jp.mean(actual_acceleration ** 2))), rel=1e-5)
+    for key, value in config.reward_config.scales.items():
+        assert task._config.reward_config.scales[key] == value
+    assert state2.obs["state"].shape == (222,) and state2.obs["privileged_state"].shape == (310,)
+    assert jax.tree.structure(state0) == jax.tree.structure(state2)
+    assert state2.info["wholebody_faults"]["any"] == (state2.done > 0)
+    assert task._config.reward_config.scales.wholebody_upper_target_velocity == -.05
+
+
 def test_room_goal_and_episode_duration_do_not_change_original_scenes(config):
     task = object.__new__(_WholeBodyTask)
     task._config = wholebody_config(config)
@@ -323,7 +344,10 @@ def test_expanded_compact_task_runs_all_families_through_real_autoreset(config, 
     assert state.obs["state"].shape == (5, 222)
     assert state.obs["privileged_state"].shape == (5, 310)
     state.info["steps"] = jp.array([999., 999., 999., 3999., 3999.])
-    result = jax.jit(wrapped.step)(state, jp.zeros((5, 29)))
+    reached_earlier = jp.array([True, False, True, False, True])
+    state.info["wholebody_episode"]["goal_reached"] = reached_earlier
+    actions = jp.zeros((5, 29)).at[:, 12:].set(.2)
+    result = jax.jit(wrapped.step)(state, actions)
     jax.block_until_ready(result.reward)
     np.testing.assert_array_equal(result.info["episode_done"], 1.)
     np.testing.assert_array_equal(result.info["pf_episode_ema"][0], np.ones(5))
@@ -332,3 +356,10 @@ def test_expanded_compact_task_runs_all_families_through_real_autoreset(config, 
                                [.2, .4, .25, .15], atol=1e-6)
     assert np.isfinite(result.obs["state"]).all()
     assert np.isfinite(result.data.qpos).all()
+    # Completed episode flags survive the autoreset in episode_metrics; fresh
+    # task state must clear them and initialize both physical target histories.
+    np.testing.assert_array_equal(result.info["episode_metrics"]["wb_goal_reached"], reached_earlier)
+    np.testing.assert_array_equal(result.info["wholebody_episode"]["goal_reached"], False)
+    for key in ("wholebody_previous_upper_target", "wholebody_previous_previous_upper_target"):
+        np.testing.assert_array_equal(result.info[key], result.info["motor_targets"][:, 12:])
+    assert np.all(result.info["episode_metrics"]["wb_mean_upper_target_velocity_rms"] > 0.)

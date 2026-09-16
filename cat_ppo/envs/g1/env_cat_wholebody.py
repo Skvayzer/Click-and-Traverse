@@ -26,7 +26,8 @@ from cat_ppo.furniture.grippers import (
 )
 
 
-def wholebody_config(base_config, *, bank_manifest=None, compatibility_mode=False):
+def wholebody_config(base_config, *, bank_manifest=None, compatibility_mode=False,
+                     stabilization=False):
     """Extend the supplied *released* env config without replacing its settings.
 
     Compatibility mode uses the original robot and 12-action observation
@@ -38,6 +39,9 @@ def wholebody_config(base_config, *, bank_manifest=None, compatibility_mode=Fals
               else config_dict.ConfigDict(deepcopy(base_config)))
     config.unlock()
     config.compatibility_mode = bool(compatibility_mode)
+    if compatibility_mode and stabilization:
+        raise ValueError("Stabilization adds whole-body rewards and cannot be used in exact CAT compatibility mode")
+    config.wholebody_stabilization = bool(stabilization)
     if bank_manifest is not None:
         from cat_ppo.furniture.generalist_fields import bank_config
         config.pf_config.update(bank_config(bank_manifest))
@@ -48,6 +52,12 @@ def wholebody_config(base_config, *, bank_manifest=None, compatibility_mode=Fals
     config.hand_clearance_margin = 0.12
     config.arm_clearance_margin = 0.08
     config.clutter_episode_length = 4000
+    # Candidate physical normalization and small additive cost weights. Native
+    # CAT still multiplies the combined reward by its .02s control timestep.
+    config.upper_velocity_cost_scale = 2.0  # rad/s; existing target slew limit
+    config.upper_acceleration_cost_scale = 20.0  # rad/s^2
+    config.upper_posture_clearance_taper = .12  # m beyond protection margins
+    config.upper_cost_waist_weight = 4.0
     contract = (control.legacy_observation_contract() if compatibility_mode
                 else control.wholebody_observation_contract())
     config.num_act = len(contract["action_names"])
@@ -56,6 +66,10 @@ def wholebody_config(base_config, *, bank_manifest=None, compatibility_mode=Fals
     if not compatibility_mode:
         config.reward_config.scales.wholebody_hand_clearance = -5.0
         config.reward_config.scales.wholebody_arm_clearance = -2.0
+        if stabilization:
+            config.reward_config.scales.wholebody_upper_target_velocity = -.05
+            config.reward_config.scales.wholebody_upper_target_acceleration = -.02
+            config.reward_config.scales.wholebody_upper_clear_posture = -.05
     return config
 
 
@@ -166,6 +180,53 @@ class _WholeBodyTask(G1CatEnv):
             clearance = clearance.at[5:7, 0].add(-self._hand_radii)
         return gf, bf, clearance
 
+    def reset(self, rng):
+        state = super().reset(rng)
+        if self.compatibility_mode:
+            return state
+        from cat_ppo.furniture.wholebody_stability import (
+            EPISODE_KEYS, goal_status, native_fault_flags,
+        )
+        upper = state.info["motor_targets"][12:]
+        state.info["wholebody_previous_upper_target"] = upper
+        state.info["wholebody_previous_previous_upper_target"] = upper
+        state.info["wholebody_applied_upper_target"] = upper
+        flags = native_fault_flags(self, state.data, state.info)
+        state.info["wholebody_faults"] = {key: jp.array(False) for key in flags}
+        episode = {key: jp.array(False) for key in EPISODE_KEYS}
+        episode["outside_bounds"] = goal_status(self, state.data, state.info, jp.array(False))["outside_bounds"]
+        state.info["wholebody_episode"] = episode
+        _, telemetry = self._upper_stability_terms(state.info)
+        telemetry["upper_joint_velocity_rms"] = jp.sqrt(jp.mean(state.data.qvel[18:35] ** 2))
+        telemetry["upper_action_distance_normalized"] = jp.array(0.)
+        state.info["wholebody_telemetry"] = telemetry
+        return state
+
+    def step(self, state, action):
+        if self.compatibility_mode:
+            return super().step(state, action)
+        # Own two-target history: native step changes motor_targets and resets
+        # them at termination, so neither value may be read after that reset.
+        previous = state.info["wholebody_previous_upper_target"]
+        result = super().step(state, action)
+        result.info["wholebody_previous_previous_upper_target"] = previous
+        result.info["wholebody_previous_upper_target"] = result.info["wholebody_applied_upper_target"]
+        return result
+
+    def _upper_stability_terms(self, info):
+        from cat_ppo.furniture.wholebody_stability import upper_stability_terms
+        return upper_stability_terms(
+            info["motor_targets"][12:], info["wholebody_previous_upper_target"],
+            info["wholebody_previous_previous_upper_target"], self._default_qpos[12:],
+            info["handsdf"], info["wholebody_elbow_clearance"], dt=self.dt,
+            velocity_scale=self._config.upper_velocity_cost_scale,
+            acceleration_scale=self._config.upper_acceleration_cost_scale,
+            posture_scale=self._config.upper_action_scale,
+            hand_margin=self._config.hand_clearance_margin,
+            elbow_margin=self._config.arm_clearance_margin,
+            clearance_taper=self._config.upper_posture_clearance_taper,
+            waist_weight=self._config.upper_cost_waist_weight)
+
     def _reset_root_pose(self, qpos):
         # A scene bank keeps released scenes' reset pose bit-for-bit unchanged;
         # added room scenes relocate the same randomized pose to a clear start.
@@ -244,6 +305,13 @@ class _WholeBodyTask(G1CatEnv):
         deficit = jp.maximum(self._config.arm_clearance_margin
                              - info["wholebody_elbow_clearance"], 0.0)
         rewards["wholebody_arm_clearance"] = jp.where(enabled, jp.mean(deficit ** 2), 0.0)
+        costs, telemetry = self._upper_stability_terms(info)
+        telemetry["upper_joint_velocity_rms"] = jp.sqrt(jp.mean(data.qvel[18:35] ** 2))
+        telemetry["upper_action_distance_normalized"] = jp.sqrt(jp.mean(action[12:] ** 2))
+        info["wholebody_telemetry"] = telemetry
+        info["wholebody_applied_upper_target"] = info["motor_targets"][12:]
+        if self._config.wholebody_stabilization:
+            rewards.update(costs)
         return rewards
 
     def _crossed_goal(self, positions):
@@ -263,8 +331,23 @@ class _WholeBodyTask(G1CatEnv):
         # Hand sphere penetration already uses CAT's inherited handsdf rule.
         elbow_collision = jp.any(info["wholebody_elbow_clearance"]
                                  < -self._config.term_collision_threshold)
-        return (original_done | (self._config.terminate_on_elbow_collision
-                                 & (info["step"] >= 50) & elbow_collision))
+        done = (original_done | (self._config.terminate_on_elbow_collision
+                                & (info["step"] >= 50) & elbow_collision))
+        from cat_ppo.furniture.wholebody_stability import goal_status, native_fault_flags
+        flags = native_fault_flags(self, data, info)
+        info["wholebody_faults"] = flags
+        episode = info["wholebody_episode"]
+        goal = goal_status(self, data, info, episode["outside_bounds"])
+        episode = dict(episode)
+        episode["outside_bounds"] = goal["outside_bounds"]
+        for key in ("goal_reached", "raw_goal"):
+            episode[key] = episode[key] | (goal[key] & ~done)
+        for key in ("fall", "obstacle", "self_contact", "numerical"):
+            episode[key] = episode[key] | flags[key]
+        episode["hand_violation"] = episode["hand_violation"] | flags["hands_field"]
+        episode["elbow_violation"] = episode["elbow_violation"] | flags["elbows_field"]
+        info["wholebody_episode"] = episode
+        return done
 
 
 # The scene mixin owns per-environment scene IDs and CAT's adaptive reset

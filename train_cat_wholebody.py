@@ -21,8 +21,8 @@ def parser():
     result.add_argument("--bank-manifest", type=Path, default=ROOT / "data/furniture/cat_diversity_v2_20260916/manifest.json")
     result.add_argument("--run-dir", type=Path, default=ROOT / "outputs/cat_wholebody_diversity_v2")
     result.add_argument("--profile", choices=("single_gpu_32gb", "released"), default="single_gpu_32gb")
-    result.add_argument("--finetuning", choices=("gentle", "released"), default="gentle",
-                        help="Gentle: 10x lower learning rate, PPO clip .1, frozen CAT leg-policy reference")
+    result.add_argument("--finetuning", choices=("stabilized", "gentle", "released"), default="stabilized",
+                        help="Stabilized: gentle PPO, bounded upper exploration, physical target penalties and retention validation")
     result.add_argument("--num-envs", type=int, help="Simulator parallelism; leaves PPO batch geometry unchanged")
     result.add_argument("--batch-size", type=int, help="Explicit trajectories/minibatch resource override")
     result.add_argument("--seed", type=int, default=0)
@@ -103,14 +103,20 @@ def prepare(args, specification, *, restore_model=True):
                                           load_native, verify_warmstart_parity)
 
     config = specification["config"]
-    env_config = wholebody_config(ConfigDict(config["env_config"]), bank_manifest=args.bank_manifest.resolve())
+    env_config = wholebody_config(ConfigDict(config["env_config"]), bank_manifest=args.bank_manifest.resolve(),
+                                 stabilization=config["fine_tuning"].get("upper_stabilization", False))
     environment = G1CatWholeBodyEnv(config=env_config)
     contract = environment.observation_contract()
     net_config = config["policy_config"]["network_factory"]
-    factory = functools.partial(networks.make_ppo_networks,
+    distribution_settings = config["fine_tuning"].get("action_distribution")
+    network_builder = networks.make_ppo_networks
+    if distribution_settings is not None:
+        from cat_ppo.learning.policy.ppo.wholebody_distribution import make_ppo_networks
+        network_builder = make_ppo_networks
+    factory = functools.partial(network_builder,
         policy_hidden_layer_sizes=tuple(net_config["policy_hidden_layer_sizes"]),
         value_hidden_layer_sizes=tuple(net_config["value_hidden_layer_sizes"]),
-        policy_obs_key="state", value_obs_key="privileged_state")
+        policy_obs_key="state", value_obs_key="privileged_state", **(distribution_settings or {}))
     shapes = {"state": (len(contract["actor_features"]),),
               "privileged_state": (len(contract["critic_features"]),)}
     actual = jax.eval_shape(environment.reset, jax.random.PRNGKey(args.seed))
@@ -305,6 +311,28 @@ def run(args, specification):
             status.update(status="running", phase="learner_initialization")
             atomic_json(status_path, status)
 
+            validation_settings = specification["config"]["fine_tuning"].get("retention_validation")
+            validator, baseline = None, None
+            if validation_settings is not None:
+                from cat_ppo.furniture.retention_validation import RetentionValidator
+                validator = RetentionValidator(environment, factory,
+                    seeds=range(validation_settings["seeds_per_scene"]))
+                baseline_path = directory / "validation_baseline.json"
+                if baseline_path.exists():
+                    saved = _read_metadata(baseline_path)
+                    if saved["identity"] != identity:
+                        raise ValueError("Validation baseline belongs to a different training setup")
+                    baseline = saved["result"]
+                else:
+                    if runtime is not None or target is None:
+                        raise ValueError("Original-checkpoint validation baseline is missing")
+                    print("Evaluating original CAT baseline on fixed scenes (both action modes)", flush=True)
+                    baseline_result = validator.evaluate(target, step=0)
+                    baseline = baseline_result.as_dict()
+                    atomic_json(baseline_path, dict(identity=identity, result=baseline))
+                    print("Original CAT validation baseline saved; starting continuous PPO", flush=True)
+            transitions_per_update = specification["config"]["fine_tuning"]["effective_batch_geometry"]["transitions_per_update"]
+
             def progress(step, metrics):
                 if int(step) > status.get("observed_steps", 0):
                     status["observed_steps"] = int(step)
@@ -313,6 +341,24 @@ def run(args, specification):
 
             def scored(step, make_policy, params, network_config, metrics, source):
                 del make_policy
+                if validator is not None:
+                    interval = validation_settings["interval_updates"] * transitions_per_update
+                    if int(step) % interval:
+                        return
+                    print(f"Fixed-scene retention validation at {int(step)} transitions", flush=True)
+                    result = validator.evaluate(params, step=int(step), baseline=baseline["modes"])
+                    atomic_json(directory / "validation_latest.json", result.as_dict())
+                    selected = store.consider(step=int(step),
+                        metrics={"selection": result.selection, "validation": result.metrics},
+                        source="retention_validation", write_checkpoint=native_writer(params, network_config, int(step)),
+                        contract=record["observation_contract"],
+                        provenance={"code": record["code"], "bank_sha256": record["bank_sha256"],
+                                    "action_distribution": specification["config"]["fine_tuning"]["action_distribution"],
+                                    "validation": result.metadata,
+                                    "selection": "CAT retention gates; clutter success and hand protection"})
+                    logger.log(step, result.metrics | {"selection/best_updated": int(selected)})
+                    print(f"Validation finished: {result.selection}", flush=True)
+                    return
                 selected = store.consider(step=int(step),
                     metrics={"proxy_score": float(metrics["training/rollout_reward_mean"])},
                     source=source, write_checkpoint=native_writer(params, network_config, int(step)),
@@ -326,6 +372,12 @@ def run(args, specification):
                 status.update(completed_steps=int(step), resume_state_steps=int(step),
                               initial_runtime_written=True, phase="training")
                 atomic_json(status_path, status)
+                # Keep zero-progress startup retries possible until a durable
+                # learner snapshot exists. Baseline evaluation is not training.
+                if int(step) == 0 and baseline is not None:
+                    logger.log(0, baseline["metrics"] | {
+                        "baseline/" + key.removeprefix("validation/"): value
+                        for key, value in baseline["metrics"].items()})
 
             with StopRequest(directory / "STOP") as stop:
                 _, _, metrics = native_ppo.train(
@@ -337,7 +389,7 @@ def run(args, specification):
                     restore_runtime_state=runtime, runtime_metadata=identity,
                     runtime_checkpoint_fn=save_runtime, save_checkpoint_path=None,
                     log_training_metrics=True, training_metrics_buffer_size=1000,
-                    training_metrics_steps=specification["config"]["fine_tuning"]["effective_batch_geometry"]["transitions_per_update"],
+                    training_metrics_steps=transitions_per_update,
                     progress_fn=progress, scored_checkpoint_fn=scored, should_stop_fn=stop.requested)
                 status.update(status="stopped", completed_steps=int(metrics["training/completed_steps"]),
                               stop_reason=stop.reason)

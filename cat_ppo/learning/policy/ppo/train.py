@@ -118,6 +118,36 @@ def _generate_unroll_with_scene_ids(env, state, policy, key, unroll_length, extr
     return state, data
 
 
+_WHOLEBODY_EPISODE_RATE_KEYS = {
+    "wb_goal_reached": "training/goal_success_rate",
+    "wb_fall": "training/fall_rate",
+    "wb_obstacle": "training/obstacle_failure_rate",
+    "wb_hand_violation": "training/hand_violation_rate",
+    "wb_elbow_violation": "training/elbow_violation_rate",
+    "wb_outside_bounds": "training/outside_bounds_rate",
+    "wb_self_contact": "training/self_contact_rate",
+    "wb_numerical": "training/numerical_failure_rate",
+}
+
+
+def _current_distribution_metrics(parametric_distribution, scales):
+    """Reduce actual bounded scales on device; only scalar values reach the host."""
+    config = getattr(parametric_distribution, "config", None)
+    if not config or config.get("kind") != "wholebody_bounded_normal_tanh_v1":
+        return {}
+    split = config["leg_action_count"]
+    upper = scales[..., split:]
+    invalid = (~jnp.isfinite(upper) | (upper < config["upper_std_min"])
+               | (upper > config["upper_std_max"]))
+    return {
+        "training/leg_std_mean": jnp.mean(scales[..., :split]),
+        "training/upper_std_mean": jnp.mean(upper),
+        "training/upper_std_min": jnp.min(upper),
+        "training/upper_std_max": jnp.max(upper),
+        "training/upper_std_bounds_violation_rate": jnp.mean(invalid.astype(jnp.float32)),
+    }
+
+
 class TrainingMetricsLogger:
     """Aggregates rollout episode metrics without flattening names under one prefix."""
 
@@ -135,6 +165,7 @@ class TrainingMetricsLogger:
         self._last_log_steps = 0
         self._log_count = 0
         self._progress_fn = progress_fn
+        self._latest_rollout_metrics = {}
 
     def state_dict(self):
         """Preserve the shared episode windows and logging axis across a resume."""
@@ -147,6 +178,7 @@ class TrainingMetricsLogger:
             "log_count": self._log_count,
             "metrics_buffer": {k: list(v) for k, v in self._metrics_buffer.items()},
             "rollout_buffer": {k: list(v) for k, v in self._rollout_buffer.items()},
+            "latest_rollout_metrics": dict(self._latest_rollout_metrics),
         }
 
     def load_state_dict(self, state):
@@ -160,6 +192,8 @@ class TrainingMetricsLogger:
             target.clear()
             for key, values in state[name].items():
                 target[key].extend(values)
+        # Older snapshots predate current-rollout telemetry.
+        self._latest_rollout_metrics = dict(state.get("latest_rollout_metrics", {}))
 
     @staticmethod
     def _metric_key(name: str) -> str:
@@ -169,7 +203,8 @@ class TrainingMetricsLogger:
             return f"episode/{name}"
         return f"episode_metrics/{name}"
 
-    def update_rollout_metrics(self, metrics, dones, truncations, pf_ids=None, action_std=None):
+    def update_rollout_metrics(self, metrics, dones, truncations, pf_ids=None, action_std=None,
+                               distribution_metrics=None):
         dones = np.asarray(dones).astype(bool)
         truncations = np.asarray(truncations).astype(bool)
         pf_ids = None if pf_ids is None else np.asarray(pf_ids).astype(np.int32)
@@ -178,10 +213,22 @@ class TrainingMetricsLogger:
             self._rollout_buffer["training/action_std"].append(float(np.asarray(action_std)))
 
         done_count = int(np.sum(dones))
+        # These values describe this callback's rollout, never the historical
+        # 1000-callback buffer.  Replace the dictionary to prevent stale rates
+        # when a rollout contains no completed episodes or a key is unavailable.
+        self._latest_rollout_metrics = {"training/completed_episode_count": done_count}
+        if distribution_metrics is not None:
+            self._latest_rollout_metrics.update({
+                key: float(np.asarray(value)) for key, value in distribution_metrics.items()
+            })
         self._completed_episodes += done_count
         if done_count > 0:
             timeout_count = int(np.sum(dones & truncations))
             termination_count = done_count - timeout_count
+            self._latest_rollout_metrics.update({
+                "training/timeout_rate": timeout_count / done_count,
+                "training/termination_rate": termination_count / done_count,
+            })
             total_count = int(np.prod(dones.shape))
             self._rollout_buffer["done_rate"].append(done_count / total_count)
             self._rollout_buffer["termination_step_rate"].append(termination_count / total_count)
@@ -209,6 +256,16 @@ class TrainingMetricsLogger:
                 metric = np.asarray(metric)
                 done_metrics = metric[done_mask].flatten().tolist()
                 self._metrics_buffer[self._metric_key(name)].extend(done_metrics)
+                if name in _WHOLEBODY_EPISODE_RATE_KEYS:
+                    self._latest_rollout_metrics[_WHOLEBODY_EPISODE_RATE_KEYS[name]] = float(
+                        np.mean(done_metrics)
+                    )
+                elif name.startswith("wb_mean_"):
+                    # The wrapper has already normalized each terminal metric
+                    # by its own episode length; average completed episodes.
+                    self._latest_rollout_metrics[f"training/{name[3:]}"] = float(
+                        np.mean(done_metrics)
+                    )
         else:
             self._rollout_buffer["done_rate"].append(0.0)
             self._rollout_buffer["termination_step_rate"].append(0.0)
@@ -233,6 +290,9 @@ class TrainingMetricsLogger:
             key = metric_name if metric_name.startswith("training/") else f"rollout/{metric_name}"
             mean_metrics[key] = np.mean(self._rollout_buffer[metric_name])
             log_string += f"{f'{key}:':>{pad}} {mean_metrics[key]:.4f}\n"
+        mean_metrics.update(self._latest_rollout_metrics)
+        for key, value in self._latest_rollout_metrics.items():
+            log_string += f"{f'{key}:':>{pad}} {value:.4f}\n"
         logging.info(log_string)
         if self._progress_fn is not None:
             self._progress_fn(int(self._num_steps), mean_metrics)
@@ -1127,12 +1187,15 @@ def train(
                 training_state.params.policy,
                 data.observation,
             )
-            action_std = jnp.mean(
-                ppo_network.parametric_action_distribution.create_dist(
-                    rollout_logits
-                ).scale
+            parametric_distribution = ppo_network.parametric_action_distribution
+            rollout_scales = parametric_distribution.create_dist(rollout_logits).scale
+            action_std = jnp.mean(rollout_scales)
+            distribution_metrics = _current_distribution_metrics(
+                parametric_distribution, rollout_scales,
             )
-            if has_scene_ids:
+            # Stabilized runs use unified current-rollout rates plus fixed
+            # validation. Avoid thousands of stale per-scene chart series.
+            if has_scene_ids and not distribution_metrics:
                 jax.debug.callback(
                     metrics_aggregator.update_rollout_metrics,
                     data.extras["state_extras"]["episode_metrics"],
@@ -1140,6 +1203,7 @@ def train(
                     data.extras["state_extras"]["truncation"],
                     data.extras["state_extras"]["pf_id"],
                     action_std,
+                    distribution_metrics,
                 )
             else:
                 jax.debug.callback(
@@ -1149,6 +1213,7 @@ def train(
                     data.extras["state_extras"]["truncation"],
                     None,
                     action_std,
+                    distribution_metrics,
                 )
 
         # Update normalization params and normalize observations.
@@ -1329,6 +1394,7 @@ def train(
         "optax_version": optax.__version__,
         "device_platforms": [device.platform for device in jax.local_devices()[:local_devices_to_use]],
         "metadata": dict(runtime_metadata or {}),
+        "distribution": getattr(ppo_network.parametric_action_distribution, "config", None),
     }
     if reference_config is not None:
         runtime_contract["reference_kl"] = reference_config

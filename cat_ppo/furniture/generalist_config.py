@@ -62,7 +62,7 @@ def training_config(*, profile="single_gpu_32gb", num_envs=None, batch_size=None
     if batch_size is not None:
         policy["batch_size"] = int(batch_size)
     policy["seed"] = int(seed)
-    if finetuning == "gentle":
+    if finetuning in ("gentle", "stabilized"):
         policy["learning_rate"] = 3e-5
         policy["clipping_epsilon"] = .1
     elif finetuning != "released":
@@ -79,7 +79,18 @@ def training_config(*, profile="single_gpu_32gb", num_envs=None, batch_size=None
         "initialization": "released final generalist actor and critic; Adam initialized once",
         "dagger": "already completed in released generalist; direct PPO fine-tuning",
         "continuous": True,
-        "automatic_evaluation": False,
+        "automatic_evaluation": finetuning == "stabilized",
+        "upper_stabilization": finetuning == "stabilized",
+        "action_distribution": ({"leg_action_count": 12, "upper_std_min": .02,
+                                 "upper_std_max": .10, "upper_entropy_weight": 0.0}
+                                if finetuning == "stabilized" else None),
+        "retention_validation": ({"interval_updates": 50, "seeds_per_scene": 16,
+                                   "cat_success_tolerance": .05,
+                                   "per_scene_success_tolerance": .125,
+                                   "modes": ["deterministic", "stochastic"],
+                                   "outcome": "first clean goal, native failure, or native horizon",
+                                   "scene_scope": "16 fixed training-bank layouts; retention monitor, not unseen generalization"}
+                                  if finetuning == "stabilized" else None),
         "profile": profile,
         "mode": finetuning,
         "optimization_overrides": {k: {"released": released_config()["policy_config"][k], "effective": policy[k]}
@@ -88,7 +99,7 @@ def training_config(*, profile="single_gpu_32gb", num_envs=None, batch_size=None
         "reference_kl": ({"coefficient": .05, "action_indices": list(range(12)),
                           "scene_scope": "CAT task scenes only; rooms excluded",
                           "reference": "frozen initial actor mapped from released CAT, on the same compact observations"}
-                         if finetuning == "gentle" else None),
+                         if finetuning in ("gentle", "stabilized") else None),
         "released_batch_geometry": original,
         "effective_batch_geometry": effective,
         "resource_overrides": {k: {"released": released_config()["policy_config"][k], "effective": policy[k]}

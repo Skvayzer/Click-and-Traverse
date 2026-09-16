@@ -18,6 +18,17 @@ class SceneEpisodeWrapper(training.EpisodeWrapper):
         super().__init__(env, episode_length, action_repeat)
         self.scene_lengths = jp.asarray(scene_lengths, dtype=jp.int32)
 
+    def reset(self, rng):
+        state = super().reset(rng)
+        metrics = state.info["episode_metrics"]
+        for key, value in state.info.get("wholebody_episode", {}).items():
+            metrics["wb_" + key] = jp.zeros_like(value, dtype=jp.float32)
+        if "wholebody_telemetry" in state.info:
+            metrics["wb_length"] = jp.zeros_like(state.done)
+            for key, value in state.info["wholebody_telemetry"].items():
+                metrics["wb_mean_" + key] = jp.zeros_like(value)
+        return state
+
     def step(self, state, action):
         def f(state, _):
             next_state = self.env.step(state, action)
@@ -38,6 +49,18 @@ class SceneEpisodeWrapper(training.EpisodeWrapper):
             if name != "reward":
                 state.info["episode_metrics"][name] += state.metrics[name]
                 state.info["episode_metrics"][name] *= 1 - prev_done
+        # Snapshot terminal sticky flags before auto-reset replaces raw info.
+        # A goal event counts once per episode, never once per subsequent step.
+        metrics = state.info["episode_metrics"]
+        for key, value in state.info.get("wholebody_episode", {}).items():
+            metrics["wb_" + key] = value.astype(jp.float32)
+        if "wholebody_telemetry" in state.info:
+            old_count = jp.where(prev_done, 0., metrics["wb_length"])
+            count = old_count + self.action_repeat
+            for key, value in state.info["wholebody_telemetry"].items():
+                name = "wb_mean_" + key
+                metrics[name] = (metrics[name] * old_count + value * self.action_repeat) / count
+            metrics["wb_length"] = count
         state.info["episode_done"] = done
         return state.replace(done=done)
 
