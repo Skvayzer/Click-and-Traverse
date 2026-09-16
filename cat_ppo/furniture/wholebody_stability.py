@@ -33,8 +33,10 @@ Unlike fields/self-contact, falls and numerical faults have no 50-step grace.
                              & env._config.terminate_on_elbow_collision)
     navigation = info.get("room_navigation", {})
     flags["room_root_field"] = navigation.get("enabled", jp.array(False)) & navigation.get("violation", jp.array(False))
+    flags["body_collision"] = info.get("wholebody_body_collision", jp.array(False))
     flags["fall"] = flags["fall_inverted"] | flags["fall_head_low"]
-    flags["obstacle"] = jp.any(jp.stack([value for key, value in flags.items() if key.endswith("_field")]))
+    flags["obstacle"] = (jp.any(jp.stack([value for key, value in flags.items() if key.endswith("_field")]))
+                         | flags["body_collision"])
     flags["any"] = flags["fall"] | flags["self_contact"] | flags["obstacle"] | flags["numerical"]
     return flags
 
@@ -108,4 +110,6 @@ margin, then smoothly becomes active over12cm of additional clearance.
 
 
 EPISODE_KEYS = ("goal_reached", "raw_goal", "fall", "obstacle", "self_contact", "numerical",
-                "outside_bounds", "hand_violation", "elbow_violation")
+                "outside_bounds", "hand_violation", "elbow_violation", "body_collision",
+                "body_collision_feet", "body_collision_legs", "body_collision_trunk",
+                "body_collision_head", "body_collision_arms", "body_collision_hands", "reset_replaced")

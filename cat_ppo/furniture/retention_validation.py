@@ -68,6 +68,7 @@ def summarize_episodes(episodes):
             "goal_success_rate": rate("goal_reached"),
             "fall_rate": rate("fall"),
             "obstacle_violation_rate": rate("obstacle"),
+            "body_collision_rate": sum(bool(row.get("body_collision", False)) for row in rows) / count,
             "hand_violation_rate": rate("hand_violation"),
             "elbow_violation_rate": rate("elbow_violation"),
             "self_contact_rate": rate("self_contact"),
@@ -238,8 +239,8 @@ class RetentionValidator:
                     active, jp.min(state.info["handsdf"].reshape(self.count, -1), axis=-1), jp.inf)),
             }
             for key in ("fall", "obstacle", "self_contact", "numerical", "outside_bounds",
-                        "hand_violation", "elbow_violation"):
-                next_acc[key] = acc[key] | (active & episode[key])
+                        "hand_violation", "elbow_violation", "body_collision"):
+                next_acc[key] = acc[key] | (active & episode.get(key, jp.zeros_like(active)))
             return (state, next_acc, active & ~failure & ~success & ~timeout & ~unexplained_done, index + 1), None
 
         with self.binding.bind(fields):
@@ -274,7 +275,7 @@ class RetentionValidator:
                        timeout=false, unexplained_done=false, goal_reached=false,
                        min_hand_clearance=jp.min(initial.info["handsdf"].reshape(self.count, -1), axis=-1))
             acc.update({key: false for key in ("fall", "obstacle", "self_contact", "numerical",
-                                              "hand_violation", "elbow_violation")})
+                                              "hand_violation", "elbow_violation", "body_collision")})
             acc["outside_bounds"] = initial.info["wholebody_episode"]["outside_bounds"]
             state, active, index = initial, jp.ones(self.count, dtype=bool), jp.int32(0)
             for _ in range(math.ceil(self.max_steps / self.chunk_steps)):

@@ -122,6 +122,10 @@ _WHOLEBODY_EPISODE_RATE_KEYS = {
     "wb_goal_reached": "training/goal_success_rate",
     "wb_fall": "training/fall_rate",
     "wb_obstacle": "training/obstacle_failure_rate",
+    "wb_body_collision": "training/body_collision_rate",
+    "wb_reset_replaced": "training/reset_pose_replacement_rate",
+    **{f"wb_body_collision_{region}": f"training/body_collision_{region}_rate"
+       for region in ("feet", "legs", "trunk", "head", "arms", "hands")},
     "wb_hand_violation": "training/hand_violation_rate",
     "wb_elbow_violation": "training/elbow_violation_rate",
     "wb_outside_bounds": "training/outside_bounds_rate",

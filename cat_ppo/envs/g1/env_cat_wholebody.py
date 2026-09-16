@@ -2,9 +2,10 @@
 
 The inherited task owns the reward, disturbances, gait, observations, field
 latency and termination.  This module changes only the requested body action
-interface, fixed Dex3 hand spheres, and two elbow field samples.  Furniture
-remains a potential field during training, as in released CAT.  The separate
-physical furniture environment is useful for contact evaluation, not training.
+interface, fixed Dex3 hand spheres, and two elbow field samples. The optional
+BodyCollisionMixin adds simulator-internal primitive-volume obstacle failures
+and an explicit terminal penalty, without enlarging policy observations or
+adding obstacle contact impulses to CAT's native floor/self-contact physics.
 """
 from copy import deepcopy
 from pathlib import Path
@@ -42,6 +43,10 @@ def wholebody_config(base_config, *, bank_manifest=None, compatibility_mode=Fals
     if compatibility_mode and stabilization:
         raise ValueError("Stabilization adds whole-body rewards and cannot be used in exact CAT compatibility mode")
     config.wholebody_stabilization = bool(stabilization)
+    from cat_ppo.envs.g1.body_collision import PROPOSAL
+    config.wholebody = config_dict.create(body_collision=config_dict.create(
+        enabled=False, bank_manifest="", reset_manifest="", proposal=str(PROPOSAL),
+        event_penalty=1.0))
     if bank_manifest is not None:
         from cat_ppo.furniture.generalist_fields import bank_config
         config.pf_config.update(bank_config(bank_manifest))
@@ -194,6 +199,7 @@ class _WholeBodyTask(G1CatEnv):
         flags = native_fault_flags(self, state.data, state.info)
         state.info["wholebody_faults"] = {key: jp.array(False) for key in flags}
         episode = {key: jp.array(False) for key in EPISODE_KEYS}
+        episode["reset_replaced"] = state.info.get("wholebody_reset_replaced", jp.array(False))
         episode["outside_bounds"] = goal_status(self, state.data, state.info, jp.array(False))["outside_bounds"]
         state.info["wholebody_episode"] = episode
         _, telemetry = self._upper_stability_terms(state.info)
@@ -337,7 +343,7 @@ class _WholeBodyTask(G1CatEnv):
                                 & (info["step"] >= 50) & elbow_collision))
         from cat_ppo.furniture.wholebody_stability import goal_status, native_fault_flags
         flags = native_fault_flags(self, data, info)
-        done = done | flags["room_root_field"]
+        done = done | flags["room_root_field"] | flags["body_collision"]
         info["wholebody_faults"] = flags
         episode = info["wholebody_episode"]
         goal = goal_status(self, data, info, episode["outside_bounds"])
@@ -347,6 +353,14 @@ class _WholeBodyTask(G1CatEnv):
             episode[key] = episode[key] | (goal[key] & ~done)
         for key in ("fall", "obstacle", "self_contact", "numerical"):
             episode[key] = episode[key] | flags[key]
+        episode["body_collision"] = episode["body_collision"] | flags["body_collision"]
+        from cat_ppo.envs.g1.body_collision import REGIONS
+        regions = info.get("wholebody_collision_regions", jp.zeros(len(REGIONS), dtype=bool))
+        for index, region in enumerate(REGIONS):
+            key = "body_collision_" + region
+            episode[key] = episode[key] | regions[index]
+        if getattr(self, "body_collision_enabled", False):
+            episode["goal_reached"] &= ~flags["any"]
         episode["hand_violation"] = episode["hand_violation"] | flags["hands_field"]
         episode["elbow_violation"] = episode["elbow_violation"] | flags["elbows_field"]
         info["wholebody_episode"] = episode
@@ -358,7 +372,8 @@ class _WholeBodyTask(G1CatEnv):
 # scenes to the dimensions of a furnished room.
 from cat_ppo.furniture.generalist_fields import RaggedSceneMixin  # noqa: E402
 from cat_ppo.envs.g1.room_navigation import RoomNavigationMixin  # noqa: E402
+from cat_ppo.envs.g1.body_collision import BodyCollisionMixin  # noqa: E402
 
 
-class G1CatWholeBodyEnv(RoomNavigationMixin, RaggedSceneMixin, _WholeBodyTask):
+class G1CatWholeBodyEnv(RoomNavigationMixin, BodyCollisionMixin, RaggedSceneMixin, _WholeBodyTask):
     """One CAT generalist task containing original scenes and added room fields."""

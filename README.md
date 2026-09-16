@@ -1,6 +1,6 @@
-> **Whole-body development branch:** [setup and development history](WHOLE_BODY.md), [current compact observations](docs/CAT_COMPACT_SPHERE_SETUP_20260916.md), and [stopped-run/room-correction status](docs/ROOM_NAVIGATION_FIX_20260916.md). Research implementation with recorded diagnostic rollouts.
+> **Whole-body development branch:** [current full-body collision training and restart](docs/CAT_BODY_COLLISION_TRAINING_20260916.md), [compact observations](docs/CAT_COMPACT_SPHERE_SETUP_20260916.md), and [development history](WHOLE_BODY.md).
 >
-> **Known limitation:** CAT's sparse body-point collision checks can miss robot surfaces penetrating obstacles. Our hand/elbow spheres and room trunk guard do not cover the entire moving body; reported goal success is not a collision-free traversal guarantee. See the [collision coverage report](docs/CAT_COLLISION_COVERAGE_LIMITATION_20260916.md). This limitation remains unresolved.
+> **Collision coverage:** the new training extension checks 35 enclosing body primitives against scene geometry at physics substeps, with collision penalties and termination. This addresses the sparse-point coverage gap without adding observations. It remains a primitive approximation with discrete checks, not continuous mesh collision certification. [Original limitation and evidence](docs/CAT_COLLISION_COVERAGE_LIMITATION_20260916.md).
 
 <div align="center">  
   <img src="assets/icon.png" width="150" style="vertical-align: middle;">

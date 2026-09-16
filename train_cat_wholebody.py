@@ -26,6 +26,10 @@ def parser():
     result.add_argument("--num-envs", type=int, help="Simulator parallelism; leaves PPO batch geometry unchanged")
     result.add_argument("--batch-size", type=int, help="Explicit trajectories/minibatch resource override")
     result.add_argument("--seed", type=int, default=0)
+    result.add_argument("--body-collision-bank", type=Path,
+                        help="Enable approved full-body primitive collision checks using this immutable bank")
+    result.add_argument("--body-collision-resets", type=Path,
+                        help="Validated clear reset fallback manifest for the same collision bank")
     result.add_argument("--resume", action="store_true", help="Restore the complete learner and same online W&B run")
     result.add_argument("--wandb-mode", choices=("online", "disabled"), default="online")
     result.add_argument("--wandb-project", default="CAT-wholebody")
@@ -38,7 +42,11 @@ def plan(args):
     contract = wholebody_observation_contract()
     config = training_config(profile=args.profile, num_envs=args.num_envs,
                              batch_size=args.batch_size, seed=args.seed, finetuning=args.finetuning)
-    return {
+    collision_bank = getattr(args, "body_collision_bank", None)
+    collision_resets = getattr(args, "body_collision_resets", None)
+    if bool(collision_bank) != bool(collision_resets):
+        raise ValueError("Body collision training requires both geometry bank and validated reset manifests")
+    result = {
         "config": config,
         "bank_manifest": str(args.bank_manifest.resolve()),
         "task": "G1CatWholeBodyEnv: released CAT + 29 body actions, one sphere/hand and one site/elbow",
@@ -51,6 +59,14 @@ def plan(args):
         "stop": str(args.run_dir.resolve() / "STOP"),
         "checkpoint_policy": "one selected best model and one atomically overwritten full resume.msgpack",
     }
+    if collision_bank:
+        result.update(
+            body_collision_bank=str(collision_bank.resolve()),
+            body_collision_resets=str(collision_resets.resolve()),
+            physics="CAT floor/self contacts; 35 primitive-volume obstacle checks at 500 Hz without obstacle impulses",
+            termination="Native CAT causes plus full-body obstacle collision without grace; -1 terminal event reward after clipping",
+            checkpoint_compatibility="New collision/route contract, original released CAT parameters and fresh optimizer")
+    return result
 
 
 def code_identity():
@@ -105,6 +121,10 @@ def prepare(args, specification, *, restore_model=True):
     config = specification["config"]
     env_config = wholebody_config(ConfigDict(config["env_config"]), bank_manifest=args.bank_manifest.resolve(),
                                  stabilization=config["fine_tuning"].get("upper_stabilization", False))
+    if specification.get("body_collision_bank"):
+        env_config.wholebody.body_collision.update(dict(
+            enabled=True, bank_manifest=specification["body_collision_bank"],
+            reset_manifest=specification["body_collision_resets"]))
     environment = G1CatWholeBodyEnv(config=env_config)
     contract = environment.observation_contract()
     net_config = config["policy_config"]["network_factory"]

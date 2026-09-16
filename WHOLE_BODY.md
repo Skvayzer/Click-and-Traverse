@@ -1,6 +1,6 @@
 # CAT whole-body traversal and hand protection
 
-**2026-09-16 update:** training is stopped. The current contract is [222 actor inputs / 310 critic inputs / 29 actions](docs/CAT_COMPACT_SPHERE_SETUP_20260916.md); see the [room-navigation correction and saved-run status](docs/ROOM_NAVIGATION_FIX_20260916.md). **Body–obstacle collision coverage remains incomplete:** sparse points, hand/elbow spheres and the room trunk guard do not cover all robot surfaces. [Limitation, source evidence and implications for training](docs/CAT_COLLISION_COVERAGE_LIMITATION_20260916.md). No new collision check has been implemented by that report.
+**2026-09-16 update:** [full-body primitive collision training and restart](docs/CAT_BODY_COLLISION_TRAINING_20260916.md) adds the approved 35 shapes, physics-substep collision termination and an explicit terminal penalty, together with the corrected room routes. The contract remains [222 actor inputs / 310 critic inputs / 29 actions](docs/CAT_COMPACT_SPHERE_SETUP_20260916.md). The implementation report records capacity and current launch status; [earlier stopped-run evidence](docs/ROOM_NAVIGATION_FIX_20260916.md) is preserved.
 
 The setup, run settings and commands below describe the **September 15 historical configuration**, including its retired 406-input contract; use the dated September 16 reports above for the current state.
 

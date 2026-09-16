@@ -22,6 +22,8 @@ class FieldArguments:
         self.names = ("sdf", "bf", "gf") if hasattr(self.environment, "field_bank_manifest") else ()
         if hasattr(self.environment, "_room_arrays"):
             self.names += ("_room_arrays", "_room_scene_index")
+        if hasattr(self.environment, "_body_collision_bank"):
+            self.names += ("_body_collision_bank", "_body_reset_pool")
         self.values = tuple(getattr(self.environment, name) for name in self.names)
 
     @contextmanager

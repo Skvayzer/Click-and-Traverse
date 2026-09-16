@@ -361,6 +361,7 @@ class G1CatEnv(G1LocoEnv):
         rand_qpos = jp.clip(rand_qpos, self._soft_lowers, self._soft_uppers)
         qpos = qpos.at[7:].set(rand_qpos)
         qpos = self._reset_root_pose(qpos)
+        rng, qpos, reset_metadata = self._validate_reset_pose(rng, qpos)
 
         # d(xyzrpy)=U(-0.5, 0.5)
         rng, key = jax.random.split(rng)
@@ -551,6 +552,7 @@ class G1CatEnv(G1LocoEnv):
         }
 
         info.update(navigation_info)
+        info.update(reset_metadata)
         metrics = {}
         for k in self._config.reward_config.scales.keys():
             metrics[f"reward/{k}"] = jp.zeros(())
@@ -580,18 +582,11 @@ class G1CatEnv(G1LocoEnv):
 
         # set motor target
         motor_targets = self._motor_targets(action, state.info["motor_targets"])
-        state.info["rng"], data = torque_step(
+        state.info["rng"], data = self._physics_step(
             state.info["rng"],
-            self.mjx_model,
             state.data,
             motor_targets,
-            kps=self._kps,
-            kds=self._kds,
-            kp_scale=state.info["kp_scale"],
-            kd_scale=state.info["kd_scale"],
-            rfi_lim_scale=state.info["rfi_lim_scale"],
-            torque_limit=self.torque_limit,
-            n_substeps=self.n_substeps,
+            state.info,
         )
 
         # collect info
@@ -795,6 +790,18 @@ class G1CatEnv(G1LocoEnv):
     def _reset_root_pose(self, qpos):
         """Scene extensions may relocate resets; original CAT is identity."""
         return qpos
+
+    def _validate_reset_pose(self, rng, qpos):
+        """Optional full-body obstacle validation; native CAT is unchanged."""
+        return rng, qpos, {}
+
+    def _physics_step(self, rng, data, motor_targets, info):
+        """Native PD and disturbances, overridable for substep collision checks."""
+        return torque_step(rng, self.mjx_model, data, motor_targets,
+                           kps=self._kps, kds=self._kds,
+                           kp_scale=info["kp_scale"], kd_scale=info["kd_scale"],
+                           rfi_lim_scale=info["rfi_lim_scale"],
+                           torque_limit=self.torque_limit, n_substeps=self.n_substeps)
 
     def _episode_step_limit(self, info):
         """Released episode duration; scene extensions may supply their own."""

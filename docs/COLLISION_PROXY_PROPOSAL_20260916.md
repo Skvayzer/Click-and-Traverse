@@ -1,5 +1,7 @@
 # Proposed body collision geometry — visual review
 
+**Approved and implemented:** see [full-body collision training](CAT_BODY_COLLISION_TRAINING_20260916.md) for the subsequent runtime checks, learning signal, capacity and restart. The remainder preserves the original review artifact; its JSON describes the geometry proposal rather than runtime status.
+
 This is a **geometry proposal for review**, not an active training change. It
 approximates the actual fixed-Dex3 G1 meshes with boxes, capsules and spheres.
 The existing floor contacts, obstacle checks, rewards and policy observations

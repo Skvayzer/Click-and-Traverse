@@ -1,4 +1,6 @@
-# Remaining limitation: incomplete body–obstacle collision coverage
+# Original limitation: incomplete body–obstacle collision coverage
+
+**Implementation update:** the approved [full-body primitive training checks](CAT_BODY_COLLISION_TRAINING_20260916.md) now address this sparse-point coverage gap, with explicit training penalties and termination. The report below records the earlier limitation and evidence. Primitive approximation, voxel geometry and discrete-time limitations remain; this is not a continuous full-mesh collision guarantee.
 
 Status on **2026-09-16**: confirmed limitation of the pinned released CAT training implementation and the inherited checks in this branch. **Not fixed by this documentation update.** Training remains stopped; observations, rewards, termination rules, physics and checkpoint selection are unchanged.
 
@@ -43,6 +45,6 @@ An evaluation geometry audit can expose missed collisions and distinguish goal c
 
 Resolving that learning limitation requires broader **training-side** body coverage, for example validated body collision proxies or additional internal surface checks. Those checks can affect reward or termination **without adding observations or feeding mesh data to the policy**. Such a change would be an explicit extension beyond released CAT and requires separate implementation, coverage validation and GPU-capacity measurement. No such additional change has been applied by this report, and no full-body collision-free guarantee is claimed.
 
-A [mesh-fitted collision-shape proposal](COLLISION_PROXY_PROPOSAL_20260916.md) is
-available for visual review, including flat foot boxes and close-up foot views.
-It is not enabled in training and does not resolve the limitation by itself.
+The [mesh-fitted collision-shape proposal](COLLISION_PROXY_PROPOSAL_20260916.md)
+was approved, including flat foot boxes and close-up foot views. Its subsequent
+training implementation is documented in the update linked at the top.

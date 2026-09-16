@@ -45,6 +45,8 @@ def main():
     parser.add_argument("--allocator-fraction", type=float, default=.92)
     parser.add_argument("--gpu-index", type=int, default=0)
     parser.add_argument("--seed", type=int, default=0)
+    parser.add_argument("--body-collision-bank", type=Path)
+    parser.add_argument("--body-collision-resets", type=Path)
     args = parser.parse_args()
     manifest_path, output = args.bank_manifest.resolve(), args.output.resolve()
     if not manifest_path.is_file() or output.is_relative_to(manifest_path.parent):
@@ -105,10 +107,16 @@ def main():
         report.update(jax_version=jax.__version__, devices=[str(item) for item in jax.devices()])
         if args.reference_kl_coefficient and "reference_kl_config" not in inspect.signature(native_ppo.train).parameters:
             raise RuntimeError("Install the final reference-KL training code before this capacity check")
-        launch_args = launcher.parser().parse_args([
+        launch_cli = [
             "validate", "--bank-manifest", str(manifest_path), "--profile", "single_gpu_32gb",
             "--num-envs", str(args.num_envs), "--batch-size", str(args.batch_size),
-            "--seed", str(args.seed), "--wandb-mode", "disabled"])
+            "--seed", str(args.seed), "--wandb-mode", "disabled"]
+        if args.body_collision_bank:
+            if not args.body_collision_resets:
+                raise ValueError("Capacity check needs validated collision resets")
+            launch_cli += ["--body-collision-bank", str(args.body_collision_bank.resolve()),
+                           "--body-collision-resets", str(args.body_collision_resets.resolve())]
+        launch_args = launcher.parser().parse_args(launch_cli)
         specification = launcher.plan(launch_args)
         specification["config"]["policy_config"]["learning_rate"] = args.learning_rate
         print("Preparing the complete compact field bank and released CAT warm-start...", flush=True)
@@ -121,6 +129,9 @@ def main():
             field_array_bytes=sum(getattr(env, name).nbytes for name in ("sdf", "bf", "gf")),
             scene_count=env.num_pf_scenes, allocator_after_prepare=device.memory_stats(),
             preparation_seconds=time.monotonic()-started)
+        if getattr(env, "body_collision_enabled", False):
+            report["body_collision"] = env.body_collision_contract
+            report["body_collision_array_bytes"] = sum(x.nbytes for x in env._body_collision_bank.values())
         options = ppo_kwargs(specification["config"])
         report["training_parameters"] = {name: options[name] for name in (
             "learning_rate", "clipping_epsilon", "entropy_cost", "unroll_length",

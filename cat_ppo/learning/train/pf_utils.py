@@ -79,6 +79,10 @@ class SamplePFWrapper(wrapper.Wrapper):
 
     def __init__(self, env):
         super().__init__(env)
+        config = getattr(getattr(env, "unwrapped", env), "_config", None)
+        wholebody = getattr(config, "wholebody", None)
+        body_collision = getattr(wholebody, "body_collision", None)
+        self._body_collision_enabled = bool(getattr(body_collision, "enabled", False))
 
     def _reset_with_pf_id(self, rng, pf_id):
         node = self.env
@@ -260,25 +264,30 @@ class SamplePFWrapper(wrapper.Wrapper):
         state = state.replace(
             data=state.data.replace(qpos=qpos, qvel=qvel),
         )
-        if room_transition is not None:
+        full_reset = done > 0 if self._body_collision_enabled else room_transition
+        if full_reset is not None:
             # Rooms reset metres apart. Retaining the old head/hand positions
             # would manufacture enormous first-step velocities, while retained
             # PD/odometry state would disagree with the fresh reset observation.
-            # Keep native CAT-to-CAT semantics and episode/sampler bookkeeping.
-            def reset_room_leaf(reset_leaf, leaf):
-                shape = room_transition.shape + (1,) * (leaf.ndim - room_transition.ndim)
-                return jnp.where(room_transition.reshape(shape), reset_leaf, leaf)
+            # Body collision checks require coherent reset history for CAT
+            # scenes too. Disabled mode retains the released CAT-to-CAT path.
+            def reset_transition_leaf(reset_leaf, leaf):
+                shape = full_reset.shape + (1,) * (leaf.ndim - full_reset.ndim)
+                return jnp.where(full_reset.reshape(shape), reset_leaf, leaf)
 
-            wrapper_keys = {"steps", "truncation", "episode_done", "episode_metrics",
-                            "first_state", "first_obs"}
+            wrapper_keys = {"steps", "truncation", "episode_done", "episode_metrics"}
+            if not self._body_collision_enabled:
+                wrapper_keys.update(("first_state", "first_obs"))
             for name in state_reset.info:
                 if name not in wrapper_keys and not name.startswith("pf_"):
                     state.info[name] = jax.tree_util.tree_map(
-                        reset_room_leaf, state_reset.info[name], state.info[name])
+                        reset_transition_leaf, state_reset.info[name], state.info[name])
             state = state.replace(data=jax.tree_util.tree_map(
-                reset_room_leaf, state_reset.data, state.data))
-        reward = jnp.where(done, state_reset.reward, state.reward)
-        state = state.replace(reward=reward)
+                reset_transition_leaf, state_reset.data, state.data))
+        # The terminal reward belongs to the transition that just completed.
+        # Replacing it with reset.reward would erase a body-collision penalty.
+        if not self._body_collision_enabled:
+            state = state.replace(reward=jnp.where(done, state_reset.reward, state.reward))
         return state
 
 
