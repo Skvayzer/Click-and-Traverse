@@ -49,3 +49,13 @@ The stabilized run suppresses thousands of per-scene rollout chart series; perio
 Use a frozen source checkout, shared environment/assets, `--finetuning stabilized --num-envs 16384 --batch-size 256`, and online W&B. This retains the previous practical Ada 6000 parallelism; new runtime memory and initial updates must be checked on the GPU. Startup performs the baseline benchmark before continuous PPO.
 
 The custom action-distribution settings are serialized in native checkpoint network kwargs and the runtime compatibility contract. Stochastic inference must reconstruct the bounded factory; loading weights with an unbounded factory would change behavior. Deterministic actions remain `tanh(mean)`.
+
+## Running experiment
+
+Started on ws008090 at 2026-09-16 09:09:22 UTC, PID 208438, from frozen commit `67339e3aff66c467059e1fc3fbab4dd0d8ea4b52`. Source SHA256: `1cb2a96ad6c3bf396fba32cebc50ac5fb2854ab33713e4c29e2b2b8ddd851ca3`. W&B: <https://wandb.ai/skvayzer/CAT-wholebody/runs/de6ae369>.
+
+The original actor and critic mapping reported zero maximum error. The initial deterministic fixed-scene success is 52.604% for CAT and 9.375% for clutter; stochastic success is 52.604% and 7.8125%. Neither baseline mode recorded a fall or numerical failure. These values apply to this selected benchmark and modified whole-body robot, not the original paper's overall success rate.
+
+Startup verification observed over 19.9 million transitions online, upper standard deviation mean 0.0491, maximum 0.10 (float32), bounds-violation rate zero, and `health/nonfinite=0`. GPU memory was 37,582 MiB used and 11,051 MiB free; one warm PPO update reported approximately 50,800 transitions/s of learner compute. Checkpoint I/O and validation add elapsed time. These checks establish correct execution and logging, not learning convergence. The first post-training fixed-scene check is scheduled at 26,214,400 transitions.
+
+Launch and initial benchmark provenance are stored in `docs/assets/cat-stabilized-20260916/`. The previous stopped experiment remains preserved. This experiment continues without a configured step limit.
