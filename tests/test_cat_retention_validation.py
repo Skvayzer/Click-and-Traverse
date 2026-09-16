@@ -48,6 +48,21 @@ def test_episode_rates_have_separate_cat_clutter_denominators():
     assert summary["clutter_completion_time_seconds"] == 0
 
 
+def test_hand_validation_separates_task_success_from_ordinary_clutter():
+    summary = summarize_episodes([
+        row(), row("old-room", "furniture"),
+        row("hand-easy", "furniture", success=False, hand_violation=True,
+            hand_protection=dict(level=0, kind="hand_table_aisle")),
+        row("hand-hard", "generic_clutter", hand_protection=dict(level=2, kind="hand_shelf_passage")),
+    ])
+    assert summary["cat_goal_success_rate"] == 1
+    assert summary["ordinary_clutter_goal_success_rate"] == 1
+    assert summary["hand_protection_goal_success_rate"] == .5
+    assert summary["hand_protection_hand_violation_rate"] == .5
+    assert summary["hand_easy_goal_success_rate"] == 0
+    assert summary["hand_hard_goal_success_rate"] == 1
+
+
 def test_selection_rejects_cat_regression_in_either_mode_despite_clutter_success():
     baseline = summaries()
     current = deepcopy(baseline)

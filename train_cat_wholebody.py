@@ -21,11 +21,13 @@ def parser():
     result.add_argument("--bank-manifest", type=Path, default=ROOT / "data/furniture/cat_diversity_v2_20260916/manifest.json")
     result.add_argument("--run-dir", type=Path, default=ROOT / "outputs/cat_wholebody_diversity_v2")
     result.add_argument("--profile", choices=("single_gpu_32gb", "released"), default="single_gpu_32gb")
-    result.add_argument("--finetuning", choices=("stabilized", "gentle", "released"), default="stabilized",
+    result.add_argument("--finetuning", choices=("stabilized", "gentle", "released", "hand_protection"), default="stabilized",
                         help="Stabilized: gentle PPO, bounded upper exploration, physical target penalties and retention validation")
     result.add_argument("--num-envs", type=int, help="Simulator parallelism; leaves PPO batch geometry unchanged")
     result.add_argument("--batch-size", type=int, help="Explicit trajectories/minibatch resource override")
     result.add_argument("--seed", type=int, default=0)
+    result.add_argument("--warmstart-best", type=Path,
+                        help="Verified permanent selected-best archive; load weights with a fresh optimizer")
     result.add_argument("--body-collision-bank", type=Path,
                         help="Enable approved full-body primitive collision checks using this immutable bank")
     result.add_argument("--body-collision-resets", type=Path,
@@ -42,6 +44,18 @@ def plan(args):
     contract = wholebody_observation_contract()
     config = training_config(profile=args.profile, num_envs=args.num_envs,
                              batch_size=args.batch_size, seed=args.seed, finetuning=args.finetuning)
+    warmstart_best = getattr(args, "warmstart_best", None)
+    warmstart_provenance = None
+    if warmstart_best:
+        if args.finetuning != "hand_protection":
+            raise ValueError("Selected-best warm start is only supported by the hand_protection profile")
+        from cat_ppo.furniture.protected_warmstart import verified_best_archive
+        _, _, warmstart_provenance = verified_best_archive(
+            warmstart_best, target_contract=contract,
+            network_config=config["policy_config"]["network_factory"])
+        config["fine_tuning"]["initialization"] = "verified selected best actor and critic; fresh Adam"
+        config["fine_tuning"]["reference_kl"]["reference"] = (
+            "frozen selected-best actor on unchanged CAT observations; leg actions only")
     collision_bank = getattr(args, "body_collision_bank", None)
     collision_resets = getattr(args, "body_collision_resets", None)
     if bool(collision_bank) != bool(collision_resets):
@@ -66,6 +80,9 @@ def plan(args):
             physics="CAT floor/self contacts; 35 primitive-volume obstacle checks at 500 Hz without obstacle impulses",
             termination="Native CAT causes plus full-body obstacle collision without grace; -1 terminal event reward after clipping",
             checkpoint_compatibility="New collision/route contract, original released CAT parameters and fresh optimizer")
+    if warmstart_provenance:
+        result.update(warmstart_best=warmstart_provenance,
+                      checkpoint_compatibility="Same 222/310 feature layout and 29 actions; selected-best weights, fresh optimizer")
     return result
 
 
@@ -120,12 +137,16 @@ def prepare(args, specification, *, restore_model=True):
 
     config = specification["config"]
     env_config = wholebody_config(ConfigDict(config["env_config"]), bank_manifest=args.bank_manifest.resolve(),
-                                 stabilization=config["fine_tuning"].get("upper_stabilization", False))
+                                 stabilization=config["fine_tuning"].get("upper_stabilization", False),
+                                 hand_protection=config["fine_tuning"].get("hand_protection", False))
     if specification.get("body_collision_bank"):
         env_config.wholebody.body_collision.update(dict(
             enabled=True, bank_manifest=specification["body_collision_bank"],
             reset_manifest=specification["body_collision_resets"]))
     environment = G1CatWholeBodyEnv(config=env_config)
+    if (config["fine_tuning"].get("hand_protection")
+            and not environment.field_bank_manifest.get("hand_protection_curriculum")):
+        raise ValueError("Hand-protection profile requires a certified hand-curriculum scene bank")
     contract = environment.observation_contract()
     net_config = config["policy_config"]["network_factory"]
     distribution_settings = config["fine_tuning"].get("action_distribution")
@@ -145,16 +166,27 @@ def prepare(args, specification, *, restore_model=True):
             raise ValueError(f"Observation contract mismatch: {key}")
     warmstart, target = None, None
     if restore_model:
-        source_path, manifest = fetch_native_checkpoint(ROOT / "data/furniture/native_generalist_v1")
+        source_contract = legacy_observation_contract()
+        if specification.get("warmstart_best"):
+            from cat_ppo.furniture.protected_warmstart import verified_best_archive
+            source_path, source_contract, provenance = verified_best_archive(
+                specification["warmstart_best"]["archive"], target_contract=contract,
+                network_config=net_config)
+            if provenance != specification["warmstart_best"]:
+                raise ValueError("Protected warm-start archive changed after planning")
+        else:
+            source_path, manifest = fetch_native_checkpoint(ROOT / "data/furniture/native_generalist_v1")
+            provenance = {"model_revision": manifest["revision"]}
         source = load_native(source_path)
         network = factory(shapes, environment.action_size)
         keys = jax.random.split(jax.random.PRNGKey(args.seed), 2)
         target = (running_statistics.init_state({k: specs.Array(v, jnp.dtype("float32")) for k, v in shapes.items()}),
                   network.policy_network.init(keys[0]), network.value_network.init(keys[1]))
-        target, warmstart = adapt_native_params(source, target, legacy_observation_contract(), contract, new_action_std=.05)
-        warmstart["parity"] = verify_warmstart_parity(source, target, legacy_observation_contract(), contract,
+        target, warmstart = adapt_native_params(source, target, source_contract, contract, new_action_std=.05)
+        warmstart["parity"] = verify_warmstart_parity(source, target, source_contract, contract,
                                                      normalize_observations=False, seed=args.seed)
-        warmstart["model_revision"] = manifest["revision"]
+        warmstart.update(provenance)
+        warmstart["parity_scope"] = "raw actor MLP and critic; arm conditional distribution intentionally changes"
         target = jax.tree.map(jnp.asarray, target)
     record = dict(specification, environment_config=env_config.to_dict(), observation_contract=contract,
                   warmstart=warmstart, code=code_identity(),
@@ -333,10 +365,24 @@ def run(args, specification):
 
             validation_settings = specification["config"]["fine_tuning"].get("retention_validation")
             validator, baseline = None, None
+            source_selection = None
+            if specification.get("warmstart_best"):
+                source_selection = _read_metadata(Path(specification["warmstart_best"]["archive"])
+                                                  / "checkpoint/selection.json")
+
+            def source_guard(result):
+                if source_selection is None:
+                    return None
+                from cat_ppo.furniture.hand_retention_guard import source_best_retention_guard
+                return source_best_retention_guard(result, source_selection,
+                    source_archive=specification["warmstart_best"]["archive"])
+
             if validation_settings is not None:
-                from cat_ppo.furniture.retention_validation import RetentionValidator
+                from cat_ppo.furniture.retention_validation import RetentionValidator, validation_scene_ids
                 validator = RetentionValidator(environment, factory,
-                    seeds=range(validation_settings["seeds_per_scene"]))
+                    seeds=range(validation_settings["seeds_per_scene"]),
+                    scene_ids=validation_scene_ids(environment.field_bank_manifest,
+                        hand_protection=specification["config"]["fine_tuning"].get("hand_protection", False)))
                 baseline_path = directory / "validation_baseline.json"
                 if baseline_path.exists():
                     saved = _read_metadata(baseline_path)
@@ -346,11 +392,18 @@ def run(args, specification):
                 else:
                     if runtime is not None or target is None:
                         raise ValueError("Original-checkpoint validation baseline is missing")
-                    print("Evaluating original CAT baseline on fixed scenes (both action modes)", flush=True)
+                    print("Evaluating initial policy baseline on fixed scenes (both action modes)", flush=True)
                     baseline_result = validator.evaluate(target, step=0)
                     baseline = baseline_result.as_dict()
                     atomic_json(baseline_path, dict(identity=identity, result=baseline))
-                    print("Original CAT validation baseline saved; starting continuous PPO", flush=True)
+                    print("Initial policy validation baseline saved; starting continuous PPO", flush=True)
+                guard = source_guard(baseline)
+                if guard is not None:
+                    atomic_json(directory / "source_best_startup_guard.json", guard)
+                    print(f"Protected source-best startup comparison: {guard['comparisons']}", flush=True)
+                    if not guard["eligible"]:
+                        raise ValueError("Changed hand profile failed protected source-best retention: "
+                                         + "; ".join(guard["reasons"]))
             transitions_per_update = specification["config"]["fine_tuning"]["effective_batch_geometry"]["transitions_per_update"]
 
             def progress(step, metrics):
@@ -367,6 +420,13 @@ def run(args, specification):
                         return
                     print(f"Fixed-scene retention validation at {int(step)} transitions", flush=True)
                     result = validator.evaluate(params, step=int(step), baseline=baseline["modes"])
+                    guard = source_guard(result)
+                    if guard is not None:
+                        result.selection["source_best_guard"] = guard
+                        result.selection["eligible"] &= guard["eligible"]
+                        result.selection["reasons"].extend(guard["reasons"])
+                        result.metrics["validation/source_best_retention_eligible"] = int(guard["eligible"])
+                        result.metrics["validation/retention_eligible"] = int(result.selection["eligible"])
                     atomic_json(directory / "validation_latest.json", result.as_dict())
                     selected = store.consider(step=int(step),
                         metrics={"selection": result.selection, "validation": result.metrics},

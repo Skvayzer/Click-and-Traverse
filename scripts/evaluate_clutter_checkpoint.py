@@ -72,7 +72,11 @@ def main():
             raise ValueError(f"Checkpoint mismatch: {name}")
     bank_manifest = (args.bank_manifest or output / "bank/manifest.json").resolve()
     config = wholebody_config(ConfigDict(run["config"]["env_config"]),
-                             bank_manifest=bank_manifest, stabilization=True)
+                             bank_manifest=bank_manifest, stabilization=True,
+                             hand_protection=run["config"]["fine_tuning"].get("hand_protection", False))
+    saved_collision = run.get("environment_config", {}).get("wholebody", {}).get("body_collision", {})
+    if saved_collision.get("enabled"):
+        config.wholebody.body_collision.update(saved_collision)
     env = G1CatWholeBodyEnv(config=config)
     actual_contract, saved_contract = env.observation_contract(), dict(run["observation_contract"])
     if args.test_corrected_navigation:
@@ -88,7 +92,10 @@ def main():
         raise ValueError("Nonfinite checkpoint parameters")
     # Keep all 16 benchmark ordinals, including CAT retention scenes. Requested
     # reset seeds may vary; field-bank indices must not change their keys.
-    validator = RetentionValidator(env, factory, chunk_steps=1, seeds=args.seeds)
+    from cat_ppo.furniture.retention_validation import validation_scene_ids
+    validator = RetentionValidator(env, factory, chunk_steps=1, seeds=args.seeds,
+        scene_ids=validation_scene_ids(env.field_bank_manifest,
+            hand_protection=run["config"]["fine_tuning"].get("hand_protection", False)))
     fields = validator.binding.values
     initial = validator._reset(fields)
     jax.block_until_ready(initial)

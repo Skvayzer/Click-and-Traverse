@@ -15,17 +15,25 @@ from cat_ppo.furniture.learning import dense_layers, feature_names, predict_nump
 
 def export_native_policy(params, contract, output_path, *, normalize_observations=False,
                          metadata=None, native_inference=None, seed=0, action_distribution_config=None):
+    action_count = len(contract["action_names"])
+    if action_distribution_config is not None:
+        from cat_ppo.learning.policy.ppo.wholebody_distribution import (
+            CoherentArmNormalTanhDistribution, WholeBodyNormalTanhDistribution,
+        )
+        restored_distribution = WholeBodyNormalTanhDistribution.from_config(action_distribution_config)
+        if restored_distribution.event_size != action_count:
+            raise ValueError("Export distribution action count differs from observation contract")
+        if isinstance(restored_distribution, CoherentArmNormalTanhDistribution):
+            raise ValueError(
+                "ONNX export does not yet support conditional arm policies: "
+                "exporting the raw MLP would omit previous-action conditioning. "
+                "Use load_checkpoint_policy for native v2 inference."
+            )
+        action_distribution_config = restored_distribution.config
     import onnx
     from onnx import TensorProto, helper, numpy_helper
     import onnxruntime as ort
 
-    action_count = len(contract["action_names"])
-    if action_distribution_config is not None:
-        from cat_ppo.learning.policy.ppo.wholebody_distribution import WholeBodyNormalTanhDistribution
-        restored_distribution = WholeBodyNormalTanhDistribution.from_config(action_distribution_config)
-        if restored_distribution.event_size != action_count:
-            raise ValueError("Export distribution action count differs from observation contract")
-        action_distribution_config = restored_distribution.config
     observation_count = len(feature_names(contract, "state"))
     names = dense_layers(params[1])
     if np.shape(params[1]["params"][names[0]]["kernel"])[0] != observation_count:

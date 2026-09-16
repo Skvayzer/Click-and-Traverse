@@ -30,6 +30,22 @@ MODES = ("deterministic", "stochastic")
 CLUTTER_FAMILIES = frozenset(("furniture", "generic_clutter"))
 
 
+def validation_scene_ids(manifest, *, hand_protection=False):
+    """Keep old regression seeds stable, then append six fixed hand tasks."""
+    if not hand_protection:
+        return FIXED_SCENE_IDS
+    selected = list(FIXED_SCENE_IDS)
+    for kind in ("hand_table_aisle", "hand_shelf_passage"):
+        for level in range(3):
+            candidates = [scene["scene_id"] for scene in manifest["scenes"]
+                          if scene.get("source", {}).get("hand_protection", {}).get("kind") == kind
+                          and scene["source"]["hand_protection"].get("level") == level]
+            if not candidates:
+                raise ValueError(f"Missing hand validation task: {kind}, level {level}")
+            selected.append(sorted(candidates)[0])
+    return tuple(selected)
+
+
 def select_scenes(manifest, scene_ids=FIXED_SCENE_IDS):
     """Reject missing or ambiguous identities instead of changing the benchmark."""
     requested = tuple(scene_ids)
@@ -90,6 +106,17 @@ def summarize_episodes(episodes):
         ("clutter", [row for row in episodes if row["family"] in CLUTTER_FAMILIES]),
     ):
         result.update({f"{label}_{key}": value for key, value in summary(rows).items()})
+    hand_rows = [row for row in episodes if row.get("hand_protection")]
+    if hand_rows:
+        groups = [("hand_protection", hand_rows),
+                  ("ordinary_clutter", [row for row in episodes
+                                        if row["family"] in CLUTTER_FAMILIES and not row.get("hand_protection")])]
+        groups.extend(("hand_" + difficulty, [row for row in hand_rows
+                      if row["hand_protection"]["level"] == level])
+                      for level, difficulty in enumerate(("easy", "medium", "hard")))
+        for label, rows in groups:
+            if rows:
+                result.update({f"{label}_{key}": value for key, value in summary(rows).items()})
     result["scenes"] = {
         scene_id: dict(summary(rows), family=rows[0]["family"])
         for scene_id in dict.fromkeys(row["scene_id"] for row in episodes)
@@ -296,6 +323,8 @@ class RetentionValidator:
                 row.update(scene_id=scene["scene_id"], family=scene["family"], seed=seed,
                            seconds=row["length"] * self.env.dt,
                            horizon_steps=int(self.limits[row_index]))
+                if scene.get("source", {}).get("hand_protection"):
+                    row["hand_protection"] = scene["source"]["hand_protection"]
                 if not math.isfinite(row["min_hand_clearance"]):
                     # Numerical failures remain failed episodes. Give their
                     # clearance a conservative finite sentinel for aggregation.
@@ -324,7 +353,7 @@ class RetentionValidator:
                         horizons="native per-scene 1000/4000 control steps",
                         stopping="first clean whole-body goal, native failure, or native timeout",
                         ablation_difference="earlier standalone noise diagnostic continued after reaching the goal",
-                        baseline="released CAT expanded into the same whole-body architecture and distribution",
+                        baseline="initial parameters evaluated under this run's exact architecture and action distribution",
                         generalization="fixed training-bank regression scenes; not held-out layouts",
                         fields="same device buffers passed as dynamic operands; no copied scene bank",
                         top_level_metrics="deterministic deployment; stochastic mode has its own prefix")

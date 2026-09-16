@@ -169,3 +169,48 @@ def test_disabled_collision_mode_retains_native_terminal_reward_and_history(enab
     # enabling the collision extension is what opts into a full coherent reset.
     np.testing.assert_array_equal(result.data.ctrl, state.data.ctrl)
     _assert_tree_equal(result.info["first_obs"], state.info["first_obs"])
+
+
+def test_hand_curriculum_survives_actual_autoreset_and_state_roundtrip():
+    from cat_ppo.furniture.hand_curriculum import STATE_KEYS, initial_curriculum_state
+
+    class HandTask(_CollisionTask):
+        _pf_hand_curriculum_levels = jp.array([-1, 0, 1, 2])
+
+        def reset(self, key):
+            state = super().reset(key)
+            state.info.update(
+                pf_success_ema=jp.zeros(4), pf_episode_ema=jp.zeros(4),
+                pf_sampling_logits=jp.log(jp.array([.5, .5, 0., 0.])),
+                pf_sampling_alpha=jp.float32(1), pf_sampling_ema_decay=jp.float32(.95),
+                pf_sampling_group_ids=jp.full(4, 2, jp.int32),
+                pf_sampling_group_masses=jp.array([0., 0., 1., 0.]),
+                **initial_curriculum_state())
+            state.info["wholebody_episode"]["goal_reached"] = jp.array(False)
+            return state
+
+        def step(self, state, action):
+            result = super().step(state, action)
+            result.info["wholebody_episode"]["goal_reached"] = action[0] < 0
+            return result
+
+    task = HandTask(True)
+    env = SamplePFWrapper(wrapper.BraxAutoResetWrapper(
+        SceneEpisodeWrapper(training.VmapWrapper(task), 1, 1, jp.ones(4))))
+    state = env.reset(jp.array([[1, 7]], jp.uint32))
+    state.info[STATE_KEYS[1]] = jp.array([[63, 0, 0]], jp.int32)
+    state.info[STATE_KEYS[2]] = jp.array([[63, 0, 0]], jp.int32)
+    advance = jax.jit(env.step)
+    result = advance(state, -jp.ones((1, 1)))
+    np.testing.assert_array_equal(result.done, 1.)
+    np.testing.assert_array_equal(result.info[STATE_KEYS[0]], 1)
+    np.testing.assert_array_equal(result.info[STATE_KEYS[1]], [[64, 0, 0]])
+    np.testing.assert_array_equal(result.info[STATE_KEYS[2]], [[64, 0, 0]])
+    # A learner checkpoint restores these ordinary state leaves with no extra
+    # sampler-side hidden state. Both continuations must be identical.
+    restored = jax.tree.map(lambda value: jp.asarray(np.array(value)), result)
+    uninterrupted = advance(result, jp.ones((1, 1)))
+    resumed = advance(restored, jp.ones((1, 1)))
+    _assert_tree_equal(uninterrupted, resumed)
+    np.testing.assert_array_equal(resumed.info[STATE_KEYS[0]], 1)
+    assert np.all(np.asarray(resumed.info[STATE_KEYS[1]]) >= [64, 0, 0])

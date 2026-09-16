@@ -284,6 +284,57 @@ def test_stabilization_uses_actual_two_step_target_history_and_preserves_leg_rew
     assert task._config.reward_config.scales.wholebody_upper_target_velocity == -.05
 
 
+def test_hand_protection_profile_is_opt_in_and_preserves_native_settings(config):
+    old = wholebody_config(config, stabilization=True)
+    explicit_old = wholebody_config(config, stabilization=True, hand_protection=False)
+    assert old.to_dict() == explicit_old.to_dict()
+    protected = wholebody_config(config, stabilization=True, hand_protection=True)
+    assert protected.wholebody_hand_protection
+    assert protected.reward_config.scales.wholebody_hand_clearance == -.5
+    assert old.reward_config.scales.wholebody_hand_clearance == -5.
+    assert protected.wholebody.body_collision.to_dict() == old.wholebody.body_collision.to_dict()
+    for key, value in config.reward_config.scales.items():
+        assert protected.reward_config.scales[key] == value
+    for name in ("dm_rand_config", "push_config", "gait_config", "noise_config", "pf_config"):
+        assert getattr(protected, name).to_dict() == getattr(old, name).to_dict()
+    assert protected.num_obs == 222 and protected.num_pri == 310 and protected.num_act == 29
+    with pytest.raises(ValueError, match="requires stabilized"):
+        wholebody_config(config, hand_protection=True)
+    with pytest.raises(ValueError):
+        wholebody_config(config, compatibility_mode=True, stabilization=True, hand_protection=True)
+
+
+def test_hand_protection_real_step_keeps_observations_native_rewards_and_pose_telemetry(config):
+    task = _WholeBodyTask(config=wholebody_config(config, stabilization=True, hand_protection=True))
+    original = _WholeBodyTask(config=wholebody_config(config, stabilization=True))
+    contract = task.observation_contract()
+    assert contract["actor_features"] == original.observation_contract()["actor_features"]
+    assert contract["critic_features"] == original.observation_contract()["critic_features"]
+    assert contract["hand_protection_reward"] == "normalized-clearance-and-arm-motion-v1"
+    np.testing.assert_array_equal(task._hand_radii, original._hand_radii)
+    state = jax.jit(task.reset)(jax.random.PRNGKey(13))
+    action = jp.linspace(-.15, .15, 29)
+    info = deepcopy(state.info)
+    info["handsdf"] = jp.array([[.10], [.03]])
+    contact = jp.zeros(2, dtype=bool)
+    baseline = G1CatEnv._get_reward(task, state.data, action, info, state.done, contact)
+    extended = task._get_reward(state.data, action, info, state.done, contact)
+    for key, value in baseline.items():
+        np.testing.assert_array_equal(extended[key], value)
+    # Inherited hand guidance and hand distance remain in the reward mapping.
+    assert "handsgf" in extended and "handsdf" in extended
+    assert extended["wholebody_hand_clearance"] > 0
+    stepped = jax.jit(task.step)(state, action)
+    jax.block_until_ready(stepped.reward)
+    assert stepped.obs["state"].shape == (222,) and stepped.obs["privileged_state"].shape == (310,)
+    assert jax.tree.structure(state) == jax.tree.structure(stepped)
+    assert np.isfinite(stepped.reward)
+    telemetry = stepped.info["wholebody_telemetry"]
+    expected_offset = stepped.data.qpos[22:36] - task._default_qpos[15:]
+    np.testing.assert_allclose(telemetry["arm_joint_offset_rms"], jp.sqrt(jp.mean(expected_offset ** 2)))
+    np.testing.assert_allclose(telemetry["left_hand_height_above_root"], stepped.info["hands_pos"][0, 2] - stepped.data.qpos[2])
+
+
 def test_room_goal_and_episode_duration_do_not_change_original_scenes(config):
     task = object.__new__(_WholeBodyTask)
     task._config = wholebody_config(config)

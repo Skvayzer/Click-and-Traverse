@@ -1,10 +1,10 @@
-"""Bound added-joint exploration while preserving released CAT's leg policy.
+"""Versioned added-joint exploration preserving released CAT's leg policy.
 
-The network still emits the same means and raw scales in the same order.  Only
-the Gaussian scales for the added actions are clipped, before sampling or any
-probability calculation.  Consequently sampling, PPO log probabilities, and
-reference KL all describe the same distribution.  Motor-target limits are a
-separate part of the environment.
+The v1 distribution only bounds added-joint Gaussian scales. The opt-in v2
+additionally conditions arm means on raw previous actions and correlates arm
+innovations; policy parameter shapes and the first 15 actions remain unchanged.
+Sampling and PPO likelihoods describe the same conditional distribution.
+Motor-target limits remain a separate part of the environment.
 """
 
 import json
@@ -13,15 +13,23 @@ from pathlib import Path
 from typing import Callable, Sequence
 
 from brax.training import distribution, types
+from brax.training import networks as brax_networks
 from brax.training.agents.ppo import networks as ppo_networks
 from flax import linen
 import jax
 import jax.numpy as jnp
+import numpy as np
 
 
 DISTRIBUTION_KIND = "wholebody_bounded_normal_tanh_v1"
+COHERENT_DISTRIBUTION_KIND = "wholebody_arm_conditional_correlated_tanh_v2"
+COHERENT_EXPLORATION_VERSION = "arm_conditional_correlated_v2"
 _DISTRIBUTION_KWARGS = frozenset({
     "leg_action_count", "upper_std_min", "upper_std_max", "upper_entropy_weight",
+})
+_COHERENT_KWARGS = frozenset({
+    "exploration_version", "arm_persistence", "arm_correlation",
+    "arm_last_action_indices", "arm_correlation_pattern",
 })
 
 
@@ -81,6 +89,8 @@ class WholeBodyNormalTanhDistribution(distribution.NormalTanhDistribution):
     @classmethod
     def from_config(cls, config):
         """Restore explicit semantics without substituting missing defaults."""
+        if isinstance(config, dict) and config.get("kind") == COHERENT_DISTRIBUTION_KIND:
+            return CoherentArmNormalTanhDistribution.from_config(config)
         if not isinstance(config, dict) or config.get("kind") != DISTRIBUTION_KIND:
             raise ValueError("Unknown bounded action distribution configuration")
         required = _DISTRIBUTION_KWARGS | {
@@ -133,6 +143,179 @@ class WholeBodyNormalTanhDistribution(distribution.NormalTanhDistribution):
         return leg_entropy + self.upper_entropy_weight * jnp.sum(upper_entropy, axis=-1)
 
 
+def _arm_correlation_matrix(strength):
+    """Fixed G1 raise/tuck directions, with an independent residual in every DOF.
+
+    Each arm has independent raise and tuck factors. The signs match the
+    FK-verified presets: raise=(-pitch, inward roll, -elbow), while tucking
+    uses a smaller negative pitch and positive elbow. Shoulder yaw and wrists
+    have independent noise. Normalize the diagonal to one so marginal scales
+    retain their configured bounds; strength controls correlation, not variance.
+    """
+    factors = np.zeros((14, 4), dtype=np.float64)
+    for side, roll_sign in ((0, -1.), (1, 1.)):
+        start = side * 7
+        factors[start, side * 2:side * 2 + 2] = [-1., -.25]
+        factors[start + 1, side * 2:side * 2 + 2] = [.1875 * roll_sign] * 2
+        factors[start + 3, side * 2:side * 2 + 2] = [-1., 1.]
+    lengths = np.linalg.norm(factors, axis=-1)
+    active = lengths > 0
+    factors[active] /= lengths[active, None]
+    return np.diag(1. - strength * active) + strength * (factors @ factors.T)
+
+
+class _CorrelatedArmNormal:
+    """Joint Gaussian with native independent legs/waist and a 14D arm block.
+
+    ``scale`` exposes marginal standard deviations for existing leg KL and
+    telemetry. ``log_prob`` and ``entropy`` return Cholesky factor contributions
+    whose sum is the JOINT density/entropy, not independent arm marginals.
+    """
+
+    def __init__(self, loc, scale, cholesky, inverse_cholesky):
+        self.loc, self.scale = loc, scale
+        self._cholesky = jnp.asarray(cholesky, dtype=loc.dtype)
+        self._inverse_cholesky = jnp.asarray(inverse_cholesky, dtype=loc.dtype)
+
+    def sample(self, seed):
+        # Identical draw shape/key/arithmetic for the first 15 actions as v1.
+        noise = jax.random.normal(seed, shape=self.loc.shape)
+        correlated = noise[..., 15:] @ self._cholesky.T
+        noise = noise.at[..., 15:].set(correlated)
+        return noise * self.scale + self.loc
+
+    def mode(self):
+        return self.loc
+
+    def log_prob(self, x):
+        result = distribution.NormalDistribution(self.loc, self.scale).log_prob(x)
+        residual = (x[..., 15:] - self.loc[..., 15:]) / self.scale[..., 15:]
+        whitened = residual @ self._inverse_cholesky.T
+        arm_terms = (-.5 * whitened ** 2 - .5 * jnp.log(2. * jnp.pi)
+                     - jnp.log(self.scale[..., 15:])
+                     - jnp.log(jnp.diag(self._cholesky)))
+        return result.at[..., 15:].set(arm_terms)
+
+    def entropy(self):
+        result = distribution.NormalDistribution(self.loc, self.scale).entropy()
+        return result.at[..., 15:].add(jnp.log(jnp.diag(self._cholesky)))
+
+
+class CoherentArmNormalTanhDistribution(WholeBodyNormalTanhDistribution):
+    """PPO-visible conditional AR arm policy with fixed full-rank covariance.
+
+    The factory conditions means on previous actions already in the observation:
+    m_t=(1-rho)*network_mean_t + rho*atanh(previous_post_tanh_action).
+    All likelihoods use that same conditional mean and covariance. No hidden
+    noise state, extra actor inputs, external OU process, or detached gradients
+    are introduced. Deterministic inference uses tanh(m_t), including smoothing.
+
+    Bounds constrain conditional innovation sigma. Temporal marginal variance
+    is intentionally larger: for constant mean/scale before tanh, sigma squared
+    divided by (1-rho squared). A near-bound previous action is clipped only for
+    the atanh inverse, explicitly recorded as part of v2 semantics.
+    """
+
+    def __init__(self, event_size, *, exploration_version, arm_persistence,
+                 arm_correlation, arm_last_action_indices, arm_correlation_pattern,
+                 **kwargs):
+        super().__init__(event_size, **kwargs)
+        if event_size != 29 or self.leg_action_count != 12:
+            raise ValueError("Coherent G1 arm exploration requires 29 actions and 12 legs")
+        if exploration_version != COHERENT_EXPLORATION_VERSION:
+            raise ValueError("Unknown coherent exploration version")
+        if (not math.isfinite(arm_persistence) or not 0 <= arm_persistence < 1):
+            raise ValueError("arm_persistence must be finite and in [0, 1)")
+        if (not math.isfinite(arm_correlation) or not 0 <= arm_correlation < 1):
+            raise ValueError("arm_correlation must be finite and in [0, 1)")
+        if arm_correlation_pattern != "g1_raise_tuck_v1":
+            raise ValueError("Unknown arm correlation pattern")
+        if (not isinstance(arm_last_action_indices, (list, tuple))
+                or len(arm_last_action_indices) != 14
+                or len(set(arm_last_action_indices)) != 14
+                or any(type(i) is not int or i < 0 for i in arm_last_action_indices)):
+            raise ValueError("arm_last_action_indices must contain 14 distinct nonnegative integers")
+        self.exploration_version = exploration_version
+        self.arm_persistence = float(arm_persistence)
+        self.arm_correlation = float(arm_correlation)
+        self.arm_last_action_indices = tuple(arm_last_action_indices)
+        self.arm_correlation_pattern = arm_correlation_pattern
+        self.previous_action_clip = 1. - 1e-6
+        self.arm_correlation_matrix = _arm_correlation_matrix(self.arm_correlation)
+        self._arm_cholesky = np.linalg.cholesky(self.arm_correlation_matrix)
+        self._arm_inverse_cholesky = np.linalg.inv(self._arm_cholesky)
+
+    @property
+    def config(self):
+        return {**super().config, "kind": COHERENT_DISTRIBUTION_KIND,
+                "exploration_version": self.exploration_version,
+                "arm_persistence": self.arm_persistence,
+                "arm_correlation": self.arm_correlation,
+                "arm_last_action_indices": list(self.arm_last_action_indices),
+                "arm_correlation_pattern": self.arm_correlation_pattern,
+                "previous_action_clip": self.previous_action_clip,
+                "conditioned_action_indices": list(range(15, 29)),
+                "mean_conditioning": "blend_raw_mean_with_atanh_raw_previous_action",
+                "deterministic_output": "tanh(conditioned_mean)"}
+
+    @classmethod
+    def from_config(cls, config):
+        required = (_DISTRIBUTION_KWARGS | _COHERENT_KWARGS | {
+            "kind", "event_size", "native_min_std", "native_var_scale",
+            "previous_action_clip", "conditioned_action_indices", "mean_conditioning",
+            "deterministic_output"})
+        if not isinstance(config, dict) or config.get("kind") != COHERENT_DISTRIBUTION_KIND:
+            raise ValueError("Unknown coherent action distribution configuration")
+        if set(config) != required:
+            raise ValueError("Coherent action distribution configuration must include all settings")
+        restored = cls(config["event_size"], **{
+            key: config[key] for key in _DISTRIBUTION_KWARGS | _COHERENT_KWARGS})
+        if restored.config != config:
+            raise ValueError("Coherent action distribution semantics differ")
+        return restored
+
+    def condition_parameters(self, parameters, raw_policy_observations):
+        """Use raw observation history, independently of network normalization."""
+        if max(self.arm_last_action_indices) >= raw_policy_observations.shape[-1]:
+            raise ValueError("Previous-arm-action indices exceed observation width")
+        if parameters.shape[:-1] != raw_policy_observations.shape[:-1]:
+            raise ValueError("Observation and policy parameter batch/time dimensions differ")
+        previous = jnp.take(raw_policy_observations,
+                            jnp.asarray(self.arm_last_action_indices), axis=-1)
+        previous = jnp.arctanh(jnp.clip(previous, -self.previous_action_clip,
+                                      self.previous_action_clip))
+        conditioned = ((1. - self.arm_persistence) * parameters[..., 15:29]
+                       + self.arm_persistence * previous)
+        return parameters.at[..., 15:29].set(conditioned)
+
+    def create_dist(self, parameters):
+        bounded = super().create_dist(parameters)
+        return _CorrelatedArmNormal(bounded.loc, bounded.scale,
+                                    self._arm_cholesky, self._arm_inverse_cholesky)
+
+    def entropy(self, parameters, seed):
+        if self.upper_entropy_weight == 0:
+            return super().entropy(parameters, seed)
+        loc, raw_scale = jnp.split(parameters, 2, axis=-1)
+        legs = jnp.concatenate([loc[..., :12], raw_scale[..., :12]], axis=-1)
+        leg_entropy = self._leg_distribution.entropy(legs, seed)
+        joint = self.create_dist(parameters)
+        upper_seed = jax.random.fold_in(seed, 1)
+        upper_entropy = (joint.entropy()[..., 12:]
+                         + self._postprocessor.forward_log_det_jacobian(
+                             joint.sample(upper_seed))[..., 12:])
+        return leg_entropy + self.upper_entropy_weight * jnp.sum(upper_entropy, axis=-1)
+
+
+def _make_distribution(action_size, base_kwargs, coherent_kwargs):
+    present = {key for key, value in coherent_kwargs.items() if value is not None}
+    if not present:
+        return WholeBodyNormalTanhDistribution(action_size, **base_kwargs)
+    if present != _COHERENT_KWARGS:
+        raise ValueError("Coherent exploration requires all five explicit v2 settings")
+    return CoherentArmNormalTanhDistribution(action_size, **base_kwargs, **coherent_kwargs)
+
+
 def make_ppo_networks(
     observation_size: types.ObservationSize,
     action_size: int,
@@ -147,21 +330,25 @@ def make_ppo_networks(
     upper_std_min: float = 0.02,
     upper_std_max: float = 0.10,
     upper_entropy_weight: float = 0.0,
+    exploration_version: str | None = None,
+    arm_persistence: float | None = None,
+    arm_correlation: float | None = None,
+    arm_last_action_indices: Sequence[int] | None = None,
+    arm_correlation_pattern: str | None = None,
 ) -> ppo_networks.PPONetworks:
-    """Keep native policy/value networks and replace only their distribution.
+    """Keep native parameter shapes and install versioned action semantics.
 
     Defaults for native network arguments match Brax 0.12.3.  Production callers
     must retain the released CAT hidden sizes and observation keys, as before.
-    Save the four additional keyword settings together with the factory identity
-    when exporting a checkpoint; network weights alone cannot encode these bounds.
+    Save all four base distribution settings, and all five v2 settings when
+    enabled. Network weights alone cannot encode bounds or arm conditioning.
     """
-    bounded = WholeBodyNormalTanhDistribution(
-        action_size,
-        leg_action_count=leg_action_count,
-        upper_std_min=upper_std_min,
-        upper_std_max=upper_std_max,
-        upper_entropy_weight=upper_entropy_weight,
-    )
+    bounded = _make_distribution(action_size, {
+        "leg_action_count": leg_action_count, "upper_std_min": upper_std_min,
+        "upper_std_max": upper_std_max, "upper_entropy_weight": upper_entropy_weight,
+    }, {"exploration_version": exploration_version, "arm_persistence": arm_persistence,
+        "arm_correlation": arm_correlation, "arm_last_action_indices": arm_last_action_indices,
+        "arm_correlation_pattern": arm_correlation_pattern})
     native = ppo_networks.make_ppo_networks(
         observation_size,
         action_size,
@@ -172,6 +359,16 @@ def make_ppo_networks(
         policy_obs_key=policy_obs_key,
         value_obs_key=value_obs_key,
     )
+    if isinstance(bounded, CoherentArmNormalTanhDistribution):
+        actor = native.policy_network
+
+        def apply(normalizer_params, policy_params, observations):
+            parameters = actor.apply(normalizer_params, policy_params, observations)
+            raw_state = observations[policy_obs_key] if isinstance(observations, dict) else observations
+            return bounded.condition_parameters(parameters, raw_state)
+
+        native = native.replace(policy_network=brax_networks.FeedForwardNetwork(
+            init=actor.init, apply=apply))
     return native.replace(parametric_action_distribution=bounded)
 
 
@@ -184,16 +381,28 @@ def checkpoint_distribution_config(network_config) -> dict | None:
     """
     kwargs = dict(network_config["network_factory_kwargs"])
     present = set(kwargs) & _DISTRIBUTION_KWARGS
+    coherent_present = set(kwargs) & _COHERENT_KWARGS
     recorded = network_config.get("action_distribution")
-    if not present:
+    if not present and not coherent_present:
         if recorded is not None:
             raise ValueError("Checkpoint distribution metadata lacks explicit factory settings")
         return None
     if present != _DISTRIBUTION_KWARGS:
         raise ValueError("Bounded checkpoint must explicitly record all distribution settings")
-    restored = WholeBodyNormalTanhDistribution(
-        network_config["action_size"], **{key: kwargs[key] for key in _DISTRIBUTION_KWARGS},
-    )
+    if coherent_present and coherent_present != _COHERENT_KWARGS:
+        raise ValueError("Coherent checkpoint must explicitly record all five v2 settings")
+    # Brax saves signature defaults, including all five None values for a v1
+    # factory created by this version. All-absent (old v1) and all-None (new v1)
+    # are equivalent; a partially populated v2 remains an error. If explicit
+    # v2 metadata accompanies all-None settings, the agreement check below
+    # rejects it instead of silently downgrading the policy.
+    if (coherent_present
+            and any(kwargs[key] is not None for key in _COHERENT_KWARGS)
+            and any(kwargs[key] is None for key in _COHERENT_KWARGS)):
+        raise ValueError("Coherent checkpoint v2 settings cannot be null")
+    restored = _make_distribution(network_config["action_size"],
+        {key: kwargs[key] for key in _DISTRIBUTION_KWARGS},
+        {key: kwargs.get(key) for key in _COHERENT_KWARGS})
     if recorded is not None:
         validated = WholeBodyNormalTanhDistribution.from_config(dict(recorded))
         if validated.config != restored.config:

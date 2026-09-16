@@ -552,6 +552,11 @@ class RaggedSceneMixin:
                              [s["sampling_weight"] for s in scenes], dtype=np.float32)
         if weights.shape != (self.num_pf_scenes,) or not np.isfinite(weights).all() or np.any(weights < 0) or not np.any(weights > 0):
             raise ValueError("Field sampling weights must be finite, nonnegative and match scene count")
+        from cat_ppo.furniture.hand_curriculum import curriculum_levels, hand_scene_logits
+        hand_levels = curriculum_levels(
+            self.field_bank_manifest,
+            enabled=bool(getattr(config, "wholebody_hand_protection", False)))
+        self._pf_hand_curriculum_levels = None if hand_levels is None else jp.asarray(hand_levels)
         if self._pf_expanded:
             group_ids, group_masses = sampling_groups(self.field_bank_manifest)
             group_weight = np.bincount(group_ids, weights=weights, minlength=len(SAMPLING_GROUPS))
@@ -561,6 +566,14 @@ class RaggedSceneMixin:
             self._pf_sampling_group_ids = jp.array(group_ids, dtype=jp.int32)
             self._pf_sampling_group_masses = jp.array(group_masses, dtype=jp.float32)
             self._pf_sampling_logits = jp.log(jp.array(probabilities, dtype=jp.float32))
+            if hand_levels is not None:
+                # Stage zero applies to the very first reset, before the
+                # adaptive wrapper sees any completed episodes.
+                if np.any(weights <= 0):
+                    raise ValueError("Hand curriculum scene weights must be positive")
+                self._pf_sampling_logits = hand_scene_logits(
+                    jp.asarray(weights), self._pf_sampling_group_ids,
+                    self._pf_sampling_group_masses, self._pf_hand_curriculum_levels, jp.int32(0))
         else:
             self._pf_sampling_logits = jp.log(jp.array(weights / weights.sum()) + 1e-8)
         self._pf_sampling_alpha = float(getattr(config.pf_config, "sampling_alpha", 1.))
@@ -575,6 +588,9 @@ class RaggedSceneMixin:
         if self._pf_expanded:
             state.info.update(pf_sampling_group_ids=self._pf_sampling_group_ids,
                               pf_sampling_group_masses=self._pf_sampling_group_masses)
+        if getattr(self, "_pf_hand_curriculum_levels", None) is not None:
+            from cat_ppo.furniture.hand_curriculum import initial_curriculum_state
+            state.info.update(initial_curriculum_state())
         return state
 
     def reset(self, rng):

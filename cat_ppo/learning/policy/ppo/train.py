@@ -137,19 +137,32 @@ _WHOLEBODY_EPISODE_RATE_KEYS = {
 def _current_distribution_metrics(parametric_distribution, scales):
     """Reduce actual bounded scales on device; only scalar values reach the host."""
     config = getattr(parametric_distribution, "config", None)
-    if not config or config.get("kind") != "wholebody_bounded_normal_tanh_v1":
+    if not config or config.get("kind") not in (
+            "wholebody_bounded_normal_tanh_v1", "wholebody_arm_conditional_correlated_tanh_v2"):
         return {}
     split = config["leg_action_count"]
     upper = scales[..., split:]
     invalid = (~jnp.isfinite(upper) | (upper < config["upper_std_min"])
                | (upper > config["upper_std_max"]))
-    return {
+    metrics = {
         "training/leg_std_mean": jnp.mean(scales[..., :split]),
         "training/upper_std_mean": jnp.mean(upper),
         "training/upper_std_min": jnp.min(upper),
         "training/upper_std_max": jnp.max(upper),
         "training/upper_std_bounds_violation_rate": jnp.mean(invalid.astype(jnp.float32)),
+        "training/upper_std_at_floor_fraction": jnp.mean((upper <= config["upper_std_min"]).astype(jnp.float32)),
+        "training/upper_std_at_ceiling_fraction": jnp.mean((upper >= config["upper_std_max"]).astype(jnp.float32)),
     }
+    if config.get("kind") == "wholebody_arm_conditional_correlated_tanh_v2":
+        metrics.update({
+            "training/arm_conditional_std_mean": jnp.mean(scales[..., 15:]),
+            "training/arm_conditional_std_at_floor_fraction": jnp.mean(
+                (scales[..., 15:] <= config["upper_std_min"]).astype(jnp.float32)),
+            "training/arm_conditional_std_at_ceiling_fraction": jnp.mean(
+                (scales[..., 15:] >= config["upper_std_max"]).astype(jnp.float32)),
+            "training/arm_persistence": jnp.asarray(config["arm_persistence"]),
+        })
+    return metrics
 
 
 class TrainingMetricsLogger:
@@ -1538,6 +1551,9 @@ def train(
             logging.info(metrics)
             progress_fn(current_step, metrics)
         elif continuous:
+            if "pf_hand_curriculum_stage" in env_state.info:
+                from cat_ppo.furniture.hand_curriculum import curriculum_metrics
+                training_metrics.update(curriculum_metrics(env_state.info))
             progress_fn(current_step, training_metrics)
 
         if scored_checkpoint_fn is not None:

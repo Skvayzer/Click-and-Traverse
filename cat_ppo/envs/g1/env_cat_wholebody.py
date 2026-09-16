@@ -28,12 +28,16 @@ from cat_ppo.furniture.grippers import (
 
 
 def wholebody_config(base_config, *, bank_manifest=None, compatibility_mode=False,
-                     stabilization=False):
+                     stabilization=False, hand_protection=False):
     """Extend the supplied *released* env config without replacing its settings.
 
     Compatibility mode uses the original robot and 12-action observation
     contract, without additive rewards or probes.  It is intended for numerical
     reference comparisons, not the new whole-body experiment.
+
+    The optional hand-protection profile strengthens only the added hand
+    clearance cost and releases arm regularization before close encounters.
+    Native CAT rewards, action bounds, observations and termination stay intact.
     """
     config = (base_config.copy_and_resolve_references()
               if hasattr(base_config, "copy_and_resolve_references")
@@ -42,7 +46,10 @@ def wholebody_config(base_config, *, bank_manifest=None, compatibility_mode=Fals
     config.compatibility_mode = bool(compatibility_mode)
     if compatibility_mode and stabilization:
         raise ValueError("Stabilization adds whole-body rewards and cannot be used in exact CAT compatibility mode")
+    if hand_protection and (compatibility_mode or not stabilization):
+        raise ValueError("The hand-protection profile requires stabilized whole-body control")
     config.wholebody_stabilization = bool(stabilization)
+    config.wholebody_hand_protection = bool(hand_protection)
     from cat_ppo.envs.g1.body_collision import PROPOSAL
     config.wholebody = config_dict.create(body_collision=config_dict.create(
         enabled=False, bank_manifest="", reset_manifest="", proposal=str(PROPOSAL),
@@ -63,13 +70,21 @@ def wholebody_config(base_config, *, bank_manifest=None, compatibility_mode=Fals
     config.upper_acceleration_cost_scale = 20.0  # rad/s^2
     config.upper_posture_clearance_taper = .12  # m beyond protection margins
     config.upper_cost_waist_weight = 4.0
+    # Profile parameters are explicit in saved env configs. They remain inert
+    # unless hand_protection=True; all reward scales still receive native dt.
+    config.hand_protection_target_clearance = .04
+    config.hand_protection_anticipation_distance = .20
+    config.hand_protection_near_weight = .8
+    config.hand_protection_posture_taper = .10
+    config.upper_arm_velocity_weight = .5
+    config.upper_arm_acceleration_weight = .1
     contract = (control.legacy_observation_contract() if compatibility_mode
                 else control.wholebody_observation_contract())
     config.num_act = len(contract["action_names"])
     config.num_obs = len(contract["actor_features"])
     config.num_pri = len(contract["critic_features"])
     if not compatibility_mode:
-        config.reward_config.scales.wholebody_hand_clearance = -5.0
+        config.reward_config.scales.wholebody_hand_clearance = -.5 if hand_protection else -5.0
         config.reward_config.scales.wholebody_arm_clearance = -2.0
         if stabilization:
             config.reward_config.scales.wholebody_upper_target_velocity = -.05
@@ -205,6 +220,7 @@ class _WholeBodyTask(G1CatEnv):
         _, telemetry = self._upper_stability_terms(state.info)
         telemetry["upper_joint_velocity_rms"] = jp.sqrt(jp.mean(state.data.qvel[18:35] ** 2))
         telemetry["upper_action_distance_normalized"] = jp.array(0.)
+        self._add_hand_protection_pose_telemetry(telemetry, state.data, state.info)
         state.info["wholebody_telemetry"] = telemetry
         return state
 
@@ -231,7 +247,29 @@ class _WholeBodyTask(G1CatEnv):
             hand_margin=self._config.hand_clearance_margin,
             elbow_margin=self._config.arm_clearance_margin,
             clearance_taper=self._config.upper_posture_clearance_taper,
-            waist_weight=self._config.upper_cost_waist_weight)
+            waist_weight=self._config.upper_cost_waist_weight,
+            hand_protection=getattr(self._config, "wholebody_hand_protection", False),
+            arm_velocity_weight=getattr(self._config, "upper_arm_velocity_weight", .5),
+            arm_acceleration_weight=getattr(self._config, "upper_arm_acceleration_weight", .1),
+            protection_target_clearance=getattr(self._config, "hand_protection_target_clearance", .04),
+            protection_anticipation_distance=getattr(self._config, "hand_protection_anticipation_distance", .20),
+            protection_near_weight=getattr(self._config, "hand_protection_near_weight", .8),
+            protection_posture_taper=getattr(self._config, "hand_protection_posture_taper", .10))
+
+    def _add_hand_protection_pose_telemetry(self, telemetry, data, info):
+        if not getattr(self._config, "wholebody_hand_protection", False):
+            return
+        # Reuse current joint coordinates and already-computed hand sites. No
+        # extra FK pass or extra policy observations are needed for logging.
+        arm_offset = data.qpos[22:36] - self._default_qpos[15:]
+        hand_height = info["hands_pos"][:, 2] - data.qpos[2]
+        telemetry.update({
+            "arm_joint_offset_rms": jp.sqrt(jp.mean(arm_offset ** 2)),
+            "left_arm_joint_offset_rms": jp.sqrt(jp.mean(arm_offset[:7] ** 2)),
+            "right_arm_joint_offset_rms": jp.sqrt(jp.mean(arm_offset[7:] ** 2)),
+            "left_hand_height_above_root": hand_height[0],
+            "right_hand_height_above_root": hand_height[1],
+        })
 
     def _reset_root_pose(self, qpos):
         # A scene bank keeps released scenes' reset pose bit-for-bit unchanged;
@@ -264,11 +302,14 @@ class _WholeBodyTask(G1CatEnv):
                         self._config.clutter_episode_length)
 
     def observation_contract(self):
-        return dict(self._contract, baseline="released_CAT_generalist",
+        contract = dict(self._contract, baseline="released_CAT_generalist",
                     perception_mode="CAT_odometry_held_5_control_steps",
                     probe_sampler="released_CAT_corner_weight_order_and_clamping",
                     obstacle_physics="potential_fields_only",
                     compatibility_mode=self.compatibility_mode)
+        if getattr(self._config, "wholebody_hand_protection", False):
+            contract["hand_protection_reward"] = "normalized-clearance-and-arm-motion-v1"
+        return contract
 
     def _elbow_fields(self, positions, info, *, actor):
         guidance = self.sample_field(self.gf, positions)
@@ -308,14 +349,18 @@ class _WholeBodyTask(G1CatEnv):
         if self.compatibility_mode:
             return rewards
         enabled = self._config.hand_protection_enabled
-        hand_deficit = jp.maximum(self._config.hand_clearance_margin - info["handsdf"], 0.0)
-        rewards["wholebody_hand_clearance"] = jp.where(enabled, jp.mean(hand_deficit ** 2), 0.0)
+        costs, telemetry = self._upper_stability_terms(info)
+        if getattr(self._config, "wholebody_hand_protection", False):
+            rewards["wholebody_hand_clearance"] = jp.where(enabled, telemetry["hand_clearance_pressure"], 0.)
+        else:
+            hand_deficit = jp.maximum(self._config.hand_clearance_margin - info["handsdf"], 0.0)
+            rewards["wholebody_hand_clearance"] = jp.where(enabled, jp.mean(hand_deficit ** 2), 0.0)
         deficit = jp.maximum(self._config.arm_clearance_margin
                              - info["wholebody_elbow_clearance"], 0.0)
         rewards["wholebody_arm_clearance"] = jp.where(enabled, jp.mean(deficit ** 2), 0.0)
-        costs, telemetry = self._upper_stability_terms(info)
         telemetry["upper_joint_velocity_rms"] = jp.sqrt(jp.mean(data.qvel[18:35] ** 2))
         telemetry["upper_action_distance_normalized"] = jp.sqrt(jp.mean(action[12:] ** 2))
+        self._add_hand_protection_pose_telemetry(telemetry, data, info)
         info["wholebody_telemetry"] = telemetry
         info["wholebody_applied_upper_target"] = info["motor_targets"][12:]
         if self._config.wholebody_stabilization:

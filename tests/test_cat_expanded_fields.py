@@ -134,6 +134,42 @@ def test_initial_sampling_keeps_fixed_family_mass_with_unequal_scene_counts(expa
     np.testing.assert_allclose(state.info["pf_sampling_group_masses"], [.20, .40, .25, .15])
 
 
+def test_hand_curriculum_initial_reset_reserves_room_subgroups_without_new_scene_state(expanded_bank):
+    manifest = fields.load_generalist_manifest(expanded_bank)
+    for family, kind in (("furniture", "hand_table_aisle"), ("generic_clutter", "hand_shelf_passage")):
+        for level, difficulty in enumerate(("easy", "medium", "hard")):
+            scene = _scene(expanded_bank.parent, f"{kind}_{difficulty}", family, len(manifest["scenes"]))
+            scene["source"]["hand_protection"] = dict(kind=kind, difficulty=difficulty, level=level)
+            source = dict(scene["source"])
+            source.pop("metadata_sha256")
+            source_path = expanded_bank.parent / scene["path"] / "source.json"
+            source_path.write_text(json.dumps(source))
+            scene["source"]["metadata_sha256"] = fields.sha256(source_path)
+            manifest["scenes"].append(scene)
+    manifest["scene_count"] = len(manifest["scenes"])
+    manifest["hand_protection_curriculum"] = True
+    _write_manifest(expanded_bank, manifest)
+    config = SimpleNamespace(episode_length=1000, clutter_episode_length=4000,
+                             wholebody_hand_protection=True,
+                             pf_config=SimpleNamespace(bank_manifest=str(expanded_bank), sampling_weights=None))
+    env = _BankEnv(config=config)
+    levels = np.asarray(env._pf_hand_curriculum_levels)
+    probabilities = np.asarray(jax.nn.softmax(env._pf_sampling_logits))
+    np.testing.assert_array_equal(probabilities[levels > 0], 0.)
+    np.testing.assert_allclose(probabilities[levels == 0].sum(), .2, atol=1e-7)
+    np.testing.assert_allclose(probabilities[[39, 40]], [.125, .075], atol=1e-7)
+    state = env.reset(jax.random.PRNGKey(2))
+    assert levels[int(state.info["pf_id"])] <= 0
+    assert int(state.info["pf_hand_curriculum_stage"]) == 0
+    assert state.info["pf_hand_curriculum_completed"].shape == (3,)
+    assert "pf_hand_curriculum_levels" not in state.info
+    config.wholebody_hand_protection = False
+    ordinary = _BankEnv(config=config)
+    assert ordinary._pf_hand_curriculum_levels is None
+    assert not any(key.startswith("pf_hand_curriculum") for key in ordinary.reset(jax.random.PRNGKey(2)).info)
+    assert np.all(np.asarray(jax.nn.softmax(ordinary._pf_sampling_logits)) > 0.)
+
+
 def test_absent_groups_renormalize_without_losing_cat_metadata(expanded_bank):
     manifest = fields.load_generalist_manifest(expanded_bank)
     manifest["scenes"] = manifest["scenes"][:39]

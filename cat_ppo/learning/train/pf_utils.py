@@ -83,6 +83,8 @@ class SamplePFWrapper(wrapper.Wrapper):
         wholebody = getattr(config, "wholebody", None)
         body_collision = getattr(wholebody, "body_collision", None)
         self._body_collision_enabled = bool(getattr(body_collision, "enabled", False))
+        self._hand_curriculum_levels = getattr(
+            getattr(env, "unwrapped", env), "_pf_hand_curriculum_levels", None)
 
     def _reset_with_pf_id(self, rng, pf_id):
         node = self.env
@@ -126,7 +128,7 @@ class SamplePFWrapper(wrapper.Wrapper):
         return state
 
     @staticmethod
-    def _update_pf_sampling_info(state, done):
+    def _update_pf_sampling_info(state, done, hand_curriculum_levels=None):
         if "pf_success_ema" not in state.info:
             return state, None
 
@@ -135,19 +137,34 @@ class SamplePFWrapper(wrapper.Wrapper):
         pf_id = state.info["pf_id"].astype(jnp.int32)
         num_pf = state.info["pf_success_ema"].shape[-1]
         done_f = done_bool.astype(jnp.float32)
+        success = truncation
+        if hand_curriculum_levels is not None:
+            from cat_ppo.furniture.hand_curriculum import (
+                STATE_KEYS, advance_curriculum, clean_goals,
+            )
+            clean_goal = clean_goals(state.info)
+            scene_levels = hand_curriculum_levels[pf_id]
+            # Preserve the original survival EMA for every old scene. Hand
+            # tasks alone adapt to fault-free endpoint success.
+            success = jnp.where(scene_levels >= 0, clean_goal.astype(jnp.float32), truncation)
+            values = advance_curriculum(
+                *(state.info[key][0] for key in STATE_KEYS),
+                scene_levels, done_bool, clean_goal)
+            for key, value in zip(STATE_KEYS, values):
+                state.info[key] = jnp.broadcast_to(value, state.info[key].shape)
         expanded = "pf_sampling_group_ids" in state.info
         if expanded:
             # Thousands of scene slots must not materialize B x N one-hot
             # counters every control step. Global EMAs are broadcast identically
             # to each environment, so reading their first copy is sufficient.
             episode_counts = jnp.bincount(pf_id, weights=done_f, length=num_pf)
-            success_counts = jnp.bincount(pf_id, weights=done_f * truncation, length=num_pf)
+            success_counts = jnp.bincount(pf_id, weights=done_f * success, length=num_pf)
             prev_episode_ema = state.info["pf_episode_ema"][0]
             prev_success_ema = state.info["pf_success_ema"][0]
         else:
             one_hot = jax.nn.one_hot(pf_id, num_pf, dtype=jnp.float32)
             episode_counts = jnp.sum(one_hot * done_f[:, None], axis=0)
-            success_counts = jnp.sum(one_hot * (done_f * truncation)[:, None], axis=0)
+            success_counts = jnp.sum(one_hot * (done_f * success)[:, None], axis=0)
             prev_episode_ema = jnp.mean(state.info["pf_episode_ema"], axis=0)
             prev_success_ema = jnp.mean(state.info["pf_success_ema"], axis=0)
         decay = jnp.mean(state.info["pf_sampling_ema_decay"])
@@ -157,7 +174,13 @@ class SamplePFWrapper(wrapper.Wrapper):
 
         alpha = jnp.mean(state.info["pf_sampling_alpha"])
         weights = jnp.maximum((1.0 - success_rate) ** alpha, 1e-3)
-        if expanded:
+        if hand_curriculum_levels is not None:
+            from cat_ppo.furniture.hand_curriculum import hand_scene_logits
+            logits = hand_scene_logits(
+                weights, state.info["pf_sampling_group_ids"][0],
+                state.info["pf_sampling_group_masses"][0], hand_curriculum_levels,
+                state.info["pf_hand_curriculum_stage"][0])
+        elif expanded:
             logits = balanced_scene_logits(weights, state.info["pf_sampling_group_ids"][0],
                                             state.info["pf_sampling_group_masses"][0])
         else:
@@ -188,7 +211,8 @@ class SamplePFWrapper(wrapper.Wrapper):
         if done.ndim == 0:
             done = done[None]
 
-        state, pf_sampling_logits = self._update_pf_sampling_info(state, done)
+        state, pf_sampling_logits = self._update_pf_sampling_info(
+            state, done, self._hand_curriculum_levels)
 
         rng = state.info["rng"]
         if pf_sampling_logits is None:
@@ -203,6 +227,10 @@ class SamplePFWrapper(wrapper.Wrapper):
             state_reset.info["pf_sampling_logits"] = state.info["pf_sampling_logits"]
             state_reset.info["pf_episode_ema"] = state.info["pf_episode_ema"]
             state_reset.info["pf_success_ema"] = state.info["pf_success_ema"]
+            if self._hand_curriculum_levels is not None:
+                from cat_ppo.furniture.hand_curriculum import STATE_KEYS
+                for key in STATE_KEYS:
+                    state_reset.info[key] = state.info[key]
         done_exp = done[:, None]
         room_transition = None
         if "room_navigation" in state.info:

@@ -14,6 +14,7 @@ import os
 from pathlib import Path
 import sys
 import time
+import xml.etree.ElementTree as ET
 
 import numpy as np
 
@@ -82,24 +83,29 @@ def sample_native_reset_poses(uniforms, nominal_qpos, soft_lower, soft_upper, sc
 
 def collect_reset_pool(scenes, nominal_qpos, soft_lower, soft_upper, check_collisions, *,
                        poses_per_scene=32, seed=20260916, batch_size=1024,
-                       candidates_per_scene=64, max_attempts_per_scene=4096, progress=None):
+                       candidates_per_scene=64, max_attempts_per_scene=4096, progress=None,
+                       scene_index_offset=0):
     """Deterministic rejection sampling with fixed-size checker batches.
 
     ``check_collisions(scene_ids, qpos)`` returns either [batch] collision flags
     or [batch, shape] flags. Final partial batches repeat their last valid row;
     padding never contributes to counts or accepted poses. Returns the pool,
     per-scene provenance, and failed scene indices. A failed pool is not valid
-    for publication. No runtime or scene state is modified.
+    for publication. ``scene_index_offset`` maps a suffix to its actual full-bank
+    checker IDs and PRNG streams. Returned record/failed indices are global.
+    No runtime or scene state is modified.
     """
     if (not scenes or min(poses_per_scene, batch_size, candidates_per_scene) < 1
-            or max_attempts_per_scene < poses_per_scene or seed < 0):
+            or max_attempts_per_scene < poses_per_scene or seed < 0
+            or type(scene_index_offset) is not int or scene_index_offset < 0):
         raise ValueError("Invalid reset pool sampling sizes/seed")
     count, nq = len(scenes), len(nominal_qpos)
     pool = np.full((count, poses_per_scene, nq), np.nan, dtype=np.float32)
     selected = np.zeros(count, dtype=np.int64)
     attempts = np.zeros(count, dtype=np.int64)
     clear_count = np.zeros(count, dtype=np.int64)
-    generators = [np.random.default_rng(np.random.SeedSequence([seed, index])) for index in range(count)]
+    generators = [np.random.default_rng(np.random.SeedSequence([seed, index + scene_index_offset]))
+                  for index in range(count)]
     collision_by_shape = None
     batches = 0
     started = time.monotonic()
@@ -125,7 +131,7 @@ def collect_reset_pool(scenes, nominal_qpos, soft_lower, soft_upper, check_colli
             used = len(ids)
             padded_ids = np.pad(ids, (0, batch_size - used), mode="edge")
             padded_qpos = np.concatenate([positions, np.repeat(positions[-1:], batch_size - used, axis=0)])
-            flags = np.asarray(check_collisions(padded_ids, padded_qpos), dtype=bool)
+            flags = np.asarray(check_collisions(padded_ids + scene_index_offset, padded_qpos), dtype=bool)
             if flags.ndim == 1:
                 flags = flags[:, None]
             if flags.ndim != 2 or flags.shape[0] != batch_size:
@@ -153,18 +159,197 @@ def collect_reset_pool(scenes, nominal_qpos, soft_lower, soft_upper, check_colli
                               attempted_poses=int(attempts.sum()), selected_poses=int(selected.sum()),
                               rejected_poses=int((attempts - clear_count).sum()),
                               elapsed_seconds=time.monotonic() - started))
-    failed = np.flatnonzero(selected != poses_per_scene).tolist()
+    failed = (np.flatnonzero(selected != poses_per_scene) + scene_index_offset).tolist()
     records = []
     for index, scene in enumerate(scenes):
-        record = dict(index=index, scene_id=scene["scene_id"], family=scene.get("family"),
+        record = dict(index=index + scene_index_offset, scene_id=scene["scene_id"], family=scene.get("family"),
                       attempts=int(attempts[index]), clear_candidates=int(clear_count[index]),
                       selected_poses=int(selected[index]),
                       rejection_fraction=float(1. - clear_count[index] / attempts[index]),
                       complete=bool(selected[index] == poses_per_scene))
-        if index in failed:
+        if index + scene_index_offset in failed:
             record["collision_counts_by_shape"] = collision_by_shape[index].tolist()
         records.append(record)
     return pool, records, failed
+
+
+def _manifest_reference(owner, value):
+    path = Path(value)
+    path = (owner.parent / path).resolve() if not path.is_absolute() else path.resolve()
+    return path / "manifest.json" if path.is_dir() else path
+
+
+def _verified_geometry_cache(manifest_path, scene):
+    path = (manifest_path.parent / scene["geometry_file"]).resolve()
+    if not path.is_relative_to(manifest_path.parent) or sha256(path) != scene["geometry_sha256"]:
+        raise ValueError("Base append collision geometry cache path/hash differs")
+
+
+def _load_reset_array(path):
+    loaded = np.load(path, allow_pickle=False)
+    if isinstance(loaded, np.lib.npyio.NpzFile):
+        try:
+            if loaded.files not in (["qpos"], ["arr_0"]):
+                raise ValueError("Reset NPZ must contain exactly one qpos array")
+            return loaded[loaded.files[0]]
+        finally:
+            loaded.close()
+    return loaded
+
+
+def _normalized_robot_xml(xml):
+    """Canonicalize only mesh file paths to verified content hashes.
+
+    Every element, mesh name, transform, physical parameter, compiler setting,
+    and non-file attribute remains part of the comparison. Assembled training
+    XML uses absolute mesh paths, so relative files fail rather than being
+    resolved against an unrelated directory containing this proof artifact.
+    """
+    root = ET.fromstring(xml)
+    mesh_count = 0
+    for mesh in root.findall("./asset/mesh"):
+        if "file" not in mesh.attrib:
+            continue
+        path = Path(mesh.get("file"))
+        if not path.is_absolute() or not path.is_file():
+            raise ValueError("Robot relocation proof requires existing absolute mesh file paths")
+        mesh.set("file", "sha256:" + sha256(path))
+        mesh_count += 1
+    if not mesh_count:
+        raise ValueError("Robot relocation proof requires file-backed robot meshes")
+    canonical = ET.canonicalize(ET.tostring(root, encoding="unicode"), strip_text=True)
+    return hashlib.sha256(canonical.encode()).hexdigest(), mesh_count
+
+
+def verify_robot_xml_identity(expected_old_sha256, new_sha256, *, new_xml=None, base_robot_xml=None):
+    """Accept identical XML, or a hash-bound proof of mesh-path relocation only."""
+    if expected_old_sha256 == new_sha256:
+        return dict(verification="raw-XML-identity", old_raw_sha256=expected_old_sha256,
+                    new_raw_sha256=new_sha256, old_normalized_sha256=None, new_normalized_sha256=None)
+    if base_robot_xml is None or new_xml is None:
+        raise ValueError("Base reset compiled robot XML differs; supply --base-robot-xml for an asset-relocation proof")
+    old_path = Path(base_robot_xml).resolve()
+    old_bytes = old_path.read_bytes()
+    old_raw = hashlib.sha256(old_bytes).hexdigest()
+    if old_raw != expected_old_sha256:
+        raise ValueError("Base robot XML proof raw SHA256 differs from the reset manifest")
+    actual_new_sha256 = hashlib.sha256(new_xml.encode()).hexdigest()
+    if actual_new_sha256 != new_sha256:
+        raise ValueError("New robot XML proof raw SHA256 differs from the assembled model")
+    old_normalized, old_count = _normalized_robot_xml(old_bytes.decode())
+    new_normalized, new_count = _normalized_robot_xml(new_xml)
+    if old_normalized != new_normalized or old_count != new_count:
+        raise ValueError("Robot XML relocation changes mesh content or non-path robot attributes")
+    return dict(verification="content-verified-mesh-path-relocation", base_robot_xml=str(old_path),
+                old_raw_sha256=old_raw, new_raw_sha256=actual_new_sha256,
+                old_normalized_sha256=old_normalized, new_normalized_sha256=new_normalized,
+                mesh_file_count=new_count, normalized_attributes=["asset/mesh@file"],
+                all_other_robot_attributes_unchanged=True)
+
+
+def load_append_base(base_path, *, field_path, fields, collision_path, collision_arrays,
+                     collision_meta, proposal_path, robot_xml_sha256, poses_per_scene,
+                     nq, shape_names, robot_xml=None, base_robot_xml=None):
+    """Verify an immutable base and prove that every old scene is unchanged.
+
+    Both field banks and collision arrays are verified with their normal
+    loaders. Full field records, geometry fingerprints, and all old indexed
+    geometry/CSR array rows must be an exact prefix of the new bank. A complete
+    reset pool is then copied without changing row order or scene statistics.
+    The build still rechecks every retained pose under the final new checker.
+    """
+    from cat_ppo.furniture.body_collision_bank import load_body_collision_bank
+    from cat_ppo.furniture.generalist_fields import load_generalist_manifest
+
+    base_path = Path(base_path).resolve()
+    if base_path.is_dir():
+        base_path = base_path / "manifest.json"
+    base = json.loads(base_path.read_text())
+    if base.get("schema") != SCHEMA or base.get("status") != "complete":
+        raise ValueError("Base reset manifest must be a complete validated reset pool")
+    base_field = _manifest_reference(base_path, base["field_manifest"])
+    base_collision = _manifest_reference(base_path, base["collision_bank"])
+    base_proposal = _manifest_reference(base_path, base["proposal"])
+    proxy_hash = sha256(proposal_path)
+    for key, path in (("field_manifest_sha256", base_field),
+                      ("collision_bank_sha256", base_collision), ("proxy_sha256", base_proposal)):
+        if base.get(key) != sha256(path):
+            raise ValueError(f"Base reset {key} differs from its source")
+    if base["proxy_sha256"] != proxy_hash:
+        raise ValueError("Base reset proposal differs from the approved collision proposal")
+    robot_proof = verify_robot_xml_identity(base.get("robot_xml_sha256"), robot_xml_sha256,
+                                            new_xml=robot_xml, base_robot_xml=base_robot_xml)
+    old_fields = load_generalist_manifest(base_field, verify_files=True)
+    # Validate new bytes too; a matching record alone cannot prove its file.
+    verified_fields = load_generalist_manifest(field_path, verify_files=True)
+    if verified_fields != fields:
+        raise ValueError("New field manifest changed while preparing append")
+    old_arrays, old_collision = load_body_collision_bank(
+        base_collision, expected_field_manifest=base_field, expected_proxy_sha256=proxy_hash)
+    verified_arrays, verified_collision = load_body_collision_bank(
+        collision_path, expected_field_manifest=field_path, expected_proxy_sha256=proxy_hash)
+    if (verified_collision != collision_meta or set(verified_arrays) != set(collision_arrays)
+            or any(not np.array_equal(value, collision_arrays[key]) for key, value in verified_arrays.items())):
+        raise ValueError("New collision bank changed while preparing append")
+    count = old_fields["scene_count"]
+    if (not 0 < count < fields["scene_count"] or fields["scenes"][:count] != old_fields["scenes"]
+            or old_collision["scene_count"] != count or base.get("scene_count") != count):
+        raise ValueError("Append requires an exact old field-scene prefix and at least one new scene")
+    for key in ("builder", "query_radius_m", "cell_size_m", "outward_epsilon_m", "shape_count",
+                "floor_included", "geometry_mapping", "geometry_float32", "index"):
+        if old_collision.get(key) != collision_meta.get(key):
+            raise ValueError(f"Append collision geometry/index contract differs: {key}")
+    for index, old_scene in enumerate(old_collision["scenes"]):
+        new_scene = collision_meta["scenes"][index]
+        if (old_scene.get("index") != index or old_scene["scene_id"] != old_fields["scenes"][index]["scene_id"]
+                or {key: value for key, value in old_scene.items() if key != "geometry_file"}
+                != {key: value for key, value in new_scene.items() if key != "geometry_file"}):
+            raise ValueError("Append collision scene geometry rows/fingerprints differ")
+        _verified_geometry_cache(base_collision, old_scene)
+        _verified_geometry_cache(collision_path, new_scene)
+    if set(old_arrays) != set(collision_arrays):
+        raise ValueError("Append collision array set differs")
+    for key, old in old_arrays.items():
+        new = collision_arrays[key]
+        if (old.dtype != new.dtype or old.ndim != new.ndim
+                or (old.ndim and (new.shape[1:] != old.shape[1:] or new.shape[0] < old.shape[0]))
+                or not np.array_equal(old, new[:old.shape[0]] if old.ndim else new)):
+            raise ValueError(f"Append collision array prefix differs: {key}")
+    pool_path = (base_path.parent / base["file"]).resolve()
+    if not pool_path.is_relative_to(base_path.parent) or sha256(pool_path) != base["sha256"]:
+        raise ValueError("Base reset pose cache path/checksum differs")
+    pool = _load_reset_array(pool_path)
+    expected_shape = (count, poses_per_scene, nq)
+    if (pool.shape != expected_shape or pool.dtype != np.float32 or not np.isfinite(pool).all()
+            or base.get("shape") != list(expected_shape) or base.get("dtype") != "float32"
+            or base.get("poses_per_scene") != poses_per_scene
+            or base.get("validated_pose_count") != count * poses_per_scene
+            or base.get("shape_names") != list(shape_names)
+            or base.get("soft_joint_pos_limit_factor") != .95
+            or base.get("extra_clearance_margin_m") != 0.
+            or base.get("dropped_scenes") != 0 or base.get("invented_reset_postures") is not False):
+        raise ValueError("Base reset pool shape, dtype, completeness or reset-law contract differs")
+    records = base.get("scenes", [])
+    if len(records) != count:
+        raise ValueError("Base reset scene statistics count differs")
+    for index, record in enumerate(records):
+        attempts, clear = record.get("attempts", 0), record.get("clear_candidates", 0)
+        if (record.get("index") != index or record.get("scene_id") != old_fields["scenes"][index]["scene_id"]
+                or record.get("family") != old_fields["scenes"][index].get("family")
+                or record.get("complete") is not True or record.get("selected_poses") != poses_per_scene
+                or not attempts >= clear >= poses_per_scene
+                or not np.isclose(record.get("rejection_fraction", np.nan), 1. - clear / attempts,
+                                  rtol=0., atol=1e-12)):
+            raise ValueError("Base reset per-scene statistics are incomplete or inconsistent")
+    proof = dict(manifest=str(base_path), manifest_sha256=sha256(base_path), pool_sha256=base["sha256"],
+                 field_manifest_sha256=base["field_manifest_sha256"],
+                 collision_bank_sha256=base["collision_bank_sha256"],
+                 preserved_scene_count=count, preserved_pose_count=count * poses_per_scene,
+                 source_seed=base.get("seed"), field_scene_prefix_identical=True,
+                 collision_geometry_fingerprints_identical=True, collision_array_prefixes_identical=True,
+                 qpos_rows_and_order_preserved=True, per_scene_statistics_preserved=True,
+                 robot_xml_identity=robot_proof)
+    return pool.copy(), list(records), proof
 
 
 def _make_checker(model, compiled, arrays, *, max_candidates):
@@ -228,6 +413,15 @@ def build(args):
     soft_upper = (center + .5 * span * .95).astype(np.float32)
     checker = _make_checker(model, compiled, arrays,
                             max_candidates=int(collision_meta["static_candidate_count"]))
+    base_pool, base_records, base_proof = None, [], None
+    if getattr(args, "base_reset_manifest", None) is not None:
+        base_pool, base_records, base_proof = load_append_base(
+            args.base_reset_manifest, field_path=field_path, fields=fields,
+            collision_path=collision_path, collision_arrays=arrays, collision_meta=collision_meta,
+            proposal_path=proposal_path, robot_xml_sha256=hashlib.sha256(xml.encode()).hexdigest(),
+            poses_per_scene=args.poses_per_scene, nq=model.nq, shape_names=compiled["shape_names"],
+            robot_xml=xml, base_robot_xml=getattr(args, "base_robot_xml", None))
+    preserved_count = len(base_records)
     output.mkdir(parents=True, exist_ok=False)
     provenance = dict(
         schema=SCHEMA, collision_bank_sha256=sha256(collision_path),
@@ -251,18 +445,32 @@ def build(args):
             "scripts/collision_proxy_preview_geometry.py",
             "cat_ppo/furniture/body_collision_geometry.py", "cat_ppo/furniture/body_collision_bank.py",
             "cat_ppo/envs/g1/constants.py", "cat_ppo/furniture/grippers.py")})
+    if base_proof is not None:
+        provenance["append_base"] = base_proof
+        provenance["generated_scene_count"] = len(scenes) - preserved_count
+        provenance["generated_scene_index_offset"] = preserved_count
     _write_json(output / "preparation.json", provenance)
 
     def progress(record):
         if record["batches"] == 1 or record["batches"] % 10 == 0:
+            if preserved_count:
+                record = dict(record, scene_count=len(scenes), preserved_scenes=preserved_count,
+                              completed_scenes=record["completed_scenes"] + preserved_count,
+                              selected_poses=record["selected_poses"] + preserved_count * args.poses_per_scene)
             _write_json(output / "progress.json", record)
             print(json.dumps(record), flush=True)
 
     pool, records, failed = collect_reset_pool(
-        scenes, constants.DEFAULT_QPOS, soft_lower, soft_upper, checker,
+        scenes[preserved_count:], constants.DEFAULT_QPOS, soft_lower, soft_upper, checker,
         poses_per_scene=args.poses_per_scene, seed=args.seed, batch_size=args.batch_size,
         candidates_per_scene=args.candidates_per_scene,
-        max_attempts_per_scene=args.max_attempts_per_scene, progress=progress)
+        max_attempts_per_scene=args.max_attempts_per_scene, progress=progress,
+        scene_index_offset=preserved_count)
+    if base_pool is not None:
+        pool = np.concatenate([base_pool, pool], axis=0)
+        records = base_records + records
+        if not np.array_equal(pool[:preserved_count], base_pool):
+            raise AssertionError("Appending changed preserved reset poses")
     if failed:
         failure = dict(provenance, status="failed", failed_scene_indices=failed,
                        scenes=records, elapsed_seconds=time.monotonic() - started)
@@ -304,6 +512,10 @@ def main():
     parser.add_argument("--collision-bank", type=Path, required=True)
     parser.add_argument("--proposal", type=Path, default=ROOT / "docs/assets/collision-proxy-proposal-20260916/proposal.json")
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--base-reset-manifest", type=Path,
+                        help="Preserve a verified reset pool prefix; generate only appended scenes")
+    parser.add_argument("--base-robot-xml", type=Path,
+                        help="Exact old assembled XML for proving unchanged mesh assets after source relocation")
     parser.add_argument("--poses-per-scene", type=int, default=32)
     parser.add_argument("--seed", type=int, default=20260916)
     parser.add_argument("--batch-size", type=int, default=1024)

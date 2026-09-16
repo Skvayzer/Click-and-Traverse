@@ -57,7 +57,7 @@ def test_checkpoint_roundtrip_preserves_stochastic_actions_and_normalization(tmp
     if bounded:
         # An unmodified external Brax loader refuses unknown settings instead
         # of silently reconstructing an unbounded Gaussian.
-        with pytest.raises(TypeError, match="leg_action_count"):
+        with pytest.raises(TypeError, match="unexpected keyword argument '(leg_action_count|arm_correlation)'"):
             checkpoint.load_policy(path)
 
 
