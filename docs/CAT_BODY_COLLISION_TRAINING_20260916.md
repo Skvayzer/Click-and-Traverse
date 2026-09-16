@@ -32,9 +32,11 @@ they can reject motion through empty space inside an enclosing shape.
 
 ## Scene geometry and navigation
 
-The corrected field bank includes all **2,338 scenes**: 37 released configuration
-slots, 27 additional published scenes, 2,226 procedural CAT scenes, 24 furniture
-rooms and 24 generic clutter rooms. The existing reset sampling masses remain
+The corrected field bank includes all **2,338 scenes**: 37 original configuration
+slots (36 verified released arrays and one explicitly reconstructed missing
+slot), 27 additional published scenes, 2,226 procedural CAT scenes, 24 furniture
+rooms and 24 generic clutter rooms. This is the available scene collection,
+not a reproduction of the paper's unreleased indoor scans. The existing reset sampling masses remain
 20% released/published CAT, 40% procedural CAT, 25% furniture and 15% generic
 clutter, with adaptation within groups.
 
@@ -63,6 +65,13 @@ of 32 clear poses for the **same scene**, drawn from the same reset distribution
 Every scene remains included. Pool generation and runtime use the same geometry
 and intersections; all stored poses are rechecked before publication.
 
+The published pool has **74,816 verified poses**. All 48 room scenes accepted
+every sampled candidate. Candidate rejection was 35.27% for configured original
+scenes, 18.19% for additional published scenes and 39.27% for procedural scenes.
+These are offline reset-geometry measurements, not rollout success rates. Remote
+mesh coverage was also checked against the actual compiled robot: all 49 unique
+mesh placements are enclosed, with at least the approved 3 mm body margin.
+
 ## Fine-tuning and monitoring
 
 The restart uses the **original released CAT generalist checkpoint and fresh
@@ -74,7 +83,9 @@ regularization. The shared policy remains trainable.
 
 One online W&B run aggregates all scene types. Fixed-scene deterministic and
 stochastic validation uses the **same new collision checks** at baseline and
-during training. Therefore success/reward values from older collision rules are
+during training. This monitor uses 16 fixed scenes from the training bank,
+16 seeds each, in both action modes (512 episodes); it is not held-out
+generalization evaluation. Therefore success/reward values from older collision rules are
 not directly comparable. Main metrics:
 
 - `validation/cat_goal_success_rate` versus this run's baseline: retained CAT skills.
@@ -85,13 +96,55 @@ not directly comparable. Main metrics:
 - `training/fall_rate`, `training/upper_std_max`, and `health/nonfinite`: stability.
 
 Retain one best eligible model and one atomically overwritten full resume
-snapshot. Production training has no configured step limit. Actual restart
-identity, capacity measurements and initial runtime verification are recorded
-below once completed.
+snapshot. Production training has no configured step limit. Restart identity,
+capacity measurements and initial runtime verification are recorded below.
 
 ## Verification and restart
 
-Implementation checks cover primitive volume geometry, conservative broadphase,
-terminal reward delivery through the actual PPO/reset stack, collision versus
-timeout precedence, compact observations and reset history. GPU capacity and
-production startup are pending at the time this implementation note is written.
+**123 relevant tests passed across focused runs**, covering primitive volume
+geometry, conservative broadphase, terminal reward delivery through the actual
+PPO/reset stack, an intermediate-substep collision with a clear final pose,
+collision versus timeout precedence, compact observations and reset history.
+The chunked candidate tests include collisions only in the final candidate of
+9- and 17-entry lists and masked/padded tails. Existing CAT compatibility and
+room navigation regressions passed.
+
+The [complete PPO capacity check](assets/cat-body-collision-20260916/capacity-16384.json)
+passed two updates at **16,384 environments**, batch size 256 and 524,288
+transitions per update. Observed peak device occupancy was **37,989 MiB**, with
+**10,644 MiB free**. JAX peak live allocation was 29,246,582,272 bytes. One warm
+update took 21.97 s, or **23,865 transitions/s**, including host callback overhead.
+Production checkpoint I/O and fixed-scene validation add elapsed time. This
+checks capacity and finite execution, not convergence or long-run stability.
+
+The capacity check used the isolated working source recorded in its report.
+The committed production Python source differs only in the whole-body module's
+descriptive docstring; executable code is the same. Production uses frozen
+commit `bb141fd1cede3f043fad05db514909febe0c680f`.
+
+The [continuous launch](assets/cat-body-collision-20260916/launch.json) started on
+**ws008090 at 2026-09-16 16:17:11 UTC**, PID **267506**, with a fresh optimizer and
+the original released CAT actor/critic. Warm-start parity errors are zero for
+the mapped original actor outputs and critic. Single W&B run:
+[cc931c02](https://wandb.ai/skvayzer/CAT-wholebody/runs/cc931c02).
+
+Run directory: `outputs/cat_collision_navigation_20260916`. Stop deliberately
+with `touch outputs/cat_collision_navigation_20260916/STOP` from the remote
+repository. The previous stopped checkpoints are preserved.
+
+The [original-checkpoint baseline](assets/cat-body-collision-20260916/validation-baseline.json)
+completed before learning. Deterministic goal success under the new rules was
+32.81% on the selected CAT scenes and 67.19% on the selected clutter scenes.
+These small training-bank subsets use their own start/goal distribution and
+must not be interpreted as paper reproduction or generalization results.
+They are the within-run retention reference, not fine-tuning results.
+
+[Production startup verification](assets/cat-body-collision-20260916/startup-verification.json)
+at **16:30:43 UTC** confirmed **three PPO updates / 1,572,864 transitions**, a
+full resume snapshot at the same step, exactly one learner and the same step
+visible in online W&B. All logged numbers were finite; `health/nonfinite=0`.
+Upper-action standard deviation remained 0.0489–0.0517, within its configured
+bounds. A warm update reported 23,668 transitions/s. The GPU then reported
+38,005 MiB occupied, 10,628 MiB free and 100% utilization. Training remains
+continuous with no stop marker. This verifies successful startup and logging;
+it does not yet establish improvement or preservation of original skills.
