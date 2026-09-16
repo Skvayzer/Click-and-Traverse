@@ -1,0 +1,234 @@
+[
+  {
+    "scene": 4001,
+    "route": [
+      [
+        2.2,
+        5.24
+      ],
+      [
+        2.2,
+        6.2
+      ],
+      [
+        2.84,
+        6.84
+      ],
+      [
+        6.76,
+        6.84
+      ],
+      [
+        7.0,
+        6.92
+      ]
+    ],
+    "route_length_m": 6.03807889273225,
+    "root_route_guaranteed_margin_m": 0.09257473578419737,
+    "route_used_for_guidance": false,
+    "recordings": [
+      {
+        "seed": 9,
+        "goal_reached": true,
+        "actual_root_xy_length_m": 6.772278308868408,
+        "maximum_distance_from_admission_route_m": 0.4277966022491455,
+        "minimum_xy_clearance_to_root_band_obstacles_m": 0.14511114126414185,
+        "interpretation": "Geometric projection diagnostic, not exact articulated-body collision test"
+      },
+      {
+        "seed": 0,
+        "goal_reached": false,
+        "actual_root_xy_length_m": 1.682074785232544,
+        "maximum_distance_from_admission_route_m": 0.48444032669067383,
+        "minimum_xy_clearance_to_root_band_obstacles_m": 0.12034189701080322,
+        "interpretation": "Geometric projection diagnostic, not exact articulated-body collision test"
+      }
+    ]
+  },
+  {
+    "scene": 4002,
+    "route": [
+      [
+        7.88,
+        2.6
+      ],
+      [
+        8.36,
+        3.32
+      ],
+      [
+        9.16,
+        4.2
+      ],
+      [
+        9.4,
+        5.32
+      ],
+      [
+        9.48,
+        5.4
+      ],
+      [
+        9.48,
+        7.32
+      ],
+      [
+        8.76,
+        8.04
+      ],
+      [
+        7.72,
+        8.04
+      ],
+      [
+        7.08,
+        7.4
+      ],
+      [
+        6.04,
+        7.4
+      ],
+      [
+        4.84,
+        8.6
+      ],
+      [
+        4.84,
+        8.92
+      ]
+    ],
+    "route_length_m": 11.253567295623917,
+    "root_route_guaranteed_margin_m": 0.07064781783282345,
+    "route_used_for_guidance": false,
+    "recordings": [
+      {
+        "seed": 2,
+        "goal_reached": true,
+        "actual_root_xy_length_m": 7.050753593444824,
+        "maximum_distance_from_admission_route_m": 2.2805566787719727,
+        "minimum_xy_clearance_to_root_band_obstacles_m": 0.13128650323390317,
+        "interpretation": "Geometric projection diagnostic, not exact articulated-body collision test"
+      },
+      {
+        "seed": 8,
+        "goal_reached": false,
+        "actual_root_xy_length_m": 1.832211971282959,
+        "maximum_distance_from_admission_route_m": 1.219873414330304,
+        "minimum_xy_clearance_to_root_band_obstacles_m": -0.3084573447704315,
+        "interpretation": "Geometric projection diagnostic, not exact articulated-body collision test"
+      }
+    ]
+  },
+  {
+    "scene": 5001,
+    "route": [
+      [
+        2.2,
+        4.6
+      ],
+      [
+        2.84,
+        4.04
+      ],
+      [
+        3.64,
+        4.04
+      ],
+      [
+        4.52,
+        4.92
+      ],
+      [
+        4.92,
+        5.0
+      ],
+      [
+        6.04,
+        5.08
+      ],
+      [
+        7.08,
+        5.48
+      ],
+      [
+        7.24,
+        5.48
+      ]
+    ],
+    "route_length_m": 5.699965730978704,
+    "root_route_guaranteed_margin_m": 0.08267807985236755,
+    "route_used_for_guidance": false,
+    "recordings": [
+      {
+        "seed": 14,
+        "goal_reached": true,
+        "actual_root_xy_length_m": 5.392431259155273,
+        "maximum_distance_from_admission_route_m": 0.2712554931640625,
+        "minimum_xy_clearance_to_root_band_obstacles_m": 0.13153752088947757,
+        "interpretation": "Geometric projection diagnostic, not exact articulated-body collision test"
+      }
+    ]
+  },
+  {
+    "scene": 5002,
+    "route": [
+      [
+        4.52,
+        1.96
+      ],
+      [
+        4.52,
+        0.92
+      ],
+      [
+        4.04,
+        0.44
+      ],
+      [
+        3.08,
+        0.44
+      ],
+      [
+        2.84,
+        0.68
+      ],
+      [
+        2.84,
+        1.56
+      ],
+      [
+        2.52,
+        1.8
+      ],
+      [
+        2.52,
+        2.84
+      ],
+      [
+        2.84,
+        3.24
+      ],
+      [
+        2.84,
+        7.48
+      ],
+      [
+        2.36,
+        8.2
+      ]
+    ],
+    "route_length_m": 10.955816010014614,
+    "root_route_guaranteed_margin_m": 0.07199578183117314,
+    "route_used_for_guidance": false,
+    "recordings": [
+      {
+        "seed": 12,
+        "goal_reached": false,
+        "actual_root_xy_length_m": 2.2124013900756836,
+        "maximum_distance_from_admission_route_m": 1.8023135662078897,
+        "minimum_xy_clearance_to_root_band_obstacles_m": -0.0045089274644851685,
+        "interpretation": "Geometric projection diagnostic, not exact articulated-body collision test"
+      }
+    ]
+  }
+]
