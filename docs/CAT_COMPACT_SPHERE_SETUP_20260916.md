@@ -40,6 +40,8 @@ The original CAT hand collision reward and termination receive sphere-surface cl
 
 The spheres encode proximity, not a prescribed gesture. A policy can learn to raise or reposition its arms when that improves clearance and task return; this implementation does not guarantee a human-like arm posture. A sphere is intentionally conservative and cannot represent the extra clearance obtainable merely by rotating a long hand inside the same sphere.
 
+**Remaining coverage limitation:** the nine unchanged original body locations are point queries, not enclosing spheres. Foot, shin and other body surfaces can intersect obstacles while those points remain outside. The later room trunk guard also does not cover the entire articulated body. See the [collision coverage report](CAT_COLLISION_COVERAGE_LIMITATION_20260916.md); reporting this limitation adds no observations or collision checks.
+
 For the corrected experiment, initialize from the released CAT checkpoint through named feature/action mapping. The 60 added input rows start at zero; existing hidden layers and the original 12 action outputs are preserved. The 17 new action means start at zero with initial standard deviation 0.05. Geometry changes intentionally change the values in existing hand field slots, so weight preservation does not mean identical trajectories.
 
 The previous 406-input training state must not be resumed directly into this 222-input contract. The launcher uses a separate run directory and rejects incompatible contracts. Historical 406-input checkpoint evaluation must use its matching frozen source tree. The corrected run starts from the original release, with fresh optimizer state.

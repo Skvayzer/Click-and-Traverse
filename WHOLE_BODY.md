@@ -1,5 +1,9 @@
 # CAT whole-body traversal and hand protection
 
+**2026-09-16 update:** training is stopped. The current contract is [222 actor inputs / 310 critic inputs / 29 actions](docs/CAT_COMPACT_SPHERE_SETUP_20260916.md); see the [room-navigation correction and saved-run status](docs/ROOM_NAVIGATION_FIX_20260916.md). **Body–obstacle collision coverage remains incomplete:** sparse points, hand/elbow spheres and the room trunk guard do not cover all robot surfaces. [Limitation, source evidence and implications for training](docs/CAT_COLLISION_COVERAGE_LIMITATION_20260916.md). No new collision check has been implemented by that report.
+
+The setup, run settings and commands below describe the **September 15 historical configuration**, including its retired 406-input contract; use the dated September 16 reports above for the current state.
+
 This branch extends the released Click-and-Traverse generalist with 29 body actions, fixed Unitree Dex3-1 hands, hand/arm clearance features and dense clutter. It is CAT-only. The September 15 correction restores CAT's task and mixed-scene learner. Earlier overnight runs used a materially different task and remain historical experimental artifacts.
 
 ![Dense demonstration scene: nine tables and 36 chairs](docs/assets/dense-room.png)

@@ -1,4 +1,6 @@
-> **Whole-body development branch:** [setup, mixed CAT/clutter training, hand protection and dense-room implementation](WHOLE_BODY.md). Research implementation; trained traversal results are not yet available.
+> **Whole-body development branch:** [setup and development history](WHOLE_BODY.md), [current compact observations](docs/CAT_COMPACT_SPHERE_SETUP_20260916.md), and [stopped-run/room-correction status](docs/ROOM_NAVIGATION_FIX_20260916.md). Research implementation with recorded diagnostic rollouts.
+>
+> **Known limitation:** CAT's sparse body-point collision checks can miss robot surfaces penetrating obstacles. Our hand/elbow spheres and room trunk guard do not cover the entire moving body; reported goal success is not a collision-free traversal guarantee. See the [collision coverage report](docs/CAT_COLLISION_COVERAGE_LIMITATION_20260916.md). This limitation remains unresolved.
 
 <div align="center">  
   <img src="assets/icon.png" width="150" style="vertical-align: middle;">

@@ -1,0 +1,147 @@
+{
+  "method": "Exact vertex AABB per robot mesh versus AABBs of connected components of actual rendered obstacle triangle mesh. Disjoint AABBs certify disjoint triangles at each checked pose. Between recorded poses use MuJoCo manifold qpos interpolation; no dynamic simulation.",
+  "component_bounds": [
+    [
+      [
+        0.31999999999999995,
+        0.7,
+        0.22
+      ],
+      [
+        0.76,
+        0.96,
+        0.82
+      ]
+    ],
+    [
+      [
+        0.6799999999999999,
+        -1.0,
+        0.0
+      ],
+      [
+        1.24,
+        -0.42000000000000004,
+        0.9
+      ]
+    ],
+    [
+      [
+        0.96,
+        0.6200000000000001,
+        0.38
+      ],
+      [
+        1.32,
+        0.96,
+        0.98
+      ]
+    ]
+  ],
+  "unique_robot_mesh_geoms": 49,
+  "recorded_poses": 106,
+  "checked_poses": 421,
+  "checked_spacing_seconds": 0.005,
+  "aabb_overlaps": [],
+  "minimum_separation_all": {
+    "distance_m": 0.28265316480992037,
+    "time": 1.0449937582015991,
+    "body": "pelvis",
+    "geom_index": 3,
+    "obstacle_component": 2,
+    "robot_mesh_bounds": [
+      [
+        0.7942342217439377,
+        0.21824767124031486,
+        0.4893410908202639
+      ],
+      [
+        0.9307951782108677,
+        0.3388596614476518,
+        0.6180180130584363
+      ]
+    ],
+    "separating_gaps_xyz": [
+      0.029204821789132307,
+      0.2811403385523483,
+      0.0
+    ]
+  },
+  "minimum_separation_legs": {
+    "distance_m": 0.2839458514645054,
+    "time": 1.1399924755096436,
+    "body": "left_ankle_roll_link",
+    "geom_index": 16,
+    "obstacle_component": 2,
+    "robot_mesh_bounds": [
+      [
+        1.3062382168681324,
+        0.17885494551211506,
+        0.11874096229311032
+      ],
+      [
+        1.3810316484838787,
+        0.3838136282796464,
+        0.22238894589059477
+      ]
+    ],
+    "separating_gaps_xyz": [
+      0.0,
+      0.23618637172035373,
+      0.15761105410940524
+    ]
+  },
+  "limitation": "Certifies sampled/interpolated poses for rendered triangle meshes; not continuous swept collision proof, physical collision proxies, or another video.",
+  "obstacle_placement_verification": {
+    "rendered_geom_id": 1,
+    "compiled_world_bounds": [
+      [
+        0.31999996777316264,
+        -1.0000000587043514,
+        -2.5593438590654216e-08
+      ],
+      [
+        1.3200000807906827,
+        0.960000067868671,
+        0.9800000309674335
+      ]
+    ],
+    "raw_obj_plus_xml_translation_bounds": [
+      [
+        0.31999999999999995,
+        -1.0,
+        0.0
+      ],
+      [
+        1.32,
+        0.96,
+        0.98
+      ]
+    ],
+    "bidirectional_vertex_matching_max_error_m": 1.0236708703870549e-07,
+    "xml_translation": [
+      -0.5,
+      -1,
+      0
+    ]
+  },
+  "report_date": "2026-09-16",
+  "status": "Read-only diagnostic analysis; not an integrated training or evaluation collision checker",
+  "source": {
+    "scene_id": "procedural-D4G0L2O0S2001",
+    "seed": 0,
+    "checkpoint_steps": 157286400,
+    "run_id": "de6ae369",
+    "video": "02_narrow_passage.mp4",
+    "episode_directory_at_analysis": "/Users/konstantinsmirnov/research/CAT-Procedural-Videos-20260916/render-inputs/narrow_passage",
+    "recording_manifest": "../cat-procedural-videos-20260916/recordings.json",
+    "files_sha256": {
+      "trajectory.npz": "3eb02ca73bd6f09483dfdada5275201da895e28722830199cc7a1edd8a0bef38",
+      "obs.obj": "1fc3c05b4445e6d0f150074162a501492bc23854607e70d070c8e1f5d17277f5",
+      "model.xml": "f826e07755d6cdaea7f874cfd16b834eeed57338f20fe64542f641358391db8d",
+      "metadata.json": "f3abd11744fd4c434deafedb6774c8af30a0e3d0ee7f34e95582864806cd3cf0"
+    },
+    "occupancy_sha256": "a7554a95658f66b41992be058f176893e879d6f6f7d5730084bde760f7de538a",
+    "note": "model.xml is the relocated Mac render input, not the original remote-path XML; motion and obstacle mesh are unchanged."
+  }
+}

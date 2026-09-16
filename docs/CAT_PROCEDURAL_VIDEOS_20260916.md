@@ -12,6 +12,8 @@ The MP4s are on the Mac in `/Users/konstantinsmirnov/Downloads/CAT-Original-Envi
 
 Saved occupancy hashes match the bank. Mesh extraction matches CAT's original `better_mesh` and `marching_cubes_mesh` functions, with the original `[-0.5, -1, 0]` translation. An exact vertex/face comparison passed on the mixed scene. All three MP4s decoded successfully and their contact sheets were inspected. These are illustrative rollouts, not a success-rate benchmark.
 
+**Collision interpretation:** goal outcomes, `PASS` overlays and metadata `strict_success` use the existing task/field checks, not full-body geometry certification. A subsequent read-only audit found no robot–obstacle mesh intersection in the narrow-passage example at 106 recorded poses plus intermediate poses (421 total, 5 ms spacing). That result is specific to this recording and sampled geometry. See the [remaining collision coverage limitation and audit evidence](CAT_COLLISION_COVERAGE_LIMITATION_20260916.md).
+
 Recordings: `analysis/cat-procedural-videos-20260916` on ws008090; original trajectories/meshes copied to `/Users/konstantinsmirnov/research/CAT-Procedural-Videos-20260916/episodes` on the Mac. [Hashes and outcomes](assets/cat-procedural-videos-20260916/recordings.json).
 
 The recorder now accepts `--record-scene-ids` and `--deterministic-only`. Original CAT mesh export additionally needs `scikit-image` and `trimesh`; ws008090 uses scikit-image 0.25.2 and lazy-loader 0.4, installed without upgrading existing training packages. The exact native meshing arithmetic avoids importing unrelated PyTorch visualization helpers.
