@@ -133,6 +133,23 @@ and actual rollouts. Absolute returns cannot be directly compared to the old
 run because its reward and task mix differ. Storage remains one rolling selected
 best plus one overwritten full resume state, in addition to the protected backup.
 
+### W&B presentation preference for the next run
+
+Requested by the project owner on 17 September 2026: put success rates in their
+own prominent dashboard section, separate from the other metrics. Keep one W&B
+run for all scene families. This records the next-run layout; it does not change
+the active learner, uploaded history, metric definitions, or current dashboard.
+
+- **Success rates:** original-scene retention, ordinary clutter, and hand-protection
+  overall/easy/medium/hard. Use separate panels for completed training episodes
+  and fixed-scene validation, and distinguish deterministic from stochastic evaluation.
+- **Separate diagnostic sections:** collisions/falls, hand and arm behavior,
+  curriculum, rewards, and PPO/system health. Do not overlay these with success rates.
+- Preserve existing metric keys and definitions. For comparison with the previous
+  run's `validation/clutter_goal_success_rate`, use the new
+  `validation/ordinary_clutter_goal_success_rate`; the new combined clutter metric
+  also contains the added hand-protection validation scenes.
+
 ## Build and launch
 
 Use an isolated checkout on ws008090 with its existing `.venv` and asset/data

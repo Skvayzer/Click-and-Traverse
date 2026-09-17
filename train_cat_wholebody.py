@@ -21,7 +21,7 @@ def parser():
     result.add_argument("--bank-manifest", type=Path, default=ROOT / "data/furniture/cat_diversity_v2_20260916/manifest.json")
     result.add_argument("--run-dir", type=Path, default=ROOT / "outputs/cat_wholebody_diversity_v2")
     result.add_argument("--profile", choices=("single_gpu_32gb", "released"), default="single_gpu_32gb")
-    result.add_argument("--finetuning", choices=("stabilized", "gentle", "released", "hand_protection"), default="stabilized",
+    result.add_argument("--finetuning", choices=("stabilized", "gentle", "released", "hand_protection", "hand_recovery"), default="stabilized",
                         help="Stabilized: gentle PPO, bounded upper exploration, physical target penalties and retention validation")
     result.add_argument("--num-envs", type=int, help="Simulator parallelism; leaves PPO batch geometry unchanged")
     result.add_argument("--batch-size", type=int, help="Explicit trajectories/minibatch resource override")
@@ -49,7 +49,7 @@ def plan(args):
     warmstart_best = getattr(args, "warmstart_best", None)
     warmstart_provenance = None
     if warmstart_best:
-        if args.finetuning != "hand_protection":
+        if args.finetuning not in ("hand_protection", "hand_recovery"):
             raise ValueError("Selected-best warm start is only supported by the hand_protection profile")
         from cat_ppo.furniture.protected_warmstart import verified_best_archive
         _, _, warmstart_provenance = verified_best_archive(
@@ -57,7 +57,9 @@ def plan(args):
             network_config=config["policy_config"]["network_factory"])
         config["fine_tuning"]["initialization"] = "verified selected best actor and critic; fresh Adam"
         config["fine_tuning"]["reference_kl"]["reference"] = (
-            "frozen selected-best actor on unchanged CAT observations; leg actions only")
+            "frozen selected-best actor on unchanged observations; leg actions only")
+    if args.finetuning == "hand_recovery" and not warmstart_best:
+        raise ValueError("Hand recovery requires a verified selected-best archive")
     collision_bank = getattr(args, "body_collision_bank", None)
     collision_resets = getattr(args, "body_collision_resets", None)
     if bool(collision_bank) != bool(collision_resets):
@@ -120,7 +122,8 @@ def reference_kl_config(environment, configuration):
         return None
     scenes = environment.field_bank_manifest["scenes"]
     return {"coefficient": settings["coefficient"], "action_indices": settings["action_indices"],
-            "scene_mask": [scene.get("task_kind", "cat" if scene["family"] == "original_cat" else "room") == "cat"
+            "scene_mask": [configuration["fine_tuning"].get("recovery") is not None or
+                           scene.get("task_kind", "cat" if scene["family"] == "original_cat" else "room") == "cat"
                            for scene in scenes]}
 
 
@@ -152,6 +155,18 @@ def prepare(args, specification, *, restore_model=True):
     contract = environment.observation_contract()
     net_config = config["policy_config"]["network_factory"]
     distribution_settings = config["fine_tuning"].get("action_distribution")
+    fixed_noise_source = None
+    if config["fine_tuning"].get("recovery"):
+        from cat_ppo.furniture.protected_warmstart import verified_best_archive
+        from cat_ppo.learning.policy.ppo.wholebody_distribution import pack_leg_noise_reference
+        reference_path, _, reference_provenance = verified_best_archive(
+            specification["warmstart_best"]["archive"], target_contract=contract, network_config=net_config)
+        if reference_provenance != specification["warmstart_best"]:
+            raise ValueError("Protected recovery reference changed after planning")
+        fixed_noise_source = load_native(reference_path)
+        source_network_config = json.loads((reference_path / "ppo_network_config.json").read_text())
+        distribution_settings = dict(distribution_settings, leg_noise_reference=pack_leg_noise_reference(
+            fixed_noise_source[1], source_network_config))
     network_builder = networks.make_ppo_networks
     if distribution_settings is not None:
         from cat_ppo.learning.policy.ppo.wholebody_distribution import make_ppo_networks
@@ -179,7 +194,7 @@ def prepare(args, specification, *, restore_model=True):
         else:
             source_path, manifest = fetch_native_checkpoint(ROOT / "data/furniture/native_generalist_v1")
             provenance = {"model_revision": manifest["revision"]}
-        source = load_native(source_path)
+        source = fixed_noise_source if fixed_noise_source is not None else load_native(source_path)
         network = factory(shapes, environment.action_size)
         keys = jax.random.split(jax.random.PRNGKey(args.seed), 2)
         target = (running_statistics.init_state({k: specs.Array(v, jnp.dtype("float32")) for k, v in shapes.items()}),
@@ -188,13 +203,16 @@ def prepare(args, specification, *, restore_model=True):
         warmstart["parity"] = verify_warmstart_parity(source, target, source_contract, contract,
                                                      normalize_observations=False, seed=args.seed)
         warmstart.update(provenance)
-        warmstart["parity_scope"] = "raw actor MLP and critic; arm conditional distribution intentionally changes"
+        warmstart["parity_scope"] = ("raw actor MLP and critic; source state-dependent leg noise preserved"
+            if fixed_noise_source is not None else "raw actor MLP and critic; arm conditional distribution intentionally changes")
         target = jax.tree.map(jnp.asarray, target)
     record = dict(specification, environment_config=env_config.to_dict(), observation_contract=contract,
                   warmstart=warmstart, code=code_identity(),
                   bank_sha256=hashlib.sha256(args.bank_manifest.read_bytes()).hexdigest(),
                   devices=[str(device) for device in jax.devices()], jax_version=jax.__version__)
     record["field_bank"] = field_bank_summary(environment.field_bank_manifest, record["bank_sha256"])
+    if fixed_noise_source is not None:
+        record["fixed_leg_noise_reference_sha256"] = distribution_settings["leg_noise_reference"]["sha256"]
     return environment, factory, target, record
 
 
@@ -388,10 +406,29 @@ def run(args, specification):
             if specification.get("warmstart_best"):
                 source_selection = _read_metadata(Path(specification["warmstart_best"]["archive"])
                                                   / "checkpoint/selection.json")
+            recovery_settings = specification["config"]["fine_tuning"].get("recovery")
+            recovery_state, initial_recovery_state, pending_recovery = None, None, None
+            if recovery_settings is not None:
+                from cat_ppo.furniture.recovery_guard import (initialize_recovery_state, assess_recovery,
+                    promote_recovery_anchor, acknowledge_recovery)
+                initial_recovery_state = initialize_recovery_state(source_selection,
+                    Path(specification["warmstart_best"]["archive"]) / "checkpoint/native",
+                    confirmations=recovery_settings["consecutive_failures"],
+                    max_cat_drop=recovery_settings["cat_drop"],
+                    max_ordinary_clutter_drop=recovery_settings["ordinary_clutter_drop"],
+                    max_hand_protection_drop=recovery_settings["hand_protection_drop"])
+                recovery_state = initial_recovery_state
+                if runtime is not None:
+                    recovery_state = runtime.get("recovery_state")
+                    if (not isinstance(recovery_state, dict) or any(recovery_state.get(key) != initial_recovery_state[key]
+                            for key in ("schema", "baseline", "benchmark", "thresholds", "confirmations", "source_selection_sha256"))):
+                        raise ValueError("Runtime recovery state differs from protected source/benchmark")
 
             def source_guard(result):
                 if source_selection is None:
                     return None
+                if initial_recovery_state is not None:
+                    return assess_recovery(result, initial_recovery_state)[1]
                 from cat_ppo.furniture.hand_retention_guard import source_best_retention_guard
                 return source_best_retention_guard(result, source_selection,
                     source_archive=specification["warmstart_best"]["archive"])
@@ -432,6 +469,7 @@ def run(args, specification):
                 logger.log(step, metrics)
 
             def scored(step, make_policy, params, network_config, metrics, source):
+                nonlocal recovery_state, pending_recovery
                 del make_policy
                 if validator is not None:
                     interval = validation_settings["interval_updates"] * transitions_per_update
@@ -439,7 +477,12 @@ def run(args, specification):
                         return
                     print(f"Fixed-scene retention validation at {int(step)} transitions", flush=True)
                     result = validator.evaluate(params, step=int(step), baseline=baseline["modes"])
-                    guard = source_guard(result)
+                    if recovery_state is not None:
+                        recovery_state, guard = assess_recovery(result, recovery_state,
+                            extra_reasons=result.selection["reasons"])
+                        pending_recovery = guard if guard["rollback"] else None
+                    else:
+                        guard = source_guard(result)
                     if guard is not None:
                         result.selection["source_best_guard"] = guard
                         result.selection["eligible"] &= guard["eligible"]
@@ -447,14 +490,26 @@ def run(args, specification):
                         result.metrics["validation/source_best_retention_eligible"] = int(guard["eligible"])
                         result.metrics["validation/retention_eligible"] = int(result.selection["eligible"])
                     atomic_json(directory / "validation_latest.json", result.as_dict())
-                    selected = store.consider(step=int(step),
-                        metrics={"selection": result.selection, "validation": result.metrics},
-                        source="retention_validation", write_checkpoint=native_writer(params, network_config, int(step)),
-                        contract=record["observation_contract"],
-                        provenance={"code": record["code"], "bank_sha256": record["bank_sha256"],
-                                    "action_distribution": specification["config"]["fine_tuning"]["action_distribution"],
-                                    "validation": result.metadata,
-                                    "selection": "CAT retention gates; clutter success and hand protection"})
+                    # An empty new-run store must not promote a candidate that
+                    # merely passes tolerances but is worse than the protected source.
+                    improves_source = (recovery_state is None or tuple(result.selection["score"]) >
+                                       tuple(source_selection["metrics"]["selection"]["score"]))
+                    selected = False
+                    if improves_source:
+                        selected = store.consider(step=int(step),
+                            metrics={"selection": result.selection, "validation": result.metrics},
+                            source="retention_validation", write_checkpoint=native_writer(params, network_config, int(step)),
+                            contract=record["observation_contract"],
+                            provenance={"code": record["code"], "bank_sha256": record["bank_sha256"],
+                                        "action_distribution": specification["config"]["fine_tuning"]["action_distribution"],
+                                        "validation": result.metadata,
+                                        "selection": "CAT retention gates; clutter success and hand protection"})
+                    if recovery_state is not None:
+                        if selected:
+                            recovery_state = promote_recovery_anchor(recovery_state, result,
+                                store.best / "native", selected_best=True,
+                                gates_eligible=result.selection["eligible"])
+                        atomic_json(directory / "recovery_status.json", recovery_state)
                     logger.log(step, result.metrics | {"selection/best_updated": int(selected)})
                     print(f"Validation finished: {result.selection}", flush=True)
                     return
@@ -466,8 +521,42 @@ def run(args, specification):
                                 "selection": "training reward proxy; no held-out evaluation"})
                 logger.log(step, {"selection/best_updated": int(selected)})
 
+            def recover(step):
+                nonlocal recovery_state, pending_recovery
+                if pending_recovery is None:
+                    return None
+                from cat_ppo.furniture.learning import load_native
+                checkpoint_path = Path(pending_recovery["checkpoint"])
+                if checkpoint_path == store.best / "native":
+                    selected = store.selected(verify=True)
+                    if selected is None:
+                        raise ValueError("Selected recovery checkpoint is missing")
+                else:
+                    from cat_ppo.furniture.protected_warmstart import verified_best_archive
+                    verified, _, _ = verified_best_archive(specification["warmstart_best"]["archive"])
+                    if checkpoint_path.resolve() != verified.resolve():
+                        raise ValueError("Recovery checkpoint is outside the protected source")
+                recovered_params = load_native(checkpoint_path)
+                count = recovery_state["recovery_count"] + 1
+                learning_rate = max(recovery_settings["minimum_learning_rate"],
+                    specification["config"]["policy_config"]["learning_rate"] *
+                    recovery_settings["learning_rate_decay"] ** count)
+                event = dict(step=int(step), checkpoint=str(checkpoint_path), learning_rate=learning_rate,
+                             recovery_count=count, reasons=pending_recovery["reasons"])
+                # State is committed with the post-recovery learner snapshot below.
+                recovery_state = acknowledge_recovery(recovery_state)
+                with (directory / "recovery_events.jsonl").open("a") as stream:
+                    stream.write(json.dumps(event) + "\n")
+                pending_recovery = None
+                print("Restoring protected policy after confirmed regression: " + json.dumps(event), flush=True)
+                return dict(params=recovered_params, learning_rate=learning_rate, checkpoint=str(checkpoint_path))
+
             def save_runtime(step, snapshot):
+                if recovery_state is not None:
+                    snapshot = dict(snapshot, recovery_state=recovery_state)
                 atomic_save_runtime(runtime_path, snapshot)
+                if recovery_state is not None:
+                    atomic_json(directory / "recovery_status.json", recovery_state)
                 status.update(completed_steps=int(step), resume_state_steps=int(step),
                               initial_runtime_written=True, phase="training")
                 atomic_json(status_path, status)
@@ -485,6 +574,7 @@ def run(args, specification):
                     wrap_env_fn=wrap_for_cat_wholebody_training, network_factory=factory,
                     restore_params=target, restore_value_fn=True,
                     reference_kl_config=reference_kl_config(environment, specification["config"]),
+                    **({"recovery_fn": recover} if recovery_settings is not None else {}),
                     restore_runtime_state=runtime, runtime_metadata=identity,
                     runtime_checkpoint_fn=save_runtime, save_checkpoint_path=None,
                     log_training_metrics=True, training_metrics_buffer_size=1000,

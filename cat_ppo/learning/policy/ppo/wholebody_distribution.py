@@ -7,6 +7,8 @@ Sampling and PPO likelihoods describe the same conditional distribution.
 Motor-target limits remain a separate part of the environment.
 """
 
+import base64
+import hashlib
 import json
 import math
 from pathlib import Path
@@ -24,6 +26,7 @@ import numpy as np
 DISTRIBUTION_KIND = "wholebody_bounded_normal_tanh_v1"
 COHERENT_DISTRIBUTION_KIND = "wholebody_arm_conditional_correlated_tanh_v2"
 COHERENT_EXPLORATION_VERSION = "arm_conditional_correlated_v2"
+LEG_NOISE_REFERENCE_SCHEMA = "cat_frozen_leg_noise_reference_v1"
 _DISTRIBUTION_KWARGS = frozenset({
     "leg_action_count", "upper_std_min", "upper_std_max", "upper_entropy_weight",
 })
@@ -31,6 +34,147 @@ _COHERENT_KWARGS = frozenset({
     "exploration_version", "arm_persistence", "arm_correlation",
     "arm_last_action_indices", "arm_correlation_pattern",
 })
+
+
+def _policy_observation_width(observation_size, policy_obs_key):
+    size = observation_size[policy_obs_key] if isinstance(observation_size, dict) else observation_size
+    if isinstance(size, (tuple, list)):
+        if len(size) != 1:
+            raise ValueError("Frozen leg noise requires vector policy observations")
+        size = size[0]
+    if type(size) is not int or size <= 0:
+        raise ValueError("Frozen leg noise requires a positive policy observation width")
+    return size
+
+
+def _reference_digest(payload):
+    content = {key: value for key, value in payload.items() if key != "sha256"}
+    return hashlib.sha256(json.dumps(content, sort_keys=True, separators=(",", ":"),
+                                     allow_nan=False).encode()).hexdigest()
+
+
+def _array_payload(value):
+    value = np.asarray(value)
+    if value.dtype != np.dtype("float32") or not np.isfinite(value).all():
+        raise ValueError("Frozen leg noise requires finite float32 actor weights")
+    value = np.ascontiguousarray(value, dtype="<f4")
+    return {"shape": list(value.shape), "dtype": "<f4",
+            "base64": base64.b64encode(value.tobytes()).decode("ascii")}
+
+
+def _decode_array(payload, shape):
+    if (not isinstance(payload, dict) or set(payload) != {"shape", "dtype", "base64"}
+            or payload["shape"] != list(shape) or payload["dtype"] != "<f4"):
+        raise ValueError("Frozen leg noise weight shape/dtype mismatch")
+    try:
+        raw = base64.b64decode(payload["base64"], validate=True)
+        if len(raw) != math.prod(shape) * 4:
+            raise ValueError("Frozen leg noise weight byte count mismatch")
+        value = np.frombuffer(raw, dtype="<f4").reshape(shape).copy()
+    except (TypeError, ValueError) as error:
+        raise ValueError("Invalid frozen leg noise encoded weights") from error
+    if not np.isfinite(value).all():
+        raise ValueError("Frozen leg noise requires finite actor weights")
+    return value
+
+
+def unpack_leg_noise_reference(payload):
+    """Validate a self-contained immutable actor snapshot and decode its tree."""
+    if hasattr(payload, "to_dict"):
+        payload = payload.to_dict()
+    fields = {"schema", "normalize_observations", "action_size", "leg_action_count",
+              "policy_observation_size", "policy_obs_key", "policy_hidden_layer_sizes",
+              "activation", "layers", "sha256"}
+    if (not isinstance(payload, dict) or set(payload) != fields
+            or payload["schema"] != LEG_NOISE_REFERENCE_SCHEMA
+            or payload["normalize_observations"] is not False
+            or payload["activation"] != "swish"):
+        raise ValueError("Invalid frozen leg noise reference metadata")
+    if payload["sha256"] != _reference_digest(payload):
+        raise ValueError("Frozen leg noise reference sha256 mismatch")
+    action_size, count = payload["action_size"], payload["leg_action_count"]
+    width, hidden = payload["policy_observation_size"], payload["policy_hidden_layer_sizes"]
+    if (type(action_size) is not int or type(count) is not int
+            or not 0 < count < action_size or type(width) is not int or width <= 0
+            or not isinstance(payload["policy_obs_key"], str)
+            or not isinstance(hidden, (tuple, list))
+            or any(type(size) is not int or size <= 0 for size in hidden)
+            or not isinstance(payload["layers"], (tuple, list))
+            or len(payload["layers"]) != len(hidden) + 1):
+        raise ValueError("Invalid frozen leg noise actor architecture")
+    dimensions = [width, *hidden, 2 * action_size]
+    params = {}
+    for i, layer in enumerate(payload["layers"]):
+        if not isinstance(layer, dict) or set(layer) != {"kernel", "bias"}:
+            raise ValueError("Invalid frozen leg noise actor layer")
+        params[f"hidden_{i}"] = {
+            "kernel": _decode_array(layer["kernel"], (dimensions[i], dimensions[i + 1])),
+            "bias": _decode_array(layer["bias"], (dimensions[i + 1],)),
+        }
+    return {"params": params}
+
+
+def pack_leg_noise_reference(policy_params, network_config):
+    """Embed an unnormalized saved actor in JSON, without an external file path.
+
+    The frozen actor evaluates the SAME raw state as the learner, but only its
+    first ``leg_action_count`` raw scale outputs are used. Keeping its entire
+    trunk is necessary: freezing only scale-head weights would still let shared
+    trunk updates change the exploration distribution.
+    """
+    if hasattr(network_config, "to_dict"):
+        network_config = network_config.to_dict()
+    if network_config.get("normalize_observations") is not False:
+        raise ValueError("Frozen leg noise reference requires unnormalized observations")
+    kwargs = dict(network_config["network_factory_kwargs"])
+    existing = kwargs.get("leg_noise_reference")
+    if existing is not None:
+        unpack_leg_noise_reference(existing)
+        return json.loads(json.dumps(existing))
+    if kwargs.get("activation") not in (None, "swish"):
+        raise ValueError("Frozen leg noise reference requires default swish activation")
+    key = kwargs.get("policy_obs_key", "state")
+    hidden = list(kwargs.get("policy_hidden_layer_sizes", (32, 32, 32, 32)))
+    if (set(policy_params) != {"params"}
+            or set(policy_params["params"]) != {f"hidden_{i}" for i in range(len(hidden) + 1)}):
+        raise ValueError("Frozen leg noise actor parameters do not match MLP architecture")
+    payload = {
+        "schema": LEG_NOISE_REFERENCE_SCHEMA, "normalize_observations": False,
+        "action_size": network_config["action_size"],
+        "leg_action_count": kwargs.get("leg_action_count", 12),
+        "policy_observation_size": _policy_observation_width(network_config["observation_size"], key),
+        "policy_obs_key": key, "policy_hidden_layer_sizes": hidden, "activation": "swish",
+        "layers": [{name: _array_payload(value) for name, value in
+                    policy_params["params"][f"hidden_{i}"].items()}
+                   for i in range(len(hidden) + 1)],
+    }
+    payload["sha256"] = _reference_digest(payload)
+    unpack_leg_noise_reference(payload)
+    return payload
+
+
+def _leg_noise_metadata(payload):
+    return {"schema": LEG_NOISE_REFERENCE_SCHEMA, "sha256": payload["sha256"],
+            "raw_scale_indices": list(range(payload["action_size"],
+                                             payload["action_size"] + payload["leg_action_count"])),
+            "conditioning": "frozen_actor_on_raw_observations",
+            "gradient": "stop_gradient", "normalize_observations": False}
+
+
+def _validated_leg_noise_metadata(metadata, action_size, leg_action_count):
+    if hasattr(metadata, "to_dict"):
+        metadata = metadata.to_dict()
+    if not isinstance(metadata, dict):
+        raise ValueError("Invalid frozen leg noise distribution metadata")
+    digest = metadata.get("sha256")
+    if (not isinstance(digest, str) or len(digest) != 64
+            or any(char not in "0123456789abcdef" for char in digest)):
+        raise ValueError("Invalid frozen leg noise distribution sha256")
+    expected = _leg_noise_metadata({"sha256": digest, "action_size": action_size,
+                                    "leg_action_count": leg_action_count})
+    if metadata != expected:
+        raise ValueError("Frozen leg noise distribution semantics differ")
+    return expected
 
 
 class WholeBodyNormalTanhDistribution(distribution.NormalTanhDistribution):
@@ -75,7 +219,7 @@ class WholeBodyNormalTanhDistribution(distribution.NormalTanhDistribution):
     @property
     def config(self) -> dict:
         """Serializable semantics for checkpoint compatibility/fingerprints."""
-        return {
+        config = {
             "kind": DISTRIBUTION_KIND,
             "event_size": self.event_size,
             "leg_action_count": self.leg_action_count,
@@ -85,6 +229,9 @@ class WholeBodyNormalTanhDistribution(distribution.NormalTanhDistribution):
             "native_min_std": self._min_std,
             "native_var_scale": self._var_scale,
         }
+        if getattr(self, "leg_noise_reference_metadata", None) is not None:
+            config["leg_noise_reference"] = dict(self.leg_noise_reference_metadata)
+        return config
 
     @classmethod
     def from_config(cls, config):
@@ -96,9 +243,12 @@ class WholeBodyNormalTanhDistribution(distribution.NormalTanhDistribution):
         required = _DISTRIBUTION_KWARGS | {
             "kind", "event_size", "native_min_std", "native_var_scale",
         }
-        if set(config) != required:
+        if set(config) not in (required, required | {"leg_noise_reference"}):
             raise ValueError("Bounded action distribution configuration must include all settings")
         restored = cls(config["event_size"], **{key: config[key] for key in _DISTRIBUTION_KWARGS})
+        if "leg_noise_reference" in config:
+            restored.leg_noise_reference_metadata = _validated_leg_noise_metadata(
+                config["leg_noise_reference"], restored.event_size, restored.leg_action_count)
         if restored.config != config:
             raise ValueError("Bounded action distribution native semantics differ")
         return restored
@@ -277,11 +427,15 @@ class CoherentArmNormalTanhDistribution(WholeBodyNormalTanhDistribution):
             raise ValueError("Unknown coherent action distribution configuration")
         # Missing innovation scale is the exact historical v2 behavior. New
         # checkpoints always record it; never reinterpret an old v2 as scaled.
-        if set(config) not in (required, required | {"arm_innovation_scale"}):
+        optional = set(config) & {"arm_innovation_scale", "leg_noise_reference"}
+        if set(config) != required | optional:
             raise ValueError("Coherent action distribution configuration must include all settings")
         restored = cls(config["event_size"], **{
             key: config[key] for key in _DISTRIBUTION_KWARGS | _COHERENT_KWARGS},
             arm_innovation_scale=config.get("arm_innovation_scale", 1.))
+        if "leg_noise_reference" in config:
+            restored.leg_noise_reference_metadata = _validated_leg_noise_metadata(
+                config["leg_noise_reference"], restored.event_size, restored.leg_action_count)
         if restored.config != {"arm_innovation_scale": 1., **config}:
             raise ValueError("Coherent action distribution semantics differ")
         return restored
@@ -354,6 +508,7 @@ def make_ppo_networks(
     arm_last_action_indices: Sequence[int] | None = None,
     arm_correlation_pattern: str | None = None,
     arm_innovation_scale: float | None = None,
+    leg_noise_reference: dict | None = None,
 ) -> ppo_networks.PPONetworks:
     """Keep native parameter shapes and install versioned action semantics.
 
@@ -361,7 +516,9 @@ def make_ppo_networks(
     must retain the released CAT hidden sizes and observation keys, as before.
     Save all four base distribution settings, and all five v2 settings when
     enabled, plus the innovation scale when overriding historical v2 scale 1.
-    Network weights alone cannot encode bounds or arm conditioning.
+    Network weights alone cannot encode bounds or arm conditioning. Recovery
+    additionally embeds the frozen scale-reference actor in factory kwargs;
+    sampling, likelihood and entropy all consume its replaced leg raw scales.
     """
     bounded = _make_distribution(action_size, {
         "leg_action_count": leg_action_count, "upper_std_min": upper_std_min,
@@ -379,13 +536,40 @@ def make_ppo_networks(
         policy_obs_key=policy_obs_key,
         value_obs_key=value_obs_key,
     )
-    if isinstance(bounded, CoherentArmNormalTanhDistribution):
+    reference_params = None
+    if leg_noise_reference is not None:
+        if hasattr(leg_noise_reference, "to_dict"):
+            leg_noise_reference = leg_noise_reference.to_dict()
+        reference_params = unpack_leg_noise_reference(leg_noise_reference)
+        expected = {"action_size": action_size, "leg_action_count": leg_action_count,
+                    "policy_observation_size": _policy_observation_width(observation_size, policy_obs_key),
+                    "policy_obs_key": policy_obs_key,
+                    "policy_hidden_layer_sizes": list(policy_hidden_layer_sizes)}
+        if any(leg_noise_reference[key] != value for key, value in expected.items()):
+            raise ValueError("Frozen leg noise reference architecture differs from learner")
+        if activation is not linen.swish:
+            raise ValueError("Frozen leg noise reference requires default swish activation")
+        bounded.leg_noise_reference_metadata = _leg_noise_metadata(leg_noise_reference)
+        # The reference always consumes raw state. It does not share the current
+        # actor's trainable trunk OR a changing observation-normalization state.
+        reference_actor = brax_networks.make_policy_network(
+            param_size=2 * action_size, obs_size=observation_size,
+            hidden_layer_sizes=policy_hidden_layer_sizes, activation=activation,
+            obs_key=policy_obs_key)
+        reference_params = jax.tree.map(jnp.asarray, reference_params)
+    if isinstance(bounded, CoherentArmNormalTanhDistribution) or reference_params is not None:
         actor = native.policy_network
 
         def apply(normalizer_params, policy_params, observations):
             parameters = actor.apply(normalizer_params, policy_params, observations)
-            raw_state = observations[policy_obs_key] if isinstance(observations, dict) else observations
-            return bounded.condition_parameters(parameters, raw_state)
+            if reference_params is not None:
+                reference = reference_actor.apply(None, reference_params, observations)
+                parameters = parameters.at[..., action_size:action_size + leg_action_count].set(
+                    jax.lax.stop_gradient(reference[..., action_size:action_size + leg_action_count]))
+            if isinstance(bounded, CoherentArmNormalTanhDistribution):
+                raw_state = observations[policy_obs_key] if isinstance(observations, dict) else observations
+                parameters = bounded.condition_parameters(parameters, raw_state)
+            return parameters
 
         native = native.replace(policy_network=brax_networks.FeedForwardNetwork(
             init=actor.init, apply=apply))
@@ -403,7 +587,10 @@ def checkpoint_distribution_config(network_config) -> dict | None:
     present = set(kwargs) & _DISTRIBUTION_KWARGS
     coherent_present = set(kwargs) & _COHERENT_KWARGS
     recorded = network_config.get("action_distribution")
+    reference = kwargs.get("leg_noise_reference")
     if not present and not coherent_present:
+        if reference is not None:
+            raise ValueError("Frozen leg noise requires explicit bounded distribution settings")
         if kwargs.get("arm_innovation_scale") is not None:
             raise ValueError("arm_innovation_scale requires coherent v2 exploration")
         if recorded is not None:
@@ -426,6 +613,24 @@ def checkpoint_distribution_config(network_config) -> dict | None:
         {key: kwargs[key] for key in _DISTRIBUTION_KWARGS},
         {key: kwargs.get(key) for key in _COHERENT_KWARGS},
         kwargs.get("arm_innovation_scale"))
+    if reference is not None:
+        if hasattr(reference, "to_dict"):
+            reference = reference.to_dict()
+        unpack_leg_noise_reference(reference)
+        if network_config.get("normalize_observations") is not False:
+            raise ValueError("Frozen leg noise checkpoints require unnormalized observations")
+        expected = {"action_size": network_config["action_size"],
+                    "leg_action_count": kwargs["leg_action_count"],
+                    "policy_obs_key": kwargs.get("policy_obs_key", "state"),
+                    "policy_hidden_layer_sizes": list(kwargs.get("policy_hidden_layer_sizes", (32, 32, 32, 32)))}
+        observation_size = network_config["observation_size"]
+        if hasattr(observation_size, "to_dict"):
+            observation_size = observation_size.to_dict()
+        expected["policy_observation_size"] = _policy_observation_width(
+            observation_size, expected["policy_obs_key"])
+        if any(reference[key] != value for key, value in expected.items()):
+            raise ValueError("Frozen leg noise checkpoint reference architecture differs")
+        restored.leg_noise_reference_metadata = _leg_noise_metadata(reference)
     if recorded is not None:
         validated = WholeBodyNormalTanhDistribution.from_config(dict(recorded))
         if validated.config != restored.config:

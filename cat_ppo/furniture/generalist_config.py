@@ -62,11 +62,14 @@ def training_config(*, profile="single_gpu_32gb", num_envs=None, batch_size=None
     if batch_size is not None:
         policy["batch_size"] = int(batch_size)
     policy["seed"] = int(seed)
-    if finetuning in ("gentle", "stabilized", "hand_protection"):
+    if finetuning in ("gentle", "stabilized", "hand_protection", "hand_recovery"):
         policy["learning_rate"] = 3e-5
         policy["clipping_epsilon"] = .1
     elif finetuning != "released":
         raise ValueError(f"Unknown fine-tuning mode: {finetuning}")
+    if finetuning == "hand_recovery":
+        policy["learning_rate"] = 1e-5
+        policy["entropy_cost"] = 0.
     effective = batch_geometry(policy)
     policy.update(num_timesteps=0, continuous=True, num_evals=0, num_eval_envs=0,
                   num_resets_per_eval=0, max_devices_per_host=1)
@@ -79,28 +82,28 @@ def training_config(*, profile="single_gpu_32gb", num_envs=None, batch_size=None
         "initialization": "released final generalist actor and critic; Adam initialized once",
         "dagger": "already completed in released generalist; direct PPO fine-tuning",
         "continuous": True,
-        "automatic_evaluation": finetuning in ("stabilized", "hand_protection"),
-        "upper_stabilization": finetuning in ("stabilized", "hand_protection"),
-        "hand_protection": finetuning == "hand_protection",
+        "automatic_evaluation": finetuning in ("stabilized", "hand_protection", "hand_recovery"),
+        "upper_stabilization": finetuning in ("stabilized", "hand_protection", "hand_recovery"),
+        "hand_protection": finetuning in ("hand_protection", "hand_recovery"),
         "action_distribution": ({"leg_action_count": 12, "upper_std_min": .02,
                                  "upper_std_max": .10, "upper_entropy_weight": 0.0}
-                                if finetuning in ("stabilized", "hand_protection") else None),
+                                if finetuning in ("stabilized", "hand_protection", "hand_recovery") else None),
         "retention_validation": ({"interval_updates": 50, "seeds_per_scene": 16,
                                    "cat_success_tolerance": .05,
                                    "per_scene_success_tolerance": .125,
                                    "modes": ["deterministic", "stochastic"],
                                    "outcome": "first clean goal, native failure, or native horizon",
                                    "scene_scope": "16 fixed training-bank layouts; retention monitor, not unseen generalization"}
-                                  if finetuning in ("stabilized", "hand_protection") else None),
+                                  if finetuning in ("stabilized", "hand_protection", "hand_recovery") else None),
         "profile": profile,
         "mode": finetuning,
         "optimization_overrides": {k: {"released": released_config()["policy_config"][k], "effective": policy[k]}
-                                   for k in ("learning_rate", "clipping_epsilon")
+                                   for k in ("learning_rate", "clipping_epsilon", "entropy_cost")
                                    if released_config()["policy_config"][k] != policy[k]},
         "reference_kl": ({"coefficient": .05, "action_indices": list(range(12)),
                           "scene_scope": "CAT task scenes only; rooms excluded",
                           "reference": "frozen initial actor mapped from released CAT, on the same compact observations"}
-                         if finetuning in ("gentle", "stabilized", "hand_protection") else None),
+                         if finetuning in ("gentle", "stabilized", "hand_protection", "hand_recovery") else None),
         "released_batch_geometry": original,
         "effective_batch_geometry": effective,
         "resource_overrides": {k: {"released": released_config()["policy_config"][k], "effective": policy[k]}
@@ -109,7 +112,7 @@ def training_config(*, profile="single_gpu_32gb", num_envs=None, batch_size=None
         "memory_validation": "profile is provisional until checked on the target GPU",
         "storage": "one best model plus one overwritten full learner resume state",
     }
-    if finetuning == "hand_protection":
+    if finetuning in ("hand_protection", "hand_recovery"):
         from cat_ppo.furniture.control import JOINT_NAMES, wholebody_observation_contract
         features = wholebody_observation_contract()["actor_features"]
         # Existing previous-action observations make the conditional arm
@@ -123,6 +126,16 @@ def training_config(*, profile="single_gpu_32gb", num_envs=None, batch_size=None
             arm_correlation_pattern="g1_raise_tuck_v1")
         config["fine_tuning"]["retention_validation"]["scene_scope"] = (
             "16 unchanged regression layouts plus one hand passage per kind/level; training layouts")
+    if finetuning == "hand_recovery":
+        config["fine_tuning"]["reference_kl"].update(
+            scene_scope="all scene families; leg actions only",
+            reference="frozen protected 26M hand-policy actor")
+        config["fine_tuning"]["retention_validation"]["interval_updates"] = 10
+        config["fine_tuning"]["recovery"] = dict(
+            leg_noise="frozen source actor state-dependent per-joint scales",
+            consecutive_failures=2, cat_drop=.05, ordinary_clutter_drop=.10,
+            hand_protection_drop=.10, learning_rate_decay=.5, minimum_learning_rate=1e-6,
+            response="restore selected safe actor/critic; fresh Adam; reset rollouts; continue same run")
     return config
 
 

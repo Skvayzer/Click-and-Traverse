@@ -68,6 +68,38 @@ def _unpmap(v):
     return jax.tree_util.tree_map(lambda x: x[0], v)
 
 
+def _set_optimizer_learning_rate(state, learning_rate):
+    """Change an injected Adam rate without changing optimizer tree structure."""
+    if hasattr(state, "hyperparams") and "learning_rate" in state.hyperparams:
+        values = dict(state.hyperparams)
+        values["learning_rate"] = jnp.asarray(learning_rate, dtype=values["learning_rate"].dtype)
+        return state._replace(hyperparams=values)
+    if isinstance(state, tuple):
+        values = [_set_optimizer_learning_rate(value, learning_rate) for value in state]
+        return type(state)(*values) if hasattr(state, "_fields") else tuple(values)
+    return state
+
+
+def _recover_training_state(training_state, params, optimizer, learning_rate):
+    """Restore safe model weights and fresh Adam while preserving elapsed transitions."""
+    if not np.isfinite(learning_rate) or learning_rate <= 0:
+        raise ValueError("Recovery learning rate must be finite and positive")
+    if not isinstance(params, (list, tuple)) or len(params) != 3:
+        raise ValueError("Recovery requires normalizer, actor and critic")
+    params = tuple(params)  # Orbax's native loader returns a list.
+    expected = (training_state.normalizer_params, training_state.params.policy, training_state.params.value)
+    _assert_same_tree_shapes("recovery parameters", expected, params)
+    for original, value in zip(jax.tree.leaves(expected), jax.tree.leaves(params)):
+        if np.asarray(original).dtype != np.asarray(value).dtype:
+            raise ValueError("Recovery parameter dtypes differ from learner")
+    if any(not np.isfinite(np.asarray(value)).all() for value in jax.tree.leaves(params)):
+        raise ValueError("Recovery parameters must be finite")
+    params = jax.tree.map(jnp.asarray, params)
+    model = training_state.params.replace(policy=params[1], value=params[2])
+    state = _set_optimizer_learning_rate(optimizer.init(model), learning_rate)
+    return training_state.replace(normalizer_params=params[0], params=model, optimizer_state=state)
+
+
 def _strip_weak_type(tree):
     # brax user code is sometimes ambiguous about weak_type.  in order to
     # avoid extra jit recompilations we strip all weak types from user input
@@ -218,6 +250,12 @@ class TrainingMetricsLogger:
                 target[key].extend(values)
         # Older snapshots predate current-rollout telemetry.
         self._latest_rollout_metrics = dict(state.get("latest_rollout_metrics", {}))
+
+    def discard_windows(self):
+        """A rollback starts fresh episode windows without rewinding the logging axis."""
+        self._metrics_buffer.clear()
+        self._rollout_buffer.clear()
+        self._latest_rollout_metrics.clear()
 
     @staticmethod
     def _metric_key(name: str) -> str:
@@ -766,6 +804,7 @@ def train(
     restore_runtime_state: Optional[Mapping[str, Any]] = None,
     runtime_metadata: Optional[Mapping[str, Any]] = None,
     reference_kl_config: Optional[Mapping[str, Any]] = None,
+    recovery_fn: Optional[Callable[[int], Optional[Mapping[str, Any]]]] = None,
 ):
     """PPO training.
 
@@ -1024,11 +1063,12 @@ def train(
         teacher_normalizer_params = _stack_trees([params[0] for params in teacher_params])
         teacher_policy_params = _stack_trees([params[1] for params in teacher_params])
 
-    optimizer = optax.adam(learning_rate=learning_rate)
+    adam = optax.inject_hyperparams(optax.adam) if recovery_fn is not None else optax.adam
+    optimizer = adam(learning_rate=learning_rate)
     if max_grad_norm is not None:
         optimizer = optax.chain(
             optax.clip_by_global_norm(max_grad_norm),
-            optax.adam(learning_rate=learning_rate),
+            adam(learning_rate=learning_rate),
         )
 
     if use_dagger:
@@ -1422,6 +1462,8 @@ def train(
     }
     if reference_config is not None:
         runtime_contract["reference_kl"] = reference_config
+    if recovery_fn is not None:
+        runtime_contract["recovery_optimizer"] = "mutable-adam-learning-rate-v1"
     restored_walltime = 0.0
     if restore_runtime_state is not None:
         if restore_runtime_state.get("schema") != "cat-ppo-runtime-v1":
@@ -1569,6 +1611,21 @@ def train(
                 metrics if num_evals > 0 else training_metrics,
                 "validation" if num_evals > 0 else "training_proxy",
             )
+
+        recovery = recovery_fn(current_step) if recovery_fn is not None else None
+        if recovery is not None:
+            restored = _recover_training_state(_unpmap(training_state), recovery["params"],
+                                               optimizer, recovery["learning_rate"])
+            training_state = jax.device_put_replicated(restored, jax.local_devices()[:local_devices_to_use])
+            local_key, recovery_reset_key = jax.random.split(local_key)
+            key_envs = jax.random.split(recovery_reset_key, num_envs // process_count)
+            key_envs = jnp.reshape(key_envs, (local_devices_to_use, -1) + key_envs.shape[1:])
+            # Discard trajectories/history generated by the regressed policy.
+            # Curriculum restarts on easy so its counters describe the restored policy.
+            env_state = reset_fn(key_envs, field_values)
+            metrics_aggregator.discard_windows()
+            logging.warning("Recovered learner at transition %s from %s; learning rate %s",
+                            current_step, recovery.get("checkpoint"), recovery["learning_rate"])
 
         publish_runtime()
 

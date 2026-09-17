@@ -45,6 +45,6 @@ def verified_best_archive(directory, *, target_contract=None, network_config=Non
         "kind": "protected_retention_best", "archive": str(directory),
         "source_run": backup["source_run"], "source_step": selection["step"],
         "checkpoint_files": files, "optimizer": "fresh Adam; weights preserved",
-        "distribution_change": "v1 independent arms to v2 previous-action-conditioned correlated arms",
+        "distribution_change": "weights preserved; target action semantics explicitly recorded in network factory",
     }
     return native, contract, provenance
