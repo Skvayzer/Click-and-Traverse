@@ -1,5 +1,24 @@
 # Success rates in a separate W&B section
 
+## Personal workspace
+
+The user's normal [personal workspace](https://wandb.ai/skvayzer/CAT-wholebody?nw=nwuserskvayzer)
+has a pinned, expanded **Success rates** section at the top. Each of the three
+validation groups has its own deterministic and stochastic chart, followed by
+training success (seven charts total). Existing run selections remain available
+for comparing experiments. Other sections are collapsed, with their existing
+automatic charts preserved.
+
+`scripts/fix_wandb_success_section.py` updates this existing personal workspace.
+It defaults to a read-only preview; `--apply` writes the change after saving the
+original raw view and proposed layout to the required `--backup` JSON file.
+It checks for concurrent edits and verifies the saved raw layout. It preserves
+filters and all settings outside the section list. The public Workspace SDK
+rejects personal views, so this utility uses its underlying GraphQL operations
+without converting the original view through the SDK's narrower model.
+
+## Separate saved view
+
 `scripts/configure_wandb_workspace.py` creates a compact **saved workspace view**
 for one training run. Success is the only expanded section. It shows the three
 comparable validation groups (original environments, ordinary clutter, hand
@@ -40,6 +59,10 @@ The SDK uses the machine's existing W&B authentication. `--save` creates a new
 saved view each time, filtered by the exact run ID. Open the URL written to the
 JSON output. It does not overwrite the current project workspace or modify
 older runs. Creating the view is independent of starting the learner.
+
+This saved view does **not** change the personal workspace or a single-run page.
+Verifying its API representation alone does not establish what the user sees in
+their open tab. Check the actual browser page after changing a layout.
 
 API references: [official overview](https://docs.wandb.ai/models/ref/wandb_workspaces)
 and [official SDK source](https://github.com/wandb/wandb-workspaces).
