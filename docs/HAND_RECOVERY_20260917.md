@@ -75,7 +75,7 @@ metric keys are preserved. Use the [compact saved W&B view](WANDB_SUCCESS_VIEW.m
 to keep success rates in their own expanded section and diagnostics collapsed.
 
 ```bash
-.venv/bin/python train_cat_wholebody.py run --finetuning hand_recovery \
+JAX_PLATFORMS=cuda,cpu .venv/bin/python train_cat_wholebody.py run --finetuning hand_recovery \
   --num-envs 16384 --batch-size 256 \
   --bank-manifest /absolute/path/to/cat_hand_protection_v1_20260917/manifest.json \
   --body-collision-bank /absolute/path/to/body_collision_hand_v1_20260917/manifest.json \
@@ -83,3 +83,31 @@ to keep success rates in their own expanded section and diagnostics collapsed.
   --warmstart-best /absolute/path/to/archives/cat_hand_best26M_before_recovery_20260917 \
   --run-dir /absolute/path/to/outputs/cat_hand_recovery_20260917 --wandb-mode online
 ```
+
+Both JAX backends must be enabled: simulation/optimization use CUDA, while the
+existing metric callbacks need a local CPU device. A CUDA-only launch passed
+baseline validation but failed its first logging callback before a completed
+update. Its durable step-zero snapshot was resumed with `cuda,cpu` under the same
+W&B identity; this did not create a second recovery experiment.
+
+Validation before learning passed all source-retention gates. Deterministic
+success was 40.10% original scenes, 79.69% ordinary clutter and 65.63% hand
+passages; stochastic success was 35.94%, 68.75% and 47.92%. These are starting
+measurements, not improvements learned by the recovery run. Both raw actor and
+critic parameter-parity errors were zero. The same bank hash, observation
+contract, collision bank and reset manifest were verified against the old run.
+
+The complete local regression suite passed **722 tests**. Recovery tests include
+actual optimizer-rate changes, actor/critic restoration, monotonic steps,
+exact-resume equivalence after rollback, fixed-noise native checkpoint round
+trips, two-failure confirmation and protection against a weaker first candidate.
+
+Live verification at **2026-09-17 18:09:28 UTC** confirmed 524,288 completed
+transitions and the same step in the durable resume snapshot. The learner was
+running with finite reported losses and `health/nonfinite=0`. The RTX 6000 Ada
+reported 38,024 MiB used out of 49,140 MiB and 100% utilization. This verifies
+execution and checkpoint persistence, not an improvement in success rate. The
+running source is commit `83f66b024e116f091ebe1d6cb46e7f008d93759a`.
+
+[Recovery run](https://wandb.ai/skvayzer/CAT-wholebody/runs/eb410287) ·
+[Success-rate dashboard](https://wandb.ai/skvayzer/CAT-wholebody?nw=78xpyp21m83)
