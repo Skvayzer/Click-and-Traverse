@@ -9,7 +9,7 @@ import pytest
 
 import train_cat_wholebody as launcher
 from cat_ppo.furniture.checkpoint import BestCheckpointStore
-from cat_ppo.furniture.retention_validation import ValidationResult, retention_selection
+from cat_ppo.furniture.retention_validation import FIXED_SCENE_IDS, ValidationResult, retention_selection
 
 
 def mode_summaries(*, cat=.9, clutter=.4, hand=.1):
@@ -120,8 +120,9 @@ def stabilized_run(tmp_path, monkeypatch):
         return env, factory, "initial" if restore_model else None, record
 
     class Validator:
-        def __init__(self, environment, supplied_factory, *, seeds):
+        def __init__(self, environment, supplied_factory, *, seeds, scene_ids):
             assert supplied_factory is factory and list(seeds) == list(range(16))
+            assert tuple(scene_ids) == FIXED_SCENE_IDS
         def evaluate(self, params, *, step, baseline=None):
             events["evaluations"].append(dict(params=params, step=step, baseline=deepcopy(baseline)))
             modes = mode_summaries(clutter=.4 if step == 0 else .6)

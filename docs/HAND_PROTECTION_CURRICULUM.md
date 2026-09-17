@@ -65,7 +65,8 @@ r_hand = -0.5 mean(p(d_left), p(d_right)) dt,    dt = 0.02 s.
 This costs at most 0.01 reward per control step and supplies an earlier signal
 within 20 cm. There is no unconditional height bonus. Arm nominal-posture
 regularization switches off near obstacles, independently for each arm, and
-returns gradually from 20 to 30 cm hand clearance. Arm target-acceleration cost
+returns gradually over 20–30 cm hand clearance and 8–18 cm elbow clearance,
+using the smaller of the two clearance gates. Arm target-acceleration cost
 is reduced tenfold and velocity cost twofold; waist motion regularization is
 unchanged, with waist posture stabilization retained near obstacles.
 
@@ -117,8 +118,8 @@ Candidates failing a retention gate cannot replace the best checkpoint.
 
 Useful charts:
 
-- `validation/hand_protection_goal_success_rate`, `hand_easy_goal_success_rate`,
-  `hand_medium_goal_success_rate`, `hand_hard_goal_success_rate`.
+- `validation/hand_protection_goal_success_rate`, `validation/hand_easy_goal_success_rate`,
+  `validation/hand_medium_goal_success_rate`, `validation/hand_hard_goal_success_rate`.
 - `validation/hand_protection_hand_violation_rate` and
   `validation/hand_protection_body_collision_rate`.
 - `validation/cat_goal_success_rate` and
