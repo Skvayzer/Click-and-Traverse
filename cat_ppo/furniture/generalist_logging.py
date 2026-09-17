@@ -68,7 +68,8 @@ class GeneralistLogger:
         return identity
 
     def __init__(self, run_dir, *, project="CAT-wholebody", entity="skvayzer",
-                 mode="online", resume=False, config=None, wandb_module=None):
+                 mode="online", resume=False, config=None, wandb_module=None,
+                 replace_untrained_config=False):
         self.directory = Path(run_dir)
         self._lock = threading.RLock()
         self._run = None
@@ -77,6 +78,8 @@ class GeneralistLogger:
         self.identity = self.reserve_identity(self.directory, project=project, entity=entity,
                                               mode=mode, resume=resume)
         self._last_step = int(self.identity["last_global_step"])
+        if replace_untrained_config and (not resume or self._last_step != -1):
+            raise ValueError("W&B config replacement requires a resumed identity with zero logged training steps")
         if mode != "disabled":
             if wandb_module is None:
                 import wandb as wandb_module
@@ -89,7 +92,10 @@ class GeneralistLogger:
                     id=self.identity["id"], project=project, entity=entity, mode=mode,
                     resume=resume_mode, name=self.directory.name,
                     dir=str(self.directory), config=config,
+                    **({"allow_val_change": True} if replace_untrained_config else {}),
                 )
+                if replace_untrained_config:
+                    self._run.config.update(config, allow_val_change=True)
                 self.identity.update(initialized=True, url=self._run.url)
                 atomic_json(self._path, self.identity)
                 self._run.define_metric("global_step")

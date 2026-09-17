@@ -27,6 +27,7 @@ V2 = dict(exploration_version=COHERENT_EXPLORATION_VERSION, arm_persistence=.95,
           arm_correlation=.8, arm_correlation_pattern="g1_raise_tuck_v1",
           arm_last_action_indices=[CONTRACT["actor_features"].index("last_action." + name)
                                    for name in CONTRACT["action_names"][15:]])
+VARIANCE_PRESERVING_SCALE = (1. - V2["arm_persistence"] ** 2) ** .5
 
 
 def _distribution(**overrides):
@@ -43,8 +44,9 @@ def _observations(shape=(3,)):
     return {"state": state, "privileged_state": jnp.zeros((*shape, 310))}
 
 
-def test_joint_density_matches_explicit_full_gaussian_and_tanh_jacobian():
-    d = _distribution()
+@pytest.mark.parametrize("innovation_scale", [1., VARIANCE_PRESERVING_SCALE])
+def test_joint_density_matches_explicit_full_gaussian_and_tanh_jacobian(innovation_scale):
+    d = _distribution(arm_innovation_scale=innovation_scale)
     parameters = d.condition_parameters(_params(), _observations()["state"])
     raw = d.sample_no_postprocessing(parameters, jax.random.PRNGKey(17))
     joint = d.create_dist(parameters)
@@ -63,10 +65,11 @@ def test_joint_density_matches_explicit_full_gaussian_and_tanh_jacobian():
     assert np.max(np.abs(np.asarray(independent) - expected)) > .1
 
 
-def test_sampling_preserves_exact_v1_leg_and_waist_draws_and_entropy():
+@pytest.mark.parametrize("innovation_scale", [1., VARIANCE_PRESERVING_SCALE])
+def test_sampling_preserves_exact_v1_leg_and_waist_draws_and_entropy(innovation_scale):
     p = _params((8,))
     old = WholeBodyNormalTanhDistribution(29)
-    new = _distribution()
+    new = _distribution(arm_innovation_scale=innovation_scale)
     conditioned = new.condition_parameters(p, _observations((8,))["state"])
     key = jax.random.PRNGKey(91)
     np.testing.assert_array_equal(old.sample_no_postprocessing(p, key)[..., :15],
@@ -82,8 +85,9 @@ def test_sampling_preserves_exact_v1_leg_and_waist_draws_and_entropy():
                                   new.create_dist(conditioned).scale[..., :12])
 
 
-def test_nonzero_upper_entropy_uses_joint_log_determinant_and_same_tanh_sample():
-    d = _distribution(upper_entropy_weight=.3)
+@pytest.mark.parametrize("innovation_scale", [1., VARIANCE_PRESERVING_SCALE])
+def test_nonzero_upper_entropy_uses_joint_log_determinant_and_same_tanh_sample(innovation_scale):
+    d = _distribution(upper_entropy_weight=.3, arm_innovation_scale=innovation_scale)
     p = _params()
     key = jax.random.PRNGKey(12)
     joint = d.create_dist(p)
@@ -99,8 +103,9 @@ def test_nonzero_upper_entropy_uses_joint_log_determinant_and_same_tanh_sample()
     np.testing.assert_allclose(d.entropy(p, key), expected, atol=2e-6)
 
 
-def test_replay_and_changed_policy_ratio_use_stored_observation_without_hidden_state():
-    d = _distribution()
+@pytest.mark.parametrize("innovation_scale", [1., VARIANCE_PRESERVING_SCALE])
+def test_replay_and_changed_policy_ratio_use_stored_observation_without_hidden_state(innovation_scale):
+    d = _distribution(arm_innovation_scale=innovation_scale)
     obs = _observations((4, 5))["state"]
     obs = obs.at[..., V2["arm_last_action_indices"][0]].set(jnp.arange(20).reshape(4, 5) / 30.)
     p = _params((4, 5))
@@ -123,8 +128,9 @@ def test_replay_and_changed_policy_ratio_use_stored_observation_without_hidden_s
     np.testing.assert_allclose(derivative, numerical, atol=.02, rtol=.02)
 
 
-def test_temporal_exploration_matches_finite_ar_covariance_without_raising_innovation_bounds():
-    d = _distribution()
+@pytest.mark.parametrize("innovation_scale", [1., VARIANCE_PRESERVING_SCALE])
+def test_temporal_exploration_matches_finite_ar_covariance_without_raising_innovation_bounds(innovation_scale):
+    d = _distribution(arm_innovation_scale=innovation_scale)
     batch, steps = 4096, 120
     parameters = _params((batch,))
     observations = jnp.zeros((batch, 222))
@@ -139,21 +145,25 @@ def test_temporal_exploration_matches_finite_ar_covariance_without_raising_innov
     (_, _), (previous, current) = jax.jit(lambda: jax.lax.scan(
         step, (jnp.zeros((batch, 29)), observations), keys))()
     prev, last = np.asarray(previous[-1]), np.asarray(current[-1])
-    expected_variance = .05 ** 2 * (1 - .95 ** (2 * steps)) / (1 - .95 ** 2)
+    expected_variance = (.05 * innovation_scale) ** 2 * (1 - .95 ** (2 * steps)) / (1 - .95 ** 2)
     empirical = np.cov(last, rowvar=False)
     np.testing.assert_allclose(np.diag(empirical), expected_variance, rtol=.065)
     expected_covariance = expected_variance * d.arm_correlation_matrix
-    np.testing.assert_allclose(empirical, expected_covariance, atol=.0016)
+    np.testing.assert_allclose(empirical, expected_covariance, atol=.0625 * expected_variance)
     assert .935 < np.corrcoef(prev[:, 0], last[:, 0])[0, 1] < .965
     assert np.isfinite(last).all()
-    np.testing.assert_allclose(d.create_dist(parameters).scale[..., 15:], .05, atol=1e-7)
+    np.testing.assert_allclose(d.create_dist(parameters).scale[..., 15:], .05 * innovation_scale, atol=1e-7)
+    if innovation_scale == VARIANCE_PRESERVING_SCALE:
+        # Coherence does not inflate stationary arm marginal variance.
+        np.testing.assert_allclose(np.diag(empirical), .05 ** 2, rtol=.065)
 
 
-def _factory(normalize=False):
+def _factory(normalize=False, innovation_scale=None):
     kwargs = dict(policy_hidden_layer_sizes=(10, 7), value_hidden_layer_sizes=(13,),
                   policy_obs_key="state", value_obs_key="privileged_state")
     sizes = {"state": (222,), "privileged_state": (310,)}
-    factory = functools.partial(make_ppo_networks, **kwargs, **BASE, **V2)
+    factory = functools.partial(make_ppo_networks, **kwargs, **BASE, **V2,
+                                arm_innovation_scale=innovation_scale)
     preprocess = running_statistics.normalize if normalize else types.identity_observation_preprocessor
     network = factory(sizes, 29, preprocess_observations_fn=preprocess)
     normalizer = running_statistics.init_state({
@@ -166,8 +176,9 @@ def _factory(normalize=False):
 
 
 @pytest.mark.parametrize("normalize", [False, True])
-def test_warmstart_shapes_values_and_checkpoint_roundtrip_are_exact(tmp_path, normalize):
-    factory, network, params, sizes, kwargs, preprocess = _factory(normalize)
+@pytest.mark.parametrize("innovation_scale", [None, VARIANCE_PRESERVING_SCALE])
+def test_warmstart_shapes_values_and_checkpoint_roundtrip_are_exact(tmp_path, normalize, innovation_scale):
+    factory, network, params, sizes, kwargs, preprocess = _factory(normalize, innovation_scale)
     v1 = make_ppo_networks(sizes, 29, **kwargs, **BASE, preprocess_observations_fn=preprocess)
     for a, b in zip(jax.tree.leaves(params[1]),
                     jax.tree.leaves(v1.policy_network.init(jax.random.PRNGKey(0)))):
@@ -234,11 +245,51 @@ def test_configuration_rejects_partial_v2_and_mismatched_semantics():
         checkpoint_distribution_config(empty)
 
 
+def test_old_v2_checkpoint_without_scale_preserves_exact_unscaled_policy(tmp_path):
+    factory, network, params, sizes, _, _ = _factory()
+    config = checkpoint.network_config(sizes, 29, False, factory)
+    del config.network_factory_kwargs["arm_innovation_scale"]
+    old_semantics = network.parametric_action_distribution.config.copy()
+    del old_semantics["arm_innovation_scale"]
+    config.action_distribution = old_semantics
+    assert WholeBodyNormalTanhDistribution.from_config(old_semantics).arm_innovation_scale == 1.
+    assert checkpoint_distribution_config(config)["arm_innovation_scale"] == 1.
+    checkpoint.save(tmp_path, 1, params, config)
+    path = tmp_path / "000000000001"
+    for deterministic in (False, True):
+        expected = networks.make_inference_fn(network)(params, deterministic=deterministic)(
+            _observations(), jax.random.PRNGKey(49))
+        actual = load_checkpoint_policy(path, deterministic=deterministic)(
+            _observations(), jax.random.PRNGKey(49))
+        for a, b in zip(jax.tree.leaves(actual), jax.tree.leaves(expected)):
+            np.testing.assert_array_equal(a, b)
+
+
+def test_innovation_scale_cannot_activate_on_v1_or_disagree_with_checkpoint_metadata():
+    sizes = {"state": (222,), "privileged_state": (310,)}
+    with pytest.raises(ValueError, match="requires coherent v2"):
+        make_ppo_networks(sizes, 29, **BASE, arm_innovation_scale=VARIANCE_PRESERVING_SCALE)
+    factory, network, _, sizes, _, _ = _factory(innovation_scale=VARIANCE_PRESERVING_SCALE)
+    config = checkpoint.network_config(sizes, 29, False, factory).to_dict()
+    config["action_distribution"] = network.parametric_action_distribution.config
+    assert checkpoint_distribution_config(config)["arm_innovation_scale"] == VARIANCE_PRESERVING_SCALE
+    config["network_factory_kwargs"]["arm_innovation_scale"] = 1.
+    with pytest.raises(ValueError, match="disagrees"):
+        checkpoint_distribution_config(config)
+    for key in V2:
+        config["network_factory_kwargs"][key] = None
+    with pytest.raises(ValueError, match="requires coherent v2"):
+        checkpoint_distribution_config(config)
+
+
 @pytest.mark.parametrize("changes", [
     {"arm_persistence": 1.}, {"arm_persistence": -1.}, {"arm_persistence": float("nan")},
     {"arm_correlation": 1.}, {"arm_correlation": -1.},
     {"arm_correlation_pattern": "unknown"}, {"exploration_version": "future"},
     {"arm_last_action_indices": list(range(13))}, {"arm_last_action_indices": [1] * 14},
+    {"arm_innovation_scale": 0.}, {"arm_innovation_scale": -1.},
+    {"arm_innovation_scale": 1.01}, {"arm_innovation_scale": float("nan")},
+    {"arm_innovation_scale": float("inf")}, {"arm_innovation_scale": True},
 ])
 def test_invalid_coherence_configuration_fails(changes):
     with pytest.raises(ValueError):

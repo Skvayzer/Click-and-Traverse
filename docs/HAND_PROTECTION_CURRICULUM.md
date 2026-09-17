@@ -72,11 +72,13 @@ unchanged, with waist posture stabilization retained near obstacles.
 The actor MLP is unchanged. For the 14 arm outputs only, pre-tanh sampling uses
 
 ```text
-u_t ~ Normal(0.05 mu_theta(o_t) + 0.95 atanh(a_(t-1)), D R D)
+u_t ~ Normal(0.05 mu_theta(o_t) + 0.95 atanh(a_(t-1)), s^2 D R D)
 a_t = tanh(u_t).
+s = sqrt(1 - 0.95^2) = 0.3122499.
 ```
 
-`D` contains conditional innovation standard deviations bounded to 0.02–0.10;
+`D` contains nominal arm standard deviations bounded to 0.02–0.10;
+the actual conditional innovation deviations are `s D` (0.006245–0.031225).
 `R` is a positive-definite fixed correlation matrix with raise/tuck factors and
 an independent residual (correlation strength 0.8). The previous actions are
 already present in observation slots 79–92. PPO evaluates the exact correlated
@@ -84,11 +86,14 @@ likelihood using those stored observations. Deterministic evaluation uses the
 same conditioned mean. Legs and waist keep their existing distributions; the
 reference KL acts only on the 12 independent leg actions on CAT scenes.
 
-Persistence 0.95 has a roughly 0.39 s mean-response time constant. Holding the
-MLP mean constant, stationary pre-tanh noise is about **3.20 times** the
-conditional innovation standard deviation. Thus this is a deliberate change
-in temporal behavior and sustained exploration, not merely clipping white
-noise differently. V2 checkpoint metadata records all settings. ONNX export
+Persistence 0.95 has a roughly 0.39 s mean-response time constant. Scaling the
+innovations by `sqrt(1-rho^2)` preserves the original stationary pre-tanh marginal
+variance when the MLP mean and scale are held constant, while allowing correlated,
+persistent arm exploration. The first unscaled candidate was rejected before
+any PPO updates: stochastic ordinary-clutter success fell from 70.3% to 46.9%.
+Its variance was 10.26 times the old variance. The startup gate prevented that
+configuration from being trained. V2 checkpoint metadata records the innovation
+scale; older V2 checkpoints without it retain their original scale of one. ONNX export
 explicitly rejects this distribution until equivalent conditioning is supported.
 
 PPO retains learning rate 3e-5, clipping 0.1 and the existing leg-only reference

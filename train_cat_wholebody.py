@@ -33,6 +33,8 @@ def parser():
     result.add_argument("--body-collision-resets", type=Path,
                         help="Validated clear reset fallback manifest for the same collision bank")
     result.add_argument("--resume", action="store_true", help="Restore the complete learner and same online W&B run")
+    result.add_argument("--reuse-untrained-wandb-from", type=Path,
+                        help="Reuse the ID of an archived failed startup with verified zero training/logged steps")
     result.add_argument("--wandb-mode", choices=("online", "disabled"), default="online")
     result.add_argument("--wandb-project", default="CAT-wholebody")
     result.add_argument("--wandb-entity", default="skvayzer")
@@ -264,6 +266,15 @@ def _recover_startup_store(directory, attempt):
 def run(args, specification):
     os.environ.setdefault("XLA_PYTHON_CLIENT_PREALLOCATE", "false")
     directory = args.run_dir.resolve()
+    retry_from = getattr(args, "reuse_untrained_wandb_from", None)
+    retry_identity, retry_provenance = None, None
+    if retry_from:
+        if args.resume:
+            raise ValueError("Untrained W&B reuse initializes a fresh learner; do not combine with --resume")
+        from cat_ppo.furniture.untrained_retry import verified_untrained_logging_identity
+        retry_identity, retry_provenance = verified_untrained_logging_identity(retry_from)
+        if directory == retry_from.resolve():
+            raise ValueError("Archive the failed startup before reusing its W&B identity")
     if args.run_dir.is_symlink():
         raise ValueError("run-dir cannot be a symlink")
     if (directory / "STOP").exists():
@@ -277,6 +288,8 @@ def run(args, specification):
         spec_hash = hashlib.sha256(json.dumps(specification, sort_keys=True).encode()).hexdigest()
         previous_status, previous = {}, None
         destination = dict(project=args.wandb_project, entity=args.wandb_entity, mode=args.wandb_mode)
+        if retry_identity is not None and any(retry_identity.get(key) != value for key, value in destination.items()):
+            raise ValueError("Untrained W&B reuse cannot change the logging destination")
         launch_missing = not (launch_path.exists() or launch_path.is_symlink())
         if args.resume:
             # Validate existing evidence before writing any replacement status.
@@ -330,7 +343,10 @@ def run(args, specification):
             if launch_missing:
                 atomic_json(launch_path, launch)
             atomic_json(status_path, status)
-            GeneralistLogger.reserve_identity(directory, **destination, resume=args.resume)
+            if retry_identity is not None:
+                atomic_json(directory / "wandb.json", retry_identity)
+                atomic_json(directory / "untrained_startup_provenance.json", retry_provenance)
+            GeneralistLogger.reserve_identity(directory, **destination, resume=args.resume or retry_identity is not None)
             from cat_ppo.furniture.checkpoint import BestCheckpointStore, native_writer
             from cat_ppo.furniture.generalist_runtime import atomic_save_runtime, load_runtime
             from cat_ppo.furniture.run_control import StopRequest
@@ -343,6 +359,8 @@ def run(args, specification):
             status["phase"] = "preparing"
             atomic_json(status_path, status)
             environment, factory, target, record = prepare(args, specification, restore_model=runtime is None)
+            if retry_provenance is not None:
+                record["untrained_startup_retry"] = retry_provenance
             identity = {"config": specification["config"], "bank_sha256": record["bank_sha256"],
                         "source_sha256": record["code"]["source_sha256"],
                         "contract": record["observation_contract"]}
@@ -359,7 +377,8 @@ def run(args, specification):
                 _recover_startup_store(directory, status["attempt"])
             store = BestCheckpointStore(directory)
             status["phase"] = "logger"
-            logger = GeneralistLogger(directory, **destination, resume=True, config=record)
+            logger = GeneralistLogger(directory, **destination, resume=True, config=record,
+                **({"replace_untrained_config": True} if retry_identity is not None else {}))
             status.update(status="running", phase="learner_initialization")
             atomic_json(status_path, status)
 

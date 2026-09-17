@@ -91,6 +91,21 @@ def test_one_wandb_identity_and_monotonic_recovery(tmp_path):
     assert json.loads((tmp_path / "wandb.json").read_text())["last_global_step"] == 120
 
 
+def test_only_unused_wandb_config_can_be_replaced(tmp_path):
+    calls, updates = [], []
+    run = FakeRun()
+    run.config = SimpleNamespace(update=lambda value, **kwargs: updates.append((value, kwargs)))
+    module = SimpleNamespace(init=lambda **kwargs: (calls.append(kwargs), run)[1])
+    GeneralistLogger.reserve_identity(tmp_path, project="CAT-wholebody", entity="skvayzer", mode="online")
+    logger = GeneralistLogger(tmp_path, resume=True, wandb_module=module,
+                              replace_untrained_config=True, config={"noise": "normalized"})
+    assert calls[0]["allow_val_change"] is True
+    assert updates == [({"noise": "normalized"}, {"allow_val_change": True})]
+    logger.log(0, {"baseline/success": .5})
+    with pytest.raises(ValueError, match="zero logged"):
+        GeneralistLogger(tmp_path, resume=True, wandb_module=module, replace_untrained_config=True)
+
+
 def test_nonfinite_is_reported_and_fails_including_after_resume(tmp_path):
     logger = GeneralistLogger(tmp_path, mode="disabled")
     logger.log(100, {"training/loss": 1})

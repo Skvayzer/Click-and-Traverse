@@ -18,7 +18,23 @@ def test_hand_profile_preserves_cat_optimizer_and_leg_regularizer():
     distribution = new["fine_tuning"]["action_distribution"]
     assert distribution["arm_last_action_indices"] == list(range(79, 93))
     assert distribution["arm_persistence"] == .95
+    assert distribution["arm_innovation_scale"] == pytest.approx((1 - .95 ** 2) ** .5)
     assert new["fine_tuning"]["effective_batch_geometry"]["parallel_environments"] == 16384
+
+
+def test_scaled_arm_telemetry_uses_actual_conditional_bounds():
+    import jax.numpy as jp
+    from cat_ppo.learning.policy.ppo.train import _current_distribution_metrics
+    from cat_ppo.learning.policy.ppo.wholebody_distribution import CoherentArmNormalTanhDistribution
+    settings = training_config(finetuning="hand_protection")["fine_tuning"]["action_distribution"]
+    distribution = CoherentArmNormalTanhDistribution(29, **settings)
+    # Saturate nominal sigma below its floor; actual arm innovations have
+    # smaller floors, while waist and leg scale rules remain unchanged.
+    scales = distribution.create_dist(jp.zeros((2, 58)).at[:, 29:].set(-100.)).scale
+    metrics = _current_distribution_metrics(distribution, scales)
+    assert float(metrics["training/upper_std_bounds_violation_rate"]) == 0.
+    assert float(metrics["training/arm_conditional_std_at_floor_fraction"]) == 1.
+    assert float(metrics["training/arm_stationary_std_proxy_mean"]) == pytest.approx(.02)
 
 
 def archive_fixture(root):

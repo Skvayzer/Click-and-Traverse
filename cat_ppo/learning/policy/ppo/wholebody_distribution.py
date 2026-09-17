@@ -210,15 +210,18 @@ class CoherentArmNormalTanhDistribution(WholeBodyNormalTanhDistribution):
     noise state, extra actor inputs, external OU process, or detached gradients
     are introduced. Deterministic inference uses tanh(m_t), including smoothing.
 
-    Bounds constrain conditional innovation sigma. Temporal marginal variance
-    is intentionally larger: for constant mean/scale before tanh, sigma squared
-    divided by (1-rho squared). A near-bound previous action is clipped only for
-    the atanh inverse, explicitly recorded as part of v2 semantics.
+    Bounds constrain nominal sigma; arm innovations multiply it by the explicit
+    ``arm_innovation_scale``. For constant mean/scale before tanh, stationary
+    variance is (nominal sigma * innovation scale) squared / (1-rho squared).
+    Choosing sqrt(1-rho squared) therefore preserves nominal marginal variance
+    while retaining temporal coherence. Older v2 checkpoints used scale 1.
+    A near-bound previous action is clipped only for the atanh inverse,
+    explicitly recorded as part of v2 semantics.
     """
 
     def __init__(self, event_size, *, exploration_version, arm_persistence,
                  arm_correlation, arm_last_action_indices, arm_correlation_pattern,
-                 **kwargs):
+                 arm_innovation_scale=1., **kwargs):
         super().__init__(event_size, **kwargs)
         if event_size != 29 or self.leg_action_count != 12:
             raise ValueError("Coherent G1 arm exploration requires 29 actions and 12 legs")
@@ -228,6 +231,10 @@ class CoherentArmNormalTanhDistribution(WholeBodyNormalTanhDistribution):
             raise ValueError("arm_persistence must be finite and in [0, 1)")
         if (not math.isfinite(arm_correlation) or not 0 <= arm_correlation < 1):
             raise ValueError("arm_correlation must be finite and in [0, 1)")
+        if (isinstance(arm_innovation_scale, bool)
+                or not math.isfinite(arm_innovation_scale)
+                or not 0 < arm_innovation_scale <= 1):
+            raise ValueError("arm_innovation_scale must be finite and in (0, 1]")
         if arm_correlation_pattern != "g1_raise_tuck_v1":
             raise ValueError("Unknown arm correlation pattern")
         if (not isinstance(arm_last_action_indices, (list, tuple))
@@ -238,6 +245,7 @@ class CoherentArmNormalTanhDistribution(WholeBodyNormalTanhDistribution):
         self.exploration_version = exploration_version
         self.arm_persistence = float(arm_persistence)
         self.arm_correlation = float(arm_correlation)
+        self.arm_innovation_scale = float(arm_innovation_scale)
         self.arm_last_action_indices = tuple(arm_last_action_indices)
         self.arm_correlation_pattern = arm_correlation_pattern
         self.previous_action_clip = 1. - 1e-6
@@ -251,6 +259,7 @@ class CoherentArmNormalTanhDistribution(WholeBodyNormalTanhDistribution):
                 "exploration_version": self.exploration_version,
                 "arm_persistence": self.arm_persistence,
                 "arm_correlation": self.arm_correlation,
+                "arm_innovation_scale": self.arm_innovation_scale,
                 "arm_last_action_indices": list(self.arm_last_action_indices),
                 "arm_correlation_pattern": self.arm_correlation_pattern,
                 "previous_action_clip": self.previous_action_clip,
@@ -266,11 +275,14 @@ class CoherentArmNormalTanhDistribution(WholeBodyNormalTanhDistribution):
             "deterministic_output"})
         if not isinstance(config, dict) or config.get("kind") != COHERENT_DISTRIBUTION_KIND:
             raise ValueError("Unknown coherent action distribution configuration")
-        if set(config) != required:
+        # Missing innovation scale is the exact historical v2 behavior. New
+        # checkpoints always record it; never reinterpret an old v2 as scaled.
+        if set(config) not in (required, required | {"arm_innovation_scale"}):
             raise ValueError("Coherent action distribution configuration must include all settings")
         restored = cls(config["event_size"], **{
-            key: config[key] for key in _DISTRIBUTION_KWARGS | _COHERENT_KWARGS})
-        if restored.config != config:
+            key: config[key] for key in _DISTRIBUTION_KWARGS | _COHERENT_KWARGS},
+            arm_innovation_scale=config.get("arm_innovation_scale", 1.))
+        if restored.config != {"arm_innovation_scale": 1., **config}:
             raise ValueError("Coherent action distribution semantics differ")
         return restored
 
@@ -290,7 +302,10 @@ class CoherentArmNormalTanhDistribution(WholeBodyNormalTanhDistribution):
 
     def create_dist(self, parameters):
         bounded = super().create_dist(parameters)
-        return _CorrelatedArmNormal(bounded.loc, bounded.scale,
+        # Modify the actual Gaussian, not just sampled actions: PPO log density,
+        # entropy and exposed marginal scales must all use the same covariance.
+        scale = bounded.scale.at[..., 15:].multiply(self.arm_innovation_scale)
+        return _CorrelatedArmNormal(bounded.loc, scale,
                                     self._arm_cholesky, self._arm_inverse_cholesky)
 
     def entropy(self, parameters, seed):
@@ -307,13 +322,16 @@ class CoherentArmNormalTanhDistribution(WholeBodyNormalTanhDistribution):
         return leg_entropy + self.upper_entropy_weight * jnp.sum(upper_entropy, axis=-1)
 
 
-def _make_distribution(action_size, base_kwargs, coherent_kwargs):
+def _make_distribution(action_size, base_kwargs, coherent_kwargs, arm_innovation_scale=None):
     present = {key for key, value in coherent_kwargs.items() if value is not None}
     if not present:
+        if arm_innovation_scale is not None:
+            raise ValueError("arm_innovation_scale requires coherent v2 exploration")
         return WholeBodyNormalTanhDistribution(action_size, **base_kwargs)
     if present != _COHERENT_KWARGS:
         raise ValueError("Coherent exploration requires all five explicit v2 settings")
-    return CoherentArmNormalTanhDistribution(action_size, **base_kwargs, **coherent_kwargs)
+    return CoherentArmNormalTanhDistribution(action_size, **base_kwargs, **coherent_kwargs,
+        arm_innovation_scale=1. if arm_innovation_scale is None else arm_innovation_scale)
 
 
 def make_ppo_networks(
@@ -335,20 +353,22 @@ def make_ppo_networks(
     arm_correlation: float | None = None,
     arm_last_action_indices: Sequence[int] | None = None,
     arm_correlation_pattern: str | None = None,
+    arm_innovation_scale: float | None = None,
 ) -> ppo_networks.PPONetworks:
     """Keep native parameter shapes and install versioned action semantics.
 
     Defaults for native network arguments match Brax 0.12.3.  Production callers
     must retain the released CAT hidden sizes and observation keys, as before.
     Save all four base distribution settings, and all five v2 settings when
-    enabled. Network weights alone cannot encode bounds or arm conditioning.
+    enabled, plus the innovation scale when overriding historical v2 scale 1.
+    Network weights alone cannot encode bounds or arm conditioning.
     """
     bounded = _make_distribution(action_size, {
         "leg_action_count": leg_action_count, "upper_std_min": upper_std_min,
         "upper_std_max": upper_std_max, "upper_entropy_weight": upper_entropy_weight,
     }, {"exploration_version": exploration_version, "arm_persistence": arm_persistence,
         "arm_correlation": arm_correlation, "arm_last_action_indices": arm_last_action_indices,
-        "arm_correlation_pattern": arm_correlation_pattern})
+        "arm_correlation_pattern": arm_correlation_pattern}, arm_innovation_scale)
     native = ppo_networks.make_ppo_networks(
         observation_size,
         action_size,
@@ -384,6 +404,8 @@ def checkpoint_distribution_config(network_config) -> dict | None:
     coherent_present = set(kwargs) & _COHERENT_KWARGS
     recorded = network_config.get("action_distribution")
     if not present and not coherent_present:
+        if kwargs.get("arm_innovation_scale") is not None:
+            raise ValueError("arm_innovation_scale requires coherent v2 exploration")
         if recorded is not None:
             raise ValueError("Checkpoint distribution metadata lacks explicit factory settings")
         return None
@@ -402,7 +424,8 @@ def checkpoint_distribution_config(network_config) -> dict | None:
         raise ValueError("Coherent checkpoint v2 settings cannot be null")
     restored = _make_distribution(network_config["action_size"],
         {key: kwargs[key] for key in _DISTRIBUTION_KWARGS},
-        {key: kwargs.get(key) for key in _COHERENT_KWARGS})
+        {key: kwargs.get(key) for key in _COHERENT_KWARGS},
+        kwargs.get("arm_innovation_scale"))
     if recorded is not None:
         validated = WholeBodyNormalTanhDistribution.from_config(dict(recorded))
         if validated.config != restored.config:

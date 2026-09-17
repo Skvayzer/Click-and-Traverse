@@ -109,6 +109,26 @@ def test_launcher_uses_one_continuous_learner_and_resumes_its_state_and_wandb_id
     assert len(selections) == 2
 
 
+def test_fresh_learner_can_reuse_only_verified_unused_logging_identity(launched, monkeypatch):
+    args, spec, preparations, calls, loggers, _, _ = launched
+    from cat_ppo.furniture import untrained_retry
+    identity = dict(id="46a8a2af", project=args.wandb_project, entity=args.wandb_entity,
+                    mode="disabled", last_global_step=-1, initialized=False)
+    provenance = dict(source="verified archived zero-update startup")
+    monkeypatch.setattr(untrained_retry, "verified_untrained_logging_identity",
+                        lambda path: (identity.copy(), provenance))
+    args.reuse_untrained_wandb_from = args.run_dir.parent / "old-startup"
+    result = launcher.run(args, spec)
+    assert result["completed_steps"] == 524288
+    assert preparations == [True] and calls[0]["restore_runtime_state"] is None
+    assert loggers[0].identity["id"] == "46a8a2af"
+    assert loggers[0].config["untrained_startup_retry"] == provenance
+    assert json.loads((args.run_dir / "untrained_startup_provenance.json").read_text()) == provenance
+    args.resume = True
+    with pytest.raises(ValueError, match="do not combine"):
+        launcher.run(args, spec)
+
+
 def test_first_update_failure_preserves_initial_runtime_and_same_experiment(launched):
     args, spec, preparations, calls, loggers, _, fail = launched
     fail["next_update"] = True

@@ -142,25 +142,32 @@ def _current_distribution_metrics(parametric_distribution, scales):
         return {}
     split = config["leg_action_count"]
     upper = scales[..., split:]
-    invalid = (~jnp.isfinite(upper) | (upper < config["upper_std_min"])
-               | (upper > config["upper_std_max"]))
+    innovation_scale = config.get("arm_innovation_scale", 1.)
+    bound_scale = jnp.ones(upper.shape[-1], upper.dtype)
+    if config.get("kind") == "wholebody_arm_conditional_correlated_tanh_v2":
+        bound_scale = bound_scale.at[3:].set(innovation_scale)
+    lower, higher = config["upper_std_min"] * bound_scale, config["upper_std_max"] * bound_scale
+    invalid = (~jnp.isfinite(upper) | (upper < lower) | (upper > higher))
     metrics = {
         "training/leg_std_mean": jnp.mean(scales[..., :split]),
         "training/upper_std_mean": jnp.mean(upper),
         "training/upper_std_min": jnp.min(upper),
         "training/upper_std_max": jnp.max(upper),
         "training/upper_std_bounds_violation_rate": jnp.mean(invalid.astype(jnp.float32)),
-        "training/upper_std_at_floor_fraction": jnp.mean((upper <= config["upper_std_min"]).astype(jnp.float32)),
-        "training/upper_std_at_ceiling_fraction": jnp.mean((upper >= config["upper_std_max"]).astype(jnp.float32)),
+        "training/upper_std_at_floor_fraction": jnp.mean((upper <= lower).astype(jnp.float32)),
+        "training/upper_std_at_ceiling_fraction": jnp.mean((upper >= higher).astype(jnp.float32)),
     }
     if config.get("kind") == "wholebody_arm_conditional_correlated_tanh_v2":
         metrics.update({
             "training/arm_conditional_std_mean": jnp.mean(scales[..., 15:]),
             "training/arm_conditional_std_at_floor_fraction": jnp.mean(
-                (scales[..., 15:] <= config["upper_std_min"]).astype(jnp.float32)),
+                (scales[..., 15:] <= config["upper_std_min"] * innovation_scale).astype(jnp.float32)),
             "training/arm_conditional_std_at_ceiling_fraction": jnp.mean(
-                (scales[..., 15:] >= config["upper_std_max"]).astype(jnp.float32)),
+                (scales[..., 15:] >= config["upper_std_max"] * innovation_scale).astype(jnp.float32)),
             "training/arm_persistence": jnp.asarray(config["arm_persistence"]),
+            "training/arm_innovation_scale": jnp.asarray(innovation_scale),
+            "training/arm_stationary_std_proxy_mean": jnp.mean(scales[..., 15:]) / jnp.sqrt(
+                1. - config["arm_persistence"] ** 2),
         })
     return metrics
 

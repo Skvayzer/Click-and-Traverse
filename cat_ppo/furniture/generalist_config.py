@@ -117,6 +117,7 @@ def training_config(*, profile="single_gpu_32gb", num_envs=None, batch_size=None
         config["fine_tuning"]["action_distribution"].update(
             exploration_version="arm_conditional_correlated_v2",
             arm_persistence=.95, arm_correlation=.8,
+            arm_innovation_scale=(1. - .95 ** 2) ** .5,
             arm_last_action_indices=[features.index("last_action." + name)
                                      for name in JOINT_NAMES[15:]],
             arm_correlation_pattern="g1_raise_tuck_v1")
