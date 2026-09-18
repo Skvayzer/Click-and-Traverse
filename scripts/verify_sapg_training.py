@@ -21,6 +21,7 @@ def main():
     parser.add_argument("--report", type=Path, required=True)
     parser.add_argument("--updates", type=int, default=2)
     args = parser.parse_args()
+    args.report = args.report.expanduser().resolve()
     if args.updates < 2:
         parser.error("At least two updates are needed to exercise continuing training")
     if not os.environ.get("SLURM_JOB_ID"):
