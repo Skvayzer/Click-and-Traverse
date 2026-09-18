@@ -111,13 +111,20 @@ def prepare_personal(personal):
     return original, proposed
 
 
-def prepare_saved(personal_spec, run_id):
+def prepare_saved(personal_spec, run_id, *, hand_specialist=False):
     """Build a training-only saved view while leaving every old view untouched."""
     if not re.fullmatch(r"[A-Za-z0-9_-]+", run_id):
         raise ValueError("Expected a bare run ID")
     saved = copy.deepcopy(personal_spec)
     section = saved["section"]
     first = copy.deepcopy(section["panelBankConfig"]["sections"][0])
+    if hand_specialist:
+        first["panels"] = [panel for panel in first["panels"] if panel.get("config", {}).get("metrics")
+                           == ["training/hand_protection_goal_success_rate"]]
+        if len(first["panels"]) != 1:
+            raise ValueError("Expected exactly one hand-protection success chart")
+        first["name"] = "Hand-protection success"
+        first["flowConfig"].update(columnsPerPage=1, rowsPerPage=1)
     section["panelBankConfig"]["sections"] = [first]
     section.setdefault("settings", {}).update(
         shouldAutoGeneratePanels=False, xAxis="global_step", xAxisActive=True,
@@ -152,7 +159,11 @@ def main():
     parser.add_argument("--personal-view", default="nw-nwuserskvayzer-w")
     parser.add_argument("--backup", type=Path, required=True)
     parser.add_argument("--apply", action="store_true")
+    parser.add_argument("--saved-only", action="store_true", help="Create a run-specific view without changing the personal workspace")
+    parser.add_argument("--hand-specialist", action="store_true", help="Show the specialist's hand success rate without empty CAT/clutter panels")
     args = parser.parse_args()
+    if args.hand_specialist and not args.saved_only:
+        parser.error("--hand-specialist requires --saved-only")
     if not re.fullmatch(r"[A-Za-z0-9_-]+", args.run_id):
         parser.error("--run-id must be a bare run ID")
     import wandb
@@ -164,7 +175,7 @@ def main():
         raise RuntimeError("Target must be the authenticated user's personal workspace")
     personal = views[args.personal_view]
     original, proposed = prepare_personal(personal)
-    saved = prepare_saved(proposed, args.run_id)
+    saved = prepare_saved(proposed, args.run_id, hand_specialist=args.hand_specialist)
     saved_name = "nw-" + uuid.uuid4().hex[:11] + "-v"
     if saved_name in views:
         raise RuntimeError("New saved-view ID collision; retry")
@@ -181,7 +192,8 @@ def main():
         handle.write("\n")
     print(json.dumps({
         "action": "apply" if args.apply else "dry-run", "backup": str(args.backup),
-        "first_section": "Training success", "training_charts": 4,
+        "first_section": "Hand-protection success" if args.hand_specialist else "Training success",
+        "training_charts": 1 if args.hand_specialist else 4,
         "personal_run_filter": "unchanged", "saved_view_run_filter": args.run_id,
         "previous_evaluation_charts": "preserved and collapsed",
         "personal_url": f"https://wandb.ai/{args.entity}/{args.project}?nw=nwuser{username}",
@@ -200,6 +212,14 @@ def main():
     })
     if not inserted["upsertView"].get("inserted"):
         raise RuntimeError("Expected a new saved view; inspect the response")
+    if args.saved_only:
+        _, actual = read_views(api, execute_graphql, args.entity, args.project)
+        if json.loads(actual[saved_name]["spec"]) != saved:
+            raise RuntimeError("Saved workspace readback differs from the proposed raw spec")
+        if any(actual.get(name) != before for name, before in views.items()):
+            raise RuntimeError("A pre-existing view changed concurrently")
+        print("Verified new run-filtered saved view and unchanged existing workspaces.")
+        return
     _, latest = read_views(api, execute_graphql, args.entity, args.project)
     if latest[args.personal_view] != personal:
         raise RuntimeError("Personal workspace changed; saved view created, personal view untouched")

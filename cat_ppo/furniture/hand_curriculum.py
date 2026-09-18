@@ -30,6 +30,12 @@ def curriculum_levels(manifest, *, enabled):
 Fail closed for an enabled malformed curriculum: an absent easy subgroup would
 otherwise silently redistribute room mass or make the initial sampler empty.
 """
+    specialist = "specialist" in manifest
+    if specialist:
+        from cat_ppo.furniture.hand_specialist import validate_specialist_manifest
+        validate_specialist_manifest(manifest)
+        if not enabled:
+            raise ValueError("Hand-protection specialist requires the hand curriculum to be enabled")
     if not enabled or not manifest.get("hand_protection_curriculum"):
         return None
     if manifest.get("schema") != "cat-generalist-field-bank-v2":
@@ -48,7 +54,7 @@ otherwise silently redistribute room mass or make the initial sampler empty.
     groups = np.asarray([scene.get("sampling_group") for scene in manifest["scenes"]])
     for group in ("furniture", "generic_clutter"):
         selected = levels[groups == group]
-        if selected.size and (not np.any(selected == -1) or not np.any(selected == 0)):
+        if selected.size and ((not specialist and not np.any(selected == -1)) or not np.any(selected == 0)):
             raise ValueError("Each represented room family needs ordinary rooms and easy hand tasks")
     if not np.any(levels >= 0):
         raise ValueError("An enabled hand curriculum must contain hand-protection tasks")

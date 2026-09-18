@@ -67,6 +67,17 @@ def test_personal_repeated_application_is_idempotent(personal):
     assert second == first
 
 
+def test_hand_specialist_view_omits_untrained_scene_families_and_preserves_source(personal):
+    _, proposed = prepare_personal(personal)
+    before = copy.deepcopy(proposed)
+    saved = prepare_saved(proposed, "hand1234", hand_specialist=True)
+    sections = saved["section"]["panelBankConfig"]["sections"]
+    assert len(sections) == 1
+    assert sections[0]["name"] == "Hand-protection success"
+    assert [panel["config"]["metrics"] for panel in sections[0]["panels"]] == [["training/hand_protection_goal_success_rate"]]
+    assert proposed == before
+
+
 def test_unexpected_existing_success_section_is_not_replaced(personal):
     malformed = json.loads(personal["spec"])
     malformed["section"]["panelBankConfig"]["sections"][0]["panels"].pop()

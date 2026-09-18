@@ -41,14 +41,19 @@ if [[ "$cat_resolved_commit" != "$CAT_SOURCE_COMMIT" ]]; then
 fi
 cat_python="$CAT_REPO_ROOT/.venv/bin/python"
 test -x "$cat_python"
-cat_bank="$CAT_REPO_ROOT/data/furniture/cat_hand_protection_v1_20260917/manifest.json"
-cat_collision="$CAT_REPO_ROOT/data/furniture/body_collision_hand_v1_20260917/manifest.json"
-cat_resets="$CAT_REPO_ROOT/data/furniture/body_collision_hand_resets_v1_20260917/manifest.json"
+cat_bank="${CAT_FIELD_BANK:-$CAT_REPO_ROOT/data/furniture/cat_hand_protection_v1_20260917/manifest.json}"
+cat_collision="${CAT_COLLISION_BANK:-$CAT_REPO_ROOT/data/furniture/body_collision_hand_v1_20260917/manifest.json}"
+cat_resets="${CAT_RESET_BANK:-$CAT_REPO_ROOT/data/furniture/body_collision_hand_resets_v1_20260917/manifest.json}"
 for cat_manifest in "$cat_bank" "$cat_collision" "$cat_resets"; do
     test -f "$cat_manifest"
 done
 
-cat_run="$CAT_REPO_ROOT/outputs/cat_sapg_${SLURM_JOB_ID}"
+CAT_RUN_PREFIX="${CAT_RUN_PREFIX:-cat_sapg}"
+if [[ ! "$CAT_RUN_PREFIX" =~ ^[a-zA-Z0-9_-]+$ ]]; then
+    echo 'CAT_RUN_PREFIX must be a simple directory prefix.' >&2
+    exit 2
+fi
+cat_run="$CAT_REPO_ROOT/outputs/${CAT_RUN_PREFIX}_${SLURM_JOB_ID}"
 cat_source="$CAT_REPO_ROOT/outputs/sources/cat_sapg_${SLURM_JOB_ID}_${CAT_SOURCE_COMMIT:0:12}"
 if [[ -e "$cat_run" || -L "$cat_run" || -e "$cat_source" || -L "$cat_source" ]]; then
     echo 'This submission requires a fresh run directory and source worktree.' >&2

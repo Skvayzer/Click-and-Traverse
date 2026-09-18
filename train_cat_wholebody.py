@@ -131,7 +131,7 @@ def field_bank_summary(manifest, manifest_sha256):
                    source_kind=scene["source"].get("kind", "released-original" if scene["family"] == "original_cat" else "generated-clutter"),
                    arrays_unchanged=bool(scene["source"].get("arrays_unchanged", False)))
               for scene in manifest["scenes"]]
-    return dict(scene_count=len(scenes),
+    summary = dict(scene_count=len(scenes),
                 schema=manifest.get("schema"),
                 family_counts=dict(Counter(scene["family"] for scene in scenes)),
                 fields_bytes=manifest.get("fields_bytes"),
@@ -140,6 +140,9 @@ def field_bank_summary(manifest, manifest_sha256):
                 byte_verified_original_count=sum(scene["family"] == "original_cat" and scene["arrays_unchanged"] for scene in scenes),
                 reconstructed_original_count=sum(scene["source_kind"] == "reconstructed-missing-original" for scene in scenes),
                 manifest_sha256=manifest_sha256, scenes=scenes)
+    if "specialist" in manifest:
+        summary["specialist"] = manifest["specialist"]
+    return summary
 
 
 def reference_kl_config(environment, configuration):

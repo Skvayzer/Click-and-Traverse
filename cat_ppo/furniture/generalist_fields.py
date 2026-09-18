@@ -423,18 +423,24 @@ def load_generalist_manifest(path, *, verify_files=True):
     if manifest.get("released_config_sha256") != RELEASED_CONFIG_SHA256 or manifest.get("dataset_revision") != DATASET_REVISION:
         raise ValueError("Field-bank release/configuration source pin differs")
     originals = [scene for scene in manifest["scenes"] if scene["family"] == "original_cat"]
-    if (len(originals) != manifest["original_count"] or len(originals) != 37
-            or len({scene["original_config_path"] for scene in originals}) != 37):
-        raise ValueError("Field-bank must retain 37 distinct configured original scene slots")
-    from cat_ppo.furniture.generalist_config import released_config
-    configured_paths = released_config()["env_config"]["pf_config"]["paths"]
-    if [scene["original_config_path"] for scene in originals] != configured_paths:
-        raise ValueError("Field-bank original scenes/order differ from the released configuration")
-    unchanged = sum(scene["source"].get("arrays_unchanged", False) for scene in originals)
-    reconstructed = sum(scene["source"].get("kind") == "reconstructed-missing-original" for scene in originals)
-    if (unchanged != manifest["byte_verified_original_count"]
-            or reconstructed != manifest["reconstructed_original_count"] or unchanged + reconstructed != 37):
-        raise ValueError("Field-bank original-source provenance counts differ")
+    if "specialist" in manifest:
+        # This opt-in must prove an exact subset of a pinned complete bank;
+        # ordinary generalist manifests still require every original anchor.
+        from cat_ppo.furniture.hand_specialist import validate_specialist_manifest
+        validate_specialist_manifest(manifest, path=path)
+    else:
+        if (len(originals) != manifest["original_count"] or len(originals) != 37
+                or len({scene["original_config_path"] for scene in originals}) != 37):
+            raise ValueError("Field-bank must retain 37 distinct configured original scene slots")
+        from cat_ppo.furniture.generalist_config import released_config
+        configured_paths = released_config()["env_config"]["pf_config"]["paths"]
+        if [scene["original_config_path"] for scene in originals] != configured_paths:
+            raise ValueError("Field-bank original scenes/order differ from the released configuration")
+        unchanged = sum(scene["source"].get("arrays_unchanged", False) for scene in originals)
+        reconstructed = sum(scene["source"].get("kind") == "reconstructed-missing-original" for scene in originals)
+        if (unchanged != manifest["byte_verified_original_count"]
+                or reconstructed != manifest["reconstructed_original_count"] or unchanged + reconstructed != 37):
+            raise ValueError("Field-bank original-source provenance counts differ")
     if expanded:
         _validate_expanded_scene_metadata(manifest)
     for scene in manifest["scenes"]:
