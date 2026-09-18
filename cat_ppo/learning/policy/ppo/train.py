@@ -1557,6 +1557,13 @@ def train(
         logging.info("starting iteration %s %s", it, time.time() - xt)
         it += 1
 
+        navigation_before = None
+        if "pf_navigation_outcome_counts" in env_state.info:
+            from cat_ppo.furniture.hand_curriculum import navigation_count_snapshot
+            # Materialize eight integers before the compiled epoch donates
+            # env_state buffers; never retain a view into donated state.
+            navigation_before = np.array(navigation_count_snapshot(env_state.info), copy=True)
+
         for _ in range(max(num_resets_per_eval, 1)):
             # optimization
             epoch_key, local_key = jax.random.split(local_key)
@@ -1603,6 +1610,10 @@ def train(
             if "pf_hand_curriculum_stage" in env_state.info:
                 from cat_ppo.furniture.hand_curriculum import curriculum_metrics
                 training_metrics.update(curriculum_metrics(env_state.info))
+            if navigation_before is not None:
+                from cat_ppo.furniture.hand_curriculum import navigation_rollout_metrics
+                training_metrics.update(navigation_rollout_metrics(
+                    navigation_before, navigation_count_snapshot(env_state.info)))
             progress_fn(current_step, training_metrics)
 
         if scored_checkpoint_fn is not None:

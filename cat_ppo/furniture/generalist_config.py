@@ -65,7 +65,7 @@ def training_config(*, profile="single_gpu_32gb", num_envs=None, batch_size=None
     if finetuning in ("gentle", "stabilized", "hand_protection", "hand_recovery"):
         policy["learning_rate"] = 3e-5
         policy["clipping_epsilon"] = .1
-    elif finetuning != "released":
+    elif finetuning not in ("released", "cat_train_only"):
         raise ValueError(f"Unknown fine-tuning mode: {finetuning}")
     if finetuning == "hand_recovery":
         policy["learning_rate"] = 1e-5
@@ -83,8 +83,8 @@ def training_config(*, profile="single_gpu_32gb", num_envs=None, batch_size=None
         "dagger": "already completed in released generalist; direct PPO fine-tuning",
         "continuous": True,
         "automatic_evaluation": finetuning in ("stabilized", "hand_protection", "hand_recovery"),
-        "upper_stabilization": finetuning in ("stabilized", "hand_protection", "hand_recovery"),
-        "hand_protection": finetuning in ("hand_protection", "hand_recovery"),
+        "upper_stabilization": finetuning in ("stabilized", "hand_protection", "hand_recovery", "cat_train_only"),
+        "hand_protection": finetuning in ("hand_protection", "hand_recovery", "cat_train_only"),
         "action_distribution": ({"leg_action_count": 12, "upper_std_min": .02,
                                  "upper_std_max": .10, "upper_entropy_weight": 0.0}
                                 if finetuning in ("stabilized", "hand_protection", "hand_recovery") else None),
@@ -136,6 +136,16 @@ def training_config(*, profile="single_gpu_32gb", num_envs=None, batch_size=None
             consecutive_failures=2, cat_drop=.05, ordinary_clutter_drop=.10,
             hand_protection_drop=.10, learning_rate_decay=.5, minimum_learning_rate=1e-6,
             response="restore selected safe actor/critic; fresh Adam; reset rollouts; continue same run")
+    if finetuning == "cat_train_only":
+        # Task rewards/geometry stay enabled independently of training controls.
+        # No distribution settings means the native 29-action NormalTanh policy:
+        # learned independent scales and the released entropy objective on ALL
+        # actions. Do not inherit bounded/AR/frozen-noise or retention profiles.
+        config["fine_tuning"].update(
+            training_only=True,
+            initialization="original released CAT final generalist actor and critic, expanded to 29 actions; fresh Adam",
+            checkpoint_selection="highest training rollout reward proxy; no evaluation or retention gates",
+            storage="one best training-reward-proxy model plus one overwritten full learner resume state")
     return config
 
 

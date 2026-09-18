@@ -85,6 +85,11 @@ class SamplePFWrapper(wrapper.Wrapper):
         self._body_collision_enabled = bool(getattr(body_collision, "enabled", False))
         self._hand_curriculum_levels = getattr(
             getattr(env, "unwrapped", env), "_pf_hand_curriculum_levels", None)
+        self._online_navigation_groups = None
+        if bool(getattr(config, "wholebody_first_outcome_metrics", False)):
+            from cat_ppo.furniture.hand_curriculum import navigation_scene_groups
+            raw = getattr(env, "unwrapped", env)
+            self._online_navigation_groups = jnp.asarray(navigation_scene_groups(raw.field_bank_manifest))
 
     def _reset_with_pf_id(self, rng, pf_id):
         node = self.env
@@ -125,10 +130,18 @@ class SamplePFWrapper(wrapper.Wrapper):
         state.info["episode_metrics"] = episode_metrics
         state.info["first_state"] = state.data
         state.info["first_obs"] = state.obs
+        if self._online_navigation_groups is not None:
+            from cat_ppo.furniture.hand_curriculum import initial_navigation_outcomes
+            state.info.update(initial_navigation_outcomes(state.done.shape))
         return state
 
     @staticmethod
-    def _update_pf_sampling_info(state, done, hand_curriculum_levels=None):
+    def _update_pf_sampling_info(state, done, hand_curriculum_levels=None,
+                                 online_navigation_groups=None):
+        resolved, navigation_success = None, None
+        if online_navigation_groups is not None:
+            from cat_ppo.furniture.hand_curriculum import update_navigation_outcomes
+            resolved, navigation_success = update_navigation_outcomes(state.info, done, online_navigation_groups)
         if "pf_success_ema" not in state.info:
             return state, None
 
@@ -149,7 +162,8 @@ class SamplePFWrapper(wrapper.Wrapper):
             success = jnp.where(scene_levels >= 0, clean_goal.astype(jnp.float32), truncation)
             values = advance_curriculum(
                 *(state.info[key][0] for key in STATE_KEYS),
-                scene_levels, done_bool, clean_goal)
+                scene_levels, done_bool if resolved is None else resolved,
+                clean_goal if navigation_success is None else navigation_success)
             for key, value in zip(STATE_KEYS, values):
                 state.info[key] = jnp.broadcast_to(value, state.info[key].shape)
         expanded = "pf_sampling_group_ids" in state.info
@@ -202,6 +216,9 @@ class SamplePFWrapper(wrapper.Wrapper):
 
     def reset(self, rng) -> mjx_env.State:
         state = self.env.reset(rng)
+        if self._online_navigation_groups is not None:
+            from cat_ppo.furniture.hand_curriculum import initial_navigation_outcomes
+            state.info.update(initial_navigation_outcomes(state.done.shape))
         return state
 
     def step(self, state: mjx_env.State, action) -> mjx_env.State:
@@ -212,7 +229,7 @@ class SamplePFWrapper(wrapper.Wrapper):
             done = done[None]
 
         state, pf_sampling_logits = self._update_pf_sampling_info(
-            state, done, self._hand_curriculum_levels)
+            state, done, self._hand_curriculum_levels, self._online_navigation_groups)
 
         rng = state.info["rng"]
         if pf_sampling_logits is None:

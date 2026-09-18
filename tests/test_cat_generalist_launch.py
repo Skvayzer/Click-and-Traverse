@@ -57,7 +57,7 @@ def test_gentle_finetuning_retains_cat_task_and_declares_optimizer_changes():
     assert regularizer == {"coefficient": .05, "action_indices": list(range(12)),
                            "scene_mask": [True, True, True, False, False]}
     assert launcher.reference_kl_config(env, original) is None
-    assert launcher.parser().parse_args(["plan"]).finetuning == "stabilized"
+    assert launcher.parser().parse_args(["plan"]).finetuning == "cat_train_only"
 
 
 class FakeRun:

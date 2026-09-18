@@ -11,6 +11,52 @@ import threading
 import uuid
 
 
+_TRAINING_SUCCESS_GROUPS = ("", "cat_", "ordinary_clutter_", "hand_protection_")
+_COMPACT_TRAINING_KEYS = {
+    f"{group}{metric}" for group in _TRAINING_SUCCESS_GROUPS
+    for metric in ("goal_success_rate", "goal_success_count", "resolved_count")
+} | {
+    "loss", "total_loss", "policy_loss", "v_loss", "value_loss", "entropy_loss",
+    "entropy", "approx_kl", "clip_fraction", "grad_norm", "gradient_norm",
+    "learning_rate", "sps", "walltime", "rollout_reward_mean", "action_std",
+    "completed_steps", "completed_episode_count", "stopped_by_request",
+    "timeout_rate", "termination_rate", "fall_rate", "obstacle_failure_rate",
+    "body_collision_rate", "reset_pose_replacement_rate", "hand_violation_rate",
+    "elbow_violation_rate", "outside_bounds_rate", "self_contact_rate",
+    "numerical_failure_rate",
+    *(f"body_collision_{region}_rate" for region in
+      ("feet", "legs", "trunk", "head", "arms", "hands")),
+}
+_COMPACT_ROLLOUT_KEYS = {
+    "completed_episodes", "completed_episodes_in_buffer", "episodes", "done_rate",
+    "termination_step_rate", "timeout_step_rate", "timeout_rate", "termination_rate",
+}
+
+
+def compact_metric_allowed(name):
+    """Keep aggregate training signals; omit per-scene/evaluation chart forests.
+
+    This is an explicit opt-in presentation filter, not metric computation.
+    Success rates/counts are passed through unchanged, including omitted rates
+    for empty populations. Filtering precedes scalar conversion so thousands of
+    scene diagnostics and arrays do not add host conversion or serialization.
+    """
+    if not isinstance(name, str) or "/" not in name:
+        return False
+    namespace, key = name.split("/", 1)
+    if namespace == "training":
+        return (key in _COMPACT_TRAINING_KEYS
+                or re.fullmatch(r"(?:leg|upper|arm_conditional|arm_stationary)_std_[a-z_]+", key) is not None
+                or re.fullmatch(r"gpu_\d+/(?:bytes_in_use|peak_bytes_in_use|bytes_limit)", key) is not None)
+    if namespace == "episode":
+        return key in {"sum_reward", "length"} or re.fullmatch(r"reward/[a-zA-Z0-9_]+", key) is not None
+    if namespace == "rollout":
+        return key in _COMPACT_ROLLOUT_KEYS
+    if namespace in {"hand_curriculum", "health"}:
+        return bool(key) and "/" not in key
+    return namespace == "selection" and key in {"best_updated", "proxy_score"}
+
+
 def atomic_json(path, value):
     path = Path(path)
     if path.is_symlink() or (path.exists() and not path.is_file()):
@@ -69,7 +115,10 @@ class GeneralistLogger:
 
     def __init__(self, run_dir, *, project="CAT-wholebody", entity="skvayzer",
                  mode="online", resume=False, config=None, wandb_module=None,
-                 replace_untrained_config=False):
+                 replace_untrained_config=False, compact_logging=False):
+        if type(compact_logging) is not bool:
+            raise ValueError("compact_logging must be a boolean")
+        self.compact_logging = compact_logging
         self.directory = Path(run_dir)
         self._lock = threading.RLock()
         self._run = None
@@ -116,6 +165,8 @@ class GeneralistLogger:
             step = int(step)
             scalars, nonfinite = {}, []
             for name, value in metrics.items():
+                if self.compact_logging and not compact_metric_allowed(name):
+                    continue
                 if getattr(value, "ndim", 0) != 0:
                     continue
                 number = float(value)

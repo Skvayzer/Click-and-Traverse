@@ -109,6 +109,54 @@ def test_launcher_uses_one_continuous_learner_and_resumes_its_state_and_wandb_id
     assert len(selections) == 2
 
 
+def test_training_only_never_evaluates_or_installs_retention_callbacks(launched, monkeypatch):
+    args, _, preparations, calls, loggers, selections, _ = launched
+    args.finetuning = "cat_train_only"
+    args.num_envs, args.batch_size = 24576, 384
+    spec = launcher.plan(args)
+
+    def forbidden(*args, **kwargs):
+        raise AssertionError("Training-only run invoked evaluation or retention")
+
+    validation = importlib.import_module("cat_ppo.furniture.retention_validation")
+    guard = importlib.import_module("cat_ppo.furniture.recovery_guard")
+    monkeypatch.setattr(validation, "RetentionValidator", forbidden)
+    monkeypatch.setattr(guard, "initialize_recovery_state", forbidden)
+    monkeypatch.setattr(guard, "assess_recovery", forbidden)
+    result = launcher.run(args, spec)
+    call = calls[0]
+    assert result["completed_steps"] == 786432
+    assert preparations == [True]
+    assert call["restore_params"] == "mapped-initial-params"
+    assert call["restore_runtime_state"] is None
+    assert call["num_envs"] == 24576
+    assert call["learning_rate"] == .0003
+    assert call["clipping_epsilon"] == .2
+    assert call["entropy_cost"] == .003
+    assert call["num_evals"] == call["num_eval_envs"] == 0
+    assert call["reference_kl_config"] is None
+    assert "recovery_fn" not in call
+    assert len(selections) == 1
+    assert selections[0]["source"] == "training_proxy"
+    assert not (args.run_dir / "validation_baseline.json").exists()
+    assert not (args.run_dir / "recovery_status.json").exists()
+
+    # Legacy terminal callbacks must not overwrite first-arrival success.
+    call["progress_fn"](786432, {"training/goal_success_rate": .1})
+    call["progress_fn"](786432, {"training/goal_success_rate": .7,
+                               "training/resolved_count": 10})
+    events = [json.loads(line) for line in (args.run_dir / "metrics.jsonl").read_text().splitlines()]
+    rates = [event["training/goal_success_rate"] for event in events
+             if "training/goal_success_rate" in event]
+    assert rates == [.7]
+
+
+def test_training_only_rejects_finetuned_source_before_loading(tmp_path):
+    args = launcher.parser().parse_args(["plan", "--warmstart-best", str(tmp_path)])
+    with pytest.raises(ValueError, match="original released CAT"):
+        launcher.plan(args)
+
+
 def test_fresh_learner_can_reuse_only_verified_unused_logging_identity(launched, monkeypatch):
     args, spec, preparations, calls, loggers, _, _ = launched
     from cat_ppo.furniture import untrained_retry

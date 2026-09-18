@@ -21,8 +21,8 @@ def parser():
     result.add_argument("--bank-manifest", type=Path, default=ROOT / "data/furniture/cat_diversity_v2_20260916/manifest.json")
     result.add_argument("--run-dir", type=Path, default=ROOT / "outputs/cat_wholebody_diversity_v2")
     result.add_argument("--profile", choices=("single_gpu_32gb", "released"), default="single_gpu_32gb")
-    result.add_argument("--finetuning", choices=("stabilized", "gentle", "released", "hand_protection", "hand_recovery"), default="stabilized",
-                        help="Stabilized: gentle PPO, bounded upper exploration, physical target penalties and retention validation")
+    result.add_argument("--finetuning", choices=("cat_train_only", "stabilized", "gentle", "released", "hand_protection", "hand_recovery"), default="cat_train_only",
+                        help="Default: released CAT PPO and checkpoint; training only, no retention or rollback")
     result.add_argument("--num-envs", type=int, help="Simulator parallelism; leaves PPO batch geometry unchanged")
     result.add_argument("--batch-size", type=int, help="Explicit trajectories/minibatch resource override")
     result.add_argument("--seed", type=int, default=0)
@@ -48,6 +48,8 @@ def plan(args):
                              batch_size=args.batch_size, seed=args.seed, finetuning=args.finetuning)
     warmstart_best = getattr(args, "warmstart_best", None)
     warmstart_provenance = None
+    if args.finetuning == "cat_train_only" and warmstart_best:
+        raise ValueError("cat_train_only starts from the original released CAT checkpoint, never a fine-tuned best checkpoint")
     if warmstart_best:
         if args.finetuning not in ("hand_protection", "hand_recovery"):
             raise ValueError("Selected-best warm start is only supported by the hand_protection profile")
@@ -87,6 +89,11 @@ def plan(args):
     if warmstart_provenance:
         result.update(warmstart_best=warmstart_provenance,
                       checkpoint_compatibility="Same 222/310 feature layout and 29 actions; selected-best weights, fresh optimizer")
+    if config["fine_tuning"].get("training_only"):
+        result["logging"] = "One W&B run; four first-outcome training success rates with attempt counts; compact diagnostics"
+        result["success_definition"] = (
+            "First clean goal arrival succeeds; earlier/simultaneous fault or timeout before arrival fails. "
+            "One outcome per physical episode. Later collisions still terminate and penalize physically.")
     return result
 
 
@@ -144,6 +151,7 @@ def prepare(args, specification, *, restore_model=True):
     env_config = wholebody_config(ConfigDict(config["env_config"]), bank_manifest=args.bank_manifest.resolve(),
                                  stabilization=config["fine_tuning"].get("upper_stabilization", False),
                                  hand_protection=config["fine_tuning"].get("hand_protection", False))
+    env_config.wholebody_first_outcome_metrics = bool(config["fine_tuning"].get("training_only"))
     if specification.get("body_collision_bank"):
         env_config.wholebody.body_collision.update(dict(
             enabled=True, bank_manifest=specification["body_collision_bank"],
@@ -193,7 +201,10 @@ def prepare(args, specification, *, restore_model=True):
                 raise ValueError("Protected warm-start archive changed after planning")
         else:
             source_path, manifest = fetch_native_checkpoint(ROOT / "data/furniture/native_generalist_v1")
-            provenance = {"model_revision": manifest["revision"]}
+            provenance = {"model_revision": manifest["revision"],
+                          "source_repo": manifest["repo_id"],
+                          "source_checkpoint": manifest["checkpoint_path"],
+                          "source_files_sha256": {item["path"]: item["sha256"] for item in manifest["files"]}}
         source = fixed_noise_source if fixed_noise_source is not None else load_native(source_path)
         network = factory(shapes, environment.action_size)
         keys = jax.random.split(jax.random.PRNGKey(args.seed), 2)
@@ -203,7 +214,10 @@ def prepare(args, specification, *, restore_model=True):
         warmstart["parity"] = verify_warmstart_parity(source, target, source_contract, contract,
                                                      normalize_observations=False, seed=args.seed)
         warmstart.update(provenance)
-        warmstart["parity_scope"] = ("raw actor MLP and critic; source state-dependent leg noise preserved"
+        warmstart["parity_scope"] = (
+            "raw actor MLP and critic; original leg means and scales preserved; native independent action distribution"
+            if distribution_settings is None else
+            "raw actor MLP and critic; source state-dependent leg noise preserved"
             if fixed_noise_source is not None else "raw actor MLP and critic; arm conditional distribution intentionally changes")
         target = jax.tree.map(jnp.asarray, target)
     record = dict(specification, environment_config=env_config.to_dict(), observation_contract=contract,
@@ -396,6 +410,7 @@ def run(args, specification):
             store = BestCheckpointStore(directory)
             status["phase"] = "logger"
             logger = GeneralistLogger(directory, **destination, resume=True, config=record,
+                **({"compact_logging": True} if specification["config"]["fine_tuning"].get("training_only") else {}),
                 **({"replace_untrained_config": True} if retry_identity is not None else {}))
             status.update(status="running", phase="learner_initialization")
             atomic_json(status_path, status)
@@ -466,6 +481,12 @@ def run(args, specification):
                 if int(step) > status.get("observed_steps", 0):
                     status["observed_steps"] = int(step)
                     atomic_json(status_path, status)
+                if (specification["config"]["fine_tuning"].get("training_only")
+                        and "training/resolved_count" not in metrics):
+                    # The legacy episode callback counts outcomes at physical
+                    # termination. Do not mix that definition into the new curve.
+                    metrics = {key: value for key, value in metrics.items()
+                               if key != "training/goal_success_rate"}
                 logger.log(step, metrics)
 
             def scored(step, make_policy, params, network_config, metrics, source):
