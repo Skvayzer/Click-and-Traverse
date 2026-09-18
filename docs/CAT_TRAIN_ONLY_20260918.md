@@ -79,3 +79,31 @@ Storage remains one selected best model, ranked only by the training rollout
 reward proxy, plus one atomically overwritten complete `resume.msgpack`. Saving
 a best model never reloads it into the learner. The old stopped run and its
 selected checkpoint remain preserved separately.
+
+## Verified launch
+
+The run is [ca47143c](https://wandb.ai/skvayzer/CAT-wholebody/runs/ca47143c),
+with its [four-chart training view](https://wandb.ai/skvayzer/CAT-wholebody?nw=9b4d8422c6a).
+It runs on `konstantinsmirnov@dep-1` (system hostname `ws008090`) from the isolated
+source commit `a620d297e8cb5e18025a61677277bcd9672810f8`.
+
+Four full PPO updates and durable resume saves completed: **3,145,728 training
+transitions**, at **24,576 environments / batch 384**. Peak live JAX allocation
+was **34,301,517,824 bytes (31.9 GiB)**. The device reported **46,836 MiB allocated**
+including the preallocated pool, **1,797 MiB free**, and **100% GPU utilization**
+during an update. These are distinct measurements: pool reservation is not live
+tensor usage. Warm PPO throughput was approximately **22,285 transitions/s**,
+excluding separate checkpoint writes. Preallocation uses a 0.94 memory fraction
+to avoid fragmented pool growth.
+
+The released actor means/scales and critic had zero initialization parity error.
+Remote W&B verification found one running project experiment, all four training
+success curves, and no validation, baseline, recovery, or per-scene history keys.
+The actual Safari page showed the four charts populated for this single run.
+The old recovery experiment remains stopped at 768,081,920 transitions.
+
+Validation: `MUJOCO_GL=glfw JAX_PLATFORMS=cpu .venv/bin/python -m pytest -q tests`
+passed **760 tests**. Two additional real CPU PPO tests, added after that suite
+was collected, passed separately and verified first-outcome counts, exact
+resume, finite metrics, and that no evaluator is constructed. No policy
+evaluation episodes were run on the training GPU.
