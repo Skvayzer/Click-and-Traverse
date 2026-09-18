@@ -15,6 +15,13 @@ capacity; learned hand-protection skill still needs training and later videos.
 - Seven-day scheduler allocation, no learner-step cap. Existing dep-1 training
   was not modified.
 
+The production run completed its first optimizer update at **1,179,648 physical
+transitions**. Local metrics were finite, W&B reported `state=running` at that
+same step with `health/nonfinite=0`, and both the best policy and full resume
+snapshot were saved. A diagnostic inside its Slurm allocation measured
+33,358 MiB used and 15,152 MiB free. Initial hand success was zero after only
+32 control steps per environment; this is startup evidence, not a skill result.
+
 Implementation commit: `2d2f76acc20536e07979497ef589bbe0e192d646`.
 Validation: 171 focused tests passed; 18 relevant tests passed again after the
 metadata correction. The rerun is not an additional set of 18 unique tests.
