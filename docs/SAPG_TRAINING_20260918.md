@@ -181,10 +181,42 @@ The previously completed atomic resume snapshot remains the recovery boundary.
 
 ## Validation status
 
-Source review covers grouping, frozen targets, importance clipping, leader
-export, and resume identity. Automated tests cover network parity, numerical
-loss cases, actual tiny learner updates, and exact resume. Execution results
-must be reported separately; **a GPU correctness check is pending in this
-document, and no learning-quality improvement is claimed**. A tiny correctness
-run can establish valid updates and checkpoint behavior, not convergence,
-overnight stability, or 24,576-environment memory capacity.
+**189 focused CPU tests passed:** 37 network and exact expansion tests, plus
+152 SAPG-loss/learner, existing PPO continuity, launcher/configuration, logging,
+field-argument, checkpoint, and resume regression tests. These include real
+learner updates, exact interrupted/resumed equality, leader export/load parity,
+and counting physical outcomes without counting the copied training samples.
+
+The broader existing suite was stopped after 275 passing tests while compiling
+unrelated whole-body MJX CPU tests; this is not a claim that the entire suite
+completed. The focused regressions above completed successfully.
+
+**Actual MJX GPU verification passed on tl-server-0, Slurm job 675**, exit `0:0`,
+using implementation commit `6760832163185bed403b899f196bd17ef724905f`:
+
+- Loaded all 2,362 scene layouts, the current collision/reset banks, and the
+  original released checkpoint. All six expanded policies passed exact
+  parameter-preservation checks.
+- Completed two actual training updates with a deliberately small verification
+  batch: 12 environments, 4-step rollouts, 2 minibatches of 6 trajectories,
+  and 2 optimizer passes. Total: 96 physical transitions; this does not mean
+  every scene was visited. Production settings remain the table above.
+- Actor weights changed (maximum absolute change `0.0022403023`); final
+  parameters were finite. Full resume state retained the embeddings.
+- Saved and reloaded the folded leader with ordinary Brax checkpoint tools.
+  Deterministic action error was `0.0` in the full-float32 export comparison.
+- Elapsed job time: 6 minutes 16 seconds, including bank preparation and JIT
+  compilation. No W&B run or evaluation episodes were created by this check.
+
+The repeatable checker is `scripts/verify_sapg_training.py --report /absolute/path/report.json`
+inside a one-GPU Slurm allocation. The 8.7 KB evidence file is at
+`outputs/sapg_verification_20260918/gpu_report.json` on the server and
+`/Users/konstantinsmirnov/research/CAT-SAPG-Implementation-20260918/gpu_report.json`
+on the laptop. Initial verification job 672 exposed a reduced-precision GPU
+parity-check artifact; the exact parameter check fixed it. Job 674 was cancelled
+to correct the checker's Orbax export path before the successful run.
+
+This establishes working updates and checkpoint behavior, not convergence,
+overnight stability, or 24,576-environment memory capacity. No learning-quality
+improvement is claimed. No sustained SAPG training job was started; existing
+dep-1 training was not modified.
