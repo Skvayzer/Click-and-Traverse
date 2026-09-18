@@ -6,6 +6,7 @@ import fcntl
 import functools
 import hashlib
 import json
+import math
 import os
 from pathlib import Path
 import subprocess
@@ -21,6 +22,10 @@ def parser():
     result.add_argument("--bank-manifest", type=Path, default=ROOT / "data/furniture/cat_diversity_v2_20260916/manifest.json")
     result.add_argument("--run-dir", type=Path, default=ROOT / "outputs/cat_wholebody_diversity_v2")
     result.add_argument("--profile", choices=("single_gpu_32gb", "released"), default="single_gpu_32gb")
+    result.add_argument("--algorithm", choices=("ppo", "sapg"), default="ppo",
+                        help="PPO remains the default; SAPG adds shared conditioned policies and leader data sharing")
+    result.add_argument("--sapg-num-policies", type=int, default=6)
+    result.add_argument("--sapg-embedding-dim", type=int, default=16)
     result.add_argument("--finetuning", choices=("cat_train_only", "stabilized", "gentle", "released", "hand_protection", "hand_recovery"), default="cat_train_only",
                         help="Default: released CAT PPO and checkpoint; training only, no retention or rollback")
     result.add_argument("--num-envs", type=int, help="Simulator parallelism; leaves PPO batch geometry unchanged")
@@ -44,8 +49,20 @@ def parser():
 def plan(args):
     from cat_ppo.furniture.control import wholebody_observation_contract
     contract = wholebody_observation_contract()
-    config = training_config(profile=args.profile, num_envs=args.num_envs,
-                             batch_size=args.batch_size, seed=args.seed, finetuning=args.finetuning)
+    algorithm = getattr(args, "algorithm", "ppo")
+    num_envs, batch_size = args.num_envs, args.batch_size
+    if algorithm == "sapg" and args.profile == "single_gpu_32gb":
+        # A conservative divisible resource profile; larger explicit values
+        # still require memory measurement on the target GPU.
+        groups = getattr(args, "sapg_num_policies", 6)
+        num_envs = groups * 256 if num_envs is None else num_envs
+        batch_size = groups * 32 if batch_size is None else batch_size
+    config = training_config(profile=args.profile, num_envs=num_envs,
+                             batch_size=batch_size, seed=args.seed, finetuning=args.finetuning)
+    if algorithm == "sapg":
+        from cat_ppo.learning.policy.sapg.config import configure_training
+        configure_training(config, num_policies=getattr(args, "sapg_num_policies", 6),
+                           embedding_dim=getattr(args, "sapg_embedding_dim", 16))
     warmstart_best = getattr(args, "warmstart_best", None)
     warmstart_provenance = None
     if args.finetuning == "cat_train_only" and warmstart_best:
@@ -94,6 +111,9 @@ def plan(args):
         result["success_definition"] = (
             "First clean goal arrival succeeds; earlier/simultaneous fault or timeout before arrival fails. "
             "One outcome per physical episode. Later collisions still terminate and penalize physically.")
+    if algorithm == "sapg":
+        result["logging"] += "; success rates pool all policy groups; best model uses leader rollout reward"
+        result["checkpoint_policy"] = "one folded leader best model and one complete SAPG resume.msgpack"
     return result
 
 
@@ -220,6 +240,35 @@ def prepare(args, specification, *, restore_model=True):
             "raw actor MLP and critic; source state-dependent leg noise preserved"
             if fixed_noise_source is not None else "raw actor MLP and critic; arm conditional distribution intentionally changes")
         target = jax.tree.map(jnp.asarray, target)
+    sapg_settings = config.get("sapg")
+    if sapg_settings is not None:
+        from cat_ppo.learning.policy.sapg.networks import expand_ppo_params, make_sapg_networks
+        plain_factory = factory
+        factory = functools.partial(make_sapg_networks,
+            policy_hidden_layer_sizes=tuple(net_config["policy_hidden_layer_sizes"]),
+            value_hidden_layer_sizes=tuple(net_config["value_hidden_layer_sizes"]),
+            policy_obs_key="state", value_obs_key="privileged_state",
+            num_policies=sapg_settings["num_policies"], embedding_dim=sapg_settings["embedding_dim"])
+        if target is not None:
+            base_target = target
+            target = expand_ppo_params(target, num_policies=sapg_settings["num_policies"],
+                                       embedding_dim=sapg_settings["embedding_dim"], seed=args.seed)
+            plain, conditioned = plain_factory(shapes, environment.action_size), factory(shapes, environment.action_size)
+            observations = {key: jax.random.normal(jax.random.fold_in(jax.random.PRNGKey(args.seed), index), (16,) + shape)
+                            for index, (key, shape) in enumerate(shapes.items())}
+            expected_actor = plain.policy_network.apply(base_target[0], base_target[1], observations)
+            expected_value = plain.value_network.apply(base_target[0], base_target[2], observations)
+            errors = []
+            for index in range(sapg_settings["num_policies"]):
+                actor = conditioned.policy_network.apply(target[0], target[1], observations, policy_ids=index)
+                value = conditioned.value_network.apply(target[0], target[2], observations, policy_ids=index,
+                                                         policy_embeddings=target[1]["policy_embeddings"])
+                errors.append(max(float(jnp.max(jnp.abs(actor - expected_actor))),
+                                  float(jnp.max(jnp.abs(value - expected_value)))))
+            if not all(math.isfinite(error) and error <= 1e-5 for error in errors):
+                raise ValueError(f"SAPG initial actor/critic parity failed: {errors}")
+            warmstart["sapg_parity"] = {"max_abs_error_by_policy": errors,
+                                        "scope": "all 29 action means/scales and critic, after CAT expansion"}
     record = dict(specification, environment_config=env_config.to_dict(), observation_contract=contract,
                   warmstart=warmstart, code=code_identity(),
                   bank_sha256=hashlib.sha256(args.bank_manifest.read_bytes()).hexdigest(),
@@ -492,6 +541,9 @@ def run(args, specification):
             def scored(step, make_policy, params, network_config, metrics, source):
                 nonlocal recovery_state, pending_recovery
                 del make_policy
+                if specification["config"].get("sapg") is not None:
+                    from cat_ppo.learning.policy.sapg.networks import collapse_policy_params
+                    params = collapse_policy_params(params, policy_id=0)
                 if validator is not None:
                     interval = validation_settings["interval_updates"] * transitions_per_update
                     if int(step) % interval:
@@ -539,7 +591,9 @@ def run(args, specification):
                     source=source, write_checkpoint=native_writer(params, network_config, int(step)),
                     contract=record["observation_contract"],
                     provenance={"code": record["code"], "bank_sha256": record["bank_sha256"],
-                                "selection": "training reward proxy; no held-out evaluation"})
+                                "selection": ("leader training reward proxy; folded SAPG policy 0; no held-out evaluation"
+                                              if specification["config"].get("sapg") is not None else
+                                              "training reward proxy; no held-out evaluation")})
                 logger.log(step, {"selection/best_updated": int(selected)})
 
             def recover(step):
@@ -595,6 +649,7 @@ def run(args, specification):
                     wrap_env_fn=wrap_for_cat_wholebody_training, network_factory=factory,
                     restore_params=target, restore_value_fn=True,
                     reference_kl_config=reference_kl_config(environment, specification["config"]),
+                    **({"sapg_config": specification["config"]["sapg"]} if "sapg" in specification["config"] else {}),
                     **({"recovery_fn": recover} if recovery_settings is not None else {}),
                     restore_runtime_state=runtime, runtime_metadata=identity,
                     runtime_checkpoint_fn=save_runtime, save_checkpoint_path=None,

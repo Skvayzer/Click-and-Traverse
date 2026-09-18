@@ -805,6 +805,7 @@ def train(
     runtime_metadata: Optional[Mapping[str, Any]] = None,
     reference_kl_config: Optional[Mapping[str, Any]] = None,
     recovery_fn: Optional[Callable[[int], Optional[Mapping[str, Any]]]] = None,
+    sapg_config: Optional[Mapping[str, Any]] = None,
 ):
     """PPO training.
 
@@ -900,6 +901,19 @@ def train(
     Returns:
       Tuple of (make_policy function, network params, metrics)
     """
+    from cat_ppo.learning.policy.sapg.config import normalize_config
+    sapg_config = normalize_config(sapg_config)
+    if sapg_config is not None:
+        if (num_evals or normalize_observations or augment_pixels or madrona_backend
+                or bool(_cfg_get(dagger_config, "enable", False))
+                or reference_kl_config is not None or recovery_fn is not None
+                or save_checkpoint_path is not None or restore_checkpoint_path is not None):
+            raise ValueError("SAPG supports vector-observation training only, without evaluation, "
+                             "normalization, DAgger, retention, or generic checkpoint loading/saving; "
+                             "use the whole-body launcher for original-model initialization and leader export")
+        groups = sapg_config["num_policies"]
+        if num_envs % groups or batch_size % groups:
+            raise ValueError("SAPG num_envs and batch_size must be divisible by num_policies")
     if continuous:
         if num_evals != 0 or num_resets_per_eval != 0 or num_training_epochs is not None:
             raise ValueError("continuous training requires num_evals=0, num_resets_per_eval=0 and no num_training_epochs")
@@ -938,6 +952,8 @@ def train(
         local_devices_to_use,
     )
     device_count = local_devices_to_use * process_count
+    if sapg_config is not None and device_count != 1:
+        raise ValueError("SAPG currently supports exactly one device on one host")
     if (continuous or runtime_checkpoint_fn is not None or restore_runtime_state is not None) and process_count != 1:
         raise ValueError("Continuous runtime snapshots currently require a single host")
 
@@ -1028,6 +1044,13 @@ def train(
         obs_shape, env.action_size, preprocess_observations_fn=normalize
     )
     make_policy = ppo_networks.make_inference_fn(ppo_network)
+    make_rollout_policy = make_policy
+    if sapg_config is not None:
+        from cat_ppo.learning.policy.sapg import losses as sapg_losses, networks as sapg_networks
+        make_policy = sapg_networks.make_inference_fn(ppo_network)
+        policy_ids = jnp.repeat(jnp.arange(sapg_config["num_policies"], dtype=jnp.int32),
+                               num_envs // sapg_config["num_policies"])
+        make_rollout_policy = sapg_networks.make_inference_fn(ppo_network, policy_ids=policy_ids)
 
     use_dagger = bool(_cfg_get(dagger_config, "enable", False))
     if use_dagger and reference_config is not None:
@@ -1105,6 +1128,12 @@ def train(
             normalize_advantage=normalize_advantage,
         )
 
+    if sapg_config is not None:
+        loss_fn = functools.partial(
+            sapg_losses.compute_sapg_loss, ppo_network=ppo_network,
+            entropy_cost=entropy_cost, clipping_epsilon=clipping_epsilon,
+            num_policies=sapg_config["num_policies"])
+
     if reference_config is not None:
         original_ppo_loss = loss_fn
 
@@ -1134,6 +1163,12 @@ def train(
         normalize_observations=normalize_observations,
         network_factory=network_factory,
     )
+    if sapg_config is not None:
+        # Best exports fold one embedding into the first-layer biases. Their
+        # metadata must describe the resulting ordinary CAT/Brax network.
+        for name in ("num_policies", "embedding_dim"):
+            if name in ckpt_config.network_factory_kwargs:
+                del ckpt_config.network_factory_kwargs[name]
 
     def minibatch_step(
         carry,
@@ -1209,7 +1244,7 @@ def train(
         training_state, state, key = carry
         key_sgd, key_generate_unroll, new_key = jax.random.split(key, 3)
 
-        policy = make_policy(
+        policy = make_rollout_policy(
             (
                 training_state.normalizer_params,
                 training_state.params.policy,
@@ -1245,18 +1280,37 @@ def train(
         )
         assert data.discount.shape[1:] == (unroll_length,)
 
+        optimization_data = data
+        rollout_reward = jnp.mean(data.reward)
+        if sapg_config is not None:
+            key_sgd, key_prepare = jax.random.split(key_sgd)
+            optimization_data = sapg_losses.prepare_rollout(
+                training_state.params, training_state.normalizer_params, data, key_prepare,
+                ppo_network, num_policies=sapg_config["num_policies"],
+                discounting=discounting, reward_scaling=reward_scaling, gae_lambda=gae_lambda,
+                normalize_advantage=normalize_advantage,
+                preparation_chunk_size=sapg_config["prepare_chunk_size"])
+            leader = data.extras["policy_extras"]["policy_id"] == 0
+            rollout_reward = jnp.sum(jnp.where(leader, data.reward, 0.)) / jnp.sum(leader)
+
         if log_training_metrics:  # log unroll metrics
-            rollout_logits = ppo_network.policy_network.apply(
-                training_state.normalizer_params,
-                training_state.params.policy,
-                data.observation,
-            )
-            parametric_distribution = ppo_network.parametric_action_distribution
-            rollout_scales = parametric_distribution.create_dist(rollout_logits).scale
-            action_std = jnp.mean(rollout_scales)
-            distribution_metrics = _current_distribution_metrics(
-                parametric_distribution, rollout_scales,
-            )
+            if sapg_config is not None:
+                # Preparation already computes this in bounded chunks; avoid
+                # materializing a full-rollout actor activation tensor again.
+                action_std = jnp.mean(optimization_data.extras["policy_extras"]["sapg_action_std"][:data.reward.shape[0]])
+                distribution_metrics = {}
+            else:
+                rollout_logits = ppo_network.policy_network.apply(
+                    training_state.normalizer_params,
+                    training_state.params.policy,
+                    data.observation,
+                )
+                parametric_distribution = ppo_network.parametric_action_distribution
+                rollout_scales = parametric_distribution.create_dist(rollout_logits).scale
+                action_std = jnp.mean(rollout_scales)
+                distribution_metrics = _current_distribution_metrics(
+                    parametric_distribution, rollout_scales,
+                )
             # Stabilized runs use unified current-rollout rates plus fixed
             # validation. Avoid thousands of stale per-scene chart series.
             if has_scene_ids and not distribution_metrics:
@@ -1291,7 +1345,7 @@ def train(
         (optimizer_state, params, _), metrics = jax.lax.scan(
             functools.partial(
                 sgd_step,
-                data=data,
+                data=optimization_data,
                 normalizer_params=normalizer_params,
                 dagger_phase=dagger_phase,
             ),
@@ -1306,7 +1360,7 @@ def train(
             normalizer_params=normalizer_params,
             env_steps=training_state.env_steps + env_step_per_training_step,
         )
-        metrics = {**metrics, "rollout_reward_mean": jnp.mean(data.reward)}
+        metrics = {**metrics, "rollout_reward_mean": rollout_reward}
         return (new_training_state, state, new_key), metrics
 
     def training_epoch(
@@ -1371,6 +1425,10 @@ def train(
         policy=ppo_network.policy_network.init(key_policy),
         value=ppo_network.value_network.init(key_value),
     )
+    if sapg_config is not None:
+        table = init_params.policy.get("policy_embeddings")
+        if table is None or table.shape != (sapg_config["num_policies"], sapg_config["embedding_dim"]):
+            raise ValueError("SAPG requires make_sapg_networks with matching policy count and embedding dimension")
     if use_dagger:
         teacher_init_policy = teacher_ppo_network.policy_network.init(key_policy)
         for teacher_idx, loaded_params in enumerate(teacher_params):
@@ -1411,6 +1469,11 @@ def train(
 
     if restore_params is not None:
         logging.info("Restoring TrainingState from `restore_params`.")
+        if sapg_config is not None:
+            _assert_same_tree_shapes("SAPG restored actor", init_params.policy, restore_params[1])
+            _assert_same_tree_shapes("SAPG restored normalizer", training_state.normalizer_params, restore_params[0])
+            if restore_value_fn:
+                _assert_same_tree_shapes("SAPG restored critic", init_params.value, restore_params[2])
         value_params = restore_params[2] if restore_value_fn else init_params.value
         training_state = training_state.replace(
             normalizer_params=restore_params[0],
@@ -1462,6 +1525,8 @@ def train(
     }
     if reference_config is not None:
         runtime_contract["reference_kl"] = reference_config
+    if sapg_config is not None:
+        runtime_contract["sapg"] = sapg_config
     if recovery_fn is not None:
         runtime_contract["recovery_optimizer"] = "mutable-adam-learning-rate-v1"
     restored_walltime = 0.0
