@@ -184,6 +184,53 @@ def collapse_policy_params(params, policy_id=0):
     return normalizer, collapse_one(actor), collapse_one(value)
 
 
+def verify_expansion_preserves_parameters(base, expanded):
+    """Prove warm-start equality by folding every policy into the base tree.
+
+    This checks exact normalizer/actor/critic leaf values, shapes and dtypes,
+    plus pytree container types. It does not compare forward passes with
+    different GEMM dimensions: GPU reduced-precision kernels can round those
+    differently even when the added input weights are exactly zero. No input
+    tree or training precision setting is changed. Mismatches fail closed.
+    """
+    if not isinstance(base, (tuple, list)) or len(base) != 3:
+        raise ValueError("Expected base (normalizer, actor, value) parameters")
+    if not isinstance(expanded, (tuple, list)) or len(expanded) != 3:
+        raise ValueError("Expected expanded (normalizer, actor, value) parameters")
+    if EMBEDDINGS_KEY not in expanded[1]:
+        raise ValueError("Expanded actor has no SAPG policy_embeddings table")
+    table = _check_table(expanded[1][EMBEDDINGS_KEY])
+    if not np.isfinite(np.asarray(table)).all():
+        raise ValueError("SAPG policy_embeddings must be finite")
+    reference_pairs, reference_structure = jax.tree_util.tree_flatten_with_path(base)
+    reference = []
+    for path, value in reference_pairs:
+        array = np.asarray(value)
+        if not np.isfinite(array).all():
+            raise ValueError(f"Base parameter {jax.tree_util.keystr(path)} must be finite")
+        reference.append((jax.tree_util.keystr(path), array))
+    errors = []
+    for policy_id in range(table.shape[0]):
+        folded = collapse_policy_params(expanded, policy_id=policy_id)
+        leaves, structure = jax.tree_util.tree_flatten(folded)
+        if structure != reference_structure:
+            raise ValueError(f"SAPG expansion changed policy {policy_id} parameter tree structure/types")
+        for (path, expected), value in zip(reference, leaves):
+            actual = np.asarray(value)
+            if actual.shape != expected.shape or actual.dtype != expected.dtype:
+                raise ValueError(f"SAPG expansion changed policy {policy_id} parameter {path} shape/dtype")
+            if not np.isfinite(actual).all():
+                raise ValueError(f"SAPG expansion policy {policy_id} parameter {path} must be finite")
+            if not np.array_equal(expected, actual):
+                error = float(np.max(np.abs(actual.astype(np.float64) - expected.astype(np.float64)), initial=0))
+                raise ValueError(
+                    f"SAPG expansion changed policy {policy_id} parameter {path}; max_abs_error={error}"
+                )
+        errors.append(0.0)
+    return {"method": "exact_folded_parameter_equality", "num_policies": table.shape[0],
+            "max_abs_error_by_policy": errors}
+
+
 def make_sapg_networks(
     observation_size: types.ObservationSize,
     action_size: int,

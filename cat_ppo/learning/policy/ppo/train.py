@@ -897,6 +897,11 @@ def train(
         scene_mask for frozen initial actor retention on the same observations.
         Adds mean selected-transition KL(reference || current), summing selected
         action dimensions. Frozen actor/statistics are included in exact resumes.
+      sapg_config: optional policy count, embedding dimension and target-preparation
+        chunk size. Requires matching SAPG networks and training-only settings.
+        Returns full conditioned parameters and leader-default inference. Scored
+        callbacks receive full parameters but ordinary leader-export metadata;
+        the whole-body launcher folds policy 0 before saving its best model.
 
     Returns:
       Tuple of (make_policy function, network params, metrics)

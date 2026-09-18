@@ -6,7 +6,6 @@ import fcntl
 import functools
 import hashlib
 import json
-import math
 import os
 from pathlib import Path
 import subprocess
@@ -242,8 +241,9 @@ def prepare(args, specification, *, restore_model=True):
         target = jax.tree.map(jnp.asarray, target)
     sapg_settings = config.get("sapg")
     if sapg_settings is not None:
-        from cat_ppo.learning.policy.sapg.networks import expand_ppo_params, make_sapg_networks
-        plain_factory = factory
+        from cat_ppo.learning.policy.sapg.networks import (
+            expand_ppo_params, make_sapg_networks, verify_expansion_preserves_parameters,
+        )
         factory = functools.partial(make_sapg_networks,
             policy_hidden_layer_sizes=tuple(net_config["policy_hidden_layer_sizes"]),
             value_hidden_layer_sizes=tuple(net_config["value_hidden_layer_sizes"]),
@@ -253,22 +253,10 @@ def prepare(args, specification, *, restore_model=True):
             base_target = target
             target = expand_ppo_params(target, num_policies=sapg_settings["num_policies"],
                                        embedding_dim=sapg_settings["embedding_dim"], seed=args.seed)
-            plain, conditioned = plain_factory(shapes, environment.action_size), factory(shapes, environment.action_size)
-            observations = {key: jax.random.normal(jax.random.fold_in(jax.random.PRNGKey(args.seed), index), (16,) + shape)
-                            for index, (key, shape) in enumerate(shapes.items())}
-            expected_actor = plain.policy_network.apply(base_target[0], base_target[1], observations)
-            expected_value = plain.value_network.apply(base_target[0], base_target[2], observations)
-            errors = []
-            for index in range(sapg_settings["num_policies"]):
-                actor = conditioned.policy_network.apply(target[0], target[1], observations, policy_ids=index)
-                value = conditioned.value_network.apply(target[0], target[2], observations, policy_ids=index,
-                                                         policy_embeddings=target[1]["policy_embeddings"])
-                errors.append(max(float(jnp.max(jnp.abs(actor - expected_actor))),
-                                  float(jnp.max(jnp.abs(value - expected_value)))))
-            if not all(math.isfinite(error) and error <= 1e-5 for error in errors):
-                raise ValueError(f"SAPG initial actor/critic parity failed: {errors}")
-            warmstart["sapg_parity"] = {"max_abs_error_by_policy": errors,
-                                        "scope": "all 29 action means/scales and critic, after CAT expansion"}
+            # Exact parameter equality after folding proves preservation for
+            # every input. Default GPU GEMM precision can round differently
+            # merely because zero input rows change the matrix dimensions.
+            warmstart["sapg_parity"] = verify_expansion_preserves_parameters(base_target, target)
     record = dict(specification, environment_config=env_config.to_dict(), observation_contract=contract,
                   warmstart=warmstart, code=code_identity(),
                   bank_sha256=hashlib.sha256(args.bank_manifest.read_bytes()).hexdigest(),

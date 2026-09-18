@@ -63,8 +63,11 @@ Initialization loads the **original released CAT checkpoint**, expands its actor
 and critic for the whole-body task, and starts fresh Adam state. Newly added
 action scales initialize to `0.05`. Added embedding input weights initialize to
 zero, preserving all six policies' initial outputs; embeddings initialize with
-standard deviation `0.01`. The launcher checks actor/critic parity after this
-expansion. A fine-tuned best checkpoint cannot replace original initialization
+standard deviation `0.01`. The launcher folds every policy's embedding and checks
+exact equality of the original normalizer, actor, and critic parameters. This
+proves preservation for every input without relying on GPU matrix-size-dependent
+rounding. The GPU export check uses full float32 products for comparison only;
+training retains the native default precision. A fine-tuned best checkpoint cannot replace original initialization
 under `cat_train_only`.
 
 ## One learner update

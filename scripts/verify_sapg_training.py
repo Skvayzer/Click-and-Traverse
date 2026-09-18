@@ -90,8 +90,11 @@ def main():
     checkpoint.save(export_root, step, exported, export_config)
     deployed = checkpoint.load_policy(export_root / f"{step:012d}", deterministic=True)
     observations = {"state": jnp.zeros((2, 222)), "privileged_state": jnp.zeros((2, 310))}
-    leader_action = make_policy(final, deterministic=True)(observations, jax.random.PRNGKey(0))[0]
-    saved_action = deployed(observations, jax.random.PRNGKey(0))[0]
+    # Compare the mathematical export using full float32 products. This scope
+    # changes only verification: training retains native default GPU precision.
+    with jax.default_matmul_precision("highest"):
+        leader_action = make_policy(final, deterministic=True)(observations, jax.random.PRNGKey(0))[0]
+        saved_action = deployed(observations, jax.random.PRNGKey(0))[0]
     np.testing.assert_allclose(leader_action, saved_action, rtol=1e-5, atol=1e-5)
     report = dict(
         status="passed", kind="bounded actual-MJX SAPG training correctness; not task evaluation or capacity proof",

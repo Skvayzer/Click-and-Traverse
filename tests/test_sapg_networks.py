@@ -16,6 +16,7 @@ from cat_ppo.learning.policy.sapg.networks import (
     expand_ppo_params,
     make_inference_fn,
     make_sapg_networks,
+    verify_expansion_preserves_parameters,
 )
 
 
@@ -53,6 +54,73 @@ def _learned_conditioning(params):
         )
     actor["policy_embeddings"] = jax.random.normal(jax.random.PRNGKey(32), (6, 16)) * .3
     return normalizer, actor, value
+
+
+@pytest.mark.parametrize("frozen", [False, True])
+def test_exact_expansion_verifier_checks_all_policies_and_does_not_mutate(frozen):
+    _, _, original, _ = _fixture(normalize=True, frozen=frozen)
+    expanded = expand_ppo_params(original)
+    before = copy.deepcopy((original, expanded))
+    report = verify_expansion_preserves_parameters(original, expanded)
+    assert report == {"method": "exact_folded_parameter_equality", "num_policies": 6,
+                      "max_abs_error_by_policy": [0.] * 6}
+    for expected, actual in zip(jax.tree.leaves(before), jax.tree.leaves((original, expanded))):
+        np.testing.assert_array_equal(expected, actual)
+
+
+@pytest.mark.parametrize("trunk", [1, 2])
+@pytest.mark.parametrize("layer", ["hidden_0", "hidden_1"])
+@pytest.mark.parametrize("field", ["kernel", "bias"])
+def test_exact_expansion_verifier_rejects_mutated_actor_and_critic_weights_and_biases(trunk, layer, field):
+    _, _, original, _ = _fixture()
+    expanded = expand_ppo_params(original)
+    changed = copy.deepcopy(expanded)
+    weight = changed[trunk]["params"][layer][field]
+    index = (0,) * weight.ndim
+    changed[trunk]["params"][layer][field] = weight.at[index].add(.125)
+    before = copy.deepcopy(changed)
+    with pytest.raises(ValueError, match="changed policy 0 parameter"):
+        verify_expansion_preserves_parameters(original, changed)
+    for expected, actual in zip(jax.tree.leaves(before), jax.tree.leaves(changed)):
+        np.testing.assert_array_equal(expected, actual)
+
+
+@pytest.mark.parametrize("trunk", [1, 2])
+def test_exact_expansion_verifier_detects_conditioning_that_only_changes_last_policy(trunk):
+    _, _, original, _ = _fixture()
+    expanded = expand_ppo_params(original)
+    expanded[1]["policy_embeddings"] = jnp.zeros((6, 16)).at[5, 0].set(1.)
+    kernel = expanded[trunk]["params"]["hidden_0"]["kernel"]
+    expanded[trunk]["params"]["hidden_0"]["kernel"] = kernel.at[-16, 0].set(.25)
+    for policy_id in range(5):
+        for expected, actual in zip(jax.tree.leaves(original),
+                                    jax.tree.leaves(collapse_policy_params(expanded, policy_id))):
+            np.testing.assert_array_equal(expected, actual)
+    with pytest.raises(ValueError, match="changed policy 5 parameter"):
+        verify_expansion_preserves_parameters(original, expanded)
+
+
+@pytest.mark.parametrize("change", ["normalizer", "shape", "dtype", "container", "infinite_base", "nan_table"])
+def test_exact_expansion_verifier_checks_normalizer_shapes_types_and_finiteness(change):
+    _, _, original, _ = _fixture()
+    expanded = expand_ppo_params(original)
+    if change == "normalizer":
+        expanded = (expanded[0].replace(count=expanded[0].count + 1), *expanded[1:])
+    elif change == "shape":
+        mean = dict(expanded[0].mean)
+        mean["state"] = mean["state"][:-1]
+        expanded = (expanded[0].replace(mean=mean), *expanded[1:])
+    elif change == "dtype":
+        bias = expanded[1]["params"]["hidden_1"]["bias"]
+        expanded[1]["params"]["hidden_1"]["bias"] = np.asarray(bias, dtype=np.float64)
+    elif change == "container":
+        expanded = (expanded[0], core.freeze(expanded[1]), expanded[2])
+    elif change == "infinite_base":
+        original = (original[0].replace(count=jnp.asarray(jnp.inf)), *original[1:])
+    elif change == "nan_table":
+        expanded[1]["policy_embeddings"] = expanded[1]["policy_embeddings"].at[0, 0].set(jnp.nan)
+    with pytest.raises(ValueError, match="changed|finite"):
+        verify_expansion_preserves_parameters(original, expanded)
 
 
 @pytest.mark.parametrize("normalize", [False, True])
