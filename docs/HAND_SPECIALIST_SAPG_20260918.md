@@ -1,16 +1,38 @@
 # Hand-protection specialist with SAPG — 18 September 2026
 
-**Status: specialist bank built by CPU Slurm job 676; production-size capacity
-job 677 is running; sustained training is pending.** The 24,576-environment
-candidate has no completed capacity result yet. Commands below are reproduction
-templates. Earlier tiny full-bank SAPG checks do not establish this specialist's
-production capacity or learned skill.
+**Status: sustained training launched on `tl-server-0` as Slurm job 680**, using
+36,864 environments and batch size 576. CPU bank job 676 and both production-size
+capacity checks passed. This establishes initialization and complete-update
+capacity; learned hand-protection skill still needs training and later videos.
+
+- Run: `outputs/cat_hand_specialist_sapg_680`.
+- Pinned source: `outputs/sources/cat_sapg_680_2d2f76acc205`.
+- [W&B run f017f302](https://wandb.ai/skvayzer/CAT-wholebody/runs/f017f302).
+- [Hand-protection success view](https://wandb.ai/skvayzer/CAT-wholebody?nw=2f7040a5654),
+  filtered to this run with one expanded success chart. Its API representation
+  was read back and verified; existing workspaces were preserved.
+- Fresh original checkpoint initialization; no evaluation, retention or rollback.
+- Seven-day scheduler allocation, no learner-step cap. Existing dep-1 training
+  was not modified.
 
 Implementation commit: `2d2f76acc20536e07979497ef589bbe0e192d646`.
 Validation: 171 focused tests passed; 18 relevant tests passed again after the
 metadata correction. The rerun is not an additional set of 18 unique tests.
-Capacity job 677 uses detached source
+Capacity jobs 677 and 679 used detached source
 `outputs/sources/cat_hand_capacity_2d2f76a`.
+
+| Capacity job | Environments | Physical transitions checked | Warm update | NVIDIA used / free |
+|---|---:|---:|---:|---:|
+| 677 | 24,576 | 1,572,864 | 34.04 s | 33,358 / 15,152 MiB |
+| 679 | 36,864 | 2,359,296 | 52.96 s | 33,358 / 15,152 MiB |
+
+Each check completed two native-size updates with finite metrics and parameters,
+preserved runtime embeddings and a verified folded leader export. JAX live peak
+rose from 17.72 GB to 26.36 GB; the allocator retained the same 34.36 GB pool,
+which explains the identical NVIDIA memory readings. These are completed-update
+device snapshots, not a promise of long-run peak usage. Reports are in
+`outputs/hand_specialist_sapg_20260918/capacity_{24576,36864}/gpu_report.json`.
+The sustained run starts afresh and does not reuse the checker's trained weights.
 
 ## Task-only scene collection
 
@@ -136,14 +158,15 @@ SLURM
 export CAT_FIELD_BANK="$CAT_SPECIALIST_BANK/fields/manifest.json"
 export CAT_COLLISION_BANK="$CAT_SPECIALIST_BANK/collision/manifest.json"
 export CAT_RESET_BANK="$CAT_SPECIALIST_BANK/resets/manifest.json"
-export CAT_NUM_ENVS=24576
-export CAT_BATCH_SIZE=384
+export CAT_NUM_ENVS=36864
+export CAT_BATCH_SIZE=576
 ```
 
 The first candidate has 4,096 environments per policy and **786,432 physical
 transitions / 917,504 optimizer samples per update**, before four-pass reuse.
 The larger `36864 / 576` candidate has 6,144 environments per policy and
-1,179,648 physical / 1,376,256 augmented samples. Neither size is certified here.
+1,179,648 physical / 1,376,256 augmented samples. Both passed the bounded capacity
+check; sustained training uses the larger pair.
 
 ```bash
 sbatch --export=ALL <<'SLURM'
@@ -184,7 +207,7 @@ The 3,072 MiB threshold is a capacity screen, not an overnight stability
 guarantee. The checker creates no W&B run or evaluation episodes; its disposable
 updates are not the warm start for sustained training.
 
-## Sustained training template — pending capacity verification
+## Reproduce sustained training
 
 After selecting a resource pair from a successful capacity report, retain the
 same three specialist manifest variables and exact reviewed source commit:
@@ -200,5 +223,8 @@ The recipe creates a detached source worktree and a fresh
 starts again from original pretrained weights. There is no learner-step cap;
 manual cooperative stop or the seven-day Slurm allocation limit ends the job.
 The explicit submission override replaces the recipe's two-day default.
-No specialist launch, W&B run ID, capacity result or learning improvement is
-claimed by this document.
+To stop this specific active run cooperatively, create
+`outputs/cat_hand_specialist_sapg_680/STOP`, or send its batch shell USR1 with
+`scancel --signal=USR1 --batch 680`. The learner completes its update and saves
+its current runtime state. No improvement in learned behavior is claimed from
+the capacity checks.
