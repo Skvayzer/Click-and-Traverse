@@ -148,6 +148,7 @@ celerybeat.pid
 
 # Environments
 .venv
+.venv-mjlab/
 .bootstrap/
 .visual-venv/
 outputs/

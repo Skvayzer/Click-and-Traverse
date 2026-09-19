@@ -54,7 +54,9 @@ class CATSimulation:
         # mjwarp.kinematics writes exactly these arrays. All immutable inputs
         # and qpos are shared; no second physics/contact buffer is allocated.
         with wp.ScopedDevice(device):
-            self._fk_data = replace(raw, **{name: wp.zeros_like(getattr(raw, name)) for name in FK_FIELDS})
+            # Kinematics intentionally does not rewrite static world geoms or
+            # the world quaternion. Preserve their initialized values too.
+            self._fk_data = replace(raw, **{name: wp.clone(getattr(raw, name)) for name in FK_FIELDS})
             self._fk_graph = None
             if self.backend.use_cuda_graph:
                 with wp.ScopedCapture() as capture:
@@ -65,6 +67,10 @@ class CATSimulation:
         self._contact_cache = {}
         self._pair_cache = {}
         self._contact_index = torch.arange(raw.naconmax, device=device)
+        self._initialize_capacity_guard()
+        # The shadow allocation/capture used Warp's allocation stream; finish
+        # it before the first launch on the Torch stream.
+        wp.synchronize_device(device)
 
     def option_contract(self):
         opt = self.model.opt
@@ -76,6 +82,7 @@ class CATSimulation:
     def step(self):
         with self._scope():
             self.backend.step()
+        self._latch_capacity()
         self._contact_cache.clear()
 
     def reset_data(self, env_ids=None):
@@ -96,6 +103,7 @@ class CATSimulation:
         if env_ids is None or len(env_ids) == self.num_envs:
             with self._scope():
                 self.backend.forward()
+            self._latch_capacity()
             self._contact_cache.clear()
             return
         keep = torch.ones(self.num_envs, dtype=torch.bool, device=self.device)
@@ -104,6 +112,7 @@ class CATSimulation:
         contacts = {key: value.clone() for key, value in self._contact_cache.items()}
         with self._scope():
             self.backend.forward()
+        self._latch_capacity()
         for name, values in saved.items():
             getattr(self.data, name)[keep] = values
         self._contact_cache.clear()
@@ -141,22 +150,61 @@ class CATSimulation:
             self._contact_cache[key] = self._compute_contacts(self._pair_cache[key])
         return self._contact_cache[key]
 
+    def _initialize_capacity_guard(self):
+        """Fresh process/load only: autoreset must never erase an overflow."""
+        self._overflow_latch = torch.zeros(self.num_envs, device=self.device, dtype=torch.int32)
+        self._peak_contacts = torch.zeros((), device=self.device, dtype=torch.int32)
+        self._peak_broadphase = torch.zeros_like(self._peak_contacts)
+        self._peak_constraints = torch.zeros_like(self._peak_contacts)
+
+    def _latch_capacity(self):
+        """Remember transient contact/constraint loss without synchronizing CPU.
+
+        Warp reset_data clears per-world overflow flags. Latching immediately
+        after every substep catches errors even when that world resets before
+        the learner finishes collecting its rollout. forward has no advance()
+        overflow check, so inspect its contact/constraint counts as well.
+        """
+        raw = self.backend.wp_data
+        contacts = self.wp.to_torch(raw.nacon)[0]
+        constraints = self.wp.to_torch(raw.nefc)
+        broadphase = self.wp.to_torch(raw.ncollision)[0]
+        # MuJoCo Warp OverflowType: NEFC=1, NJMAX_NNZ=2,
+        # BROADPHASE=4, NARROWPHASE=8 (retained verbatim in diagnostics).
+        self._overflow_latch |= self.wp.to_torch(raw.overflow).to(torch.int32)
+        self._overflow_latch |= (constraints > raw.njmax).to(torch.int32)
+        self._overflow_latch |= (broadphase > raw.naconmax).to(torch.int32) * 4
+        self._overflow_latch |= (contacts > raw.naconmax).to(torch.int32) * 8
+        self._peak_contacts = torch.maximum(self._peak_contacts, contacts.to(torch.int32))
+        self._peak_broadphase = torch.maximum(self._peak_broadphase, broadphase.to(torch.int32))
+        self._peak_constraints = torch.maximum(self._peak_constraints, constraints.max().to(torch.int32))
+
     def capacity_report(self):
         raw = self.backend.wp_data
-        contacts = int(self.wp.to_torch(raw.nacon)[0].item())
-        constraints = int(self.wp.to_torch(raw.nefc).max().item())
-        if contacts > raw.naconmax or constraints > raw.njmax:
-            raise RuntimeError("MuJoCo Warp contact/constraint capacity exceeded")
-        return dict(contacts=contacts, contact_capacity=raw.naconmax,
-                    max_constraints=constraints, constraint_capacity=raw.njmax)
+        self._latch_capacity()
+        flags = self._overflow_latch.detach().cpu()
+        report = dict(contacts=int(self._peak_contacts.item()), contact_capacity=raw.naconmax,
+                      broadphase_candidates=int(self._peak_broadphase.item()),
+                      max_constraints=int(self._peak_constraints.item()), constraint_capacity=raw.njmax,
+                      overflow_worlds=int((flags != 0).sum()))
+        if report['overflow_worlds']:
+            bits = 0
+            for value in flags.unique().tolist(): bits |= int(value)
+            raise RuntimeError(f"MuJoCo Warp capacity overflow latched (bits={bits}, {report}); "
+                               "refusing optimization from a rollout with dropped contacts/constraints")
+        return report
 
     def state_dict(self):
+        # Never checkpoint a corrupt simulation even when a caller omits the
+        # runner's mandatory pre-optimization capacity check.
+        self.capacity_report()
         # New backend resume keeps its persistent dynamics, never imports a JAX
         # contact solver state into Warp. Derived fields are recomputed on load.
         return {name: getattr(self.data, name).clone() for name in
                 dict.fromkeys(("qpos", "qvel", "ctrl", "time", "qfrc_applied", "xfrc_applied", *OBS_FIELDS))}
 
     def load_state_dict(self, state):
+        self._initialize_capacity_guard()
         for name, value in state.items():
             getattr(self.data, name).copy_(value.to(self.device))
         self.forward()
