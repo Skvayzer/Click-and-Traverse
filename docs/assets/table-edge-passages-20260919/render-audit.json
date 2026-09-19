@@ -1,0 +1,112 @@
+[
+  {
+    "scene_id": "table-contrast-train-20260919-forward_protected-745b94da5c71",
+    "mode": "raised",
+    "arm_fraction": 0.95,
+    "root_xyyaw": [
+      4.330192719175214,
+      1.8234098518101973,
+      -0.03380516644077265
+    ],
+    "tabletop_height_m": 0.718780997,
+    "hand_bottom_height_m": [
+      0.8363898545503616,
+      0.8363881260156631
+    ],
+    "hand_bottom_above_table_height_m": [
+      0.11760885755036166,
+      0.11760712901566317
+    ],
+    "hand_min_surface_separation_m": 0.13672712445259094,
+    "body_min_surface_separation_m": 0.04062624275684357,
+    "static_illustration_not_policy_rollout": true
+  },
+  {
+    "scene_id": "table-contrast-train-20260920-forward_protected-875a065d9fa1",
+    "mode": "raised",
+    "arm_fraction": 0.95,
+    "root_xyyaw": [
+      4.262571022328049,
+      1.8178570457218186,
+      -0.04482175023694841
+    ],
+    "tabletop_height_m": 0.7046105690000001,
+    "hand_bottom_height_m": [
+      0.8363898545503616,
+      0.8363881260156631
+    ],
+    "hand_bottom_above_table_height_m": [
+      0.13177928555036156,
+      0.13177755701566307
+    ],
+    "hand_min_surface_separation_m": 0.15101979672908783,
+    "body_min_surface_separation_m": 0.043789103627204895,
+    "static_illustration_not_policy_rollout": true
+  },
+  {
+    "scene_id": "table-contrast-train-20260921-forward_protected-a5b4ab58478a",
+    "mode": "raised",
+    "arm_fraction": 0.95,
+    "root_xyyaw": [
+      4.267375592085545,
+      1.8136754772701518,
+      0.02322903695962264
+    ],
+    "tabletop_height_m": 0.7152369080000001,
+    "hand_bottom_height_m": [
+      0.8363898545503616,
+      0.8363881260156631
+    ],
+    "hand_bottom_above_table_height_m": [
+      0.12115294655036157,
+      0.12115121801566309
+    ],
+    "hand_min_surface_separation_m": 0.14035530388355255,
+    "body_min_surface_separation_m": 0.04156149923801422,
+    "static_illustration_not_policy_rollout": true
+  },
+  {
+    "scene_id": "table-contrast-train-20260919-forward_protected-745b94da5c71",
+    "mode": "nominal",
+    "arm_fraction": 1.0,
+    "root_xyyaw": [
+      4.330192719175214,
+      1.8234098518101973,
+      -0.03380516644077265
+    ],
+    "tabletop_height_m": 0.718780997,
+    "hand_bottom_height_m": [
+      0.507710412144661,
+      0.5077102929353714
+    ],
+    "hand_bottom_above_table_height_m": [
+      -0.21107058485533903,
+      -0.21107070406462858
+    ],
+    "hand_min_surface_separation_m": -0.10662981867790222,
+    "body_min_surface_separation_m": -0.10662981867790222,
+    "static_illustration_not_policy_rollout": true
+  },
+  {
+    "scene_id": "table-contrast-train-20260919-forward_protected-745b94da5c71",
+    "mode": "raised",
+    "arm_fraction": 0.95,
+    "root_xyyaw": [
+      4.330192719175214,
+      1.8234098518101973,
+      -0.03380516644077265
+    ],
+    "tabletop_height_m": 0.718780997,
+    "hand_bottom_height_m": [
+      0.8363898545503616,
+      0.8363881260156631
+    ],
+    "hand_bottom_above_table_height_m": [
+      0.11760885755036166,
+      0.11760712901566317
+    ],
+    "hand_min_surface_separation_m": 0.13672712445259094,
+    "body_min_surface_separation_m": 0.04062624275684357,
+    "static_illustration_not_policy_rollout": true
+  }
+]

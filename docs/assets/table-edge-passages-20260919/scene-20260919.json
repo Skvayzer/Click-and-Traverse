@@ -1,0 +1,1908 @@
+{
+  "schema": "cat-furniture-scene-v1",
+  "scene_id": "table-contrast-train-20260919-forward_protected-745b94da5c71",
+  "seed": 20260919,
+  "split": "train",
+  "family": "generic_clutter",
+  "difficulty": "contrastive",
+  "units": "metres",
+  "coordinate_system": "right-handed-z-up",
+  "room_dimensions": [
+    9.0,
+    3.6,
+    1.8
+  ],
+  "boxes": [
+    {
+      "name": "wall_west",
+      "center": [
+        0.0,
+        1.8,
+        0.9
+      ],
+      "half_size": [
+        0.06,
+        1.8,
+        0.9
+      ],
+      "yaw": 0.0,
+      "category": "wall"
+    },
+    {
+      "name": "wall_east",
+      "center": [
+        9.0,
+        1.8,
+        0.9
+      ],
+      "half_size": [
+        0.06,
+        1.8,
+        0.9
+      ],
+      "yaw": 0.0,
+      "category": "wall"
+    },
+    {
+      "name": "wall_south",
+      "center": [
+        4.5,
+        0.0,
+        0.9
+      ],
+      "half_size": [
+        4.5,
+        0.06,
+        0.9
+      ],
+      "yaw": 0.0,
+      "category": "wall"
+    },
+    {
+      "name": "wall_north",
+      "center": [
+        4.5,
+        3.6,
+        0.9
+      ],
+      "half_size": [
+        4.5,
+        0.06,
+        0.9
+      ],
+      "yaw": 0.0,
+      "category": "wall"
+    },
+    {
+      "name": "table_0_-1_top",
+      "center": [
+        2.31460159,
+        1.396188419,
+        0.688780997
+      ],
+      "half_size": [
+        0.325,
+        0.276402342,
+        0.03
+      ],
+      "yaw": -0.033805166,
+      "category": "table_top",
+      "furniture_id": "table_0_-1",
+      "furniture_type": "table"
+    },
+    {
+      "name": "table_0_-1_leg_-1_-1",
+      "center": [
+        2.032106597,
+        1.17921008,
+        0.329390499
+      ],
+      "half_size": [
+        0.025,
+        0.025,
+        0.329390499
+      ],
+      "yaw": -0.033805166,
+      "category": "table_leg",
+      "furniture_id": "table_0_-1",
+      "furniture_type": "table"
+    },
+    {
+      "name": "table_0_-1_leg_-1_+1",
+      "center": [
+        2.04741082,
+        1.631756059,
+        0.329390499
+      ],
+      "half_size": [
+        0.025,
+        0.025,
+        0.329390499
+      ],
+      "yaw": -0.033805166,
+      "category": "table_leg",
+      "furniture_id": "table_0_-1",
+      "furniture_type": "table"
+    },
+    {
+      "name": "table_0_-1_leg_+1_-1",
+      "center": [
+        2.58179236,
+        1.16062078,
+        0.329390499
+      ],
+      "half_size": [
+        0.025,
+        0.025,
+        0.329390499
+      ],
+      "yaw": -0.033805166,
+      "category": "table_leg",
+      "furniture_id": "table_0_-1",
+      "furniture_type": "table"
+    },
+    {
+      "name": "table_0_-1_leg_+1_+1",
+      "center": [
+        2.597096582,
+        1.613166758,
+        0.329390499
+      ],
+      "half_size": [
+        0.025,
+        0.025,
+        0.329390499
+      ],
+      "yaw": -0.033805166,
+      "category": "table_leg",
+      "furniture_id": "table_0_-1",
+      "furniture_type": "table"
+    },
+    {
+      "name": "table_0_-1_apron_-1",
+      "center": [
+        2.306611491,
+        1.159921143,
+        0.623780997
+      ],
+      "half_size": [
+        0.275,
+        0.018,
+        0.035
+      ],
+      "yaw": -0.033805166,
+      "category": "table_apron",
+      "furniture_id": "table_0_-1",
+      "furniture_type": "table"
+    },
+    {
+      "name": "table_0_-1_apron_+1",
+      "center": [
+        2.322591688,
+        1.632455695,
+        0.623780997
+      ],
+      "half_size": [
+        0.275,
+        0.018,
+        0.035
+      ],
+      "yaw": -0.033805166,
+      "category": "table_apron",
+      "furniture_id": "table_0_-1",
+      "furniture_type": "table"
+    },
+    {
+      "name": "baffle_0_-1",
+      "center": [
+        2.2858154,
+        0.544980569,
+        0.9
+      ],
+      "half_size": [
+        0.325,
+        0.595292116,
+        0.9
+      ],
+      "yaw": -0.033805166,
+      "category": "baffle"
+    },
+    {
+      "name": "table_0_+1_top",
+      "center": [
+        2.348069209,
+        2.385826197,
+        0.688780997
+      ],
+      "half_size": [
+        0.325,
+        0.276402342,
+        0.03
+      ],
+      "yaw": -0.033805166,
+      "category": "table_top",
+      "furniture_id": "table_0_+1",
+      "furniture_type": "table"
+    },
+    {
+      "name": "table_0_+1_leg_-1_-1",
+      "center": [
+        2.065574217,
+        2.168847858,
+        0.329390499
+      ],
+      "half_size": [
+        0.025,
+        0.025,
+        0.329390499
+      ],
+      "yaw": -0.033805166,
+      "category": "table_leg",
+      "furniture_id": "table_0_+1",
+      "furniture_type": "table"
+    },
+    {
+      "name": "table_0_+1_leg_-1_+1",
+      "center": [
+        2.080878439,
+        2.621393836,
+        0.329390499
+      ],
+      "half_size": [
+        0.025,
+        0.025,
+        0.329390499
+      ],
+      "yaw": -0.033805166,
+      "category": "table_leg",
+      "furniture_id": "table_0_+1",
+      "furniture_type": "table"
+    },
+    {
+      "name": "table_0_+1_leg_+1_-1",
+      "center": [
+        2.61525998,
+        2.150258557,
+        0.329390499
+      ],
+      "half_size": [
+        0.025,
+        0.025,
+        0.329390499
+      ],
+      "yaw": -0.033805166,
+      "category": "table_leg",
+      "furniture_id": "table_0_+1",
+      "furniture_type": "table"
+    },
+    {
+      "name": "table_0_+1_leg_+1_+1",
+      "center": [
+        2.630564202,
+        2.602804536,
+        0.329390499
+      ],
+      "half_size": [
+        0.025,
+        0.025,
+        0.329390499
+      ],
+      "yaw": -0.033805166,
+      "category": "table_leg",
+      "furniture_id": "table_0_+1",
+      "furniture_type": "table"
+    },
+    {
+      "name": "table_0_+1_apron_-1",
+      "center": [
+        2.340079111,
+        2.149558921,
+        0.623780997
+      ],
+      "half_size": [
+        0.275,
+        0.018,
+        0.035
+      ],
+      "yaw": -0.033805166,
+      "category": "table_apron",
+      "furniture_id": "table_0_+1",
+      "furniture_type": "table"
+    },
+    {
+      "name": "table_0_+1_apron_+1",
+      "center": [
+        2.356059308,
+        2.622093473,
+        0.623780997
+      ],
+      "half_size": [
+        0.275,
+        0.018,
+        0.035
+      ],
+      "yaw": -0.033805166,
+      "category": "table_apron",
+      "furniture_id": "table_0_+1",
+      "furniture_type": "table"
+    },
+    {
+      "name": "baffle_0_+1",
+      "center": [
+        2.373777709,
+        3.146026739,
+        0.9
+      ],
+      "half_size": [
+        0.325,
+        0.504232782,
+        0.9
+      ],
+      "yaw": -0.033805166,
+      "category": "baffle"
+    },
+    {
+      "name": "table_1_-1_top",
+      "center": [
+        4.513344641,
+        1.321831217,
+        0.688780997
+      ],
+      "half_size": [
+        0.325,
+        0.276402342,
+        0.03
+      ],
+      "yaw": -0.033805166,
+      "category": "table_top",
+      "furniture_id": "table_1_-1",
+      "furniture_type": "table"
+    },
+    {
+      "name": "table_1_-1_leg_-1_-1",
+      "center": [
+        4.230849649,
+        1.104852878,
+        0.329390499
+      ],
+      "half_size": [
+        0.025,
+        0.025,
+        0.329390499
+      ],
+      "yaw": -0.033805166,
+      "category": "table_leg",
+      "furniture_id": "table_1_-1",
+      "furniture_type": "table"
+    },
+    {
+      "name": "table_1_-1_leg_-1_+1",
+      "center": [
+        4.246153871,
+        1.557398857,
+        0.329390499
+      ],
+      "half_size": [
+        0.025,
+        0.025,
+        0.329390499
+      ],
+      "yaw": -0.033805166,
+      "category": "table_leg",
+      "furniture_id": "table_1_-1",
+      "furniture_type": "table"
+    },
+    {
+      "name": "table_1_-1_leg_+1_-1",
+      "center": [
+        4.780535412,
+        1.086263578,
+        0.329390499
+      ],
+      "half_size": [
+        0.025,
+        0.025,
+        0.329390499
+      ],
+      "yaw": -0.033805166,
+      "category": "table_leg",
+      "furniture_id": "table_1_-1",
+      "furniture_type": "table"
+    },
+    {
+      "name": "table_1_-1_leg_+1_+1",
+      "center": [
+        4.795839634,
+        1.538809556,
+        0.329390499
+      ],
+      "half_size": [
+        0.025,
+        0.025,
+        0.329390499
+      ],
+      "yaw": -0.033805166,
+      "category": "table_leg",
+      "furniture_id": "table_1_-1",
+      "furniture_type": "table"
+    },
+    {
+      "name": "table_1_-1_apron_-1",
+      "center": [
+        4.505354543,
+        1.085563942,
+        0.623780997
+      ],
+      "half_size": [
+        0.275,
+        0.018,
+        0.035
+      ],
+      "yaw": -0.033805166,
+      "category": "table_apron",
+      "furniture_id": "table_1_-1",
+      "furniture_type": "table"
+    },
+    {
+      "name": "table_1_-1_apron_+1",
+      "center": [
+        4.52133474,
+        1.558098493,
+        0.623780997
+      ],
+      "half_size": [
+        0.275,
+        0.018,
+        0.035
+      ],
+      "yaw": -0.033805166,
+      "category": "table_apron",
+      "furniture_id": "table_1_-1",
+      "furniture_type": "table"
+    },
+    {
+      "name": "baffle_1_-1",
+      "center": [
+        4.48581576,
+        0.507801968,
+        0.9
+      ],
+      "half_size": [
+        0.325,
+        0.558092261,
+        0.9
+      ],
+      "yaw": -0.033805166,
+      "category": "baffle"
+    },
+    {
+      "name": "table_1_+1_top",
+      "center": [
+        4.546812261,
+        2.311468995,
+        0.688780997
+      ],
+      "half_size": [
+        0.325,
+        0.276402342,
+        0.03
+      ],
+      "yaw": -0.033805166,
+      "category": "table_top",
+      "furniture_id": "table_1_+1",
+      "furniture_type": "table"
+    },
+    {
+      "name": "table_1_+1_leg_-1_-1",
+      "center": [
+        4.264317268,
+        2.094490656,
+        0.329390499
+      ],
+      "half_size": [
+        0.025,
+        0.025,
+        0.329390499
+      ],
+      "yaw": -0.033805166,
+      "category": "table_leg",
+      "furniture_id": "table_1_+1",
+      "furniture_type": "table"
+    },
+    {
+      "name": "table_1_+1_leg_-1_+1",
+      "center": [
+        4.279621491,
+        2.547036634,
+        0.329390499
+      ],
+      "half_size": [
+        0.025,
+        0.025,
+        0.329390499
+      ],
+      "yaw": -0.033805166,
+      "category": "table_leg",
+      "furniture_id": "table_1_+1",
+      "furniture_type": "table"
+    },
+    {
+      "name": "table_1_+1_leg_+1_-1",
+      "center": [
+        4.814003031,
+        2.075901356,
+        0.329390499
+      ],
+      "half_size": [
+        0.025,
+        0.025,
+        0.329390499
+      ],
+      "yaw": -0.033805166,
+      "category": "table_leg",
+      "furniture_id": "table_1_+1",
+      "furniture_type": "table"
+    },
+    {
+      "name": "table_1_+1_leg_+1_+1",
+      "center": [
+        4.829307254,
+        2.528447334,
+        0.329390499
+      ],
+      "half_size": [
+        0.025,
+        0.025,
+        0.329390499
+      ],
+      "yaw": -0.033805166,
+      "category": "table_leg",
+      "furniture_id": "table_1_+1",
+      "furniture_type": "table"
+    },
+    {
+      "name": "table_1_+1_apron_-1",
+      "center": [
+        4.538822162,
+        2.075201719,
+        0.623780997
+      ],
+      "half_size": [
+        0.275,
+        0.018,
+        0.035
+      ],
+      "yaw": -0.033805166,
+      "category": "table_apron",
+      "furniture_id": "table_1_+1",
+      "furniture_type": "table"
+    },
+    {
+      "name": "table_1_+1_apron_+1",
+      "center": [
+        4.554802359,
+        2.547736271,
+        0.623780997
+      ],
+      "half_size": [
+        0.275,
+        0.018,
+        0.035
+      ],
+      "yaw": -0.033805166,
+      "category": "table_apron",
+      "furniture_id": "table_1_+1",
+      "furniture_type": "table"
+    },
+    {
+      "name": "baffle_1_+1",
+      "center": [
+        4.573778068,
+        3.108848139,
+        0.9
+      ],
+      "half_size": [
+        0.325,
+        0.541432637,
+        0.9
+      ],
+      "yaw": -0.033805166,
+      "category": "baffle"
+    },
+    {
+      "name": "table_2_-1_top",
+      "center": [
+        6.712087693,
+        1.247474016,
+        0.688780997
+      ],
+      "half_size": [
+        0.325,
+        0.276402342,
+        0.03
+      ],
+      "yaw": -0.033805166,
+      "category": "table_top",
+      "furniture_id": "table_2_-1",
+      "furniture_type": "table"
+    },
+    {
+      "name": "table_2_-1_leg_-1_-1",
+      "center": [
+        6.4295927,
+        1.030495677,
+        0.329390499
+      ],
+      "half_size": [
+        0.025,
+        0.025,
+        0.329390499
+      ],
+      "yaw": -0.033805166,
+      "category": "table_leg",
+      "furniture_id": "table_2_-1",
+      "furniture_type": "table"
+    },
+    {
+      "name": "table_2_-1_leg_-1_+1",
+      "center": [
+        6.444896923,
+        1.483041655,
+        0.329390499
+      ],
+      "half_size": [
+        0.025,
+        0.025,
+        0.329390499
+      ],
+      "yaw": -0.033805166,
+      "category": "table_leg",
+      "furniture_id": "table_2_-1",
+      "furniture_type": "table"
+    },
+    {
+      "name": "table_2_-1_leg_+1_-1",
+      "center": [
+        6.979278463,
+        1.011906376,
+        0.329390499
+      ],
+      "half_size": [
+        0.025,
+        0.025,
+        0.329390499
+      ],
+      "yaw": -0.033805166,
+      "category": "table_leg",
+      "furniture_id": "table_2_-1",
+      "furniture_type": "table"
+    },
+    {
+      "name": "table_2_-1_leg_+1_+1",
+      "center": [
+        6.994582685,
+        1.464452355,
+        0.329390499
+      ],
+      "half_size": [
+        0.025,
+        0.025,
+        0.329390499
+      ],
+      "yaw": -0.033805166,
+      "category": "table_leg",
+      "furniture_id": "table_2_-1",
+      "furniture_type": "table"
+    },
+    {
+      "name": "table_2_-1_apron_-1",
+      "center": [
+        6.704097594,
+        1.01120674,
+        0.623780997
+      ],
+      "half_size": [
+        0.275,
+        0.018,
+        0.035
+      ],
+      "yaw": -0.033805166,
+      "category": "table_apron",
+      "furniture_id": "table_2_-1",
+      "furniture_type": "table"
+    },
+    {
+      "name": "table_2_-1_apron_+1",
+      "center": [
+        6.720077791,
+        1.483741291,
+        0.623780997
+      ],
+      "half_size": [
+        0.275,
+        0.018,
+        0.035
+      ],
+      "yaw": -0.033805166,
+      "category": "table_apron",
+      "furniture_id": "table_2_-1",
+      "furniture_type": "table"
+    },
+    {
+      "name": "baffle_2_-1",
+      "center": [
+        6.685816119,
+        0.470623367,
+        0.9
+      ],
+      "half_size": [
+        0.325,
+        0.520892407,
+        0.9
+      ],
+      "yaw": -0.033805166,
+      "category": "baffle"
+    },
+    {
+      "name": "table_2_+1_top",
+      "center": [
+        6.745555312,
+        2.237111793,
+        0.688780997
+      ],
+      "half_size": [
+        0.325,
+        0.276402342,
+        0.03
+      ],
+      "yaw": -0.033805166,
+      "category": "table_top",
+      "furniture_id": "table_2_+1",
+      "furniture_type": "table"
+    },
+    {
+      "name": "table_2_+1_leg_-1_-1",
+      "center": [
+        6.46306032,
+        2.020133454,
+        0.329390499
+      ],
+      "half_size": [
+        0.025,
+        0.025,
+        0.329390499
+      ],
+      "yaw": -0.033805166,
+      "category": "table_leg",
+      "furniture_id": "table_2_+1",
+      "furniture_type": "table"
+    },
+    {
+      "name": "table_2_+1_leg_-1_+1",
+      "center": [
+        6.478364542,
+        2.472679433,
+        0.329390499
+      ],
+      "half_size": [
+        0.025,
+        0.025,
+        0.329390499
+      ],
+      "yaw": -0.033805166,
+      "category": "table_leg",
+      "furniture_id": "table_2_+1",
+      "furniture_type": "table"
+    },
+    {
+      "name": "table_2_+1_leg_+1_-1",
+      "center": [
+        7.012746083,
+        2.001544154,
+        0.329390499
+      ],
+      "half_size": [
+        0.025,
+        0.025,
+        0.329390499
+      ],
+      "yaw": -0.033805166,
+      "category": "table_leg",
+      "furniture_id": "table_2_+1",
+      "furniture_type": "table"
+    },
+    {
+      "name": "table_2_+1_leg_+1_+1",
+      "center": [
+        7.028050305,
+        2.454090132,
+        0.329390499
+      ],
+      "half_size": [
+        0.025,
+        0.025,
+        0.329390499
+      ],
+      "yaw": -0.033805166,
+      "category": "table_leg",
+      "furniture_id": "table_2_+1",
+      "furniture_type": "table"
+    },
+    {
+      "name": "table_2_+1_apron_-1",
+      "center": [
+        6.737565214,
+        2.000844517,
+        0.623780997
+      ],
+      "half_size": [
+        0.275,
+        0.018,
+        0.035
+      ],
+      "yaw": -0.033805166,
+      "category": "table_apron",
+      "furniture_id": "table_2_+1",
+      "furniture_type": "table"
+    },
+    {
+      "name": "table_2_+1_apron_+1",
+      "center": [
+        6.753545411,
+        2.473379069,
+        0.623780997
+      ],
+      "half_size": [
+        0.275,
+        0.018,
+        0.035
+      ],
+      "yaw": -0.033805166,
+      "category": "table_apron",
+      "furniture_id": "table_2_+1",
+      "furniture_type": "table"
+    },
+    {
+      "name": "baffle_2_+1",
+      "center": [
+        6.773778428,
+        3.071669538,
+        0.9
+      ],
+      "half_size": [
+        0.325,
+        0.578632491,
+        0.9
+      ],
+      "yaw": -0.033805166,
+      "category": "baffle"
+    }
+  ],
+  "geometry_hash": "745b94da5c715bb110cd95db1ec008154cccff11a13080f1837da8833d63ad40",
+  "start_goals": [
+    {
+      "start": [
+        1.03207814,
+        1.93494565,
+        -0.033805165464843606
+      ],
+      "goal": [
+        8.02807876,
+        1.69835456
+      ],
+      "route": [
+        [
+          1.03207814,
+          1.93494565
+        ],
+        [
+          8.02807876,
+          1.69835456
+        ]
+      ],
+      "bottlenecks": [],
+      "route_length_m": 7.000000001350554,
+      "time_budget": 37.5
+    }
+  ],
+  "goal_index": 0,
+  "start": [
+    1.03207814,
+    1.93494565,
+    -0.033805165464843606
+  ],
+  "goal": [
+    8.02807876,
+    1.69835456
+  ],
+  "route": [
+    [
+      1.03207814,
+      1.93494565
+    ],
+    [
+      8.02807876,
+      1.69835456
+    ]
+  ],
+  "bottlenecks": [],
+  "route_length_m": 7.000000001350554,
+  "time_budget": 37.5,
+  "generator": {
+    "name": "contrastive-table-edge-passages-v1",
+    "passage_yaw_rad": -0.03380516644077265,
+    "passage_center_xy": [
+      4.530078451130051,
+      1.8166501061878557
+    ],
+    "geometry_source": "canonical-oriented-boxes",
+    "floor_in_obstacle_field": false,
+    "semantic_labels_observed_by_policy": false,
+    "dynamic_feasibility_validated": false
+  },
+  "counts": {
+    "tables": 6,
+    "chairs": 0,
+    "generic_objects": 6,
+    "primitive_boxes": 52,
+    "bottlenecks": 3
+  },
+  "hand_contrast": {
+    "schema": "hand-contrast-v1",
+    "group_id": "table-contrast-train-20260919",
+    "role": "forward_protected",
+    "navigation_radius_m": 0.15,
+    "zones": [
+      {
+        "start_m": 0.34999999999999987,
+        "end_m": 1.9999999999999998,
+        "fade_m": 0.15,
+        "forward_weight": 1.0,
+        "hand_active": [
+          1,
+          1
+        ],
+        "hand_regions_min": [
+          [
+            [
+              0.4114041395187378,
+              0.11479586899280549,
+              0.9218360252380371
+            ],
+            [
+              0.41140419912338255,
+              -0.1347861832380295,
+              0.9218342967033386
+            ]
+          ],
+          [
+            [
+              -0.07963171404600143,
+              0.15012866389751434,
+              0.5952140545845032
+            ],
+            [
+              -0.07963342022895813,
+              -0.16611866521835328,
+              0.5952145910263061
+            ]
+          ]
+        ],
+        "hand_regions_max": [
+          [
+            [
+              0.4474041395187378,
+              0.1347958689928055,
+              0.9578360252380371
+            ],
+            [
+              0.4474041991233826,
+              -0.11478618323802948,
+              0.9578342967033386
+            ]
+          ],
+          [
+            [
+              -0.05563171404600144,
+              0.16612866389751435,
+              0.6252140545845032
+            ],
+            [
+              -0.05563342022895813,
+              -0.15011866521835326,
+              0.6252145910263062
+            ]
+          ]
+        ],
+        "region_valid": [
+          true,
+          false
+        ],
+        "hazard_start_m": 0.9749999999999999,
+        "hazard_end_m": 1.6249999999999998
+      },
+      {
+        "start_m": 2.55,
+        "end_m": 4.2,
+        "fade_m": 0.15,
+        "forward_weight": 1.0,
+        "hand_active": [
+          1,
+          1
+        ],
+        "hand_regions_min": [
+          [
+            [
+              0.4114041395187378,
+              0.11479586899280549,
+              0.9218360252380371
+            ],
+            [
+              0.41140419912338255,
+              -0.1347861832380295,
+              0.9218342967033386
+            ]
+          ],
+          [
+            [
+              -0.07963171404600143,
+              0.15012866389751434,
+              0.5952140545845032
+            ],
+            [
+              -0.07963342022895813,
+              -0.16611866521835328,
+              0.5952145910263061
+            ]
+          ]
+        ],
+        "hand_regions_max": [
+          [
+            [
+              0.4474041395187378,
+              0.1347958689928055,
+              0.9578360252380371
+            ],
+            [
+              0.4474041991233826,
+              -0.11478618323802948,
+              0.9578342967033386
+            ]
+          ],
+          [
+            [
+              -0.05563171404600144,
+              0.16612866389751435,
+              0.6252140545845032
+            ],
+            [
+              -0.05563342022895813,
+              -0.15011866521835326,
+              0.6252145910263062
+            ]
+          ]
+        ],
+        "region_valid": [
+          true,
+          false
+        ],
+        "hazard_start_m": 3.175,
+        "hazard_end_m": 3.825
+      },
+      {
+        "start_m": 4.75,
+        "end_m": 6.4,
+        "fade_m": 0.15,
+        "forward_weight": 1.0,
+        "hand_active": [
+          1,
+          1
+        ],
+        "hand_regions_min": [
+          [
+            [
+              0.4114041395187378,
+              0.11479586899280549,
+              0.9218360252380371
+            ],
+            [
+              0.41140419912338255,
+              -0.1347861832380295,
+              0.9218342967033386
+            ]
+          ],
+          [
+            [
+              -0.07963171404600143,
+              0.15012866389751434,
+              0.5952140545845032
+            ],
+            [
+              -0.07963342022895813,
+              -0.16611866521835328,
+              0.5952145910263061
+            ]
+          ]
+        ],
+        "hand_regions_max": [
+          [
+            [
+              0.4474041395187378,
+              0.1347958689928055,
+              0.9578360252380371
+            ],
+            [
+              0.4474041991233826,
+              -0.11478618323802948,
+              0.9578342967033386
+            ]
+          ],
+          [
+            [
+              -0.05563171404600144,
+              0.16612866389751435,
+              0.6252140545845032
+            ],
+            [
+              -0.05563342022895813,
+              -0.15011866521835326,
+              0.6252145910263062
+            ]
+          ]
+        ],
+        "region_valid": [
+          true,
+          false
+        ],
+        "hazard_start_m": 5.375,
+        "hazard_end_m": 6.025
+      }
+    ],
+    "modules": [
+      {
+        "center_local_x_m": -2.2,
+        "length_m": 0.65,
+        "width_m": 0.43739883675145264,
+        "role": "forward_protected",
+        "tabletop_top_z_m": 0.7187809973620369
+      },
+      {
+        "center_local_x_m": 0.0,
+        "length_m": 0.65,
+        "width_m": 0.43739883675145264,
+        "role": "forward_protected",
+        "tabletop_top_z_m": 0.7187809973620369
+      },
+      {
+        "center_local_x_m": 2.2,
+        "length_m": 0.65,
+        "width_m": 0.43739883675145264,
+        "role": "forward_protected",
+        "tabletop_top_z_m": 0.7187809973620369
+      }
+    ],
+    "region_frame": "xy:route tangent/left normal relative to root xy; z:absolute world metres",
+    "mode_names": [
+      "raised",
+      "tucked"
+    ],
+    "dynamic_feasibility_validated": false,
+    "geometry_family": "table_edges",
+    "tabletop_top_z_m": 0.7187809973620369,
+    "table_gap_m": 0.43739883675145264,
+    "target_posture": "raised_above_tabletop",
+    "certificate": {
+      "schema": "hand-contrast-certificate-v1",
+      "primitive_count": 35,
+      "body_proxy_sha256": "865181b49e07b3c3611763ad06ee9203e1b8fd913d0d45b28cb9a8d96caed5d7",
+      "geometry_hash": "745b94da5c715bb110cd95db1ec008154cccff11a13080f1837da8833d63ad40",
+      "route_hash": "4309b038c7e2e900d788108d4ffeff09fadfb04ba6e67a6cfd981cd8fd0f51cb",
+      "navigation_radius_m": 0.15,
+      "route_transition_validated": true,
+      "exterior_lanes_sealed": true,
+      "exterior_lane_seal_height_m": 0.6887809973620369,
+      "exterior_lane_seal_scope": "Tabletop-band cross-section, not floor-level: no standing exterior bypass; crawling is not exhaustively excluded",
+      "module_tabletop_cross_section_openings_m": [
+        [
+          [
+            -0.21869941857966682,
+            0.21869941850390648
+          ]
+        ],
+        [
+          [
+            -0.21869941875082996,
+            0.2186994183665418
+          ]
+        ],
+        [
+          [
+            -0.2186994178887657,
+            0.21869941819537878
+          ]
+        ]
+      ],
+      "tabletop_geometry_validated": true,
+      "tabletop_top_z_m": 0.7187809973620369,
+      "raised_hand_above_table_min_m": 0.11760712865362621,
+      "raised_hand_sphere_lateral_overhang_min_m": 0.009532928466796875,
+      "above_top_clearance_m": [
+        0.1176088571883247,
+        0.11760712865362621
+      ],
+      "route_sample_count": 141,
+      "transition_sample_count": 34,
+      "body_min_separation_m": 0.04062609374523163,
+      "hand_field_min_clearance_m": 0.09427723288536072,
+      "route_sample_spacing_m": 0.05,
+      "voxel_size_m": 0.04,
+      "module_audit": [
+        {
+          "role": "forward_protected",
+          "width_m": 0.43739883675145264,
+          "nominal_forward_body_min_m": -0.10662981122732162,
+          "nominal_forward_hand_min_m": -0.10662981122732162,
+          "raised_forward_body_min_m": 0.04062624275684357,
+          "tucked_forward_body_min_m": -0.025808773934841156,
+          "tucked_forward_hand_min_m": -0.025808773934841156,
+          "above_top_clearance_m": [
+            0.1176088571883247,
+            0.11760712865362621
+          ],
+          "raised_hand_sphere_lateral_overhang_m": [
+            0.009542614221572876,
+            0.009532928466796875
+          ]
+        },
+        {
+          "role": "forward_protected",
+          "width_m": 0.43739883675145264,
+          "nominal_forward_body_min_m": -0.10662981867790222,
+          "nominal_forward_hand_min_m": -0.10662981867790222,
+          "raised_forward_body_min_m": 0.04062624275684357,
+          "tucked_forward_body_min_m": -0.025808699429035187,
+          "tucked_forward_hand_min_m": -0.025808699429035187,
+          "above_top_clearance_m": [
+            0.1176088571883247,
+            0.11760712865362621
+          ],
+          "raised_hand_sphere_lateral_overhang_m": [
+            0.009542614221572876,
+            0.009532928466796875
+          ]
+        },
+        {
+          "role": "forward_protected",
+          "width_m": 0.43739883675145264,
+          "nominal_forward_body_min_m": -0.10662980377674103,
+          "nominal_forward_hand_min_m": -0.10662980377674103,
+          "raised_forward_body_min_m": 0.040626123547554016,
+          "tucked_forward_body_min_m": -0.025808773934841156,
+          "tucked_forward_hand_min_m": -0.025808773934841156,
+          "above_top_clearance_m": [
+            0.1176088571883247,
+            0.11760712865362621
+          ],
+          "raised_hand_sphere_lateral_overhang_m": [
+            0.009542614221572876,
+            0.009532928466796875
+          ]
+        }
+      ],
+      "target_region_audit": [
+        [
+          {
+            "analytic_swept_hand_min_clearance_m": 0.0890510005778993,
+            "field_swept_hand_min_clearance_m": 0.08010295033454895,
+            "valid": true,
+            "above_top_clearance_m": [
+              0.09960885718832468,
+              0.0996071286536262
+            ]
+          },
+          {
+            "analytic_swept_hand_min_clearance_m": -0.06652746163887716,
+            "field_swept_hand_min_clearance_m": -0.11758830584585667,
+            "valid": false,
+            "disabled_reason": "Tucked hands remain below the tabletop"
+          }
+        ],
+        [
+          {
+            "analytic_swept_hand_min_clearance_m": 0.08905108998486647,
+            "field_swept_hand_min_clearance_m": 0.08010295033454895,
+            "valid": true,
+            "above_top_clearance_m": [
+              0.09960885718832468,
+              0.0996071286536262
+            ]
+          },
+          {
+            "analytic_swept_hand_min_clearance_m": -0.06652729772610402,
+            "field_swept_hand_min_clearance_m": -0.11758830584585667,
+            "valid": false,
+            "disabled_reason": "Tucked hands remain below the tabletop"
+          }
+        ],
+        [
+          {
+            "analytic_swept_hand_min_clearance_m": 0.08905107508370527,
+            "field_swept_hand_min_clearance_m": 0.08010295033454895,
+            "valid": true,
+            "above_top_clearance_m": [
+              0.09960885718832468,
+              0.0996071286536262
+            ]
+          },
+          {
+            "analytic_swept_hand_min_clearance_m": -0.0665273424295876,
+            "field_swept_hand_min_clearance_m": -0.11758830584585667,
+            "valid": false,
+            "disabled_reason": "Tucked hands remain below the tabletop"
+          }
+        ]
+      ],
+      "above_table_stance_audit": [
+        {
+          "variant": "crouch_shallow",
+          "above_top_clearance_m": [
+            0.10668636563787914,
+            0.10668463710318066
+          ]
+        },
+        {
+          "variant": "crouch_deep",
+          "above_top_clearance_m": [
+            0.09076119664679028,
+            0.09075946811209179
+          ]
+        },
+        {
+          "variant": "step_left",
+          "above_top_clearance_m": [
+            0.11730284694204784,
+            0.11730111840734936
+          ]
+        },
+        {
+          "variant": "step_right",
+          "above_top_clearance_m": [
+            0.11730284694204784,
+            0.11730111840734936
+          ]
+        }
+      ],
+      "stance_sample_count": 564,
+      "stance_audit": [
+        {
+          "variant": "crouch_shallow",
+          "count": 141,
+          "body": 0.040632158517837524,
+          "field": 0.0964546948671341
+        },
+        {
+          "variant": "crouch_deep",
+          "count": 141,
+          "body": 0.04190194606781006,
+          "field": 0.09682996571063995
+        },
+        {
+          "variant": "step_left",
+          "count": 141,
+          "body": 0.04062609374523163,
+          "field": 0.09433823823928833
+        },
+        {
+          "variant": "step_right",
+          "count": 141,
+          "body": 0.04062609374523163,
+          "field": 0.09433823823928833
+        }
+      ],
+      "target_region_method": "hand-sphere analytic Lipschitz bound and all adjacent SDF grid values over swept region boxes; lowest target sphere surface above tabletop",
+      "motion_audit": "sampled standing posture, two floor-referenced crouches, two stepping stances, full straight route and arm interpolation at clear endpoints",
+      "target_region_full_arm_ik_certified": false,
+      "sampled_kinematic_stances_validated": true,
+      "dynamic_feasibility_validated": false,
+      "complete_se2_search": false,
+      "explanation": "Static raised-hand route; open under-table spaces are physically modelled. No exhaustive crawl or dynamic feasibility guarantee."
+    }
+  },
+  "feasibility": {
+    "method": "analytic-obb-root-cylinder-route-samples-with-lipschitz-bound",
+    "root_radius_m": 0.15,
+    "root_z_interval_m": [
+      0.35,
+      1.05
+    ],
+    "sample_spacing_max_m": 0.03977272728040088,
+    "sampled_center_clearance_min_m": 0.21869941504366386,
+    "center_clearance_lower_bound_m": 0.19881305140346342,
+    "root_margin_lower_bound_m": 0.048813051403463426,
+    "root_route_validated": true,
+    "full_body_validated": false,
+    "dynamic_feasibility_validated": false,
+    "explanation": "Navigation-only radius; separate 35-primitive route and transition certificate required."
+  },
+  "case_feasibility": [
+    {
+      "method": "analytic-obb-root-cylinder-route-samples-with-lipschitz-bound",
+      "root_radius_m": 0.15,
+      "root_z_interval_m": [
+        0.35,
+        1.05
+      ],
+      "sample_spacing_max_m": 0.03977272728040088,
+      "sampled_center_clearance_min_m": 0.21869941504366386,
+      "center_clearance_lower_bound_m": 0.19881305140346342,
+      "root_margin_lower_bound_m": 0.048813051403463426,
+      "root_route_validated": true,
+      "full_body_validated": false,
+      "dynamic_feasibility_validated": false,
+      "explanation": "Navigation-only radius; separate 35-primitive route and transition certificate required."
+    }
+  ],
+  "source": {
+    "hand_contrast": {
+      "schema": "hand-contrast-v1",
+      "group_id": "table-contrast-train-20260919",
+      "role": "forward_protected",
+      "navigation_radius_m": 0.15,
+      "zones": [
+        {
+          "start_m": 0.34999999999999987,
+          "end_m": 1.9999999999999998,
+          "fade_m": 0.15,
+          "forward_weight": 1.0,
+          "hand_active": [
+            1,
+            1
+          ],
+          "hand_regions_min": [
+            [
+              [
+                0.4114041395187378,
+                0.11479586899280549,
+                0.9218360252380371
+              ],
+              [
+                0.41140419912338255,
+                -0.1347861832380295,
+                0.9218342967033386
+              ]
+            ],
+            [
+              [
+                -0.07963171404600143,
+                0.15012866389751434,
+                0.5952140545845032
+              ],
+              [
+                -0.07963342022895813,
+                -0.16611866521835328,
+                0.5952145910263061
+              ]
+            ]
+          ],
+          "hand_regions_max": [
+            [
+              [
+                0.4474041395187378,
+                0.1347958689928055,
+                0.9578360252380371
+              ],
+              [
+                0.4474041991233826,
+                -0.11478618323802948,
+                0.9578342967033386
+              ]
+            ],
+            [
+              [
+                -0.05563171404600144,
+                0.16612866389751435,
+                0.6252140545845032
+              ],
+              [
+                -0.05563342022895813,
+                -0.15011866521835326,
+                0.6252145910263062
+              ]
+            ]
+          ],
+          "region_valid": [
+            true,
+            false
+          ],
+          "hazard_start_m": 0.9749999999999999,
+          "hazard_end_m": 1.6249999999999998
+        },
+        {
+          "start_m": 2.55,
+          "end_m": 4.2,
+          "fade_m": 0.15,
+          "forward_weight": 1.0,
+          "hand_active": [
+            1,
+            1
+          ],
+          "hand_regions_min": [
+            [
+              [
+                0.4114041395187378,
+                0.11479586899280549,
+                0.9218360252380371
+              ],
+              [
+                0.41140419912338255,
+                -0.1347861832380295,
+                0.9218342967033386
+              ]
+            ],
+            [
+              [
+                -0.07963171404600143,
+                0.15012866389751434,
+                0.5952140545845032
+              ],
+              [
+                -0.07963342022895813,
+                -0.16611866521835328,
+                0.5952145910263061
+              ]
+            ]
+          ],
+          "hand_regions_max": [
+            [
+              [
+                0.4474041395187378,
+                0.1347958689928055,
+                0.9578360252380371
+              ],
+              [
+                0.4474041991233826,
+                -0.11478618323802948,
+                0.9578342967033386
+              ]
+            ],
+            [
+              [
+                -0.05563171404600144,
+                0.16612866389751435,
+                0.6252140545845032
+              ],
+              [
+                -0.05563342022895813,
+                -0.15011866521835326,
+                0.6252145910263062
+              ]
+            ]
+          ],
+          "region_valid": [
+            true,
+            false
+          ],
+          "hazard_start_m": 3.175,
+          "hazard_end_m": 3.825
+        },
+        {
+          "start_m": 4.75,
+          "end_m": 6.4,
+          "fade_m": 0.15,
+          "forward_weight": 1.0,
+          "hand_active": [
+            1,
+            1
+          ],
+          "hand_regions_min": [
+            [
+              [
+                0.4114041395187378,
+                0.11479586899280549,
+                0.9218360252380371
+              ],
+              [
+                0.41140419912338255,
+                -0.1347861832380295,
+                0.9218342967033386
+              ]
+            ],
+            [
+              [
+                -0.07963171404600143,
+                0.15012866389751434,
+                0.5952140545845032
+              ],
+              [
+                -0.07963342022895813,
+                -0.16611866521835328,
+                0.5952145910263061
+              ]
+            ]
+          ],
+          "hand_regions_max": [
+            [
+              [
+                0.4474041395187378,
+                0.1347958689928055,
+                0.9578360252380371
+              ],
+              [
+                0.4474041991233826,
+                -0.11478618323802948,
+                0.9578342967033386
+              ]
+            ],
+            [
+              [
+                -0.05563171404600144,
+                0.16612866389751435,
+                0.6252140545845032
+              ],
+              [
+                -0.05563342022895813,
+                -0.15011866521835326,
+                0.6252145910263062
+              ]
+            ]
+          ],
+          "region_valid": [
+            true,
+            false
+          ],
+          "hazard_start_m": 5.375,
+          "hazard_end_m": 6.025
+        }
+      ],
+      "modules": [
+        {
+          "center_local_x_m": -2.2,
+          "length_m": 0.65,
+          "width_m": 0.43739883675145264,
+          "role": "forward_protected",
+          "tabletop_top_z_m": 0.7187809973620369
+        },
+        {
+          "center_local_x_m": 0.0,
+          "length_m": 0.65,
+          "width_m": 0.43739883675145264,
+          "role": "forward_protected",
+          "tabletop_top_z_m": 0.7187809973620369
+        },
+        {
+          "center_local_x_m": 2.2,
+          "length_m": 0.65,
+          "width_m": 0.43739883675145264,
+          "role": "forward_protected",
+          "tabletop_top_z_m": 0.7187809973620369
+        }
+      ],
+      "region_frame": "xy:route tangent/left normal relative to root xy; z:absolute world metres",
+      "mode_names": [
+        "raised",
+        "tucked"
+      ],
+      "dynamic_feasibility_validated": false,
+      "geometry_family": "table_edges",
+      "tabletop_top_z_m": 0.7187809973620369,
+      "table_gap_m": 0.43739883675145264,
+      "target_posture": "raised_above_tabletop",
+      "certificate": {
+        "schema": "hand-contrast-certificate-v1",
+        "primitive_count": 35,
+        "body_proxy_sha256": "865181b49e07b3c3611763ad06ee9203e1b8fd913d0d45b28cb9a8d96caed5d7",
+        "geometry_hash": "745b94da5c715bb110cd95db1ec008154cccff11a13080f1837da8833d63ad40",
+        "route_hash": "4309b038c7e2e900d788108d4ffeff09fadfb04ba6e67a6cfd981cd8fd0f51cb",
+        "navigation_radius_m": 0.15,
+        "route_transition_validated": true,
+        "exterior_lanes_sealed": true,
+        "exterior_lane_seal_height_m": 0.6887809973620369,
+        "exterior_lane_seal_scope": "Tabletop-band cross-section, not floor-level: no standing exterior bypass; crawling is not exhaustively excluded",
+        "module_tabletop_cross_section_openings_m": [
+          [
+            [
+              -0.21869941857966682,
+              0.21869941850390648
+            ]
+          ],
+          [
+            [
+              -0.21869941875082996,
+              0.2186994183665418
+            ]
+          ],
+          [
+            [
+              -0.2186994178887657,
+              0.21869941819537878
+            ]
+          ]
+        ],
+        "tabletop_geometry_validated": true,
+        "tabletop_top_z_m": 0.7187809973620369,
+        "raised_hand_above_table_min_m": 0.11760712865362621,
+        "raised_hand_sphere_lateral_overhang_min_m": 0.009532928466796875,
+        "above_top_clearance_m": [
+          0.1176088571883247,
+          0.11760712865362621
+        ],
+        "route_sample_count": 141,
+        "transition_sample_count": 34,
+        "body_min_separation_m": 0.04062609374523163,
+        "hand_field_min_clearance_m": 0.09427723288536072,
+        "route_sample_spacing_m": 0.05,
+        "voxel_size_m": 0.04,
+        "module_audit": [
+          {
+            "role": "forward_protected",
+            "width_m": 0.43739883675145264,
+            "nominal_forward_body_min_m": -0.10662981122732162,
+            "nominal_forward_hand_min_m": -0.10662981122732162,
+            "raised_forward_body_min_m": 0.04062624275684357,
+            "tucked_forward_body_min_m": -0.025808773934841156,
+            "tucked_forward_hand_min_m": -0.025808773934841156,
+            "above_top_clearance_m": [
+              0.1176088571883247,
+              0.11760712865362621
+            ],
+            "raised_hand_sphere_lateral_overhang_m": [
+              0.009542614221572876,
+              0.009532928466796875
+            ]
+          },
+          {
+            "role": "forward_protected",
+            "width_m": 0.43739883675145264,
+            "nominal_forward_body_min_m": -0.10662981867790222,
+            "nominal_forward_hand_min_m": -0.10662981867790222,
+            "raised_forward_body_min_m": 0.04062624275684357,
+            "tucked_forward_body_min_m": -0.025808699429035187,
+            "tucked_forward_hand_min_m": -0.025808699429035187,
+            "above_top_clearance_m": [
+              0.1176088571883247,
+              0.11760712865362621
+            ],
+            "raised_hand_sphere_lateral_overhang_m": [
+              0.009542614221572876,
+              0.009532928466796875
+            ]
+          },
+          {
+            "role": "forward_protected",
+            "width_m": 0.43739883675145264,
+            "nominal_forward_body_min_m": -0.10662980377674103,
+            "nominal_forward_hand_min_m": -0.10662980377674103,
+            "raised_forward_body_min_m": 0.040626123547554016,
+            "tucked_forward_body_min_m": -0.025808773934841156,
+            "tucked_forward_hand_min_m": -0.025808773934841156,
+            "above_top_clearance_m": [
+              0.1176088571883247,
+              0.11760712865362621
+            ],
+            "raised_hand_sphere_lateral_overhang_m": [
+              0.009542614221572876,
+              0.009532928466796875
+            ]
+          }
+        ],
+        "target_region_audit": [
+          [
+            {
+              "analytic_swept_hand_min_clearance_m": 0.0890510005778993,
+              "field_swept_hand_min_clearance_m": 0.08010295033454895,
+              "valid": true,
+              "above_top_clearance_m": [
+                0.09960885718832468,
+                0.0996071286536262
+              ]
+            },
+            {
+              "analytic_swept_hand_min_clearance_m": -0.06652746163887716,
+              "field_swept_hand_min_clearance_m": -0.11758830584585667,
+              "valid": false,
+              "disabled_reason": "Tucked hands remain below the tabletop"
+            }
+          ],
+          [
+            {
+              "analytic_swept_hand_min_clearance_m": 0.08905108998486647,
+              "field_swept_hand_min_clearance_m": 0.08010295033454895,
+              "valid": true,
+              "above_top_clearance_m": [
+                0.09960885718832468,
+                0.0996071286536262
+              ]
+            },
+            {
+              "analytic_swept_hand_min_clearance_m": -0.06652729772610402,
+              "field_swept_hand_min_clearance_m": -0.11758830584585667,
+              "valid": false,
+              "disabled_reason": "Tucked hands remain below the tabletop"
+            }
+          ],
+          [
+            {
+              "analytic_swept_hand_min_clearance_m": 0.08905107508370527,
+              "field_swept_hand_min_clearance_m": 0.08010295033454895,
+              "valid": true,
+              "above_top_clearance_m": [
+                0.09960885718832468,
+                0.0996071286536262
+              ]
+            },
+            {
+              "analytic_swept_hand_min_clearance_m": -0.0665273424295876,
+              "field_swept_hand_min_clearance_m": -0.11758830584585667,
+              "valid": false,
+              "disabled_reason": "Tucked hands remain below the tabletop"
+            }
+          ]
+        ],
+        "above_table_stance_audit": [
+          {
+            "variant": "crouch_shallow",
+            "above_top_clearance_m": [
+              0.10668636563787914,
+              0.10668463710318066
+            ]
+          },
+          {
+            "variant": "crouch_deep",
+            "above_top_clearance_m": [
+              0.09076119664679028,
+              0.09075946811209179
+            ]
+          },
+          {
+            "variant": "step_left",
+            "above_top_clearance_m": [
+              0.11730284694204784,
+              0.11730111840734936
+            ]
+          },
+          {
+            "variant": "step_right",
+            "above_top_clearance_m": [
+              0.11730284694204784,
+              0.11730111840734936
+            ]
+          }
+        ],
+        "stance_sample_count": 564,
+        "stance_audit": [
+          {
+            "variant": "crouch_shallow",
+            "count": 141,
+            "body": 0.040632158517837524,
+            "field": 0.0964546948671341
+          },
+          {
+            "variant": "crouch_deep",
+            "count": 141,
+            "body": 0.04190194606781006,
+            "field": 0.09682996571063995
+          },
+          {
+            "variant": "step_left",
+            "count": 141,
+            "body": 0.04062609374523163,
+            "field": 0.09433823823928833
+          },
+          {
+            "variant": "step_right",
+            "count": 141,
+            "body": 0.04062609374523163,
+            "field": 0.09433823823928833
+          }
+        ],
+        "target_region_method": "hand-sphere analytic Lipschitz bound and all adjacent SDF grid values over swept region boxes; lowest target sphere surface above tabletop",
+        "motion_audit": "sampled standing posture, two floor-referenced crouches, two stepping stances, full straight route and arm interpolation at clear endpoints",
+        "target_region_full_arm_ik_certified": false,
+        "sampled_kinematic_stances_validated": true,
+        "dynamic_feasibility_validated": false,
+        "complete_se2_search": false,
+        "explanation": "Static raised-hand route; open under-table spaces are physically modelled. No exhaustive crawl or dynamic feasibility guarantee."
+      }
+    }
+  }
+}

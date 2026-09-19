@@ -1,0 +1,20 @@
+{
+  "scene_count": 96,
+  "unchanged_cabinet_scene_count": 64,
+  "added_table_scene_count": 32,
+  "original_records_and_fields_verified_unchanged": true,
+  "manifest_sha256": "30692aa37e23bf633de4a2bace0ed18bdc1836b41529c2ce62e2e0db24ef3bad",
+  "fields_gib": 2.4614975452423096,
+  "table_height_range_m": [
+    0.7046105689131913,
+    0.7187809973620369
+  ],
+  "protected_gap_range_m": [
+    0.4305361844611695,
+    0.4438331020620375
+  ],
+  "minimum_sampled_body_clearance_m": 0.03719480335712433,
+  "minimum_sampled_hand_field_clearance_m": 0.09007139503955841,
+  "raised_pose_minimum_above_table_clearance_m": 0.11760712865362621,
+  "certified_reset_pose_count": 3072
+}

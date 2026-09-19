@@ -1,5 +1,7 @@
 # Contrastive hand-protection specialist
 
+A [table-height extension](table-edge-hand-protection.md) adds 32 matched table scenes to this 64-scene cabinet bank, preserving the original scenes and training objective weights.
+
 The previous specialist could reach goals by turning sideways or lowering its body without moving its arms appreciably. Its clearance penalties discourage contact, but do not prefer forward-facing travel or a particular safe hand posture. The neutral-arm penalty could also return immediately after raised hands became clear.
 
 This change adds explicit route-conditioned posture objectives and matched geometry. It is opt-in for a new specialist bank. The existing running experiment is not modified or restarted by this implementation.

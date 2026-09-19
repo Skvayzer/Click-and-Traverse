@@ -9,11 +9,13 @@ import numpy as np
 
 ROLES = ("open", "forward_protected", "narrow", "transition")
 MARKER = "hand-contrast-specialist-v1"
+TABLE_MARKER = "hand-contrast-specialist-v2"
+GROUP_ROLES = {"cabinet": set(ROLES), "table_edges": {"open", "forward_protected"}}
 
 
 def validate_contrastive_manifest(manifest, *, path=None, verify_files=False):
     marker = manifest.get("contrastive_specialist", {})
-    if (marker.get("schema") != MARKER or manifest.get("schema") != "cat-generalist-field-bank-v2"
+    if (marker.get("schema") not in (MARKER, TABLE_MARKER) or manifest.get("schema") != "cat-generalist-field-bank-v2"
             or "specialist" in manifest or manifest.get("hand_protection_curriculum")
             or marker.get("role_reset_masses") != dict.fromkeys(ROLES, .25)
             or any(manifest.get(key) != 0 for key in
@@ -21,7 +23,7 @@ def validate_contrastive_manifest(manifest, *, path=None, verify_files=False):
         raise ValueError("Invalid explicit contrastive specialist bank")
     from cat_ppo.furniture.contrastive_rewards import pack_hand_contrast
     from cat_ppo.furniture.room_navigation import scene_navigation_radius
-    groups, seen_seeds = defaultdict(dict), {}
+    groups, seen_seeds, families = defaultdict(dict), {}, {}
     for record in manifest["scenes"]:
         contrast = record.get("source", {}).get("hand_contrast", {})
         group, role = contrast.get("group_id"), contrast.get("role")
@@ -29,6 +31,11 @@ def validate_contrastive_manifest(manifest, *, path=None, verify_files=False):
                 or not isinstance(group, str) or role in groups[group]
                 or record.get("dx") != .04):
             raise ValueError("Invalid or repeated contrastive group/role")
+        family = contrast.get("geometry_family", "cabinet")
+        if (family not in GROUP_ROLES or (family != "cabinet" and marker["schema"] != TABLE_MARKER)
+                or (group in families and families[group] != family)):
+            raise ValueError("Invalid or inconsistent contrastive geometry family")
+        families[group] = family
         groups[group][role] = record
         pack_hand_contrast([{"hand_contrast": contrast}])
         cert = contrast.get("certificate", {})
@@ -38,6 +45,14 @@ def validate_contrastive_manifest(manifest, *, path=None, verify_files=False):
                 or cert.get("primitive_count") != 35 or cert.get("voxel_size_m") != .04
                 or cert.get("exterior_lanes_sealed") is not True):
             raise ValueError("Contrastive scenes require geometry and stance certificates")
+        if family == "table_edges":
+            clearance = cert.get("raised_hand_above_table_min_m", float("nan"))
+            if (not isinstance(clearance, (int, float)) or not np.isfinite(clearance) or clearance <= 0
+                    or cert.get("tabletop_geometry_validated") is not True):
+                raise ValueError("Table scenes require raised hand clearance above the tabletop")
+            if role == "forward_protected" and any(zone["region_valid"] != [True, False]
+                    for zone in contrast["zones"]):
+                raise ValueError("Table hand hazards require raised-only target regions")
         if verify_files:
             directory = (Path(path).parent / record["path"]).resolve()
             if not directory.is_relative_to(Path(path).parent.resolve()):
@@ -46,15 +61,26 @@ def validate_contrastive_manifest(manifest, *, path=None, verify_files=False):
             if scene.get("hand_contrast") != contrast or scene.get("scene_id") != record["scene_id"]:
                 raise ValueError("Contrastive source metadata differs from canonical scene")
             scene_navigation_radius(scene)
-            seed_split = (scene["seed"], scene["split"])
+            seed_split = (family, scene["seed"], scene["split"])
             if group in seen_seeds and seen_seeds[group] != seed_split:
                 raise ValueError("Matched group variants must share seed and split")
             seen_seeds[group] = seed_split
-    if not groups or any(set(group) != set(ROLES) for group in groups.values()):
-        raise ValueError("Each contrastive group must contain all four roles")
+    if not groups or any(set(group) != GROUP_ROLES[families[name]] for name, group in groups.items()):
+        raise ValueError("Each contrastive group must contain every role required by its geometry family")
+    if marker["schema"] == TABLE_MARKER:
+        actual = {family: sum(value == family for value in families.values()) for family in GROUP_ROLES}
+        if marker.get("geometry_group_counts") != actual or not all(actual.values()):
+            raise ValueError("Mixed contrastive bank must retain cabinet groups and add table pairs")
+        from cat_ppo.furniture.generalist_fields import _json_hash
+        preserved = marker.get("preserved_cabinet_scene_count")
+        if (preserved != actual["cabinet"] * 4
+                or any(s["source"]["hand_contrast"].get("geometry_family", "cabinet") != "cabinet"
+                       for s in manifest["scenes"][:preserved])
+                or _json_hash(manifest["scenes"][:preserved]) != marker.get("preserved_scene_records_sha256")):
+            raise ValueError("Preserved cabinet scene records differ from the pinned source bank")
     if marker.get("group_count") != len(groups):
         raise ValueError("Contrastive group count differs")
-    if verify_files and len({seed for seed, split in seen_seeds.values()}) != len(groups):
+    if verify_files and len({(family, seed) for family, seed, split in seen_seeds.values()}) != len(groups):
         raise ValueError("Seeds may not leak across contrastive groups or splits")
 
 

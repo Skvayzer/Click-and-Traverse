@@ -1,0 +1,58 @@
+{
+  "schema": "contrastive-training-runtime-verification-v1",
+  "learner_or_policy_evaluation": false,
+  "scene_count": 96,
+  "actor_observations": 222,
+  "critic_observations": 310,
+  "actions": 29,
+  "batch_size": 2,
+  "platform": "cpu",
+  "jax_version": "0.4.38",
+  "shape_check_passed": true,
+  "shape_seconds": 7.087236916995607,
+  "banks": {
+    "bank": {
+      "path": "/Users/konstantinsmirnov/robotics/Click-and-Traverse-WholeBody/data/furniture/contrastive_table_v4/manifest.json",
+      "sha256": "8fb5f106c7ed75fdadd39ae18e4f6116437c39ad973e3b89231b9976ddf7da4f"
+    },
+    "collision_bank": {
+      "path": "/Users/konstantinsmirnov/robotics/Click-and-Traverse-WholeBody/data/furniture/contrastive_table_v4_collision/manifest.json",
+      "sha256": "fae9e796471096ade8ed687879365b379d9892d3d9ff2698765cb2d83c3c7934"
+    },
+    "reset_bank": {
+      "path": "/Users/konstantinsmirnov/robotics/Click-and-Traverse-WholeBody/data/furniture/contrastive_table_v4_resets/manifest.json",
+      "sha256": "b43edce413ab276c677e7bb0330968155b91c0e3f0afde586e3c6104c681561b"
+    }
+  },
+  "body_collision_contract": {
+    "schema": "cat-body-collision-v1",
+    "shape_counts": {
+      "box": 11,
+      "capsule": 22,
+      "sphere": 2
+    },
+    "proxy_sha256": "865181b49e07b3c3611763ad06ee9203e1b8fd913d0d45b28cb9a8d96caed5d7",
+    "bank_sha256": "fae9e796471096ade8ed687879365b379d9892d3d9ff2698765cb2d83c3c7934",
+    "reset_sha256": "b43edce413ab276c677e7bb0330968155b91c0e3f0afde586e3c6104c681561b",
+    "cadence_seconds": 0.002,
+    "detection": "primitive-volume overlap at each physics pose and final integrated pose",
+    "grace_steps": 0,
+    "event_penalty": 1.0,
+    "physical_obstacle_impulses": false,
+    "continuous_collision_detection": false,
+    "observations_added": 0,
+    "reset": "native random pose when clear; otherwise sampled certified clear pose in same scene"
+  },
+  "jit_reset_seconds": 5.8121294169686735,
+  "sampled_scene_indices": [
+    64,
+    65
+  ],
+  "jit_reset_passed": true,
+  "jit_step_passed": true,
+  "jit_step_seconds": 15.406498666969128,
+  "zero_action_transition_rewards": [
+    0.08562370389699936,
+    0.07147520035505295
+  ]
+}

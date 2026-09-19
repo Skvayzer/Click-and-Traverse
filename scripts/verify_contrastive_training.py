@@ -26,6 +26,7 @@ def main():
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--batch-size", type=int, default=2)
     parser.add_argument("--shape-only", action="store_true")
+    parser.add_argument("--scene-indices", type=int, nargs="+", help="Explicit scene slots to exercise, one per environment")
     args = parser.parse_args()
     if not 1 <= args.batch_size <= 8:
         parser.error("This runtime verification uses 1..8 environments")
@@ -47,12 +48,17 @@ def main():
     config.wholebody.body_collision.update(dict(enabled=True,
         bank_manifest=str(paths["collision_bank"]), reset_manifest=str(paths["reset_bank"])))
     env = G1CatWholeBodyEnv(config=config)
+    if args.scene_indices is not None and (len(args.scene_indices) != args.batch_size
+            or any(index < 0 or index >= env.num_pf_scenes for index in args.scene_indices)):
+        parser.error("--scene-indices must contain one valid scene index per environment")
     wrapper = wrap_for_brax_training_reset(env, episode_length=4000)
     fields = FieldArguments(wrapper)
     keys = jax.random.split(jax.random.PRNGKey(811), args.batch_size)
 
     def reset(rng, arrays):
         with fields.bind(arrays):
+            if args.scene_indices is not None:
+                return wrapper._reset_with_pf_id(rng, jp.asarray(args.scene_indices, jp.int32))
             return wrapper.reset(rng)
 
     def step(state, action, arrays):
@@ -83,6 +89,8 @@ def main():
         jax.block_until_ready(state.reward)
         report["jit_reset_seconds"] = time.monotonic() - start
         report["sampled_scene_indices"] = np.asarray(state.info["pf_id"]).tolist()
+        if args.scene_indices is not None:
+            assert report["sampled_scene_indices"] == args.scene_indices
         start = time.monotonic()
         result = jax.jit(step)(state, jp.zeros((args.batch_size, 29)), fields.values)
         jax.block_until_ready(result.reward)
