@@ -48,7 +48,7 @@ class CATSimulation:
             raise AssertionError("mjlab initialization changed the CAT solver options")
         raw = self.backend.wp_data
         self.data = SimpleNamespace(**{name: wp.to_torch(getattr(raw, name))
-            for name in ("qpos", "qvel", "ctrl", "time", "qfrc_applied", "xfrc_applied", *OBS_FIELDS)})
+            for name in ("qpos", "qvel", "ctrl", "time", "qfrc_applied", "xfrc_applied", "mocap_pos", "mocap_quat", *OBS_FIELDS)})
         self.data.xmat = self.data.xmat.reshape(self.num_envs, self.model.nbody, 3, 3)
         self.data.site_xmat = self.data.site_xmat.reshape(self.num_envs, self.model.nsite, 3, 3)
         # mjwarp.kinematics writes exactly these arrays. All immutable inputs
@@ -201,7 +201,7 @@ class CATSimulation:
         # New backend resume keeps its persistent dynamics, never imports a JAX
         # contact solver state into Warp. Derived fields are recomputed on load.
         return {name: getattr(self.data, name).clone() for name in
-                dict.fromkeys(("qpos", "qvel", "ctrl", "time", "qfrc_applied", "xfrc_applied", *OBS_FIELDS))}
+                dict.fromkeys(("qpos", "qvel", "ctrl", "time", "qfrc_applied", "xfrc_applied", "mocap_pos", "mocap_quat", *OBS_FIELDS))}
 
     def load_state_dict(self, state):
         self._initialize_capacity_guard()
