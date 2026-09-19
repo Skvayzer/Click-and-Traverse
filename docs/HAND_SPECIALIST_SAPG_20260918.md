@@ -1,5 +1,14 @@
 # Hand-protection specialist with SAPG — 18 September 2026
 
+**19 September update:** job 680 stopped on a numerical overflow in the SAPG
+actor gradient. The failure was reproduced from the saved learner and repaired
+without changing the objective or training settings. Training resumed as
+**Slurm job 689** from **326,762,496 transitions**, in the same run directory and
+W&B run. See [the numerical repair and continuation report](SAPG_NUMERICS_RESUME_20260919.md)
+for the preserved-state audit and original/fixed GPU replay evidence.
+
+## Original launch record
+
 **Status: sustained training launched on `tl-server-0` as Slurm job 680**, using
 36,864 environments and batch size 576. CPU bank job 676 and both production-size
 capacity checks passed. This establishes initialization and complete-update
