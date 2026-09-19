@@ -25,7 +25,7 @@ import numpy as np
 TARGET_VALUE = "sapg_target_value"
 ADVANTAGE = "sapg_advantage"
 OLD_TARGET_LOG_PROB = "sapg_old_target_log_prob"
-IMPORTANCE_WEIGHT = "sapg_importance_weight"
+LOG_IMPORTANCE_WEIGHT = "sapg_log_importance_weight"
 TARGET_POLICY_ID = "sapg_target_policy_id"
 ACTION_STD = "sapg_action_std"
 
@@ -176,7 +176,10 @@ def prepare_rollout(
     )
     leader_target = jnp.where(follower_truncation != 0, leader_baseline, leader_target)
     leader_advantage = (leader_target - leader_baseline) * (1 - follower_truncation)
-    leader_importance = jnp.exp(
+    # These are ephemeral rollout targets, not persisted checkpoint fields.
+    # Keeping mu in log space avoids destroying tiny probabilities before a
+    # later current/old ratio can cancel them in the off-policy surrogate.
+    leader_log_importance = (
         leader_log_prob - follower.extras["policy_extras"]["log_prob"]
     )
 
@@ -196,7 +199,7 @@ def prepare_rollout(
         OLD_TARGET_LOG_PROB: jnp.concatenate(
             (data.extras["policy_extras"]["log_prob"], leader_log_prob), axis=0
         ),
-        IMPORTANCE_WEIGHT: jnp.concatenate((jnp.ones_like(data.reward), leader_importance), axis=0),
+        LOG_IMPORTANCE_WEIGHT: jnp.concatenate((jnp.zeros_like(data.reward), leader_log_importance), axis=0),
         TARGET_POLICY_ID: jnp.concatenate((ids, leader_ids), axis=0),
         ACTION_STD: jnp.concatenate((action_std, action_std[follower_indices]), axis=0),
     }
@@ -205,6 +208,50 @@ def prepare_rollout(
         **augmented.extras,
         "policy_extras": {**augmented.extras["policy_extras"], **frozen},
     })
+
+
+def importance_clipped_surrogate(log_prob, old_log_prob, behavior_log_prob,
+                                 log_importance, advantages, clipping_epsilon,
+                                 *, log_normalizer=0.):
+    """Compute mu * min(r*A, clip(r)*A) without separately exponentiating mu/r.
+
+    The two weighted likelihoods are evaluated in log space. In particular the
+    unclipped branch uses current minus behavior directly, rather than adding
+    two potentially enormous, oppositely signed log ratios. Positive A chooses
+    the smaller weighted likelihood; negative A chooses the larger one. Keeping
+    the complete clipped branch also preserves JAX's tie subgradient at clip
+    boundaries. Zero advantages are masked *before* exponentiation.
+
+    No importance cap, changed clipping threshold, or nonfinite replacement is
+    introduced. The final exponential includes |A|, so an unrepresentable ratio
+    times a small advantage can still give a representable objective.
+    ``log_normalizer`` incorporates a mean's 1/N before exponentiation, avoiding
+    overflow of a term whose normalized contribution is representable. A truly
+    unrepresentable normalized contribution/gradient remains nonfinite for the
+    learner's failure checks. Cancellation between individually unrepresentable
+    positive/negative terms is not evaluated with arbitrary-precision sums.
+    """
+    if not 0 <= clipping_epsilon < 1:
+        raise ValueError("SAPG clipping_epsilon must lie in [0, 1)")
+    log_prob = jnp.asarray(log_prob)
+    log_ratio = log_prob - old_log_prob
+    weighted_unclipped = log_prob - behavior_log_prob
+    # Round the probability-space bounds as the original PPO clip does before
+    # taking their logs. log1p(-eps) can differ by one ULP from log(float32(1-eps))
+    # and select a different clipping branch at an exactly representable bound.
+    lower = jnp.log(jnp.asarray(1. - clipping_epsilon, dtype=log_prob.dtype))
+    upper = jnp.log(jnp.asarray(1. + clipping_epsilon, dtype=log_prob.dtype))
+    weighted_clipped = log_importance + jnp.clip(
+        log_ratio, lower, upper)
+    log_weight = jnp.where(
+        advantages >= 0,
+        jnp.minimum(weighted_unclipped, weighted_clipped),
+        jnp.maximum(weighted_unclipped, weighted_clipped),
+    )
+    nonzero = advantages != 0
+    log_magnitude = jnp.log(jnp.where(nonzero, jnp.abs(advantages), 1.))
+    exponent = jnp.where(nonzero, log_weight + log_magnitude - log_normalizer, 0.)
+    return jnp.sign(advantages) * jnp.exp(exponent)
 
 
 def compute_sapg_loss(
@@ -249,11 +296,11 @@ def compute_sapg_loss(
     log_prob = distribution.log_prob(logits, extras["raw_action"])
     old_log_prob = jax.lax.stop_gradient(extras[OLD_TARGET_LOG_PROB])
     advantages = jax.lax.stop_gradient(extras[ADVANTAGE])
-    importance = jax.lax.stop_gradient(extras[IMPORTANCE_WEIGHT])
-    ratio = jnp.exp(log_prob - old_log_prob)
-    unclipped = ratio * advantages
-    clipped = jnp.clip(ratio, 1 - clipping_epsilon, 1 + clipping_epsilon) * advantages
-    policy_loss = -jnp.mean(importance * jnp.minimum(unclipped, clipped))
+    behavior_log_prob = jax.lax.stop_gradient(extras["log_prob"])
+    log_importance = jax.lax.stop_gradient(extras[LOG_IMPORTANCE_WEIGHT])
+    policy_loss = -jnp.sum(importance_clipped_surrogate(
+        log_prob, old_log_prob, behavior_log_prob, log_importance,
+        advantages, clipping_epsilon, log_normalizer=jnp.log(advantages.size)))
 
     value_error = jax.lax.stop_gradient(extras[TARGET_VALUE]) - baseline
     value_loss = 0.25 * jnp.mean(jnp.square(value_error))

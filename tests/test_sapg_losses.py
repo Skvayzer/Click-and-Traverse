@@ -95,7 +95,8 @@ def frozen_batch(advantage, importance=1., target_value=0., old_log_prob=0., tar
     data = rollout(ids=(target_id,), time=1)
     extras = {
         losses.ADVANTAGE: jnp.asarray([[advantage]]),
-        losses.IMPORTANCE_WEIGHT: jnp.asarray([[importance]]),
+        losses.LOG_IMPORTANCE_WEIGHT: jnp.asarray([[np.log(importance)]]),
+        "log_prob": jnp.asarray([[old_log_prob - np.log(importance)]]),
         losses.TARGET_VALUE: jnp.asarray([[target_value]]),
         losses.OLD_TARGET_LOG_PROB: jnp.asarray([[old_log_prob]]),
         losses.TARGET_POLICY_ID: jnp.asarray([[target_id]], dtype=jnp.int32),
@@ -121,7 +122,7 @@ def test_equal_blocks_and_critic_not_importance_weighted_and_uniform_cat_entropy
     data = prepare(rollout((0, 1), time=1, params=params), params,
                    num_policies=2, normalize_advantage=False)
     extra = data.extras["policy_extras"]
-    np.testing.assert_allclose(extra[losses.IMPORTANCE_WEIGHT][:, 0], [1., 1., 2.])
+    np.testing.assert_allclose(extra[losses.LOG_IMPORTANCE_WEIGHT][:, 0], [0., 0., np.log(2.)])
     _, metrics = losses.compute_sapg_loss(
         params, None, data, jax.random.PRNGKey(0), analytic_network(), num_policies=2,
     )
@@ -206,7 +207,7 @@ def test_all_prepared_targets_are_frozen_against_parameter_differentiation():
     params = analytic_params(slope=.5, embedding_scale=.2)
     original = rollout(params=params)
     frozen_keys = (losses.TARGET_VALUE, losses.ADVANTAGE, losses.OLD_TARGET_LOG_PROB,
-                   losses.IMPORTANCE_WEIGHT, losses.ACTION_STD)
+                   losses.LOG_IMPORTANCE_WEIGHT, losses.ACTION_STD)
 
     def target_sum(parameters):
         prepared = prepare(original, parameters)
@@ -272,3 +273,136 @@ def test_optional_entropy_coefficients_index_target_policy_not_behavior():
     _, metrics = losses.compute_sapg_loss(params, None, data, jax.random.PRNGKey(0),
         analytic_network(), num_policies=2, entropy_costs=(.01, .04))
     np.testing.assert_allclose(metrics["entropy_loss"], -(.01 + .04 + .01) / 3)
+
+
+@pytest.mark.parametrize("advantage", [-2., 0., 2.])
+@pytest.mark.parametrize("ratio", [.2, .8, 1., 1.2, 4.])
+def test_log_surrogate_matches_original_values_and_gradients_including_clip_ties(advantage, ratio):
+    log_ratio = jnp.log(jnp.float32(ratio))
+    advantage = jnp.float32(advantage)
+
+    def original(value):
+        ratio = jnp.exp(value)
+        return jnp.minimum(ratio * advantage, jnp.clip(ratio, .8, 1.2) * advantage)
+
+    def fixed(value):
+        return losses.importance_clipped_surrogate(value, 0., 0., 0., advantage, .2)
+
+    expected = jax.value_and_grad(original)(log_ratio)
+    actual = jax.jit(jax.value_and_grad(fixed))(log_ratio)
+    np.testing.assert_allclose(actual, expected, rtol=2e-6, atol=2e-7)
+
+
+def test_frozen_targets_keep_extremely_small_leader_likelihood_in_log_space():
+    params = analytic_params(2, offsets=[-1000., 0.])
+    data = prepare(rollout((0, 1), time=1, params=params), params,
+                   num_policies=2, normalize_advantage=False)
+    extras = data.extras["policy_extras"]
+    np.testing.assert_array_equal(extras[losses.LOG_IMPORTANCE_WEIGHT][:, 0], [0., 0., -1000.])
+    assert all(np.isfinite(leaf).all() for leaf in jax.tree.leaves(data))
+    # A negative advantage exercises the unclipped penalty. The old expression
+    # becomes exp(-1000) * exp(1000) = 0 * inf despite a true ratio of one.
+    follower = jax.tree.map(lambda leaf: leaf[-1:], data)
+    follower = follower._replace(extras={**follower.extras, "policy_extras": {
+        **follower.extras["policy_extras"], losses.ADVANTAGE: jnp.full((1, 1), -2.)}})
+
+    def objective(offset):
+        current = params.replace(policy={**params.policy, "offsets": params.policy["offsets"].at[0].set(offset)})
+        return losses.compute_sapg_loss(current, None, follower, jax.random.PRNGKey(0),
+            analytic_network(), num_policies=2, entropy_cost=0.)[1]["policy_loss"]
+
+    value, gradient = jax.jit(jax.value_and_grad(objective))(jnp.float32(0.))
+    np.testing.assert_allclose([value, gradient], [2., 2.], rtol=1e-6)
+
+
+def test_29_action_gaussian_negligible_old_leader_likelihood_has_finite_true_gradient():
+    from brax.training.distribution import NormalTanhDistribution
+
+    distribution = NormalTanhDistribution(29)
+    raw_action = jnp.zeros(29)
+    raw_scale = jnp.full(29, jnp.log(jnp.expm1(.05 - .001)))
+
+    def log_likelihood(mean):
+        return distribution.log_prob(jnp.concatenate((mean, raw_scale)), raw_action)
+
+    old = log_likelihood(jnp.full(29, 5.))
+    behavior = log_likelihood(jnp.zeros(29))
+    current = jnp.full(29, .005)
+    assert float(old - behavior) < -100_000
+
+    def fixed(mean):
+        return -losses.importance_clipped_surrogate(
+            log_likelihood(mean), old, behavior, old - behavior, jnp.float32(-2.), .2)
+
+    def exact_combined(mean):
+        # r is above the upper bound and A < 0: the original mathematical
+        # surrogate selects the *unclipped* current / behavior likelihood.
+        return 2. * jnp.exp(log_likelihood(mean) - behavior)
+
+    actual = jax.jit(jax.value_and_grad(fixed))(current)
+    expected = jax.value_and_grad(exact_combined)(current)
+    assert all(np.isfinite(leaf).all() for leaf in jax.tree.leaves(actual))
+    np.testing.assert_allclose(actual[0], expected[0], rtol=1e-6)
+    np.testing.assert_allclose(actual[1], expected[1], rtol=1e-6)
+
+
+@pytest.mark.parametrize("log_importance", [-1000., 1000.])
+def test_zero_advantage_is_zero_before_exponentiation_even_with_extreme_likelihoods(log_importance):
+    def objective(current):
+        return losses.importance_clipped_surrogate(
+            current, jnp.float32(log_importance), 0., jnp.float32(log_importance), jnp.float32(0.), .2)
+
+    value, gradient = jax.jit(jax.value_and_grad(objective))(jnp.float32(1000.))
+    np.testing.assert_array_equal([value, gradient], [0., 0.])
+
+
+@pytest.mark.parametrize("advantage", [-1e-30, 1e-30])
+def test_small_advantage_can_make_an_overflowing_weight_representable(advantage):
+    def objective(current):
+        return losses.importance_clipped_surrogate(
+            current, 0., -100., 100., jnp.float32(advantage), .2)
+
+    value, gradient = jax.jit(jax.value_and_grad(objective))(jnp.float32(.05))
+    expected = np.exp(100.05) * float(jnp.float32(advantage))
+    np.testing.assert_allclose([value, gradient], [expected, expected], rtol=1e-5)
+
+
+def test_genuinely_unrepresentable_objective_is_not_silently_capped_or_zeroed():
+    value = losses.importance_clipped_surrogate(
+        jnp.float32(0.), 0., -1000., 1000., jnp.float32(-1.), .2)
+    assert np.isneginf(value)
+
+
+@pytest.mark.parametrize("current,old,behavior,advantage,expected", [
+    (0., -1000., 0., 2., 0.),  # negligible mu; upper clipping is active
+    (0., 1000., 0., 2., 2.),   # overflowing mu, but mu*r is exactly one
+    (1000., 0., 0., 2., 2.4), # overflowing r belongs to an inactive branch
+    (-1000., 0., 0., -2., -1.6), # lower clipping preserves a negative penalty
+])
+def test_extreme_inactive_branches_never_poison_finite_objective_gradients(
+    current, old, behavior, advantage, expected,
+):
+    def objective(value):
+        return losses.importance_clipped_surrogate(
+            value, old, behavior, old - behavior, jnp.float32(advantage), .2)
+
+    value, gradient = jax.jit(jax.value_and_grad(objective))(jnp.float32(current))
+    assert np.isfinite(value) and np.isfinite(gradient)
+    np.testing.assert_allclose(value, expected, rtol=1e-6)
+    np.testing.assert_allclose(gradient, expected if old == 1000. else 0., rtol=1e-6)
+
+
+def test_mean_normalization_precedes_exp_for_individually_overflowing_terms():
+    # exp(93) overflows float32, while this one nonzero contribution's mean
+    # over 128 elements and its derivative are both representable.
+    advantages = jnp.zeros(128).at[0].set(-1.)
+
+    def objective(current):
+        return -jnp.sum(losses.importance_clipped_surrogate(
+            current, 0., -93., 93., advantages, .2,
+            log_normalizer=jnp.log(advantages.size)))
+
+    value, gradient = jax.jit(jax.value_and_grad(objective))(jnp.float32(0.))
+    assert np.isfinite(value) and np.isfinite(gradient)
+    expected = np.exp(93.) / 128
+    np.testing.assert_allclose([value, gradient], [expected, expected], rtol=1e-5)
