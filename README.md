@@ -2,6 +2,8 @@
 
 > **Optional SAPG learner:** select `--algorithm sapg` for shared conditioned policies and leader data sharing. PPO remains the default. [Method, checkpoint compatibility, and Slurm launch recipe](docs/SAPG_TRAINING_20260918.md).
 >
+> **mjlab migration:** the separate PyTorch/MuJoCo Warp backend preserves the whole-body task and both learners. See [migration, checkpoint conversion, and validation](docs/MJLAB_MIGRATION_20260919.md). The original JAX/MJX entry points remain available.
+>
 > **Collision coverage:** the new training extension checks 35 enclosing body primitives against scene geometry at physics substeps, with collision penalties and termination. This addresses the sparse-point coverage gap without adding observations. It remains a primitive approximation with discrete checks, not continuous mesh collision certification. [Original limitation and evidence](docs/CAT_COLLISION_COVERAGE_LIMITATION_20260916.md).
 
 <div align="center">  

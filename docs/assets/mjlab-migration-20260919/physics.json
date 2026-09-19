@@ -1,0 +1,35 @@
+{
+  "backend": "mjlab/MuJoCo-Warp",
+  "worlds": 24,
+  "steps": 100,
+  "physics_steps_per_second": 52430.699268799806,
+  "startup_seconds": 3.2491854930412956,
+  "options": {
+    "timestep": 0.002,
+    "integrator": 0,
+    "solver": 2,
+    "iterations": 3,
+    "ls_iterations": 5,
+    "tolerance": 1e-08,
+    "ls_tolerance": 0.01,
+    "cone": 0,
+    "jacobian": 2,
+    "impratio": 1.0,
+    "disableflags": 32768,
+    "enableflags": 0
+  },
+  "capacity": {
+    "contacts": 240,
+    "contact_capacity": 1536,
+    "broadphase_candidates": 96,
+    "max_constraints": 63,
+    "constraint_capacity": 256,
+    "overflow_worlds": 0
+  },
+  "native_one_step_qpos_max_error": 2.014373778891354e-08,
+  "final_fk_preserves_observations": true,
+  "selective_reset_preserves_observations": true,
+  "policy_evaluation": false,
+  "training": false,
+  "gpu_peak_allocated_bytes": 971264
+}

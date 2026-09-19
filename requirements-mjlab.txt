@@ -7,6 +7,7 @@ warp-lang==1.14.0
 torch==2.7.1
 numpy==2.2.6
 scipy==1.15.3
+scikit-image==0.25.2
 wandb==0.22.3
 # CPU-only imports for unchanged scene metadata validators; no JAX simulation.
 jax==0.4.38
