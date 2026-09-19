@@ -162,8 +162,8 @@ class CollisionChecker:
         self._kernel = self._compute
 
     def enable_compilation(self, *, backend="inductor"):
-        self._kernel = torch.compile(self._compute, backend=backend, fullgraph=True,
-                                     dynamic=True, mode="default")
+        from .compilation import compile_batched_kernel
+        self._kernel = compile_batched_kernel(self._compute, batch_arg=0, backend=backend)
 
     def _compute(self, scene_ids, xpos, xmat):
         flags = body_collisions(self.compiled, self.bank, scene_ids, xpos, xmat,

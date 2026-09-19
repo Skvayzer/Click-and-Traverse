@@ -84,6 +84,8 @@ def benchmark(args):
     device = torch.device(args.device)
     if device.type != "cuda" or not torch.cuda.is_available():
         raise ValueError("The capacity benchmark requires the actual CUDA training device")
+    torch.cuda.set_device(device)
+    torch.cuda.init()
     started = time.monotonic()
     metadata, arrays = read_array_archive(args.checkpoint_npz)
     config = learner_config_from_archive(metadata, algorithm=args.algorithm)

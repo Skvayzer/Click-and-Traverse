@@ -306,13 +306,42 @@ def test_task_state_resume_preserves_random_stream_and_temporal_history(compile_
 
 def test_field_sampler_compiles_as_one_graph_for_dynamic_reset_batches():
     from cat_mjlab.fields import sample_ragged_field
-    compiled=torch.compile(sample_ragged_field,backend='eager',fullgraph=True,dynamic=True)
+    from cat_mjlab.compilation import compile_batched_kernel
+    compiled=compile_batched_kernel(sample_ragged_field,batch_arg='pos',backend='eager')
     field=torch.arange(4*5*6*3,dtype=torch.float32).reshape(-1,3)
-    for batch in (2,3):
+    for batch in (2,1,3):
         positions=torch.full((batch,13,3),1.35)
         arguments=dict(origin=torch.zeros((batch,3)),dx=torch.ones(batch),
             shape=torch.tensor([[4,5,6]]).expand(batch,-1),offset=torch.zeros(batch,dtype=torch.long))
         close(compiled(field,positions,**arguments),sample_ragged_field(field,positions,**arguments))
+
+
+def test_single_world_dispatch_keeps_eager_quaternions_and_correct_field_batch(monkeypatch):
+    from cat_mjlab.compilation import compile_batched_kernel
+    from cat_mjlab.fields import sample_ragged_field
+    compiled_calls=[]
+    def compile_spy(function,**options):
+        def compiled(*args,**kwargs):
+            compiled_calls.append(function.__name__)
+            return function(*args,**kwargs)
+        return compiled
+    monkeypatch.setattr(torch,'compile',compile_spy)
+    delayed=compile_batched_kernel(tm.delay_body_pos)
+    sample=compile_batched_kernel(sample_ragged_field,batch_arg='pos')
+    # Non-tensor metadata before the first tensor must not select the batch.
+    context=compile_batched_kernel(nav.hand_contrast_context)
+    from cat_ppo.furniture.contrastive_rewards import pack_hand_contrast
+    for size in (3,1,2):
+        before=len(compiled_calls)
+        qpos=torch.zeros((size,36));qpos[:,3]=1.;poses=torch.rand((size,11,3))
+        close(delayed(qpos=qpos,odom=qpos[:,:7],positions=poses),poses)
+        fields=torch.ones((4*5*6,1));pos=torch.full((size,11,3),1.25)
+        actual=sample(fields,pos,origin=torch.zeros((size,3)),dx=torch.ones(size),
+                      shape=torch.tensor([[4,5,6]]).expand(size,-1),offset=torch.zeros(size,dtype=torch.long))
+        close(actual,torch.ones((size,11,1)))
+        metadata={key:tensor(value) for key,value in pack_hand_contrast([None]*size).items()}
+        context(metadata,torch.zeros(size),torch.ones((size,2)))
+        assert len(compiled_calls)-before==(0 if size==1 else 3)
 
 
 def test_initial_horizon_offsets_do_not_advance_native_perception_or_grace_age():

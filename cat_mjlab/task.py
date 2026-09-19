@@ -125,12 +125,11 @@ class CATTask:
         Compilation is lazy; the first control transitions perform compilation.
         """
         if self.compiled:return
-        options=dict(backend=backend,fullgraph=True,dynamic=True)
-        if backend=='inductor':options['mode']='default'
+        from .compilation import compile_batched_kernel
         for name,function in vars(self.math).items():
-            setattr(self.math,name,torch.compile(function,**options))
+            setattr(self.math,name,compile_batched_kernel(function,backend=backend))
         for name in ('route_context','swept_root_clearance','hand_contrast_context','contrast_reward_terms'):
-            setattr(self,name,torch.compile(getattr(self,name),**options))
+            setattr(self,name,compile_batched_kernel(getattr(self,name),backend=backend))
         if hasattr(self.bank,'enable_compilation'):self.bank.enable_compilation(backend=backend)
         if hasattr(self.collision,'enable_compilation'):self.collision.enable_compilation(backend=backend)
         self.compiled=True

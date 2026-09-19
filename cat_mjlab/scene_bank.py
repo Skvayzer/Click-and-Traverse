@@ -107,9 +107,8 @@ class SceneBank:
             dx=self.dxs[scene_ids],shape=self.shapes[scene_ids],offset=self.offsets[scene_ids])
 
     def enable_compilation(self,*,backend='inductor'):
-        options=dict(backend=backend,fullgraph=True,dynamic=True)
-        if backend=='inductor':options['mode']='default'
-        self.sample_kernel=torch.compile(sample_ragged_field,**options)
+        from .compilation import compile_batched_kernel
+        self.sample_kernel=compile_batched_kernel(sample_ragged_field,batch_arg='pos',backend=backend)
 
     def probabilities(self,weights=None,stage=None):
         weights=self.weights if weights is None else weights
