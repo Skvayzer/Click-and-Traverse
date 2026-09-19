@@ -135,12 +135,13 @@ class CATSimulation:
         geom = self.wp.to_torch(contact.geom).long()
         world = self.wp.to_torch(contact.worldid).long().clamp(0, self.num_envs - 1)
         valid = (self._contact_index < self.wp.to_torch(raw.nacon)[0]) & (self.wp.to_torch(contact.dist) < 0)
-        result = torch.zeros((self.num_envs, len(pairs)), dtype=torch.bool, device=self.device)
+        # CUDA scatter_reduce in the pinned Torch version has no bool kernel.
+        result = torch.zeros((self.num_envs, len(pairs)), dtype=torch.int32, device=self.device)
         for index, (first, second) in enumerate(pairs):
             hit = valid & (((geom[:, 0] == first) & (geom[:, 1] == second)) |
                            ((geom[:, 0] == second) & (geom[:, 1] == first)))
-            result[:, index].scatter_reduce_(0, world, hit, reduce="amax", include_self=True)
-        return result
+            result[:, index].scatter_reduce_(0, world, hit.to(torch.int32), reduce="amax", include_self=True)
+        return result.bool()
 
     def contact_flags(self, pairs):
         key = id(pairs)
