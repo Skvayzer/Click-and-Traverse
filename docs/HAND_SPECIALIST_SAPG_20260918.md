@@ -1,5 +1,9 @@
 # Hand-protection specialist with SAPG — 18 September 2026
 
+**Current host: `dep-1`.** The complete fixed learner was transferred from
+`tl-server-0` and resumed at 451,805,184 transitions in the same W&B run.
+See [the host migration report](SAPG_DEP1_MIGRATION_20260919.md).
+
 **19 September update:** job 680 stopped on a numerical overflow in the SAPG
 actor gradient. The failure was reproduced from the saved learner and repaired
 without changing the objective or training settings. Training resumed as

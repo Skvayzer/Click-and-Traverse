@@ -72,3 +72,47 @@ the exact saved training arguments before invoking the ordinary launcher with
 `--resume`. It provides `--print-command` for preflight validation and sets no
 GPU, optimization or episode parameters. **26 focused tests passed** for host
 migration and this portable resume entry.
+
+## Completed transfer and destination launch
+
+On 19 September at **12:25:27 Dubai time**, the transfer pipeline launched the
+continuous learner on `dep-1` in tmux session **`cat-sapg-hand-20260919`**.
+Its initial PID is **631122**. The complete source checkpoint passed SHA-256
+verification after extraction and remained byte-identical throughout the host
+metadata migration. All three scene/collision/reset manifest hashes match the
+source. W&B resumed `f017f302`, with only the four operational paths and the
+audited `host_migrations` field updated; every other remote configuration field
+was checked unchanged.
+
+The destination's temporary compressed parts were removed after verification.
+Free space after transfer was **9,897,377,792 bytes**, leaving room for the next
+atomic full-runtime replacement. The stopped PPO run and its best/full
+checkpoints were retained. Source Slurm job 689 remains completed, its run is
+stopped, and its STOP marker remains in place.
+
+Destination control/log locations, relative to the project directory:
+
+- Run: `outputs/cat_hand_specialist_sapg_680`.
+- Training log: `outputs/transfer_dep1_20260919/training-dep1.log`.
+- Transfer verification: `outputs/transfer_dep1_20260919/transfer-verified.json`.
+- Host migration journal:
+  `outputs/cat_hand_specialist_sapg_680/host-migrations/tl-server-0-to-dep-1-451805184/migration.json`.
+- Reviewed migration/resume tools extracted from commit
+  `a4020c561ff0fd7435040147fdd4448cbab45918`:
+  `outputs/migration_tools_a4020c561ff0/scripts`.
+
+Training uses the destination's existing `.venv`, 16 OpenMP/MKL threads,
+`XLA_PYTHON_CLIENT_PREALLOCATE=false` and memory fraction `0.90`. `GLI_PATH`
+is unset, so canonical robot assets come from the pinned checkout. There is no
+training-step cap or automatic evaluation/recovery job.
+
+The destination completed and durably saved updates at **452,984,832** and
+**454,164,480 transitions**. Both reported finite losses and
+`health/nonfinite=0`; the live W&B API independently confirmed the latter step
+in the original run. The second update reported approximately **41,775 physical
+transitions/second** during its timed learner work. NVIDIA reported **33,892
+MiB** used. The source remains stopped. The full checkpoint, rather than the
+older selected best leader, is the state being continued.
+
+See [the setup and performance audit](SAPG_RESUME_AUDIT_20260919.md) for the
+comparison of source/destination assets, state restoration and metric meaning.
