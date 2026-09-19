@@ -42,3 +42,5 @@ JAX_PLATFORMS=cpu MUJOCO_GL=egl PYTHONUNBUFFERED=1 TORCHINDUCTOR_COMPILE_THREADS
 ```
 
 Each full update collects 1,572,864 physical transitions. Runtime snapshots overwrite `resume.pt` every ten updates and on a cooperative stop. Create `STOP` inside the run directory to stop cooperatively. Native `--resume` requires an identical saved training contract.
+
+The continuous run is [8748f6e0](https://wandb.ai/skvayzer/CAT-wholebody/runs/8748f6e0), launched from code commit `be0d908`. Its [four-chart success workspace](https://wandb.ai/skvayzer/CAT-wholebody?nw=eba2b515a39) was created and verified through the W&B API. Existing workspaces were preserved. The [capacity probe record](assets/mjlab-migration-20260919/contrastive-generalist-49152.json) identifies its measured code and source checkpoint separately from the continuous run.
