@@ -132,7 +132,8 @@ class Logger:
             if any(self.identity[key] != value for key, value in (("mode", mode), ("project", project), ("entity", entity))):
                 raise ValueError("W&B destination differs from the saved run")
         else:
-            self.identity = dict(id=uuid.uuid4().hex[:8], mode=mode, project=project, entity=entity, initialized=False)
+            self.identity = dict(id=uuid.uuid4().hex[:8], mode=mode, project=project, entity=entity,
+                                 initialized=False, last_global_step=-1)
             atomic_json(self.path, self.identity)
         if mode != "disabled":
             import wandb
@@ -148,11 +149,17 @@ class Logger:
     def log(self, step, values):
         if any(not math.isfinite(float(value)) for value in values.values()):
             raise FloatingPointError("Refusing nonfinite training metrics")
+        # A crash can leave logs ahead of the last durable update. Resume the
+        # same identity, suppress stale steps until learner progress catches up.
+        if int(step) < self.identity.get("last_global_step", -1):
+            return
         event = dict(global_step=int(step), **{key: float(value) for key, value in values.items()})
         with (self.directory / "metrics.jsonl").open("a") as stream:
             stream.write(json.dumps(event, allow_nan=False) + "\n")
         if self.run is not None:
             self.run.log(event)
+        self.identity["last_global_step"] = int(step)
+        atomic_json(self.path, self.identity)
         print(json.dumps(event, sort_keys=True), flush=True)
 
     def finish(self, exit_code=0):
@@ -254,6 +261,8 @@ def create_task(args, *, environment_config=None):
     config["wholebody"]["body_collision"].update(enabled=True, bank_manifest=str(args.body_collision_bank),
                                                  reset_manifest=str(args.body_collision_resets))
     task = CATTask(sim, bank, config, collision=collision, seed=args.seed)
+    if args.compile_task:
+        task.enable_compilation()
     return task, sim, config
 
 
@@ -283,6 +292,8 @@ def run(args):
         raise ValueError("Invalid update/checkpoint interval")
     if args.command == "verify" and (args.max_updates < 1 or args.wandb_mode != "disabled"):
         raise ValueError("Verification must be bounded and W&B disabled")
+    if args.resume and args.fresh_optimizer:
+        raise ValueError("--fresh-optimizer applies only to initial backend migration")
     if (directory / "STOP").exists():
         raise ValueError("STOP exists; retire it deliberately before resuming")
     if directory.is_symlink():
@@ -310,9 +321,13 @@ def run(args):
     learner = Learner(config, device=args.device)
     migration = load_array_archive(learner, args.checkpoint_npz, restore_optimizer=not args.fresh_optimizer)
     config_source = source.get("metadata", {}).get("config", {}).get("env_config")
+    if config_source is None:
+        config_source = json.loads((ROOT / "configs/cat_generalist_released.json").read_text())["env_config"]
+    config_source = dict(config_source, randomize_initial_episode_steps=source.get("randomize_initial_episode_steps", True))
     task, sim, environment_config = create_task(args, environment_config=config_source)
     contract = dict(learner_config=asdict(config), num_envs=args.num_envs, batch_size=batch_size,
         unroll_length=unroll, seed=args.seed, nconmax=args.nconmax, njmax=args.njmax,
+        compile_task=args.compile_task,
         bank_sha256=_file_hash(args.bank_manifest), collision_sha256=_file_hash(args.body_collision_bank),
         resets_sha256=_file_hash(args.body_collision_resets), source_sha256=_source_identity(), versions=_versions(),
         environment_config=environment_config, checkpoint_archive_sha256=_file_hash(args.checkpoint_npz))
@@ -340,6 +355,14 @@ def run(args):
             torch.cuda.set_rng_state_all(snapshot["rng_cuda"])
         window.load_state_dict(snapshot["success_window"])
         best_score, previous_walltime = snapshot["best_score"], snapshot["walltime"]
+        # Best-model publication can be newer than the less frequent full
+        # runtime snapshot. Preserve its selection score across crash recovery.
+        if (directory / "best.pt").exists():
+            incumbent = torch.load(directory / "best.pt", map_location="cpu", weights_only=True)
+            if (incumbent.get("schema") != "cat-mjlab-best-v1" or incumbent.get("contract") != contract
+                    or not math.isfinite(incumbent["score"])):
+                raise ValueError("Existing best checkpoint differs from the native run contract")
+            best_score = incumbent["score"] if best_score is None else max(best_score, incumbent["score"])
         record = old_record
     else:
         atomic_json(directory / "run.json", record)
@@ -378,7 +401,7 @@ def run(args):
                 if best_score is None or score > best_score:
                     best_score = score
                     atomic_torch_save(directory / "best.pt", dict(schema="cat-mjlab-best-v1",
-                        model=learner.model.state_dict(), config=asdict(config), step=learner.env_steps,
+                        model=learner.model.state_dict(), config=asdict(config), contract=contract, step=learner.env_steps,
                         score=score, selected_policy_id=0, selection="leader mean physical rollout reward",
                         observation_contract=task.contract))
                 values = {"learner/" + key: value for key, value in metrics.items()

@@ -111,7 +111,9 @@ def test_bounded_training_checkpoint_and_resume_preserve_one_identity(tmp_path, 
     result = runner.run(parser().parse_args(arguments + ["--resume"]))
     assert result["env_steps"] == 24
     assert tasks[-1].ticks == 4
-    assert json.loads((directory / "wandb.json").read_text()) == identity
+    resumed_identity = json.loads((directory / "wandb.json").read_text())
+    assert resumed_identity["id"] == identity["id"]
+    assert resumed_identity["last_global_step"] == 24
     assert len((directory / "metrics.jsonl").read_text().splitlines()) == 2
     (directory / "STOP").touch()
     with pytest.raises(ValueError, match="STOP exists"):
@@ -123,3 +125,13 @@ def test_verify_rejects_unbounded_or_online_jobs_before_loading_anything(tmp_pat
                            command="verify", wandb_mode="disabled")
     with pytest.raises(ValueError, match="bounded"):
         runner.run(args)
+
+
+def test_logger_suppresses_old_steps_after_resume(tmp_path):
+    logger = runner.Logger(tmp_path, mode="disabled", project="test", entity="test", record={})
+    logger.log(100, {"success/goal_success_rate": .5})
+    resumed = runner.Logger(tmp_path, mode="disabled", project="test", entity="test", record={}, resume=True)
+    resumed.log(90, {"success/goal_success_rate": .4})
+    resumed.log(110, {"success/goal_success_rate": .6})
+    rows = [json.loads(line) for line in (tmp_path / "metrics.jsonl").read_text().splitlines()]
+    assert [row["global_step"] for row in rows] == [100, 110]

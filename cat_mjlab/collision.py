@@ -159,8 +159,16 @@ class CollisionChecker:
         self.bank = {k: torch.as_tensor(v, device=device, dtype=torch.long if v.dtype.kind in "iu" else torch.float32)
                      for k, v in arrays.items()}
         self.compiled = compile_proposal(json.loads(self.proposal_path.read_text()), model, device)
+        self._kernel = self._compute
 
-    def __call__(self, scene_ids, data):
-        flags = body_collisions(self.compiled, self.bank, scene_ids, data.xpos, data.xmat,
+    def enable_compilation(self, *, backend="inductor"):
+        self._kernel = torch.compile(self._compute, backend=backend, fullgraph=True,
+                                     dynamic=True, mode="default")
+
+    def _compute(self, scene_ids, xpos, xmat):
+        flags = body_collisions(self.compiled, self.bank, scene_ids, xpos, xmat,
                                 max_candidates=self.metadata["static_candidate_count"])
         return (flags[:, None] & self.compiled["region_mask"][None]).any(-1)
+
+    def __call__(self, scene_ids, data):
+        return self._kernel(scene_ids, data.xpos, data.xmat)

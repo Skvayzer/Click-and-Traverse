@@ -260,7 +260,8 @@ def test_task_real_cpu_physics_reset_histories_and_terminal_penalty():
             if self.active:result[0,0]=True
             return result
     collision=Collision();sim=_CPUSimulation(2)
-    task=CATTask(sim,_tiny_bank(),wholebody_config(),collision=collision,seed=13)
+    cfg=wholebody_config();cfg['randomize_initial_episode_steps']=False
+    task=CATTask(sim,_tiny_bank(),cfg,collision=collision,seed=13)
     assert task.obs['state'].shape==(2,222)
     assert task.obs['privileged_state'].shape==(2,310)
     assert torch.isfinite(task.obs['state']).all()
@@ -284,17 +285,42 @@ def test_task_real_cpu_physics_reset_histories_and_terminal_penalty():
     assert result['truncated'][1] and not result['terminated'][1]
 
 
-def test_task_state_resume_preserves_random_stream_and_temporal_history():
+@pytest.mark.parametrize('compile_task',[False,True])
+def test_task_state_resume_preserves_random_stream_and_temporal_history(compile_task):
     from cat_mjlab.task import CATTask
     from cat_mjlab.config import wholebody_config
-    first=CATTask(_CPUSimulation(2),_tiny_bank(),wholebody_config(),seed=23)
+    cfg=wholebody_config();cfg['randomize_initial_episode_steps']=False
+    first=CATTask(_CPUSimulation(2),_tiny_bank(),cfg,seed=23)
     first.step(torch.full((2,29),.04))
     saved=deepcopy(first.state_dict())
     physics={k:v.clone() for k,v in vars(first.data).items()}
     expected=first.step(torch.full((2,29),-.02))
-    second=CATTask(_CPUSimulation(2),_tiny_bank(),wholebody_config(),seed=5)
+    second=CATTask(_CPUSimulation(2),_tiny_bank(),cfg,seed=5)
     for key,value in physics.items():getattr(second.data,key).copy_(value)
     second.load_state_dict(saved)
+    if compile_task:second.enable_compilation(backend='eager')
     actual=second.step(torch.full((2,29),-.02))
     close(actual['reward'],expected['reward'])
     for key in actual['obs']:close(actual['obs'][key],expected['obs'][key])
+
+
+def test_field_sampler_compiles_as_one_graph_for_dynamic_reset_batches():
+    from cat_mjlab.fields import sample_ragged_field
+    compiled=torch.compile(sample_ragged_field,backend='eager',fullgraph=True,dynamic=True)
+    field=torch.arange(4*5*6*3,dtype=torch.float32).reshape(-1,3)
+    for batch in (2,3):
+        positions=torch.full((batch,13,3),1.35)
+        arguments=dict(origin=torch.zeros((batch,3)),dx=torch.ones(batch),
+            shape=torch.tensor([[4,5,6]]).expand(batch,-1),offset=torch.zeros(batch,dtype=torch.long))
+        close(compiled(field,positions,**arguments),sample_ragged_field(field,positions,**arguments))
+
+
+def test_initial_horizon_offsets_do_not_advance_native_perception_or_grace_age():
+    from cat_mjlab.task import CATTask
+    from cat_mjlab.config import wholebody_config
+    task=CATTask(_CPUSimulation(5),_tiny_bank(),wholebody_config(),seed=43)
+    assert (task.info['step']==0).all()
+    assert (task.info['wrapper_steps']>=0).all() and (task.info['wrapper_steps']<1000).all()
+    assert task.info['wrapper_steps'].unique().numel()>1
+    task.reset(torch.tensor([0,1]))
+    assert (task.info['wrapper_steps'][:2]==0).all()

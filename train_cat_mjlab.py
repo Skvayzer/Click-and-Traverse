@@ -25,6 +25,8 @@ def parser():
         target.add_argument("--device", default="cuda:0")
         target.add_argument("--nconmax", type=int, default=64)
         target.add_argument("--njmax", type=int, default=256)
+        target.add_argument("--compile-task", action="store_true",
+                            help="Compile pure Torch task kernels after constructor checks")
         target.add_argument("--max-updates", type=int, default=1 if command == "verify" else 0,
                             help="Updates this invocation; 0 is continuous (run only)")
         target.add_argument("--checkpoint-interval-updates", type=int, default=10)

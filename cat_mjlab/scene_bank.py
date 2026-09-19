@@ -24,6 +24,7 @@ class SceneBank:
         from cat_ppo.furniture.contrastive_bank import contrastive_roles
         from cat_ppo.furniture.hand_curriculum import curriculum_levels,navigation_scene_groups
         self.path=Path(manifest).resolve();self.device=torch.device(device)
+        self.sample_kernel=sample_ragged_field
         self.manifest=load_generalist_manifest(self.path,verify_files=verify_files)
         records=self.manifest['scenes'];self.count=len(records)
         self.expanded=self.manifest['schema']=='cat-generalist-field-bank-v2'
@@ -102,8 +103,13 @@ class SceneBank:
             raise ValueError('Contrastive scenes require the certified full-body reset bank')
 
     def sample(self,name,positions,scene_ids):
-        return sample_ragged_field(self.fields[name],positions,origin=self.origins[scene_ids],
+        return self.sample_kernel(self.fields[name],positions,origin=self.origins[scene_ids],
             dx=self.dxs[scene_ids],shape=self.shapes[scene_ids],offset=self.offsets[scene_ids])
+
+    def enable_compilation(self,*,backend='inductor'):
+        options=dict(backend=backend,fullgraph=True,dynamic=True)
+        if backend=='inductor':options['mode']='default'
+        self.sample_kernel=torch.compile(sample_ragged_field,**options)
 
     def probabilities(self,weights=None,stage=None):
         weights=self.weights if weights is None else weights

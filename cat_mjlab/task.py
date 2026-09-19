@@ -43,6 +43,15 @@ class CATTask:
         from cat_ppo.furniture.control import JOINT_NAMES,wholebody_observation_contract
         from cat_ppo.furniture.grippers import hand_sphere
         self.sim,self.bank,self.config,self.collision=sim,bank,config,collision
+        self.math=SimpleNamespace(**{name:getattr(tm,name) for name in (
+            'quat_mul','delay_body_pos','navi_rotation','world_to_navi','matrix_rpy',
+            'motor_targets','pd_torque','compute_cmd_from_rtf','update_phase','observations',
+            'upper_stability_terms','native_rewards')})
+        self.route_context=route_context
+        self.swept_root_clearance=swept_root_clearance
+        self.hand_contrast_context=hand_contrast_context
+        self.contrast_reward_terms=contrast_reward_terms
+        self.compiled=False
         self.data,self.model=sim.data,sim.model
         self.device=self.data.qpos.device if device is None else torch.device(device)
         self.num_envs=len(self.data.qpos) if num_envs is None else num_envs
@@ -101,6 +110,30 @@ class CATTask:
         self.outcome_counted=torch.zeros(self.num_envs,dtype=torch.bool,device=self.device)
         self.episode_reward=torch.zeros(self.num_envs,device=self.device)
         self.reset()
+        # The released learner offsets EpisodeWrapper's horizon only. Native
+        # task age remains zero for contact grace and held-odometry cadence.
+        if bool(_get(config,'randomize_initial_episode_steps',True)):
+            self.info['wrapper_steps']=torch.randint(int(_get(config,'episode_length',1000)),
+                (self.num_envs,),generator=self.generator,device=self.device)
+
+    def enable_compilation(self,*,backend='inductor'):
+        """Fuse pure task kernels without capturing mutable state or reset logic.
+
+        No reduce-overhead/CUDA-graph pool is requested: fields and rollout
+        storage already occupy substantial VRAM. Dynamic world batches let
+        selective resets share kernels when Torch supports the operation.
+        Compilation is lazy; the first control transitions perform compilation.
+        """
+        if self.compiled:return
+        options=dict(backend=backend,fullgraph=True,dynamic=True)
+        if backend=='inductor':options['mode']='default'
+        for name,function in vars(self.math).items():
+            setattr(self.math,name,torch.compile(function,**options))
+        for name in ('route_context','swept_root_clearance','hand_contrast_context','contrast_reward_terms'):
+            setattr(self,name,torch.compile(getattr(self,name),**options))
+        if hasattr(self.bank,'enable_compilation'):self.bank.enable_compilation(backend=backend)
+        if hasattr(self.collision,'enable_compilation'):self.collision.enable_compilation(backend=backend)
+        self.compiled=True
 
     def _rand(self,shape,low=0.,high=1.):
         return low+(high-low)*torch.rand(shape,device=self.device,generator=self.generator)
@@ -122,13 +155,13 @@ class CATTask:
         previous=root if reset else self.navigation['root_xy'][ids]
         segment=torch.zeros(len(ids),dtype=torch.long,device=self.device) if reset else self.navigation['segment'][ids]
         violation=torch.zeros(len(ids),dtype=torch.bool,device=self.device) if reset else self.navigation['violation'][ids]
-        values=route_context(root,previous,segment,violation,meta['route'],meta['route_count'],
+        values=self.route_context(root,previous,segment,violation,meta['route'],meta['route_count'],
             meta['obstacles'],meta['obstacle_count'],radius=meta['navigation_radius'])
         values['enabled']=meta['enabled'];values['violation']&=meta['enabled']
         for key in ('root_clearance','swept_clearance'):values[key]=torch.where(meta['enabled'],values[key],0.)
         for k,v in values.items():self._put(self.navigation,k,ids,v)
         metadata={k:v[self.scene_ids[ids]] for k,v in self.bank.contrast.items()}
-        values=hand_contrast_context(metadata,values['progress_m'],values['tangent'])
+        values=self.hand_contrast_context(metadata,values['progress_m'],values['tangent'])
         for k,v in values.items():self._put(self.contrast,k,ids,v)
 
     def _fields(self,positions,root_xy,ids):
@@ -138,7 +171,7 @@ class CATTask:
         nav={k:v[ids] for k,v in self.navigation.items()};meta=self._room_meta(ids)
         delta=nav['target']-root_xy;length=torch.linalg.vector_norm(delta,dim=-1)
         direction=delta/length.clamp_min(1e-6)[:,None]
-        visible=swept_root_clearance(root_xy,nav['target'],meta['obstacles'],meta['obstacle_count'],radius=meta['navigation_radius'])>0
+        visible=self.swept_root_clearance(root_xy,nav['target'],meta['obstacles'],meta['obstacle_count'],radius=meta['navigation_radius'])>0
         active=visible&~nav['blocked']&~nav['violation']
         speed=torch.linalg.vector_norm(nav['guidance'][:,:2],dim=-1)
         velocity=direction*(speed*active)[:,None]
@@ -149,13 +182,13 @@ class CATTask:
         replacement-=inward*normal*(sdf<.5);replacement*=active[:,None,None]
         replacement[:,1]=torch.cat((velocity,torch.zeros_like(velocity[:,:1])),-1)
         gf=torch.where(nav['enabled'][:,None,None],replacement,gf)
-        cmd=tm.compute_cmd_from_rtf(gf[:,1],gf[:,[0,3,4,5,6]],bf[:,[0,3,4,5,6]])
+        cmd=self.math.compute_cmd_from_rtf(gf[:,1],gf[:,[0,3,4,5,6]],bf[:,[0,3,4,5,6]])
         cmd=torch.where(nav['enabled'][:,None],room_command,cmd)
         return gf,bf,sdf,cmd
 
     def _elbow_fields(self,ids,actor):
         positions=self.data.site_xpos[ids][:,self.elbow_ids]
-        if actor:positions=tm.delay_body_pos(self.data.qpos[ids],self.info['odom_delay'][ids],positions)
+        if actor:positions=self.math.delay_body_pos(self.data.qpos[ids],self.info['odom_delay'][ids],positions)
         scenes=self.scene_ids[ids]
         gf,bf,sdf=(self.bank.sample(k,positions,scenes) for k in ('gf','bf','sdf'))
         sdf=sdf-.05
@@ -170,8 +203,8 @@ class CATTask:
         gf=gf*move[:,None,None]/(torch.linalg.vector_norm(gf,dim=-1,keepdim=True)+1e-6)
         bf=bf/(torch.linalg.vector_norm(bf,dim=-1,keepdim=True)+1e-6)
         if actor:
-            gf=tm.world_to_navi(self.info['navi'][ids],gf)
-            bf=tm.world_to_navi(self.info['navi'][ids],bf)*(sdf<.5);sdf=sdf.clamp(-1,.5)
+            gf=self.math.world_to_navi(self.info['navi'][ids],gf)
+            bf=self.math.world_to_navi(self.info['navi'][ids],bf)*(sdf<.5);sdf=sdf.clamp(-1,.5)
         return torch.cat((gf.flatten(1),bf.flatten(1),sdf.flatten(1)),-1)
 
     def _observe(self,ids,contacts):
@@ -183,7 +216,7 @@ class CATTask:
                for key,size,scale in (('gyro',3,.2),('gravity',3,.05),('joint_pos',29,.03),('joint_vel',29,1.5))}
         site_rotation=self.data.site_xmat.reshape(self.num_envs,-1,3,3)[ids,self.pelvis_site]
         gravity=-site_rotation[:,2,:]
-        result=tm.observations(joint_pos=self.data.qpos[ids,7:],joint_vel=self.data.qvel[ids,6:],nominal=self.nominal,
+        result=self.math.observations(joint_pos=self.data.qpos[ids,7:],joint_vel=self.data.qvel[ids,6:],nominal=self.nominal,
             gyro=self._sensor('gyro_pelvis',ids),gravity=gravity,linear_velocity=self._sensor('local_linvel_pelvis',ids),
             noise=noise,last_action=info['last_act'],targets=info['motor_targets'],command=info['command'],
             command_delay=info['command_delay'],foot_height=info['foot_height'],phase=info['phase'],navi=info['navi'],
@@ -206,13 +239,13 @@ class CATTask:
         qpos=self.init_q.expand(n,-1).clone();qpos[:,:2]+=self._rand((n,2),-1,1);qpos[:,2]=.8
         yaw=self._rand((n,),-np.pi/2,np.pi/2)
         quat=torch.stack(((yaw/2).cos(),torch.zeros_like(yaw),torch.zeros_like(yaw),(yaw/2).sin()),-1)
-        qpos[:,3:7]=tm.quat_mul(qpos[:,3:7],quat)
+        qpos[:,3:7]=self.math.quat_mul(qpos[:,3:7],quat)
         qpos[:,7:]=torch.maximum(torch.minimum(qpos[:,7:]*self._rand((n,29),.5,1.5),self.upper),self.lower)
         scenes=self.scene_ids[ids];room=~self.bank.reset_is_cat[scenes]
         position=self.bank.starts[scenes,:2]+qpos[:,:2]*self.bank.reset_xy_scale[scenes]
         yaw=self.bank.reset_yaws[scenes];q=torch.stack(((yaw/2).cos(),torch.zeros_like(yaw),torch.zeros_like(yaw),(yaw/2).sin()),-1)
         qpos[:,:2]=torch.where(room[:,None],position,qpos[:,:2])
-        qpos[:,3:7]=torch.where(room[:,None],tm.quat_mul(q,qpos[:,3:7]),qpos[:,3:7])
+        qpos[:,3:7]=torch.where(room[:,None],self.math.quat_mul(q,qpos[:,3:7]),qpos[:,3:7])
         self.sim.reset_data(ids)
         self.data.qpos[ids]=qpos;self.data.qvel[ids]=0.;self.data.qvel[ids,:6]=self._rand((n,6),-.5,.5)
         self.data.ctrl[ids]=qpos[:,7:];self.sim.forward(ids)
@@ -222,7 +255,8 @@ class CATTask:
             pick=torch.randint(self.bank.reset_pool.shape[1],(n,),generator=self.generator,device=self.device)
             qpos=torch.where(replaced[:,None],self.bank.reset_pool[scenes,pick],qpos)
             self.data.qpos[ids]=qpos;self.data.ctrl[ids]=qpos[:,7:];self.sim.forward(ids)
-        defaults={'step':torch.zeros(n,dtype=torch.long,device=self.device),'push_step':torch.zeros(n,dtype=torch.long,device=self.device),
+        defaults={'step':torch.zeros(n,dtype=torch.long,device=self.device),
+            'wrapper_steps':torch.zeros(n,dtype=torch.long,device=self.device),'push_step':torch.zeros(n,dtype=torch.long,device=self.device),
             'motor_targets':self.nominal.expand(n,-1).clone(),'last_act':torch.zeros((n,29),device=self.device),
             'last_last_act':torch.zeros((n,29),device=self.device),'last_joint_vel':torch.zeros((n,29),device=self.device),
             'navi':torch.eye(3,device=self.device).expand(n,-1,-1).clone(),
@@ -246,7 +280,7 @@ class CATTask:
         # Original reset normalizes before deriving command; rooms override it.
         gf=gf/(torch.linalg.vector_norm(gf,dim=-1,keepdim=True)+1e-6)
         bf=bf/(torch.linalg.vector_norm(bf,dim=-1,keepdim=True)+1e-6)
-        normalized_command=tm.compute_cmd_from_rtf(gf[:,1],gf[:,[0,3,4,5,6]],bf[:,[0,3,4,5,6]])
+        normalized_command=self.math.compute_cmd_from_rtf(gf[:,1],gf[:,[0,3,4,5,6]],bf[:,[0,3,4,5,6]])
         command=torch.where(self.navigation['enabled'][ids,None],command,normalized_command)
         for k,v in dict(gf=gf,bf=bf,sdf=sdf,gf_delay=gf,bf_delay=bf,sdf_delay=sdf,positions=positions,
                         velocities=torch.zeros_like(positions),command=command,command_delay=command,last_command=torch.zeros_like(command)).items():
@@ -298,7 +332,7 @@ class CATTask:
 
     def _rewards(self,action,contacts):
         i=self.info;d=self.data
-        rewards=tm.native_rewards(action=action,last_action=i['last_act'],last_last_action=i['last_last_act'],
+        rewards=self.math.native_rewards(action=action,last_action=i['last_act'],last_last_action=i['last_last_act'],
             joint_pos=d.qpos[:,7:],joint_vel=d.qvel[:,6:],last_joint_vel=i['last_joint_vel'],lower=self.lower,upper=self.upper,
             actuator_force=d.actuator_force,command=i['command'],pelvis_rpy=i['pelvis_rpy'],torso_rpy=i['torso_rpy'],
             head_z=i['positions'][:,0,2],torso_height=float(_get(self.config,'torso_height',[.5,1.])[1]),
@@ -308,7 +342,7 @@ class CATTask:
             subtree_com=d.subtree_com[:,self.pelvis_body],feet_contact=contacts[:,:2],gait=i['gait'],foot_height=i['foot_height'],
             foot_height_stance=float(_get(self.config,'reward_config.foot_height_stance',0.)),gf=i['gf'],positions=i['positions'],velocities=i['velocities'],
             sdf=i['sdf'],crossed=self._crossed(i['positions'],self.all_ids),dt=self.dt,max_yaw=abs(float(_get(self.config,'ang_vel_yaw',[-.5,.5])[1])))
-        costs,telemetry=tm.upper_stability_terms(i['motor_targets'][:,12:],i['previous_upper'],i['previous_previous_upper'],self.nominal[12:],
+        costs,telemetry=self.math.upper_stability_terms(i['motor_targets'][:,12:],i['previous_upper'],i['previous_previous_upper'],self.nominal[12:],
             i['sdf'][:,5:7],i['elbow_clearance'],dt=self.dt,velocity_scale=float(_get(self.config,'upper_velocity_cost_scale',2.)),
             acceleration_scale=float(_get(self.config,'upper_acceleration_cost_scale',20.)),posture_scale=float(_get(self.config,'upper_action_scale',.8)),
             hand_margin=float(_get(self.config,'hand_clearance_margin',.12)),elbow_margin=float(_get(self.config,'arm_clearance_margin',.08)),
@@ -327,7 +361,7 @@ class CATTask:
         if self.stabilization:rewards.update(costs)
         if self.hand_contrast:
             rotations=d.site_xmat.reshape(self.num_envs,-1,3,3)
-            contrast,report=contrast_reward_terms(self.contrast,i['positions'][:,5:7],d.qpos[:,:2],
+            contrast,report=self.contrast_reward_terms(self.contrast,i['positions'][:,5:7],d.qpos[:,:2],
                 rotations[:,self.pelvis_site,:,0],rotations[:,self.torso_site,:,0],
                 region_scale=float(_get(self.config,'hand_contrast_region_scale',.15)),
                 hand_good_distance=float(_get(self.config,'hand_contrast_metric_tolerance',.05)))
@@ -396,14 +430,14 @@ class CATTask:
         signal=((i['push_step']+1)%i['push_interval']==0)&bool(_get(self.config,'push_config.enable',True))
         push=torch.stack((theta.cos(),theta.sin()),-1)*(signal*magnitude)[:,None]
         d.qvel[:,:2]+=push
-        targets=tm.motor_targets(action,i['motor_targets'],self.nominal,self.lower,self.upper,
+        targets=self.math.motor_targets(action,i['motor_targets'],self.nominal,self.lower,self.upper,
             action_scale=float(_get(self.config,'action_scale',.5)),upper_action_scale=float(_get(self.config,'upper_action_scale',.8)),
             upper_target_rate=float(_get(self.config,'upper_target_rate',2.)),dt=self.dt)
         regions=torch.zeros((self.num_envs,6),dtype=torch.bool,device=self.device)
         for _ in range(self.n_substeps):
-            torque=i['kp'][:,None]*self.kps*(targets-d.qpos[:,7:])-i['kd'][:,None]*self.kds*d.qvel[:,6:]
-            torque+=i['rfi']*self._rand((self.num_envs,29),-1.,1.)
-            d.ctrl.copy_(torch.maximum(torch.minimum(torque,self.torque_limit),-self.torque_limit))
+            torque=self.math.pd_torque(d.qpos[:,7:],d.qvel[:,6:],targets,self.kps,self.kds,i['kp'],i['kd'],
+                i['rfi'],self._rand((self.num_envs,29),-1.,1.),self.torque_limit)
+            d.ctrl.copy_(torque)
             self.sim.step()
             if self.collision is not None:regions|=self.collision(self.scene_ids,d)
         if self.collision is not None:regions|=self.collision(self.scene_ids,self.sim.final_collision_data())
@@ -411,9 +445,9 @@ class CATTask:
         i['motor_targets']=targets
         rotations=d.site_xmat.reshape(self.num_envs,-1,3,3)
         pelvis,torso=rotations[:,self.pelvis_site],rotations[:,self.torso_site]
-        navi=tm.navi_rotation(pelvis);i['navi']=navi
-        i['pelvis_rpy']=tm.matrix_rpy(navi.transpose(-1,-2)@pelvis)
-        i['torso_rpy']=tm.matrix_rpy(navi.transpose(-1,-2)@torso)
+        navi=self.math.navi_rotation(pelvis);i['navi']=navi
+        i['pelvis_rpy']=self.math.matrix_rpy(navi.transpose(-1,-2)@pelvis)
+        i['torso_rpy']=self.math.matrix_rpy(navi.transpose(-1,-2)@torso)
         i['torso_angvel']=torch.einsum('bij,bj->bi',navi.transpose(-1,-2)@torso,self._sensor('gyro_torso',ids))
         i['last_command']=i['command'].clone()
         positions=self._poses(ids);velocities=(positions-i['positions'])/self.dt
@@ -423,9 +457,9 @@ class CATTask:
         gf,bf,sdf,command=self._fields(positions,d.qpos[:,:2],ids)
         update=i['step']%5==0
         odom=torch.where(update[:,None],d.qpos[:,:7],i['odom_delay'])
-        delayed=tm.delay_body_pos(d.qpos,odom,positions)
+        delayed=self.math.delay_body_pos(d.qpos,odom,positions)
         gfd,bfd,sdfd,command_delay=self._fields(delayed,odom[:,:2],ids)
-        command,stop,phase,gait=tm.update_phase(command,i['last_command'],i['stop_timestep'],i['phase'],i['phase_dt'],
+        command,stop,phase,gait=self.math.update_phase(command,i['last_command'],i['stop_timestep'],i['phase'],i['phase_dt'],
             float(_get(self.config,'gait_config.gait_bound',.6)),self.navigation['enabled'])
         move=(command[:,0]>.5)[:,None,None]
         normalize=lambda field:field/(torch.linalg.vector_norm(field,dim=-1,keepdim=True)+1e-6)
@@ -433,7 +467,7 @@ class CATTask:
         # CAT computes the true command before normalizing fields, but computes
         # the delayed command AFTER normalization and the current move gate.
         # Room guidance is an explicit override independent of this projection.
-        native_delayed=tm.compute_cmd_from_rtf(normalized_gfd[:,1],normalized_gfd[:,[0,3,4,5,6]],normalized_bfd[:,[0,3,4,5,6]])
+        native_delayed=self.math.compute_cmd_from_rtf(normalized_gfd[:,1],normalized_gfd[:,[0,3,4,5,6]],normalized_bfd[:,[0,3,4,5,6]])
         command_delay=torch.where(self.navigation['enabled'][:,None],command_delay,native_delayed)
         i.update(gf=normalize(gf)*move,bf=normalize(bf),sdf=sdf,gf_delay=normalized_gfd,bf_delay=normalized_bfd,sdf_delay=sdfd,
                  command=command,command_delay=command_delay,odom_delay=odom,stop_timestep=stop,phase=phase,gait=gait,
@@ -445,7 +479,8 @@ class CATTask:
         reward,components=self._rewards(action,contacts)
         penalty=-float(_get(self.config,'wholebody.body_collision.event_penalty',1.))*regions.any(-1)
         if self.collision is not None:reward+=penalty;components['body_collision_event']=penalty
-        timeout=i['step']>=self.bank.episode_lengths[self.scene_ids]
+        i['wrapper_steps']+=1
+        timeout=i['wrapper_steps']>=self.bank.episode_lengths[self.scene_ids]
         truncated=timeout&~terminated;done=terminated|timeout
         resolved,successful=self._outcomes(done,truncated)
         self.episode_reward+=reward

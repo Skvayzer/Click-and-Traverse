@@ -59,6 +59,12 @@ def motor_targets(action,previous,nominal,lower,upper,*,action_scale=.5,upper_ac
     return torch.cat((legs,arms),-1)
 
 
+def pd_torque(joint_pos,joint_vel,targets,kps,kds,kp_scale,kd_scale,rfi_scale,noise,torque_limit):
+    torque=(kp_scale[:,None]*kps)*(targets-joint_pos)+(kd_scale[:,None]*kds)*(-joint_vel)
+    torque=torque+rfi_scale*noise
+    return torch.maximum(torch.minimum(torque,torque_limit),-torque_limit)
+
+
 def compute_cmd_from_rtf(rtf,cgf,cbf):
     v=rtf[:,:2]*.7
     bhat=cbf[:,:,:2]/(torch.linalg.vector_norm(cbf[:,:,:2],dim=-1,keepdim=True)+1e-9)
