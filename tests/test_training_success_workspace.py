@@ -83,3 +83,16 @@ def test_unexpected_existing_success_section_is_not_replaced(personal):
     malformed["section"]["panelBankConfig"]["sections"][0]["panels"].pop()
     with pytest.raises(RuntimeError, match="seven existing"):
         prepare_personal({**personal, "spec": json.dumps(malformed)})
+
+
+def test_contrastive_panels_match_mjlab_success_names(personal):
+    torch = pytest.importorskip("torch")
+    from cat_mjlab.runner import SuccessWindow
+    _, proposed = prepare_personal(personal)
+    saved = prepare_saved(proposed, "mjlab123", contrastive=True)
+    panels = saved["section"]["panelBankConfig"]["sections"][0]["panels"]
+    window = SuccessWindow()
+    window.append(torch.ones(4, 2, dtype=torch.long), torch.ones(3, 2, dtype=torch.long))
+    actual = {key for key in window.metrics(contrastive=True) if key.startswith("success/")}
+    assert {panel["config"]["metrics"][0] for panel in panels} == actual
+    assert len(actual) == 4

@@ -19,8 +19,13 @@ class FakeTask:
         self.obs = dict(state=torch.zeros(num_envs, 3), privileged_state=torch.zeros(num_envs, 4))
         self.navigation_counts = torch.zeros(4, 2, dtype=torch.long)
         self.contrast_counts = torch.zeros(3, 2, dtype=torch.long)
+        self.role_counts = torch.zeros(4, 2, dtype=torch.long)
+        self.hand_contrast = False
         self.ticks = 0
         self.contract = {"actor_features": ["a", "b", "c"]}
+
+    def set_policy_ids(self, policy_ids):
+        self.policy_ids = policy_ids.clone()
 
     def step(self, action):
         self.ticks += 1
@@ -28,6 +33,8 @@ class FakeTask:
         self.obs["privileged_state"].add_(1)
         done = torch.full((self.num_envs,), self.ticks % 2 == 0)
         self.navigation_counts[3] += torch.tensor([int(done.sum()), int(done.sum()) // 2])
+        if self.hand_contrast:
+            self.role_counts += torch.tensor([int(done.sum()), int(done.sum()) // 2])
         terminal = {key: value.clone() for key, value in self.obs.items()}
         if bool(done.any()):
             for value in self.obs.values():
@@ -39,7 +46,7 @@ class FakeTask:
 
     def state_dict(self):
         return dict(obs=self.obs, navigation_counts=self.navigation_counts,
-                    contrast_counts=self.contrast_counts, ticks=self.ticks)
+                    contrast_counts=self.contrast_counts, role_counts=self.role_counts, ticks=self.ticks)
 
     def load_state_dict(self, state):
         for key, value in state.items():
@@ -84,9 +91,25 @@ def test_success_section_contains_only_rates_and_omits_absent_scene_groups():
     assert metrics["success/ordinary_clutter_goal_success_rate"] == .5
     assert "success/cat_goal_success_rate" not in metrics
     assert all(key.endswith("_success_rate") for key in metrics if key.startswith("success/"))
+    assert "success/ordinary_clutter_goal_success_rate" not in window.metrics(contrastive=True)
 
 
-def test_bounded_training_checkpoint_and_resume_preserve_one_identity(tmp_path, monkeypatch):
+def test_role_balanced_selection_does_not_reward_easy_scene_frequency():
+    window = runner.SuccessWindow(maxlen=2)
+    nav, contrast = torch.zeros(4, 2, dtype=torch.long), torch.zeros(3, 2, dtype=torch.long)
+    window.append(nav, contrast, torch.tensor([[100, 100], [10, 2], [10, 5], [0, 0]]))
+    assert window.role_balanced_score() is None  # No invented zero for absent outcomes.
+    window.append(nav, contrast, torch.tensor([[900, 900], [10, 2], [10, 5], [10, 3]]))
+    assert window.role_balanced_score() == pytest.approx((1 + .2 + .5 + .3) / 4)
+    restored = runner.SuccessWindow(maxlen=2)
+    restored.load_state_dict(window.state_dict())
+    assert restored.role_balanced_score() == window.role_balanced_score()
+    restored.append(nav, contrast, torch.tensor([[0, 0], [0, 0], [0, 0], [10, 9]]))
+    assert restored.role_balanced_score() == pytest.approx((1 + .2 + .5 + .6) / 4)
+
+
+@pytest.mark.parametrize("contrastive", [False, True])
+def test_bounded_training_checkpoint_and_resume_preserve_one_identity(tmp_path, monkeypatch, contrastive):
     config = tiny_config()
     metadata = dict(contract=dict(asdict(config), sapg=dict(num_policies=3, embedding_dim=2), batch_size=3, unroll_length=2))
     monkeypatch.setattr(runner, "read_array_archive", lambda path: (metadata, []))
@@ -94,6 +117,7 @@ def test_bounded_training_checkpoint_and_resume_preserve_one_identity(tmp_path, 
     tasks = []
     def factory(args, *, environment_config):
         task = FakeTask(args.num_envs)
+        task.hand_contrast = contrastive
         tasks.append(task)
         return task, FakeSimulation(), {"preserved": True}
     monkeypatch.setattr(runner, "create_task", factory)
@@ -107,6 +131,13 @@ def test_bounded_training_checkpoint_and_resume_preserve_one_identity(tmp_path, 
     assert result["env_steps"] == 12 and result["updates"] == 1
     assert result["status"] == "bounded_verification_complete"
     assert sorted(path.name for path in directory.glob("*.pt")) == ["best.pt", "resume.pt"]
+    best = torch.load(directory / "best.pt", weights_only=True)
+    if contrastive:
+        assert best["score"] == .5
+        assert best["selection"] == "role-balanced leader training success"
+    else:
+        assert best["score"] == 1.
+    assert tasks[-1].policy_ids.tolist() == [0, 0, 1, 1, 2, 2]
     identity = json.loads((directory / "wandb.json").read_text())
     snapshot = torch.load(directory / "resume.pt", weights_only=True)
     assert snapshot["task"]["ticks"] == 2

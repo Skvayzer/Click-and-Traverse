@@ -106,6 +106,10 @@ class CATTask:
         self.probabilities=bank.probabilities(stage=self.curriculum_stage)
         self.navigation_counts=torch.zeros((4,2),dtype=torch.long,device=self.device)
         self.contrast_counts=torch.zeros((3,2),dtype=torch.long,device=self.device)
+        # Public success counters describe the deployed SAPG leader. Sampling
+        # continues to learn from the physical outcomes of every policy.
+        self.policy_ids=torch.zeros(self.num_envs,dtype=torch.long,device=self.device)
+        self.role_counts=torch.zeros((4,2),dtype=torch.long,device=self.device)
         self.zone_steps=torch.zeros((self.num_envs,6,3),dtype=torch.long,device=self.device)
         self.outcome_counted=torch.zeros(self.num_envs,dtype=torch.bool,device=self.device)
         self.episode_reward=torch.zeros(self.num_envs,device=self.device)
@@ -115,6 +119,22 @@ class CATTask:
         if bool(_get(config,'randomize_initial_episode_steps',True)):
             self.info['wrapper_steps']=torch.randint(int(_get(config,'episode_length',1000)),
                 (self.num_envs,),generator=self.generator,device=self.device)
+
+    def set_policy_ids(self,policy_ids):
+        """Assign fixed world policies; policy zero supplies success metrics.
+
+        PPO and single-policy recordings default to all leader worlds. A
+        runner must install SAPG assignments before collecting any outcomes;
+        changing an already-observed population would mix metric definitions.
+        """
+        ids=torch.as_tensor(policy_ids,device=self.device)
+        if (ids.shape!=(self.num_envs,) or ids.dtype==torch.bool or ids.is_complex()
+                or ids.is_floating_point() or (ids<0).any()):
+            raise ValueError('Expected one nonnegative integer policy ID per world')
+        ids=ids.long()
+        if not torch.equal(ids,self.policy_ids) and (self.navigation_counts!=0).any():
+            raise ValueError('Cannot change policy assignment after recording outcomes')
+        self.policy_ids=ids.clone()
 
     def enable_compilation(self,*,backend='inductor'):
         """Fuse pure task kernels without capturing mutable state or reset logic.
@@ -379,10 +399,12 @@ class CATTask:
         successful=self.episode['goal_reached']&~failure
         resolved=~self.outcome_counted&(successful|failure|done)
         successful&=resolved
+        leader=self.policy_ids==0
         groups=self.bank.navigation_groups[self.scene_ids]
         for column,mask in enumerate((resolved,successful)):
-            increments=torch.zeros(3,dtype=torch.long,device=self.device).scatter_add_(0,groups,mask.long())
+            increments=torch.zeros(3,dtype=torch.long,device=self.device).scatter_add_(0,groups,(mask&leader).long())
             self.navigation_counts[:3,column]+=increments;self.navigation_counts[3,column]+=increments.sum()
+        posture_success=successful
         if self.hand_contrast:
             c=self.contrast;t=self.telemetry
             zone=torch.arange(6,device=self.device)[None]==c['zone_index'][:,None]
@@ -393,14 +415,20 @@ class CATTask:
             heading=seen&(self.zone_steps[:,:,1]>=.9*self.zone_steps[:,:,0])
             hands=seen&(self.zone_steps[:,:,2]>=.9*self.zone_steps[:,:,0])
             qualified=(~c['required_forward_zones']|heading).all(-1)&(~c['required_hand_zones']|hands).all(-1)
+            requires_posture=(c['role']==1)|(c['role']==3)
+            posture_success=successful&(~requires_posture|qualified)
             valid=(c['role']>=1)&(c['role']<=3);roles=(c['role']-1).clamp(0,2).long()
-            for column,mask in enumerate((resolved&valid,successful&valid&qualified)):
+            for column,mask in enumerate((resolved&valid&leader,posture_success&valid&leader)):
                 self.contrast_counts[:,column]+=torch.zeros(3,dtype=torch.long,device=self.device).scatter_add_(0,roles,mask.long())
+            for column,mask in enumerate((resolved&leader,posture_success&leader)):
+                self.role_counts[:,column]+=torch.zeros(4,dtype=torch.long,device=self.device).scatter_add_(0,c['role'].long(),mask.long())
         self.outcome_counted|=resolved
         # Original survival-based adaptation remains for old scenes. Only hand
-        # tasks use clean arrival; contrastive roles use first-outcome events.
+        # tasks use clean arrival. Protected/transition contrastive scenes must
+        # also satisfy their posture objective: a sideways clean goal must not
+        # make an unsolved hand-protection scene look easy to the sampler.
         adapted_done=resolved if self.bank.roles is not None else done
-        adapted_success=successful if self.bank.roles is not None else truncation
+        adapted_success=posture_success if self.bank.roles is not None else truncation
         if self.bank.levels is not None:
             levels=self.bank.levels[self.scene_ids];hand=levels>=0
             clean=self.episode['goal_reached']&~failure
@@ -485,7 +513,7 @@ class CATTask:
         self.episode_reward+=reward
         terminal_obs={k:v.clone() for k,v in self.obs.items()}
         metrics={'reward/'+k:v for k,v in components.items()}
-        metrics.update(navigation_counts=self.navigation_counts.clone(),contrast_counts=self.contrast_counts.clone(),
+        metrics.update(navigation_counts=self.navigation_counts.clone(),contrast_counts=self.contrast_counts.clone(),role_counts=self.role_counts.clone(),
             episode_return=self.episode_reward.clone(),episode_length=i['step'].clone(),resolved=resolved,successful=successful,
             scene_ids=self.scene_ids.clone(),collision_regions=regions)
         for k,v in self.episode.items():metrics['episode/'+k]=v.clone()
@@ -605,7 +633,7 @@ class CATTask:
         """Torch task state; simulation and learner states are saved separately."""
         names=('info','navigation','contrast','episode','telemetry','obs','scene_ids','scene_episode_ema','scene_success_ema',
                'curriculum_stage','curriculum_completed','curriculum_goals','probabilities','navigation_counts','contrast_counts',
-               'zone_steps','outcome_counted','episode_reward')
+               'policy_ids','role_counts','zone_steps','outcome_counted','episode_reward')
         return {**{name:getattr(self,name) for name in names},'rng':self.generator.get_state()}
 
     def load_state_dict(self,state):

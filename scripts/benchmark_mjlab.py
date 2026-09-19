@@ -104,6 +104,7 @@ def benchmark(args):
     del arrays
     policies = config.num_policies if config.algorithm == "sapg" else 1
     ids = torch.arange(policies, device=device).repeat_interleave(args.num_envs // policies)
+    task.set_policy_ids(ids)
     torch.cuda.synchronize(device)
     startup = time.monotonic() - started
     print(json.dumps(dict(phase="initialized", seconds=startup, num_envs=args.num_envs,

@@ -1,7 +1,8 @@
 """Continuous training-only mjlab runner with one run and bounded checkpoints.
 
-No evaluators or retention/rollback mechanisms are constructed. The best model
-uses the same leader rollout reward proxy as the JAX learner. One overwritten
+No evaluators or retention/rollback mechanisms are constructed. Contrastive best
+models use role-balanced leader training success. Other banks retain the leader
+rollout reward criterion. One overwritten
 resume.pt stores learner/Adam, task, simulator and PyTorch RNG state. Changing
 physics backend starts a new W&B lineage even when weights/Adam are converted.
 """
@@ -94,12 +95,23 @@ class SuccessWindow:
     def __init__(self, maxlen=100):
         self.navigation = deque(maxlen=maxlen)
         self.contrast = deque(maxlen=maxlen)
+        self.roles = deque(maxlen=maxlen)
 
-    def append(self, navigation, contrast):
+    def append(self, navigation, contrast, roles=None):
         self.navigation.append(navigation.detach().cpu().tolist())
         self.contrast.append(contrast.detach().cpu().tolist())
+        self.roles.append((torch.zeros(4, 2, dtype=torch.long) if roles is None else roles).detach().cpu().tolist())
 
-    def metrics(self):
+    def role_balanced_score(self):
+        """Equal role weights, only after each role has resolved leader episodes."""
+        if not self.roles:
+            return None
+        counts = torch.tensor(list(self.roles), dtype=torch.int64).sum(dim=0)
+        if bool((counts[:, 0] == 0).any()):
+            return None
+        return float((counts[:, 1].double() / counts[:, 0]).mean())
+
+    def metrics(self, *, contrastive=False):
         result = {}
         for rows, names in ((self.navigation, ("cat_goal", "ordinary_clutter_goal", "hand_protection_goal", "goal")),
                             (self.contrast, ("forward_protected", "narrow_passage", "posture_transition"))):
@@ -107,19 +119,23 @@ class SuccessWindow:
                 continue
             counts = torch.tensor(list(rows), dtype=torch.int64).sum(dim=0)
             for name, (resolved, success) in zip(names, counts.tolist()):
+                if contrastive and name in ("cat_goal", "ordinary_clutter_goal", "hand_protection_goal"):
+                    continue
                 if resolved:
                     result[f"success/{name}_success_rate"] = success / resolved
                 result[f"training/{name}_resolved_count"] = resolved
         return result
 
     def state_dict(self):
-        return dict(maxlen=self.navigation.maxlen, navigation=list(self.navigation), contrast=list(self.contrast))
+        return dict(maxlen=self.navigation.maxlen, navigation=list(self.navigation),
+                    contrast=list(self.contrast), roles=list(self.roles))
 
     def load_state_dict(self, state):
         if state["maxlen"] != self.navigation.maxlen:
             raise ValueError("Success window configuration differs")
         self.navigation.clear(); self.navigation.extend(state["navigation"])
         self.contrast.clear(); self.contrast.extend(state["contrast"])
+        self.roles.clear(); self.roles.extend(state["roles"])
 
 
 class Logger:
@@ -200,6 +216,7 @@ def collect_rollout(task, learner, *, unroll_length, trajectories, policy_ids):
     rollout["policy_id"] = torch.empty(shape, dtype=torch.long, device=learner.device)
     before_nav = task.navigation_counts.clone()
     before_contrast = task.contrast_counts.clone()
+    before_roles = task.role_counts.clone()
     completed = torch.zeros((), device=learner.device)
     sum_return = completed.clone(); sum_length = completed.clone(); collisions = completed.clone()
     std_sum = completed.clone()
@@ -227,6 +244,7 @@ def collect_rollout(task, learner, *, unroll_length, trajectories, policy_ids):
             std_sum += acted["action_std"].sum()
     info = dict(navigation_counts=task.navigation_counts - before_nav,
                 contrast_counts=task.contrast_counts - before_contrast,
+                role_counts=task.role_counts - before_roles,
                 action_std=std_sum / (trajectories * unroll_length * config.action_size))
     info["metrics"] = {"training/completed_episode_count": float(completed), "training/action_std": float(info["action_std"])}
     if bool(completed > 0):
@@ -333,6 +351,9 @@ def run(args):
     migration = load_array_archive(learner, args.checkpoint_npz, restore_optimizer=not args.fresh_optimizer)
     config_source = environment_config_from_archive(metadata)
     task, sim, environment_config = create_task(args, environment_config=config_source)
+    policies = config.num_policies if config.algorithm == "sapg" else 1
+    policy_ids = torch.arange(policies, device=learner.device).repeat_interleave(args.num_envs // policies)
+    task.set_policy_ids(policy_ids)
     if not args.resume:
         sampling, report = sampling_state_from_archive(metadata, archive_arrays, _file_hash(args.bank_manifest))
         migration["sampling"] = report
@@ -346,9 +367,12 @@ def run(args):
         resets_sha256=_file_hash(args.body_collision_resets), source_sha256=_source_identity(), versions=_versions(),
         environment_config=environment_config, checkpoint_archive_sha256=_file_hash(args.checkpoint_npz))
     contract = json.loads(json.dumps(contract))  # tuples -> JSON lists consistently
+    selection = "role-balanced leader training success" if task.hand_contrast else "leader mean physical rollout reward"
     record = dict(schema="cat-mjlab-run-v1", contract=contract, migration=migration,
                   backend="mjlab/MuJoCo Warp", evaluation=False, retention=False,
-                  best_selection="leader mean physical rollout reward", success="first outcomes pooled across policies",
+                  best_selection=selection, success="leader-only first outcomes; 100-update rolling window",
+                  best_score_semantics="100-update training history; published weights are post-update; no checkpoint evaluation",
+                  adaptive_sampling="all physical policies; posture-qualified successes for protected/transition roles",
                   physics_timestep=.002, control_timestep=.02,
                   state_resume="full state restoration; GPU Warp does not guarantee bitwise deterministic trajectories")
     window = SuccessWindow()
@@ -380,8 +404,6 @@ def run(args):
         record = old_record
     else:
         atomic_json(directory / "run.json", record)
-    policies = config.num_policies if config.algorithm == "sapg" else 1
-    policy_ids = torch.arange(policies, device=learner.device).repeat_interleave(args.num_envs // policies)
     logger = Logger(directory, mode=args.wandb_mode, project=args.wandb_project, entity=args.wandb_entity,
                     record=record, resume=args.resume)
     started = time.monotonic()
@@ -410,21 +432,24 @@ def run(args):
                 metrics = learner.update(rollout)
                 del rollout
                 local_updates += 1
-                window.append(collected["navigation_counts"], collected["contrast_counts"])
+                window.append(collected["navigation_counts"], collected["contrast_counts"], collected["role_counts"])
                 elapsed = time.monotonic() - began
-                score = metrics["rollout_reward_mean"]
-                if best_score is None or score > best_score:
+                score = window.role_balanced_score() if task.hand_contrast else metrics["rollout_reward_mean"]
+                if score is not None and (best_score is None or score > best_score):
                     best_score = score
                     atomic_torch_save(directory / "best.pt", dict(schema="cat-mjlab-best-v1",
                         model=learner.model.state_dict(), config=asdict(config), contract=contract, step=learner.env_steps,
-                        score=score, selected_policy_id=0, selection="leader mean physical rollout reward",
+                        score=score, selected_policy_id=0, selection=selection,
+                        score_semantics=record["best_score_semantics"],
                         observation_contract=task.contract))
                 values = {"learner/" + key: value for key, value in metrics.items()
                           if key in ("total_loss", "policy_loss", "v_loss", "entropy_loss")}
-                values.update(window.metrics()); values.update(collected["metrics"])
-                values.update({"training/rollout_reward_mean": score,
+                values.update(window.metrics(contrastive=task.hand_contrast)); values.update(collected["metrics"])
+                values.update({"training/rollout_reward_mean": metrics["rollout_reward_mean"],
                     "performance/control_steps_per_second": metrics["physical_transitions"] / elapsed,
                     "performance/update_seconds": elapsed})
+                if task.hand_contrast and score is not None:
+                    values["training/checkpoint_selection_score"] = score
                 if learner.device.type == "cuda":
                     free, total = torch.cuda.mem_get_info(learner.device)
                     values["performance/device_vram_used_gib"] = (total - free) / 2**30

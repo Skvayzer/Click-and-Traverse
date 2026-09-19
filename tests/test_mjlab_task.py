@@ -404,3 +404,111 @@ def test_sampler_transfer_rejects_changed_fixed_group_mass_and_partial_state():
     with pytest.raises(ValueError,match='group mass'):task.restore_sampling_state(state,resample=False)
     state=task.sampling_state();state.pop('pf_success_ema')
     with pytest.raises(ValueError,match='Incomplete'):task.restore_sampling_state(state,resample=False)
+
+
+def _contrast_outcome_task(roles,policy_ids):
+    """Exercise real outcome accounting without physics or scene generation."""
+    from cat_mjlab.task import CATTask
+    from cat_mjlab.scene_bank import SceneBank
+    task=object.__new__(CATTask)
+    task.device=torch.device('cpu');task.num_envs=len(roles)
+    task.config={'pf_config':{'sampling_ema_decay':.95,'sampling_alpha':1.}}
+    task.bank=SimpleNamespace(count=4,roles=torch.arange(4),levels=None,
+        groups=None,device=task.device,weights=torch.ones(4),navigation_groups=torch.full((4,),2))
+    task.bank.probabilities=lambda weights=None,stage=None:SceneBank.probabilities(task.bank,weights,stage)
+    task.scene_ids=torch.tensor(roles,dtype=torch.long)
+    task.navigation_counts=torch.zeros((4,2),dtype=torch.long)
+    task.contrast_counts=torch.zeros((3,2),dtype=torch.long)
+    task.role_counts=torch.zeros((4,2),dtype=torch.long)
+    task.policy_ids=torch.zeros(task.num_envs,dtype=torch.long)
+    task.set_policy_ids(torch.tensor(policy_ids))
+    task.outcome_counted=torch.zeros(task.num_envs,dtype=torch.bool)
+    task.hand_contrast=True
+    required=torch.zeros((task.num_envs,6),dtype=torch.bool)
+    required[:,0]=(task.scene_ids==1)|(task.scene_ids==3)
+    task.contrast=dict(role=task.scene_ids,zone_index=torch.zeros(task.num_envs,dtype=torch.long),
+        core_active=torch.ones(task.num_envs,dtype=torch.bool),
+        required_forward_zones=required,required_hand_zones=required.clone())
+    task.zone_steps=torch.zeros((task.num_envs,6,3),dtype=torch.long)
+    task.telemetry={name:torch.ones(task.num_envs) for name in
+        ('hand_contrast_heading_good','hand_contrast_hand_good')}
+    task.episode={name:torch.zeros(task.num_envs,dtype=torch.bool) for name in
+        ('fall','obstacle','self_contact','numerical','body_collision','hand_violation','elbow_violation','outside_bounds','goal_reached')}
+    task.scene_episode_ema=torch.zeros(4);task.scene_success_ema=torch.zeros(4)
+    task.curriculum_stage=torch.zeros((),dtype=torch.long)
+    return task
+
+
+def test_success_counts_describe_leader_but_sampler_uses_every_policy():
+    task=_contrast_outcome_task([0,1,2,3]*2,[0]*4+[1]*4)
+    task.episode['goal_reached'][:]=True
+    task.episode['fall'][1]=True
+    task.telemetry['hand_contrast_heading_good'][3]=0.
+    done=torch.zeros(8,dtype=torch.bool);done[1]=True
+    resolved,clean=task._outcomes(done,torch.zeros_like(done))
+    assert resolved.all() and clean.sum()==7
+    assert torch.equal(task.navigation_counts[3],torch.tensor([4,3]))
+    assert torch.equal(task.contrast_counts,torch.tensor([[1,0],[1,1],[1,0]]))
+    assert torch.equal(task.role_counts,torch.tensor([[1,1],[1,0],[1,1],[1,0]]))
+    # Physical follower outcomes still inform task sampling. A leader's clean
+    # sideways transition fails the posture objective even though it navigated.
+    close(task.scene_episode_ema,[2,2,2,2])
+    close(task.scene_success_ema,[2,1,2,1])
+    before=task.role_counts.clone()
+    again,_=task._outcomes(done,torch.zeros_like(done))
+    assert not again.any() and torch.equal(task.role_counts,before)
+    with pytest.raises(ValueError,match='after recording outcomes'):
+        task.set_policy_ids(torch.zeros(8,dtype=torch.long))
+
+
+def test_protected_sampling_requires_each_zone_and_ninety_percent_posture():
+    # Two examples of each role, all reaching clean goals. Even open/narrow
+    # bad posture remains successful: only protected/transition sampling changes.
+    task=_contrast_outcome_task([0,0,1,1,2,2,3,3],[0]*8)
+    task.episode['goal_reached'][:]=True
+    task.zone_steps[:,0]=torch.tensor([9,8,8])
+    task.telemetry['hand_contrast_heading_good'][:]=0.
+    task.telemetry['hand_contrast_hand_good'][:]=0.
+    # One protected world achieves exactly 90%, its matched one only 80%.
+    task.telemetry['hand_contrast_heading_good'][2]=1.
+    task.telemetry['hand_contrast_hand_good'][2]=1.
+    # First transition has perfect posture in visited zone zero but never
+    # visits required zone one. Second qualifies in both zones.
+    for key in ('required_forward_zones','required_hand_zones'):
+        task.contrast[key][6:,1]=True
+    task.zone_steps[6:,0]=torch.tensor([9,9,9])
+    task.telemetry['hand_contrast_heading_good'][6:]=1.
+    task.telemetry['hand_contrast_hand_good'][6:]=1.
+    task.zone_steps[7,1]=torch.tensor([10,9,9])
+    task._outcomes(torch.zeros(8,dtype=torch.bool),torch.zeros(8,dtype=torch.bool))
+    close(task.scene_success_ema,[2,1,2,1])
+    assert torch.equal(task.role_counts,torch.tensor([[2,2],[2,1],[2,2],[2,1]]))
+    # The fixed behavior-role masses survive adaptation.
+    close(task.probabilities,torch.full((4,),.25))
+
+
+def test_leader_population_assignment_and_role_counts_survive_native_resume():
+    from cat_mjlab.task import CATTask
+    from cat_mjlab.config import wholebody_config
+    first=CATTask(_CPUSimulation(2),_tiny_bank(),wholebody_config(),seed=3)
+    first.set_policy_ids(torch.tensor([0,5]))
+    first.role_counts.copy_(torch.tensor([[3,1],[4,2],[5,3],[6,4]]))
+    second=CATTask(_CPUSimulation(2),_tiny_bank(),wholebody_config(),seed=7)
+    second.load_state_dict(deepcopy(first.state_dict()))
+    assert torch.equal(second.policy_ids,torch.tensor([0,5]))
+    assert torch.equal(second.role_counts,first.role_counts)
+    for invalid in (torch.tensor([0.,1.]),torch.tensor([-1,0]),torch.tensor([True,False]),torch.tensor([0])):
+        with pytest.raises(ValueError,match='integer policy ID'):second.set_policy_ids(invalid)
+
+
+def test_legacy_sampler_still_uses_completed_episode_survival():
+    task=_contrast_outcome_task([0,1],[0,1])
+    task.hand_contrast=False;task.bank.roles=None
+    task.episode['goal_reached'][0]=True
+    # Leader reaches a goal but continues its episode; follower survives to the
+    # horizon. Native legacy sampling counts only that completed episode.
+    done=torch.tensor([False,True]);task._outcomes(done,done.clone())
+    close(task.scene_episode_ema,[0,1,0,0])
+    close(task.scene_success_ema,[0,1,0,0])
+    assert torch.equal(task.navigation_counts[3],torch.tensor([1,1]))
+    assert not task.role_counts.any()

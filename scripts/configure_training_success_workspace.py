@@ -53,7 +53,7 @@ def read_views(api, execute, entity, project):
 
 
 CONTRAST_CHARTS = (
-    ("training/goal_success_rate", "All contrastive goals"),
+    ("success/goal_success_rate", "All contrastive goals (leader)"),
     ("success/forward_protected_success_rate", "Forward with protected hands"),
     ("success/narrow_passage_success_rate", "Narrow passage (sideways allowed)"),
     ("success/posture_transition_success_rate", "Forward / sideways transitions"),
@@ -132,7 +132,7 @@ def prepare_saved(personal_spec, run_id, *, hand_specialist=False, contrastive=F
         first = training_section(CONTRAST_CHARTS)
         first["name"] = "Contrastive training success"
         for panel in first["panels"]:
-            panel["config"]["yAxisTitle"] = "Successful / resolved training episodes"
+            panel["config"]["yAxisTitle"] = "Successful leader episodes / resolved leader episodes"
     if hand_specialist:
         first["panels"] = [panel for panel in first["panels"] if panel.get("config", {}).get("metrics")
                            == ["training/hand_protection_goal_success_rate"]]
