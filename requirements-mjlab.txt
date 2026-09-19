@@ -1,0 +1,15 @@
+# Separate environment: never install over the preserved MJX environment.
+# Linux GPU: install torch==2.7.1 from PyTorch's cu118 index first (driver 550).
+mjlab==1.6.0
+mujoco==3.11.0
+mujoco-warp==3.11.0
+warp-lang==1.14.0
+torch==2.7.1
+numpy==2.2.6
+scipy==1.15.3
+wandb==0.22.3
+# CPU-only imports for unchanged scene metadata validators; no JAX simulation.
+jax==0.4.38
+absl-py==2.2.2
+colorlog==6.9.0
+pytest>=8,<9
