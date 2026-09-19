@@ -324,3 +324,54 @@ def test_initial_horizon_offsets_do_not_advance_native_perception_or_grace_age()
     assert task.info['wrapper_steps'].unique().numel()>1
     task.reset(torch.tensor([0,1]))
     assert (task.info['wrapper_steps'][:2]==0).all()
+
+
+def test_backend_migration_preserves_sampler_curriculum_and_initial_horizon_offsets():
+    from cat_mjlab.task import CATTask
+    from cat_mjlab.config import wholebody_config
+    from cat_mjlab.scene_bank import SceneBank
+    bank=_tiny_bank()
+    bank.levels=torch.tensor([0,2]);bank.groups=torch.tensor([2,2])
+    bank.group_masses=torch.tensor([0.,0.,1.,0.]);bank.weights=torch.ones(2)
+    bank.probabilities=lambda weights=None,stage=None:SceneBank.probabilities(bank,weights,stage)
+    task=CATTask(_CPUSimulation(3),bank,wholebody_config(),seed=12)
+    assert (task.scene_ids==0).all()
+    offsets=task.info['wrapper_steps'].clone()
+    transferred={
+        'pf_episode_ema':np.array([12.,30.],np.float32),
+        'pf_success_ema':np.array([5.,19.],np.float32),
+        'pf_sampling_logits':np.array([-np.inf,0.],np.float32),
+        'pf_hand_curriculum_stage':np.array(2,np.int32),
+        'pf_hand_curriculum_completed':np.array([92,110,64],np.int32),
+        'pf_hand_curriculum_goals':np.array([80,90,32],np.int32),
+        'pf_navigation_outcome_counts':np.array([[10,4],[2,1],[8,7],[20,12]],np.int32),
+        'pf_contrast_outcome_counts':np.array([[2,1],[7,4],[3,0]],np.int32)}
+    task.restore_sampling_state(transferred)
+    assert (task.scene_ids==1).all()
+    assert torch.equal(task.info['wrapper_steps'],offsets)
+    assert (task.info['step']==0).all()
+    for name,value in task.sampling_state().items():close(value,transferred[name])
+    # Returned shared state must be independent of live mutable counters.
+    exported=task.sampling_state();exported['pf_episode_ema'].zero_()
+    close(task.scene_episode_ema,transferred['pf_episode_ema'])
+    before=deepcopy(task.state_dict())
+    invalid=deepcopy(transferred);invalid['pf_hand_curriculum_stage']=np.array(0)
+    with pytest.raises(ValueError,match='locked scene'):task.restore_sampling_state(invalid)
+    for name in ('probabilities','scene_episode_ema','curriculum_stage','navigation_counts','rng'):
+        assert torch.equal(task.state_dict()[name],before[name])
+    invalid=deepcopy(transferred);invalid['pf_hand_curriculum_goals'][0]=1000
+    with pytest.raises(ValueError,match='curriculum'):task.restore_sampling_state(invalid)
+
+
+def test_sampler_transfer_rejects_changed_fixed_group_mass_and_partial_state():
+    from cat_mjlab.task import CATTask
+    from cat_mjlab.config import wholebody_config
+    from cat_mjlab.scene_bank import SceneBank
+    bank=_tiny_bank(4);bank.roles=torch.arange(4);bank.weights=torch.ones(4)
+    bank.probabilities=lambda weights=None,stage=None:SceneBank.probabilities(bank,weights,stage)
+    task=CATTask(_CPUSimulation(1),bank,wholebody_config(),seed=7)
+    state=task.sampling_state()
+    state['pf_sampling_logits']=torch.tensor([0.,0.,0.,1.])
+    with pytest.raises(ValueError,match='group mass'):task.restore_sampling_state(state,resample=False)
+    state=task.sampling_state();state.pop('pf_success_ema')
+    with pytest.raises(ValueError,match='Incomplete'):task.restore_sampling_state(state,resample=False)

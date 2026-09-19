@@ -126,7 +126,13 @@ def test_offline_archive_roundtrip_excludes_environment_and_retains_optimizer(tm
     from scripts.export_mjlab_checkpoint import export_runtime
     from cat_mjlab.checkpoint_arrays import read_array_archive
     learner, _, _, _, _, _, snapshot = runtime_fixture()
-    snapshot["env_state"] = dict(large_unneeded=np.zeros((100, 100), np.float32))
+    snapshot["contract"]["metadata"] = dict(bank_sha256="a" * 64)
+    sampler = {"pf_episode_ema": [4., 5.], "pf_success_ema": [2., 3.],
+               "pf_sampling_logits": np.log([.4, .6]), "pf_hand_curriculum_stage": 2,
+               "pf_hand_curriculum_completed": [100, 80, 60], "pf_hand_curriculum_goals": [70, 60, 40]}
+    snapshot["env_state"] = dict(paths=[".data.unneeded"] + [f".info['{key}']" for key in sampler],
+        leaves=[np.zeros((1, 3, 100, 100), np.float32)] +
+               [np.broadcast_to(value, (1, 3, *np.shape(value))).copy() for value in sampler.values()])
     source = tmp_path / "resume.msgpack"
     source.write_bytes(serialization.msgpack_serialize(snapshot))
     original = source.read_bytes()
@@ -140,7 +146,23 @@ def test_offline_archive_roundtrip_excludes_environment_and_retains_optimizer(tm
     report = load_array_archive(learner, destination)
     assert report["adam_update_count"] == 3
     assert report["archive_metadata"]["source_sha256"] == hashlib.sha256(original).hexdigest()
+    from cat_mjlab.checkpoint_arrays import sampling_state_from_archive
+    actual, sampling_report = sampling_state_from_archive(actual_metadata, arrays, "a" * 64)
+    assert sampling_report["status"] == "preserved" and sampling_report["curriculum_stage"] == 2
+    for key in sampler:
+        np.testing.assert_array_equal(actual[key], sampler[key])
+    assert sampling_state_from_archive(actual_metadata, arrays, "b" * 64)[1]["status"] == "new_bank_new_curriculum"
     with pytest.raises(ValueError, match="destination must be new"):
         export_runtime(source, destination)
     with pytest.raises(ValueError, match="checksum"):
         export_runtime(source, tmp_path / "bad.npz", "0" * 64)
+
+
+def test_sampler_export_rejects_inconsistent_replicas_and_missing_same_bank_state():
+    from cat_mjlab.checkpoint_arrays import extract_shared_sampling, sampling_state_from_archive
+    bad = dict(env_state=dict(paths=[".info['pf_episode_ema']"],
+                             leaves=[np.array([[[1., 2.], [1., 3.]]])]))
+    with pytest.raises(ValueError, match="replicas disagree"):
+        extract_shared_sampling(bad)
+    with pytest.raises(ValueError, match="re-export"):
+        sampling_state_from_archive(dict(kind="runtime", contract=dict(metadata=dict(bank_sha256="abc"))), [], "abc")

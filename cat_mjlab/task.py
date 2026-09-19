@@ -498,6 +498,110 @@ class CATTask:
         return dict(obs=self.obs,reward=reward,terminated=terminated,truncated=truncated,done=done,
                     terminal_obs=terminal_obs,metrics=metrics)
 
+    def sampling_state(self):
+        """Shared, physics-independent state transferable between backends.
+
+        The caller must verify the exact scene-bank hash before transferring
+        these arrays: scene indices and curriculum levels belong to that bank.
+        Logits are returned up to the irrelevant categorical additive constant.
+        """
+        state={'pf_episode_ema':self.scene_episode_ema,
+               'pf_success_ema':self.scene_success_ema,
+               'pf_sampling_logits':torch.where(self.probabilities>0,self.probabilities.log(),-torch.inf),
+               'pf_navigation_outcome_counts':self.navigation_counts,
+               'pf_contrast_outcome_counts':self.contrast_counts}
+        if self.bank.levels is not None:
+            state.update(pf_hand_curriculum_stage=self.curriculum_stage,
+                         pf_hand_curriculum_completed=self.curriculum_completed,
+                         pf_hand_curriculum_goals=self.curriculum_goals)
+        return {key:value.detach().clone() for key,value in state.items()}
+
+    @torch.no_grad()
+    def restore_sampling_state(self,state,*,resample=True):
+        """Restore one shared copy of the source sampler after bank-hash checks.
+
+        Physics and temporal histories deliberately restart on a backend
+        migration. Resampling draws those fresh episodes from the *preserved*
+        curriculum and keeps the original startup horizon staggering. Validate
+        every shared array before changing any live task state.
+        """
+        required={'pf_episode_ema','pf_success_ema','pf_sampling_logits'}
+        hand={'pf_hand_curriculum_stage','pf_hand_curriculum_completed','pf_hand_curriculum_goals'}
+        optional={'pf_navigation_outcome_counts','pf_contrast_outcome_counts'}
+        if self.bank.levels is not None:required|=hand
+        if not required<=set(state) or set(state)-(required|optional):
+            raise ValueError('Incomplete or unknown shared sampling state')
+
+        def array(name,shape,*,integer=False,logits=False):
+            value=torch.as_tensor(state[name],device=self.device).detach().clone()
+            if value.shape!=shape or value.is_complex() or value.dtype==torch.bool:
+                raise ValueError(f'Invalid shared sampling shape/type: {name}')
+            finite=torch.isfinite(value)
+            if logits:
+                if torch.isnan(value).any() or torch.isposinf(value).any() or not finite.any():
+                    raise ValueError(f'Invalid shared sampling logits: {name}')
+            elif not finite.all() or (value<0).any():
+                raise ValueError(f'Invalid shared sampling values: {name}')
+            if integer:
+                if value.is_floating_point() and not torch.equal(value,value.round()):
+                    raise ValueError(f'Noninteger shared sampling counts: {name}')
+                value=value.long()
+                if (value<0).any():raise ValueError(f'Overflowing shared sampling counts: {name}')
+            else:
+                value=value.float()
+                if not logits and not torch.isfinite(value).all():
+                    raise ValueError(f'Overflowing shared sampling values: {name}')
+            return value
+
+        episodes=array('pf_episode_ema',(self.bank.count,))
+        successes=array('pf_success_ema',(self.bank.count,))
+        if (successes>episodes+1e-5).any():raise ValueError('Scene successes exceed completed episodes')
+        logits=array('pf_sampling_logits',(self.bank.count,),logits=True)
+        probabilities=torch.softmax(logits,dim=0)
+        if not torch.isfinite(probabilities).all():raise ValueError('Invalid normalized scene distribution')
+        stage=self.curriculum_stage.clone()
+        completed=self.curriculum_completed.clone();goals=self.curriculum_goals.clone()
+        if self.bank.levels is not None:
+            stage=array('pf_hand_curriculum_stage',(),integer=True)
+            completed=array('pf_hand_curriculum_completed',(3,),integer=True)
+            goals=array('pf_hand_curriculum_goals',(3,),integer=True)
+            if stage>2 or (goals>completed).any():raise ValueError('Inconsistent hand curriculum state')
+
+        # Preserve adaptive weights while checking immutable role/family mass
+        # and locked-level support. Specialist hand-only banks have raw mass
+        # .5; categorical sampling normalizes it, as it did in the JAX task.
+        expected=self.bank.probabilities(torch.ones_like(episodes),stage=stage)
+        expected=expected/expected.sum()
+        if ((expected==0)&(probabilities!=0)).any():raise ValueError('Sampling enables a locked scene')
+        if self.bank.roles is not None:groups=self.bank.roles
+        elif self.bank.levels is not None:
+            groups=self.bank.groups*2+(self.bank.levels>=0).long()
+        else:groups=getattr(self.bank,'groups',None)
+        if groups is not None:
+            for group in groups.unique():
+                selected=groups==group
+                if not torch.allclose(probabilities[selected].sum(),expected[selected].sum(),atol=2e-6,rtol=2e-5):
+                    raise ValueError('Sampling state changes a fixed scene-group mass')
+
+        counts={}
+        for name,shape in (('pf_navigation_outcome_counts',(4,2)),('pf_contrast_outcome_counts',(3,2))):
+            if name not in state:continue
+            counts[name]=array(name,shape,integer=True)
+            if (counts[name][:,1]>counts[name][:,0]).any():raise ValueError('Success counts exceed resolved outcomes')
+        navigation=counts.get('pf_navigation_outcome_counts',self.navigation_counts)
+        if not torch.equal(navigation[3],navigation[:3].sum(0)):
+            raise ValueError('Navigation outcome populations do not sum to the total')
+
+        self.scene_episode_ema=episodes;self.scene_success_ema=successes
+        self.probabilities=probabilities
+        self.curriculum_stage=stage;self.curriculum_completed=completed;self.curriculum_goals=goals
+        self.navigation_counts=navigation.clone()
+        self.contrast_counts=counts.get('pf_contrast_outcome_counts',self.contrast_counts).clone()
+        if resample:
+            horizon_offsets=self.info['wrapper_steps'].clone()
+            self.reset()
+            self.info['wrapper_steps'].copy_(horizon_offsets)
+
     def state_dict(self):
         """Torch task state; simulation and learner states are saved separately."""
         names=('info','navigation','contrast','episode','telemetry','obs','scene_ids','scene_episode_ema','scene_success_ema',

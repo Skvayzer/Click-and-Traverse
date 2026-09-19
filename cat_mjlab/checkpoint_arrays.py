@@ -10,6 +10,67 @@ import tempfile
 import numpy as np
 
 
+SAMPLING_KEYS = ("pf_episode_ema", "pf_success_ema", "pf_sampling_logits",
+                 "pf_hand_curriculum_stage", "pf_hand_curriculum_completed", "pf_hand_curriculum_goals")
+
+
+def extract_shared_sampling(snapshot):
+    """Extract simulator-independent shared state, rejecting divergent replicas."""
+    tree = snapshot["env_state"]
+    leaves = dict(zip(tree["paths"], tree["leaves"]))
+    if len(leaves) != len(tree["paths"]) or len(tree["paths"]) != len(tree["leaves"]):
+        raise ValueError("Malformed environment state paths")
+    result = {}
+    for key in SAMPLING_KEYS:
+        path = f".info['{key}']"
+        if path not in leaves:
+            if key.startswith("pf_hand_curriculum"):
+                continue
+            raise ValueError(f"Missing shared sampler field: {key}")
+        value = np.asarray(leaves[path])
+        if value.ndim < 2 or value.shape[0] != 1 or value.shape[1] < 1:
+            raise ValueError(f"Expected one device and replicated environments for {key}")
+        first = value[0, 0]
+        if not np.all(value == first):
+            raise ValueError(f"Shared sampler replicas disagree for {key}")
+        if key == "pf_sampling_logits":
+            if np.isnan(first).any() or np.isposinf(first).any() or not np.isfinite(first).any():
+                raise ValueError("Invalid sampler logits")
+        elif not np.isfinite(first).all():
+            raise ValueError(f"Nonfinite shared sampler state: {key}")
+        result[key] = np.array(first, copy=True)
+    curriculum = {key for key in result if key.startswith("pf_hand_curriculum")}
+    if curriculum and len(curriculum) != 3:
+        raise ValueError("Incomplete hand curriculum state")
+    return result
+
+
+def sampling_state_from_archive(metadata, arrays, bank_sha256):
+    """Preserve shared state only for the exact source bank, never map scenes implicitly."""
+    source_sha = metadata.get("contract", {}).get("metadata", {}).get("bank_sha256")
+    if metadata.get("kind") != "runtime":
+        return None, dict(status="fresh_model_curriculum", source_bank_sha256=source_sha)
+    if not source_sha:
+        raise ValueError("Runtime archive lacks source field-bank identity")
+    if source_sha != bank_sha256:
+        return None, dict(status="new_bank_new_curriculum", source_bank_sha256=source_sha,
+                          target_bank_sha256=bank_sha256)
+    sampling = metadata.get("sampling_state")
+    if not sampling or sampling.get("bank_sha256") != source_sha:
+        raise ValueError("Same-bank migration requires shared sampler/curriculum state; re-export the runtime")
+    mapping = sampling.get("array_indices", {})
+    if set(mapping) - set(SAMPLING_KEYS) or not set(SAMPLING_KEYS[:3]).issubset(mapping):
+        raise ValueError("Invalid archived sampling field set")
+    start = metadata.get("training_array_count", len(arrays))
+    if (set(mapping.values()) != set(range(start, len(arrays)))
+            or any(type(index) is not int for index in mapping.values())):
+        raise ValueError("Invalid archived sampling array indices")
+    state = {key: arrays[index] for key, index in mapping.items()}
+    return state, dict(status="preserved", source_bank_sha256=source_sha,
+                       target_bank_sha256=bank_sha256, fields=sorted(state),
+                       curriculum_stage=int(state["pf_hand_curriculum_stage"]) if "pf_hand_curriculum_stage" in state else None)
+
+
 def expand_released_params(params, target_contract=None, *, new_action_std=.05):
     """Use the existing named 162/250/12 -> 222/310/29 expansion unchanged."""
     from cat_ppo.furniture.control import legacy_observation_contract, wholebody_observation_contract

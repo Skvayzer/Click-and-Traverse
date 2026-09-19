@@ -200,6 +200,7 @@ def load_jax_runtime(learner: Learner, snapshot, *, restore_optimizer=True):
 def load_array_archive(learner, path, *, restore_optimizer=True):
     """Load an offline NPZ export without installing JAX, Brax, Flax or Orbax."""
     metadata, arrays = read_array_archive(path)
+    arrays = arrays[:metadata.get("training_array_count", len(arrays))]
     paths = metadata["paths"]
     if len(paths) != len(arrays) or len(set(paths)) != len(paths):
         raise ValueError("Checkpoint array paths differ")

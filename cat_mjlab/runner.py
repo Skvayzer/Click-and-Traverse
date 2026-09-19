@@ -23,7 +23,7 @@ import uuid
 
 import torch
 
-from .checkpoint_arrays import read_array_archive
+from .checkpoint_arrays import read_array_archive, sampling_state_from_archive
 from .conversion import load_array_archive
 from .learning import Learner, LearnerConfig
 
@@ -247,6 +247,17 @@ def learner_config_from_archive(metadata, *, algorithm=None):
     return LearnerConfig(**kwargs)
 
 
+def environment_config_from_archive(metadata):
+    source = metadata.get("contract", {})
+    recorded = source.get("metadata", {}).get("config", {})
+    config = recorded.get("env_config")
+    if config is None:
+        config = json.loads((ROOT / "configs/cat_generalist_released.json").read_text())["env_config"]
+    randomize = source.get("randomize_initial_episode_steps",
+                           recorded.get("policy_config", {}).get("randomize_initial_episode_steps", True))
+    return dict(config, randomize_initial_episode_steps=randomize)
+
+
 def create_task(args, *, environment_config=None):
     from .sim import CATSimulation
     from .scene_bank import SceneBank
@@ -304,7 +315,7 @@ def run(args):
         directory.mkdir(parents=True, exist_ok=True)
     elif not directory.is_dir():
         raise ValueError("Resume directory does not exist")
-    metadata, _ = read_array_archive(args.checkpoint_npz)
+    metadata, archive_arrays = read_array_archive(args.checkpoint_npz)
     config = learner_config_from_archive(metadata, algorithm=args.algorithm)
     source = metadata.get("contract", {})
     batch_size = args.batch_size if args.batch_size is not None else source.get("batch_size", args.num_envs // config.num_minibatches)
@@ -320,11 +331,14 @@ def run(args):
         torch.backends.cuda.matmul.allow_tf32 = False
     learner = Learner(config, device=args.device)
     migration = load_array_archive(learner, args.checkpoint_npz, restore_optimizer=not args.fresh_optimizer)
-    config_source = source.get("metadata", {}).get("config", {}).get("env_config")
-    if config_source is None:
-        config_source = json.loads((ROOT / "configs/cat_generalist_released.json").read_text())["env_config"]
-    config_source = dict(config_source, randomize_initial_episode_steps=source.get("randomize_initial_episode_steps", True))
+    config_source = environment_config_from_archive(metadata)
     task, sim, environment_config = create_task(args, environment_config=config_source)
+    if not args.resume:
+        sampling, report = sampling_state_from_archive(metadata, archive_arrays, _file_hash(args.bank_manifest))
+        migration["sampling"] = report
+        if sampling is not None:
+            task.restore_sampling_state(sampling, resample=True)
+    del archive_arrays
     contract = dict(learner_config=asdict(config), num_envs=args.num_envs, batch_size=batch_size,
         unroll_length=unroll, seed=args.seed, nconmax=args.nconmax, njmax=args.njmax,
         compile_task=args.compile_task,
@@ -392,6 +406,7 @@ def run(args):
                 began = time.monotonic()
                 rollout, collected = collect_rollout(task, learner, unroll_length=unroll,
                                                      trajectories=trajectories, policy_ids=policy_ids)
+                sim.capacity_report()  # Latched overflow must stop before any gradient update.
                 metrics = learner.update(rollout)
                 del rollout
                 local_updates += 1
@@ -411,7 +426,8 @@ def run(args):
                     "performance/control_steps_per_second": metrics["physical_transitions"] / elapsed,
                     "performance/update_seconds": elapsed})
                 if learner.device.type == "cuda":
-                    values["performance/peak_vram_gib"] = torch.cuda.max_memory_allocated(learner.device) / 2**30
+                    free, total = torch.cuda.mem_get_info(learner.device)
+                    values["performance/device_vram_used_gib"] = (total - free) / 2**30
                 logger.log(learner.env_steps, values)
                 if local_updates % args.checkpoint_interval_updates == 0:
                     save_runtime()

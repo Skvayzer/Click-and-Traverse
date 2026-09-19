@@ -47,6 +47,9 @@ class FakeTask:
 
 
 class FakeSimulation:
+    def capacity_report(self):
+        return {"overflow": False}
+
     def state_dict(self):
         return dict(qpos=torch.ones(6, 2))
 

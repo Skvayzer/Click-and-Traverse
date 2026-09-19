@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Export only model/Adam arrays in the OLD JAX environment, without PyTorch.
+"""Export model/Adam and shared sampler arrays in the OLD JAX environment.
 
 Example:
   .venv/bin/python scripts/export_mjlab_checkpoint.py --runtime RUN/resume.msgpack \
@@ -8,6 +8,8 @@ Example:
 Or expand the original released native model using the existing named-feature
 mapping with --released-checkpoint PATH. The destination must be new. No source
 checkpoint, optimizer, training state, W&B run or environment is modified.
+The shared sampler and curriculum transfer only to the identical field bank;
+physics, partial episodes and framework RNG are explicitly reset on migration.
 """
 from __future__ import annotations
 
@@ -21,7 +23,7 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 
 import numpy as np
-from cat_mjlab.checkpoint_arrays import expand_released_params, write_array_archive
+from cat_mjlab.checkpoint_arrays import expand_released_params, write_array_archive, extract_shared_sampling
 
 
 def export_runtime(source, destination, expected_sha256=None):
@@ -44,10 +46,21 @@ def export_runtime(source, destination, expected_sha256=None):
         raise ValueError("Malformed runtime parameter paths")
     selected = [(path, array) for path, array in zip(tree["paths"], tree["leaves"])
                 if path.startswith((".params.", ".optimizer_state"))]
+    sampler = extract_shared_sampling(snapshot)
+    bank_sha = snapshot["contract"].get("metadata", {}).get("bank_sha256")
+    if not bank_sha:
+        raise ValueError("Runtime lacks the field-bank SHA needed for sampler migration")
+    arrays = [array for path, array in selected]
+    sampling_indices = {}
+    for key, value in sampler.items():
+        sampling_indices[key] = len(arrays)
+        arrays.append(value)
     metadata = dict(kind="runtime", source_path=str(source.resolve()), source_sha256=digest,
         source_schema=snapshot["schema"], step=int(snapshot["step"]), contract=snapshot["contract"],
-        paths=[path for path, array in selected], omitted="environment, JAX RNG, metrics windows, unused normalizer")
-    return write_array_archive(destination, metadata, [array for path, array in selected])
+        paths=[path for path, array in selected], training_array_count=len(selected),
+        sampling_state=dict(bank_sha256=bank_sha, array_indices=sampling_indices),
+        omitted="physics/episode state, JAX RNG, metrics windows, unused normalizer")
+    return write_array_archive(destination, metadata, arrays)
 
 
 def export_released(source, destination):
