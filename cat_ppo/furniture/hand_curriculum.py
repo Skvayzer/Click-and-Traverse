@@ -71,7 +71,7 @@ def navigation_scene_groups(manifest):
     groups = []
     for scene in manifest["scenes"]:
         room = scene["family"] in ("furniture", "generic_clutter")
-        hand = bool(scene.get("source", {}).get("hand_protection"))
+        hand = bool(scene.get("source", {}).get("hand_protection") or scene.get("source", {}).get("hand_contrast"))
         if hand and not room:
             raise ValueError("Hand navigation scenes must belong to a clutter family")
         groups.append(2 if hand else 1 if room else 0)

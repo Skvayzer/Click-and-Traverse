@@ -1,7 +1,9 @@
 """Ordered room-route following without adding policy observations.
 
-Room routes admit a fixed upright root cylinder (radius 0.23 m, world height
-0.35--1.05 m), not the articulated whole body.  Hand/elbow fields and native
+Legacy room routes admit an upright root cylinder (radius 0.23 m, world height
+0.35--1.05 m), not the articulated whole body. Certified contrastive passages
+may use a smaller navigation radius alongside mandatory full-body collision
+checks. Hand/elbow fields and native
 CAT task behavior remain the caller's responsibility.  All runtime functions
 are pure JAX: route progress belongs in episode info, not Python attributes.
 """
@@ -19,6 +21,49 @@ _EPS = 1e-7
 _VISIBILITY_MARGIN = 2e-6
 
 
+def scene_navigation_radius(scene):
+    """Return the legacy radius or a geometry-bound contrastive certificate.
+
+    This validates a sampled configuration certificate, not a proof of dynamic
+    traversability. Runtime users must additionally match its body-proxy hash
+    to an enabled collision bank; the reduced cylinder is only route guidance.
+    """
+    contrast = None if scene is None else scene.get("hand_contrast")
+    if contrast is None:
+        return ROOT_RADIUS
+    if not isinstance(contrast, dict) or contrast.get("schema") != "hand-contrast-v1":
+        raise ValueError("Unsupported hand-contrast navigation schema")
+    radius = contrast.get("navigation_radius_m")
+    if (isinstance(radius, bool) or not isinstance(radius, (int, float))
+            or not math.isfinite(radius) or not .14 <= radius <= ROOT_RADIUS):
+        raise ValueError("Hand-contrast navigation radius must be within [0.14, 0.23] metres")
+    certificate = contrast.get("certificate", {})
+    if (not isinstance(certificate, dict)
+            or certificate.get("schema") != "hand-contrast-certificate-v1"
+            or certificate.get("route_transition_validated") is not True
+            or certificate.get("navigation_radius_m") != radius
+            or certificate.get("primitive_count") != 35):
+        raise ValueError("Hand-contrast navigation needs a matching 35-primitive transition certificate")
+    from cat_ppo.furniture.scenes import _digest
+    geometry_hash = _digest(dict(boxes=scene["boxes"], room_dimensions=scene["room_dimensions"]))
+    if (certificate.get("geometry_hash") != geometry_hash
+            or certificate.get("route_hash") != _digest(scene["route"])):
+        raise ValueError("Hand-contrast certificate does not match scene geometry/route")
+    fingerprint = certificate.get("body_proxy_sha256", "")
+    if (not isinstance(fingerprint, str) or len(fingerprint) != 64
+            or any(character not in "0123456789abcdef" for character in fingerprint)):
+        raise ValueError("Hand-contrast certificate needs a body-proxy SHA256")
+    for key in ("route_sample_count", "transition_sample_count"):
+        if type(certificate.get(key)) is not int or certificate[key] < 1:
+            raise ValueError("Hand-contrast certificate requires sampled route and posture transitions")
+    for key in ("body_min_separation_m", "hand_field_min_clearance_m"):
+        value = certificate.get(key)
+        if (isinstance(value, bool) or not isinstance(value, (int, float))
+                or not math.isfinite(value) or value <= 0.):
+            raise ValueError("Hand-contrast route and transitions must have positive certified clearance")
+    return float(radius)
+
+
 def pack_room_scenes(scenes):
     """Pack canonical scenes; use ``None`` for unchanged original CAT tasks.
 
@@ -26,6 +71,7 @@ def pack_room_scenes(scenes):
     JAX arrays once. Routes are padded by repeating their final point. Each OBB
     row is ``(cx, cy, hx, hy, cos(yaw), sin(yaw))``; only boxes intersecting the
     fixed root-height interval are retained. Counts mask padding exactly.
+    navigation_radius carries the validated scene-specific route cylinder.
     These small immutable metadata arrays do not belong in policy observations.
     """
     scenes = list(scenes)
@@ -74,7 +120,9 @@ def pack_room_scenes(scenes):
     return dict(enabled=np.asarray([scene is not None for scene in scenes]),
                 route=packed_route, route_count=np.asarray(list(map(len, routes)), dtype=np.int32),
                 obstacles=packed_obstacles,
-                obstacle_count=np.asarray(list(map(len, all_obstacles)), dtype=np.int32))
+                obstacle_count=np.asarray(list(map(len, all_obstacles)), dtype=np.int32),
+                navigation_radius=np.asarray([scene_navigation_radius(scene) for scene in scenes],
+                                              dtype=np.float32))
 
 
 def _local(points, obstacles):
@@ -152,7 +200,10 @@ def route_context(root_xy, previous_xy, segment, sticky_violation, route, route_
     search is used. Off-route recovery goes to the current segment's projection
     only when visible; otherwise the command is zero and blocked=True.
 
-    target and direction are XY; guidance is XYZ with z=0. route_complete is
+    target and direction are XY; guidance is XYZ with z=0. tangent is the current
+    ordered route segment, independently of the robot's heading or recovery
+    direction; progress_m is its clamped projection plus prior segment lengths.
+    route_complete is
     final ordered segment + endpoint proximity + no previous/current collision.
     This geometric controller does not certify dynamic policy tracking.
     """
@@ -169,6 +220,12 @@ def route_context(root_xy, previous_xy, segment, sticky_violation, route, route_
                & (next_clearance >= _VISIBILITY_MARGIN))
     segment = jp.where(advance, next_segment, segment)
     carrot, projection, _ = _segment_target(root, route, segment, lookahead)
+    segment_delta = route[1:] - route[:-1]
+    segment_lengths = jp.linalg.norm(segment_delta, axis=-1)
+    tangent = segment_delta[segment] / jp.maximum(segment_lengths[segment], _EPS)
+    progress_m = (jp.sum(jp.where(jp.arange(len(segment_lengths)) < segment,
+                                  segment_lengths, 0.))
+                  + jp.linalg.norm(projection - route[segment]))
     targets = jp.stack((carrot, projection))
     target_clearances = swept_root_clearance(root, targets, obstacles, obstacle_count, radius=radius)
     carrot_visible = target_clearances[0] >= _VISIBILITY_MARGIN
@@ -194,6 +251,7 @@ def route_context(root_xy, previous_xy, segment, sticky_violation, route, route_
     taper = jp.where(segment == last_segment, jp.clip(goal_distance / .30, 0., 1.), 1.)
     guidance = jp.concatenate((direction * (speed * taper), jp.zeros(1, dtype=jp.float32)))
     return dict(segment=segment, target=target, direction=direction, guidance=guidance,
+                progress_m=progress_m, tangent=tangent,
                 root_clearance=root_margin, swept_clearance=sweep_margin,
                 swept_violation=swept_violation, violation=violation,
                 route_complete=route_complete, blocked=blocked,

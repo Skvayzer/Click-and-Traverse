@@ -1,0 +1,142 @@
+{
+  "seed": 20260919,
+  "generator": "contrastive-hand-passages-v2",
+  "comparison": "Static shaping only: all five native SDF terms, added hand/elbow clearance, neutral arm regularization and both new contrastive costs. Other dynamic reward terms are excluded. Costs before control dt=.02; lower negative magnitude is better.",
+  "rows": [
+    {
+      "module_x_m": -2.2,
+      "mode": "tucked",
+      "yaw_offset_rad": 0.0,
+      "pre_dt_shaping_sum": -3.605404789777822,
+      "native_sdf_sum": -3.5715978883526986,
+      "contrast": {
+        "wholebody_hand_contrast_heading": 0.0,
+        "wholebody_hand_contrast_region": 0.0
+      },
+      "hand_clearance_m": [
+        0.07613584399223328,
+        0.09181872010231018
+      ]
+    },
+    {
+      "module_x_m": -2.2,
+      "mode": "raised",
+      "yaw_offset_rad": 0.0,
+      "pre_dt_shaping_sum": -0.24876822646183427,
+      "native_sdf_sum": -0.23960666287166532,
+      "contrast": {
+        "wholebody_hand_contrast_heading": 0.0,
+        "wholebody_hand_contrast_region": 0.0
+      },
+      "hand_clearance_m": [
+        0.1426481157541275,
+        0.13643892109394073
+      ]
+    },
+    {
+      "module_x_m": -2.2,
+      "mode": "nominal",
+      "yaw_offset_rad": 1.5707963267948966,
+      "pre_dt_shaping_sum": -1.7946064245497837,
+      "native_sdf_sum": -0.002212561348642339,
+      "contrast": {
+        "wholebody_hand_contrast_heading": 1.0,
+        "wholebody_hand_contrast_region": 0.7923938632011414
+      },
+      "hand_clearance_m": [
+        0.2363688200712204,
+        0.23052923381328583
+      ]
+    },
+    {
+      "module_x_m": 0.0,
+      "mode": "tucked",
+      "yaw_offset_rad": 0.0,
+      "pre_dt_shaping_sum": -1.7262577958390466,
+      "native_sdf_sum": -1.7005075015113107,
+      "contrast": {
+        "wholebody_hand_contrast_heading": 0.0,
+        "wholebody_hand_contrast_region": 0.0
+      },
+      "hand_clearance_m": [
+        0.0995703786611557,
+        0.09746158123016357
+      ]
+    },
+    {
+      "module_x_m": 0.0,
+      "mode": "raised",
+      "yaw_offset_rad": 0.0,
+      "pre_dt_shaping_sum": -0.24029784593585646,
+      "native_sdf_sum": -0.23115135207626736,
+      "contrast": {
+        "wholebody_hand_contrast_heading": 0.0,
+        "wholebody_hand_contrast_region": 0.0
+      },
+      "hand_clearance_m": [
+        0.13764487206935883,
+        0.14144206047058105
+      ]
+    },
+    {
+      "module_x_m": 0.0,
+      "mode": "nominal",
+      "yaw_offset_rad": 1.5707963267948966,
+      "pre_dt_shaping_sum": -1.7945050598063972,
+      "native_sdf_sum": -0.002111137000611052,
+      "contrast": {
+        "wholebody_hand_contrast_heading": 1.0,
+        "wholebody_hand_contrast_region": 0.7923939228057861
+      },
+      "hand_clearance_m": [
+        0.2363688200712204,
+        0.232203409075737
+      ]
+    },
+    {
+      "module_x_m": 2.2,
+      "mode": "tucked",
+      "yaw_offset_rad": 0.0,
+      "pre_dt_shaping_sum": -1.80583813762496,
+      "native_sdf_sum": -1.7797294405681896,
+      "contrast": {
+        "wholebody_hand_contrast_heading": 0.0,
+        "wholebody_hand_contrast_region": 0.0
+      },
+      "hand_clearance_m": [
+        0.09393681585788727,
+        0.101828932762146
+      ]
+    },
+    {
+      "module_x_m": 2.2,
+      "mode": "raised",
+      "yaw_offset_rad": 0.0,
+      "pre_dt_shaping_sum": -0.27267491420934675,
+      "native_sdf_sum": -0.2630094436390209,
+      "contrast": {
+        "wholebody_hand_contrast_heading": 0.0,
+        "wholebody_hand_contrast_region": 0.0
+      },
+      "hand_clearance_m": [
+        0.1301811933517456,
+        0.14654244482517242
+      ]
+    },
+    {
+      "module_x_m": 2.2,
+      "mode": "nominal",
+      "yaw_offset_rad": 1.5707963267948966,
+      "pre_dt_shaping_sum": -1.7957431484646804,
+      "native_sdf_sum": -0.003349285263539059,
+      "contrast": {
+        "wholebody_hand_contrast_heading": 1.0,
+        "wholebody_hand_contrast_region": 0.7923938632011414
+      },
+      "hand_clearance_m": [
+        0.2221779078245163,
+        0.22652621567249298
+      ]
+    }
+  ]
+}

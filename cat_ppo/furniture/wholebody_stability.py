@@ -100,7 +100,8 @@ def upper_stability_terms(target, previous, previous_previous, nominal, handsdf,
                           arm_velocity_weight=.5, arm_acceleration_weight=.1,
                           protection_target_clearance=.04,
                           protection_anticipation_distance=.20,
-                          protection_near_weight=.8, protection_posture_taper=.10):
+                          protection_near_weight=.8, protection_posture_taper=.10,
+                          contrast_arm_active=None):
     """Dimensionless weighted physical-motion costs and interpretable telemetry.
 
 First three of the17 upper joints are waist joints. Their weight is4; each arm
@@ -136,6 +137,11 @@ the weights, so unchanged waist motion has exactly the same cost as before.
             (jp.asarray(elbow_clearance).reshape(2) - elbow_margin) / protection_posture_taper)
         blend = jp.clip(comfortable, 0., 1.)
         arm_gates = blend * blend * (3. - 2. * blend)
+        if contrast_arm_active is not None:
+            # Route zones retain the release after the hands reach clearance;
+            # otherwise an effective protective pose would turn its own
+            # nominal-posture penalty back on before the passage exit.
+            arm_gates *= ~jp.asarray(contrast_arm_active, dtype=bool)
         posture_gates = jp.concatenate([jp.ones(3), jp.repeat(arm_gates, 7)])
         velocity_weights = weights.at[3:].multiply(arm_velocity_weight)
         acceleration_weights = weights.at[3:].multiply(arm_acceleration_weight)
@@ -146,6 +152,14 @@ the weights, so unchanged waist motion has exactly the same cost as before.
             "wholebody_upper_clear_posture": weighted_mean(posture_gates * (offset / posture_scale) ** 2),
         }
         clear_gate = jp.mean(arm_gates)
+    elif contrast_arm_active is not None:
+        # The optional zone release also works with the original stability
+        # profile, preserving its existing waist gate and motion costs.
+        arm_gates = clear_gate * ~jp.asarray(contrast_arm_active, dtype=bool)
+        posture_gates = jp.concatenate([jp.full(3, clear_gate), jp.repeat(arm_gates, 7)])
+        costs["wholebody_upper_clear_posture"] = jp.where(
+            jp.any(contrast_arm_active), weighted_mean(posture_gates * (offset / posture_scale) ** 2),
+            costs["wholebody_upper_clear_posture"])
     telemetry = {
         "upper_target_velocity_rms": jp.sqrt(jp.mean(velocity ** 2)),
         "upper_target_acceleration_rms": jp.sqrt(jp.mean(acceleration ** 2)),

@@ -423,7 +423,10 @@ def load_generalist_manifest(path, *, verify_files=True):
     if manifest.get("released_config_sha256") != RELEASED_CONFIG_SHA256 or manifest.get("dataset_revision") != DATASET_REVISION:
         raise ValueError("Field-bank release/configuration source pin differs")
     originals = [scene for scene in manifest["scenes"] if scene["family"] == "original_cat"]
-    if "specialist" in manifest:
+    if "contrastive_specialist" in manifest:
+        from cat_ppo.furniture.contrastive_bank import validate_contrastive_manifest
+        validate_contrastive_manifest(manifest, path=path, verify_files=verify_files)
+    elif "specialist" in manifest:
         # This opt-in must prove an exact subset of a pinned complete bank;
         # ordinary generalist manifests still require every original anchor.
         from cat_ppo.furniture.hand_specialist import validate_specialist_manifest
@@ -563,6 +566,9 @@ class RaggedSceneMixin:
             self.field_bank_manifest,
             enabled=bool(getattr(config, "wholebody_hand_protection", False)))
         self._pf_hand_curriculum_levels = None if hand_levels is None else jp.asarray(hand_levels)
+        from cat_ppo.furniture.contrastive_bank import contrastive_roles, role_balanced_logits
+        contrast_roles = contrastive_roles(self.field_bank_manifest)
+        self._pf_contrast_roles = None if contrast_roles is None else jp.asarray(contrast_roles)
         if self._pf_expanded:
             group_ids, group_masses = sampling_groups(self.field_bank_manifest)
             group_weight = np.bincount(group_ids, weights=weights, minlength=len(SAMPLING_GROUPS))
@@ -582,6 +588,10 @@ class RaggedSceneMixin:
                     self._pf_sampling_group_masses, self._pf_hand_curriculum_levels, jp.int32(0))
         else:
             self._pf_sampling_logits = jp.log(jp.array(weights / weights.sum()) + 1e-8)
+        if self._pf_contrast_roles is not None:
+            if np.any(weights <= 0):
+                raise ValueError("Contrastive scene weights must all be positive")
+            self._pf_sampling_logits = role_balanced_logits(jp.asarray(weights), self._pf_contrast_roles)
         self._pf_sampling_alpha = float(getattr(config.pf_config, "sampling_alpha", 1.))
         self._pf_sampling_ema_decay = float(getattr(config.pf_config, "sampling_ema_decay", .95))
 

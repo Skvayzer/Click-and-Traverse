@@ -142,6 +142,8 @@ def field_bank_summary(manifest, manifest_sha256):
                 manifest_sha256=manifest_sha256, scenes=scenes)
     if "specialist" in manifest:
         summary["specialist"] = manifest["specialist"]
+    if "contrastive_specialist" in manifest:
+        summary["contrastive_specialist"] = manifest["contrastive_specialist"]
     return summary
 
 
@@ -170,9 +172,16 @@ def prepare(args, specification, *, restore_model=True):
                                           load_native, verify_warmstart_parity)
 
     config = specification["config"]
+    from cat_ppo.furniture.generalist_fields import load_generalist_manifest
+    contrastive = "contrastive_specialist" in load_generalist_manifest(args.bank_manifest, verify_files=False)
+    if contrastive and not config["fine_tuning"].get("training_only"):
+        raise ValueError("Contrastive specialist uses the cat_train_only profile without evaluation or retention")
+    if contrastive and (not specification.get("body_collision_bank") or not specification.get("body_collision_resets")):
+        raise ValueError("Contrastive passages require body collision bank and certified reset pool")
     env_config = wholebody_config(ConfigDict(config["env_config"]), bank_manifest=args.bank_manifest.resolve(),
                                  stabilization=config["fine_tuning"].get("upper_stabilization", False),
-                                 hand_protection=config["fine_tuning"].get("hand_protection", False))
+                                 hand_protection=config["fine_tuning"].get("hand_protection", False),
+                                 hand_contrast=contrastive)
     env_config.wholebody_first_outcome_metrics = bool(config["fine_tuning"].get("training_only"))
     if specification.get("body_collision_bank"):
         env_config.wholebody.body_collision.update(dict(
@@ -180,7 +189,7 @@ def prepare(args, specification, *, restore_model=True):
             reset_manifest=specification["body_collision_resets"]))
     environment = G1CatWholeBodyEnv(config=env_config)
     if (config["fine_tuning"].get("hand_protection")
-            and not environment.field_bank_manifest.get("hand_protection_curriculum")):
+            and not environment.field_bank_manifest.get("hand_protection_curriculum") and not contrastive):
         raise ValueError("Hand-protection profile requires a certified hand-curriculum scene bank")
     contract = environment.observation_contract()
     net_config = config["policy_config"]["network_factory"]

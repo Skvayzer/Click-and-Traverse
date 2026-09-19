@@ -1,0 +1,1052 @@
+{
+  "schema": "cat-furniture-scene-v1",
+  "scene_id": "contrast-train-20260919-narrow-7a713c0016d4",
+  "seed": 20260919,
+  "split": "train",
+  "family": "generic_clutter",
+  "difficulty": "contrastive",
+  "units": "metres",
+  "coordinate_system": "right-handed-z-up",
+  "room_dimensions": [
+    9.0,
+    3.6,
+    1.8
+  ],
+  "boxes": [
+    {
+      "name": "wall_west",
+      "center": [
+        0.0,
+        1.8,
+        0.9
+      ],
+      "half_size": [
+        0.06,
+        1.8,
+        0.9
+      ],
+      "yaw": 0.0,
+      "category": "wall"
+    },
+    {
+      "name": "wall_east",
+      "center": [
+        9.0,
+        1.8,
+        0.9
+      ],
+      "half_size": [
+        0.06,
+        1.8,
+        0.9
+      ],
+      "yaw": 0.0,
+      "category": "wall"
+    },
+    {
+      "name": "wall_south",
+      "center": [
+        4.5,
+        0.0,
+        0.9
+      ],
+      "half_size": [
+        4.5,
+        0.06,
+        0.9
+      ],
+      "yaw": 0.0,
+      "category": "wall"
+    },
+    {
+      "name": "wall_north",
+      "center": [
+        4.5,
+        3.6,
+        0.9
+      ],
+      "half_size": [
+        4.5,
+        0.06,
+        0.9
+      ],
+      "yaw": 0.0,
+      "category": "wall"
+    },
+    {
+      "name": "cabinet_0_-1",
+      "center": [
+        2.315164356,
+        1.412829422,
+        0.626577113
+      ],
+      "half_size": [
+        0.325,
+        0.276402342,
+        0.626577113
+      ],
+      "yaw": -0.033805166,
+      "category": "cabinet",
+      "furniture_id": "cabinet_0_-1",
+      "furniture_type": "cabinet"
+    },
+    {
+      "name": "baffle_0_-1",
+      "center": [
+        2.286096784,
+        0.55330107,
+        0.9
+      ],
+      "half_size": [
+        0.325,
+        0.603617374,
+        0.9
+      ],
+      "yaw": -0.033805166,
+      "category": "baffle"
+    },
+    {
+      "name": "cabinet_0_+1",
+      "center": [
+        2.347506443,
+        2.369185194,
+        0.626577113
+      ],
+      "half_size": [
+        0.325,
+        0.276402342,
+        0.626577113
+      ],
+      "yaw": -0.033805166,
+      "category": "cabinet",
+      "furniture_id": "cabinet_0_+1",
+      "furniture_type": "cabinet"
+    },
+    {
+      "name": "baffle_0_+1",
+      "center": [
+        2.373496326,
+        3.137706238,
+        0.9
+      ],
+      "half_size": [
+        0.325,
+        0.51255804,
+        0.9
+      ],
+      "yaw": -0.033805166,
+      "category": "baffle"
+    },
+    {
+      "name": "cabinet_1_-1",
+      "center": [
+        4.513907408,
+        1.33847222,
+        0.626577113
+      ],
+      "half_size": [
+        0.325,
+        0.276402342,
+        0.626577113
+      ],
+      "yaw": -0.033805166,
+      "category": "cabinet",
+      "furniture_id": "cabinet_1_-1",
+      "furniture_type": "cabinet"
+    },
+    {
+      "name": "baffle_1_-1",
+      "center": [
+        4.486097143,
+        0.516122469,
+        0.9
+      ],
+      "half_size": [
+        0.325,
+        0.566417519,
+        0.9
+      ],
+      "yaw": -0.033805166,
+      "category": "baffle"
+    },
+    {
+      "name": "cabinet_1_+1",
+      "center": [
+        4.546249495,
+        2.294827992,
+        0.626577113
+      ],
+      "half_size": [
+        0.325,
+        0.276402342,
+        0.626577113
+      ],
+      "yaw": -0.033805166,
+      "category": "cabinet",
+      "furniture_id": "cabinet_1_+1",
+      "furniture_type": "cabinet"
+    },
+    {
+      "name": "baffle_1_+1",
+      "center": [
+        4.573496685,
+        3.100527637,
+        0.9
+      ],
+      "half_size": [
+        0.325,
+        0.549757895,
+        0.9
+      ],
+      "yaw": -0.033805166,
+      "category": "baffle"
+    },
+    {
+      "name": "cabinet_2_-1",
+      "center": [
+        6.712650459,
+        1.264115019,
+        0.626577113
+      ],
+      "half_size": [
+        0.325,
+        0.276402342,
+        0.626577113
+      ],
+      "yaw": -0.033805166,
+      "category": "cabinet",
+      "furniture_id": "cabinet_2_-1",
+      "furniture_type": "cabinet"
+    },
+    {
+      "name": "baffle_2_-1",
+      "center": [
+        6.686097502,
+        0.478943868,
+        0.9
+      ],
+      "half_size": [
+        0.325,
+        0.529217665,
+        0.9
+      ],
+      "yaw": -0.033805166,
+      "category": "baffle"
+    },
+    {
+      "name": "cabinet_2_+1",
+      "center": [
+        6.744992546,
+        2.22047079,
+        0.626577113
+      ],
+      "half_size": [
+        0.325,
+        0.276402342,
+        0.626577113
+      ],
+      "yaw": -0.033805166,
+      "category": "cabinet",
+      "furniture_id": "cabinet_2_+1",
+      "furniture_type": "cabinet"
+    },
+    {
+      "name": "baffle_2_+1",
+      "center": [
+        6.773497045,
+        3.063349036,
+        0.9
+      ],
+      "half_size": [
+        0.325,
+        0.586957749,
+        0.9
+      ],
+      "yaw": -0.033805166,
+      "category": "baffle"
+    }
+  ],
+  "geometry_hash": "7a713c0016d4d151fa27f7df2a7d00a387fa1daa518be3206f7f4e54438d59e0",
+  "start_goals": [
+    {
+      "start": [
+        1.03207814,
+        1.93494565,
+        -0.033805165464843606
+      ],
+      "goal": [
+        8.02807876,
+        1.69835456
+      ],
+      "route": [
+        [
+          1.03207814,
+          1.93494565
+        ],
+        [
+          8.02807876,
+          1.69835456
+        ]
+      ],
+      "bottlenecks": [],
+      "route_length_m": 7.000000001350554,
+      "time_budget": 37.5
+    }
+  ],
+  "goal_index": 0,
+  "start": [
+    1.03207814,
+    1.93494565,
+    -0.033805165464843606
+  ],
+  "goal": [
+    8.02807876,
+    1.69835456
+  ],
+  "route": [
+    [
+      1.03207814,
+      1.93494565
+    ],
+    [
+      8.02807876,
+      1.69835456
+    ]
+  ],
+  "bottlenecks": [],
+  "route_length_m": 7.000000001350554,
+  "time_budget": 37.5,
+  "generator": {
+    "name": "contrastive-hand-passages-v2",
+    "passage_yaw_rad": -0.03380516644077265,
+    "passage_center_xy": [
+      4.530078451130051,
+      1.8166501061878557
+    ],
+    "geometry_source": "canonical-oriented-boxes",
+    "floor_in_obstacle_field": false,
+    "semantic_labels_observed_by_policy": false,
+    "dynamic_feasibility_validated": false
+  },
+  "counts": {
+    "tables": 0,
+    "chairs": 0,
+    "generic_objects": 12,
+    "primitive_boxes": 16,
+    "bottlenecks": 3
+  },
+  "hand_contrast": {
+    "schema": "hand-contrast-v1",
+    "group_id": "contrast-train-20260919",
+    "role": "narrow",
+    "navigation_radius_m": 0.15,
+    "zones": [
+      {
+        "start_m": 0.34999999999999987,
+        "end_m": 1.9999999999999998,
+        "fade_m": 0.15,
+        "forward_weight": 0.0,
+        "hand_active": [
+          0,
+          0
+        ],
+        "hand_regions_min": [
+          [
+            [
+              0.4114041395187378,
+              0.11479586899280549,
+              0.9218360252380371
+            ],
+            [
+              0.41140419912338255,
+              -0.1347861832380295,
+              0.9218342967033386
+            ]
+          ],
+          [
+            [
+              -0.07963171404600143,
+              0.15012866389751434,
+              0.5952140545845032
+            ],
+            [
+              -0.07963342022895813,
+              -0.16611866521835328,
+              0.5952145910263061
+            ]
+          ]
+        ],
+        "hand_regions_max": [
+          [
+            [
+              0.4474041395187378,
+              0.1347958689928055,
+              0.9578360252380371
+            ],
+            [
+              0.4474041991233826,
+              -0.11478618323802948,
+              0.9578342967033386
+            ]
+          ],
+          [
+            [
+              -0.05563171404600144,
+              0.16612866389751435,
+              0.6252140545845032
+            ],
+            [
+              -0.05563342022895813,
+              -0.15011866521835326,
+              0.6252145910263062
+            ]
+          ]
+        ],
+        "region_valid": [
+          false,
+          false
+        ],
+        "hazard_start_m": 0.9749999999999999,
+        "hazard_end_m": 1.6249999999999998
+      },
+      {
+        "start_m": 2.55,
+        "end_m": 4.2,
+        "fade_m": 0.15,
+        "forward_weight": 0.0,
+        "hand_active": [
+          0,
+          0
+        ],
+        "hand_regions_min": [
+          [
+            [
+              0.4114041395187378,
+              0.11479586899280549,
+              0.9218360252380371
+            ],
+            [
+              0.41140419912338255,
+              -0.1347861832380295,
+              0.9218342967033386
+            ]
+          ],
+          [
+            [
+              -0.07963171404600143,
+              0.15012866389751434,
+              0.5952140545845032
+            ],
+            [
+              -0.07963342022895813,
+              -0.16611866521835328,
+              0.5952145910263061
+            ]
+          ]
+        ],
+        "hand_regions_max": [
+          [
+            [
+              0.4474041395187378,
+              0.1347958689928055,
+              0.9578360252380371
+            ],
+            [
+              0.4474041991233826,
+              -0.11478618323802948,
+              0.9578342967033386
+            ]
+          ],
+          [
+            [
+              -0.05563171404600144,
+              0.16612866389751435,
+              0.6252140545845032
+            ],
+            [
+              -0.05563342022895813,
+              -0.15011866521835326,
+              0.6252145910263062
+            ]
+          ]
+        ],
+        "region_valid": [
+          false,
+          false
+        ],
+        "hazard_start_m": 3.175,
+        "hazard_end_m": 3.825
+      },
+      {
+        "start_m": 4.75,
+        "end_m": 6.4,
+        "fade_m": 0.15,
+        "forward_weight": 0.0,
+        "hand_active": [
+          0,
+          0
+        ],
+        "hand_regions_min": [
+          [
+            [
+              0.4114041395187378,
+              0.11479586899280549,
+              0.9218360252380371
+            ],
+            [
+              0.41140419912338255,
+              -0.1347861832380295,
+              0.9218342967033386
+            ]
+          ],
+          [
+            [
+              -0.07963171404600143,
+              0.15012866389751434,
+              0.5952140545845032
+            ],
+            [
+              -0.07963342022895813,
+              -0.16611866521835328,
+              0.5952145910263061
+            ]
+          ]
+        ],
+        "hand_regions_max": [
+          [
+            [
+              0.4474041395187378,
+              0.1347958689928055,
+              0.9578360252380371
+            ],
+            [
+              0.4474041991233826,
+              -0.11478618323802948,
+              0.9578342967033386
+            ]
+          ],
+          [
+            [
+              -0.05563171404600144,
+              0.16612866389751435,
+              0.6252140545845032
+            ],
+            [
+              -0.05563342022895813,
+              -0.15011866521835326,
+              0.6252145910263062
+            ]
+          ]
+        ],
+        "region_valid": [
+          false,
+          false
+        ],
+        "hazard_start_m": 5.375,
+        "hazard_end_m": 6.025
+      }
+    ],
+    "modules": [
+      {
+        "center_local_x_m": -2.2,
+        "length_m": 0.65,
+        "width_m": 0.404097803976777,
+        "role": "narrow"
+      },
+      {
+        "center_local_x_m": 0.0,
+        "length_m": 0.65,
+        "width_m": 0.404097803976777,
+        "role": "narrow"
+      },
+      {
+        "center_local_x_m": 2.2,
+        "length_m": 0.65,
+        "width_m": 0.404097803976777,
+        "role": "narrow"
+      }
+    ],
+    "region_frame": "xy:route tangent/left normal relative to root xy; z:absolute world metres",
+    "mode_names": [
+      "raised",
+      "tucked"
+    ],
+    "cabinet_height_m": 1.2531542262474211,
+    "dynamic_feasibility_validated": false,
+    "certificate": {
+      "schema": "hand-contrast-certificate-v1",
+      "primitive_count": 35,
+      "body_proxy_sha256": "865181b49e07b3c3611763ad06ee9203e1b8fd913d0d45b28cb9a8d96caed5d7",
+      "geometry_hash": "7a713c0016d4d151fa27f7df2a7d00a387fa1daa518be3206f7f4e54438d59e0",
+      "route_hash": "4309b038c7e2e900d788108d4ffeff09fadfb04ba6e67a6cfd981cd8fd0f51cb",
+      "navigation_radius_m": 0.15,
+      "route_transition_validated": true,
+      "exterior_lanes_sealed": true,
+      "module_floor_cross_section_openings_m": [
+        [
+          [
+            -0.20204890247905408,
+            0.20204890240329357
+          ]
+        ],
+        [
+          [
+            -0.20204890261641836,
+            0.20204890226592934
+          ]
+        ],
+        [
+          [
+            -0.20204890178815302,
+            0.20204890209476592
+          ]
+        ]
+      ],
+      "route_sample_count": 141,
+      "transition_sample_count": 50,
+      "body_min_separation_m": 0.035098783671855927,
+      "hand_field_min_clearance_m": 0.050163477659225464,
+      "route_sample_spacing_m": 0.05,
+      "voxel_size_m": 0.04,
+      "module_audit": [
+        {
+          "role": "narrow",
+          "width_m": 0.404097803976777,
+          "nominal_forward_body_min_m": -0.17492304742336273,
+          "nominal_forward_hand_min_m": -0.17492304742336273,
+          "raised_forward_body_min_m": -0.026414554566144943,
+          "tucked_forward_body_min_m": -0.059525951743125916,
+          "nominal_sideways_body_min_m": 0.07355191558599472
+        },
+        {
+          "role": "narrow",
+          "width_m": 0.404097803976777,
+          "nominal_forward_body_min_m": -0.17492304742336273,
+          "nominal_forward_hand_min_m": -0.17492304742336273,
+          "raised_forward_body_min_m": -0.026414554566144943,
+          "tucked_forward_body_min_m": -0.059525951743125916,
+          "nominal_sideways_body_min_m": 0.07355179637670517
+        },
+        {
+          "role": "narrow",
+          "width_m": 0.404097803976777,
+          "nominal_forward_body_min_m": -0.17492303252220154,
+          "nominal_forward_hand_min_m": -0.17492303252220154,
+          "raised_forward_body_min_m": -0.02641431614756584,
+          "tucked_forward_body_min_m": -0.059525832533836365,
+          "nominal_sideways_body_min_m": 0.07355203479528427
+        }
+      ],
+      "target_region_audit": [],
+      "stance_sample_count": 564,
+      "stance_audit": [
+        {
+          "variant": "crouch_shallow",
+          "count": 141,
+          "body": 0.059171609580516815,
+          "field": 0.05148652195930481
+        },
+        {
+          "variant": "crouch_deep",
+          "count": 141,
+          "body": 0.035098783671855927,
+          "field": 0.050163477659225464
+        },
+        {
+          "variant": "step_left",
+          "count": 141,
+          "body": 0.05528552830219269,
+          "field": 0.05117020010948181
+        },
+        {
+          "variant": "step_right",
+          "count": 141,
+          "body": 0.05528552830219269,
+          "field": 0.05117020010948181
+        }
+      ],
+      "target_region_method": "hand-sphere analytic Lipschitz bound and all adjacent SDF grid values over swept region boxes",
+      "motion_audit": "sampled standing postures, two floor-referenced crouches, two kinematic stepping stances, full straight route, arm interpolation and nominal-arm turn bays",
+      "target_region_full_arm_ik_certified": false,
+      "sampled_kinematic_stances_validated": true,
+      "dynamic_feasibility_validated": false,
+      "complete_se2_search": false,
+      "explanation": "Static checked posture family and sampled transitions only; safe hand-target regions do not certify every inverse-kinematic arm solution."
+    }
+  },
+  "feasibility": {
+    "method": "analytic-obb-root-cylinder-route-samples-with-lipschitz-bound",
+    "root_radius_m": 0.15,
+    "root_z_interval_m": [
+      0.35,
+      1.05
+    ],
+    "sample_spacing_max_m": 0.03999999999999999,
+    "sampled_center_clearance_min_m": 0.20204890165592138,
+    "center_clearance_lower_bound_m": 0.18204890165592139,
+    "root_margin_lower_bound_m": 0.03204890165592139,
+    "root_route_validated": true,
+    "full_body_validated": false,
+    "dynamic_feasibility_validated": false,
+    "explanation": "Navigation-only radius; separate 35-primitive route and transition certificate required."
+  },
+  "case_feasibility": [
+    {
+      "method": "analytic-obb-root-cylinder-route-samples-with-lipschitz-bound",
+      "root_radius_m": 0.15,
+      "root_z_interval_m": [
+        0.35,
+        1.05
+      ],
+      "sample_spacing_max_m": 0.03999999999999999,
+      "sampled_center_clearance_min_m": 0.20204890165592138,
+      "center_clearance_lower_bound_m": 0.18204890165592139,
+      "root_margin_lower_bound_m": 0.03204890165592139,
+      "root_route_validated": true,
+      "full_body_validated": false,
+      "dynamic_feasibility_validated": false,
+      "explanation": "Navigation-only radius; separate 35-primitive route and transition certificate required."
+    }
+  ],
+  "source": {
+    "hand_contrast": {
+      "schema": "hand-contrast-v1",
+      "group_id": "contrast-train-20260919",
+      "role": "narrow",
+      "navigation_radius_m": 0.15,
+      "zones": [
+        {
+          "start_m": 0.34999999999999987,
+          "end_m": 1.9999999999999998,
+          "fade_m": 0.15,
+          "forward_weight": 0.0,
+          "hand_active": [
+            0,
+            0
+          ],
+          "hand_regions_min": [
+            [
+              [
+                0.4114041395187378,
+                0.11479586899280549,
+                0.9218360252380371
+              ],
+              [
+                0.41140419912338255,
+                -0.1347861832380295,
+                0.9218342967033386
+              ]
+            ],
+            [
+              [
+                -0.07963171404600143,
+                0.15012866389751434,
+                0.5952140545845032
+              ],
+              [
+                -0.07963342022895813,
+                -0.16611866521835328,
+                0.5952145910263061
+              ]
+            ]
+          ],
+          "hand_regions_max": [
+            [
+              [
+                0.4474041395187378,
+                0.1347958689928055,
+                0.9578360252380371
+              ],
+              [
+                0.4474041991233826,
+                -0.11478618323802948,
+                0.9578342967033386
+              ]
+            ],
+            [
+              [
+                -0.05563171404600144,
+                0.16612866389751435,
+                0.6252140545845032
+              ],
+              [
+                -0.05563342022895813,
+                -0.15011866521835326,
+                0.6252145910263062
+              ]
+            ]
+          ],
+          "region_valid": [
+            false,
+            false
+          ],
+          "hazard_start_m": 0.9749999999999999,
+          "hazard_end_m": 1.6249999999999998
+        },
+        {
+          "start_m": 2.55,
+          "end_m": 4.2,
+          "fade_m": 0.15,
+          "forward_weight": 0.0,
+          "hand_active": [
+            0,
+            0
+          ],
+          "hand_regions_min": [
+            [
+              [
+                0.4114041395187378,
+                0.11479586899280549,
+                0.9218360252380371
+              ],
+              [
+                0.41140419912338255,
+                -0.1347861832380295,
+                0.9218342967033386
+              ]
+            ],
+            [
+              [
+                -0.07963171404600143,
+                0.15012866389751434,
+                0.5952140545845032
+              ],
+              [
+                -0.07963342022895813,
+                -0.16611866521835328,
+                0.5952145910263061
+              ]
+            ]
+          ],
+          "hand_regions_max": [
+            [
+              [
+                0.4474041395187378,
+                0.1347958689928055,
+                0.9578360252380371
+              ],
+              [
+                0.4474041991233826,
+                -0.11478618323802948,
+                0.9578342967033386
+              ]
+            ],
+            [
+              [
+                -0.05563171404600144,
+                0.16612866389751435,
+                0.6252140545845032
+              ],
+              [
+                -0.05563342022895813,
+                -0.15011866521835326,
+                0.6252145910263062
+              ]
+            ]
+          ],
+          "region_valid": [
+            false,
+            false
+          ],
+          "hazard_start_m": 3.175,
+          "hazard_end_m": 3.825
+        },
+        {
+          "start_m": 4.75,
+          "end_m": 6.4,
+          "fade_m": 0.15,
+          "forward_weight": 0.0,
+          "hand_active": [
+            0,
+            0
+          ],
+          "hand_regions_min": [
+            [
+              [
+                0.4114041395187378,
+                0.11479586899280549,
+                0.9218360252380371
+              ],
+              [
+                0.41140419912338255,
+                -0.1347861832380295,
+                0.9218342967033386
+              ]
+            ],
+            [
+              [
+                -0.07963171404600143,
+                0.15012866389751434,
+                0.5952140545845032
+              ],
+              [
+                -0.07963342022895813,
+                -0.16611866521835328,
+                0.5952145910263061
+              ]
+            ]
+          ],
+          "hand_regions_max": [
+            [
+              [
+                0.4474041395187378,
+                0.1347958689928055,
+                0.9578360252380371
+              ],
+              [
+                0.4474041991233826,
+                -0.11478618323802948,
+                0.9578342967033386
+              ]
+            ],
+            [
+              [
+                -0.05563171404600144,
+                0.16612866389751435,
+                0.6252140545845032
+              ],
+              [
+                -0.05563342022895813,
+                -0.15011866521835326,
+                0.6252145910263062
+              ]
+            ]
+          ],
+          "region_valid": [
+            false,
+            false
+          ],
+          "hazard_start_m": 5.375,
+          "hazard_end_m": 6.025
+        }
+      ],
+      "modules": [
+        {
+          "center_local_x_m": -2.2,
+          "length_m": 0.65,
+          "width_m": 0.404097803976777,
+          "role": "narrow"
+        },
+        {
+          "center_local_x_m": 0.0,
+          "length_m": 0.65,
+          "width_m": 0.404097803976777,
+          "role": "narrow"
+        },
+        {
+          "center_local_x_m": 2.2,
+          "length_m": 0.65,
+          "width_m": 0.404097803976777,
+          "role": "narrow"
+        }
+      ],
+      "region_frame": "xy:route tangent/left normal relative to root xy; z:absolute world metres",
+      "mode_names": [
+        "raised",
+        "tucked"
+      ],
+      "cabinet_height_m": 1.2531542262474211,
+      "dynamic_feasibility_validated": false,
+      "certificate": {
+        "schema": "hand-contrast-certificate-v1",
+        "primitive_count": 35,
+        "body_proxy_sha256": "865181b49e07b3c3611763ad06ee9203e1b8fd913d0d45b28cb9a8d96caed5d7",
+        "geometry_hash": "7a713c0016d4d151fa27f7df2a7d00a387fa1daa518be3206f7f4e54438d59e0",
+        "route_hash": "4309b038c7e2e900d788108d4ffeff09fadfb04ba6e67a6cfd981cd8fd0f51cb",
+        "navigation_radius_m": 0.15,
+        "route_transition_validated": true,
+        "exterior_lanes_sealed": true,
+        "module_floor_cross_section_openings_m": [
+          [
+            [
+              -0.20204890247905408,
+              0.20204890240329357
+            ]
+          ],
+          [
+            [
+              -0.20204890261641836,
+              0.20204890226592934
+            ]
+          ],
+          [
+            [
+              -0.20204890178815302,
+              0.20204890209476592
+            ]
+          ]
+        ],
+        "route_sample_count": 141,
+        "transition_sample_count": 50,
+        "body_min_separation_m": 0.035098783671855927,
+        "hand_field_min_clearance_m": 0.050163477659225464,
+        "route_sample_spacing_m": 0.05,
+        "voxel_size_m": 0.04,
+        "module_audit": [
+          {
+            "role": "narrow",
+            "width_m": 0.404097803976777,
+            "nominal_forward_body_min_m": -0.17492304742336273,
+            "nominal_forward_hand_min_m": -0.17492304742336273,
+            "raised_forward_body_min_m": -0.026414554566144943,
+            "tucked_forward_body_min_m": -0.059525951743125916,
+            "nominal_sideways_body_min_m": 0.07355191558599472
+          },
+          {
+            "role": "narrow",
+            "width_m": 0.404097803976777,
+            "nominal_forward_body_min_m": -0.17492304742336273,
+            "nominal_forward_hand_min_m": -0.17492304742336273,
+            "raised_forward_body_min_m": -0.026414554566144943,
+            "tucked_forward_body_min_m": -0.059525951743125916,
+            "nominal_sideways_body_min_m": 0.07355179637670517
+          },
+          {
+            "role": "narrow",
+            "width_m": 0.404097803976777,
+            "nominal_forward_body_min_m": -0.17492303252220154,
+            "nominal_forward_hand_min_m": -0.17492303252220154,
+            "raised_forward_body_min_m": -0.02641431614756584,
+            "tucked_forward_body_min_m": -0.059525832533836365,
+            "nominal_sideways_body_min_m": 0.07355203479528427
+          }
+        ],
+        "target_region_audit": [],
+        "stance_sample_count": 564,
+        "stance_audit": [
+          {
+            "variant": "crouch_shallow",
+            "count": 141,
+            "body": 0.059171609580516815,
+            "field": 0.05148652195930481
+          },
+          {
+            "variant": "crouch_deep",
+            "count": 141,
+            "body": 0.035098783671855927,
+            "field": 0.050163477659225464
+          },
+          {
+            "variant": "step_left",
+            "count": 141,
+            "body": 0.05528552830219269,
+            "field": 0.05117020010948181
+          },
+          {
+            "variant": "step_right",
+            "count": 141,
+            "body": 0.05528552830219269,
+            "field": 0.05117020010948181
+          }
+        ],
+        "target_region_method": "hand-sphere analytic Lipschitz bound and all adjacent SDF grid values over swept region boxes",
+        "motion_audit": "sampled standing postures, two floor-referenced crouches, two kinematic stepping stances, full straight route, arm interpolation and nominal-arm turn bays",
+        "target_region_full_arm_ik_certified": false,
+        "sampled_kinematic_stances_validated": true,
+        "dynamic_feasibility_validated": false,
+        "complete_se2_search": false,
+        "explanation": "Static checked posture family and sampled transitions only; safe hand-target regions do not certify every inverse-kinematic arm solution."
+      }
+    }
+  }
+}

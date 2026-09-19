@@ -52,9 +52,17 @@ def read_views(api, execute, entity, project):
     }
 
 
-def training_section():
+CONTRAST_CHARTS = (
+    ("training/goal_success_rate", "All contrastive goals"),
+    ("success/forward_protected_success_rate", "Forward with protected hands"),
+    ("success/narrow_passage_success_rate", "Narrow passage (sideways allowed)"),
+    ("success/posture_transition_success_rate", "Forward / sideways transitions"),
+)
+
+
+def training_section(charts=SUCCESS_CHARTS):
     panels = []
-    for metric, label in SUCCESS_CHARTS:
+    for metric, label in charts:
         panels.append({
             "__id__": uuid.uuid4().hex[:11], "isAuto": False,
             "layout": {"x": 0, "y": 0, "w": 8, "h": 6},
@@ -111,13 +119,20 @@ def prepare_personal(personal):
     return original, proposed
 
 
-def prepare_saved(personal_spec, run_id, *, hand_specialist=False):
+def prepare_saved(personal_spec, run_id, *, hand_specialist=False, contrastive=False):
     """Build a training-only saved view while leaving every old view untouched."""
     if not re.fullmatch(r"[A-Za-z0-9_-]+", run_id):
         raise ValueError("Expected a bare run ID")
     saved = copy.deepcopy(personal_spec)
     section = saved["section"]
     first = copy.deepcopy(section["panelBankConfig"]["sections"][0])
+    if contrastive:
+        if hand_specialist:
+            raise ValueError("Choose one specialist workspace type")
+        first = training_section(CONTRAST_CHARTS)
+        first["name"] = "Contrastive training success"
+        for panel in first["panels"]:
+            panel["config"]["yAxisTitle"] = "Successful / resolved training episodes"
     if hand_specialist:
         first["panels"] = [panel for panel in first["panels"] if panel.get("config", {}).get("metrics")
                            == ["training/hand_protection_goal_success_rate"]]
@@ -161,7 +176,10 @@ def main():
     parser.add_argument("--apply", action="store_true")
     parser.add_argument("--saved-only", action="store_true", help="Create a run-specific view without changing the personal workspace")
     parser.add_argument("--hand-specialist", action="store_true", help="Show the specialist's hand success rate without empty CAT/clutter panels")
+    parser.add_argument("--contrastive", action="store_true", help="Four contrastive training charts, requires --saved-only")
     args = parser.parse_args()
+    if args.contrastive and (not args.saved_only or args.hand_specialist):
+        parser.error("--contrastive requires --saved-only and excludes --hand-specialist")
     if args.hand_specialist and not args.saved_only:
         parser.error("--hand-specialist requires --saved-only")
     if not re.fullmatch(r"[A-Za-z0-9_-]+", args.run_id):
@@ -175,7 +193,7 @@ def main():
         raise RuntimeError("Target must be the authenticated user's personal workspace")
     personal = views[args.personal_view]
     original, proposed = prepare_personal(personal)
-    saved = prepare_saved(proposed, args.run_id, hand_specialist=args.hand_specialist)
+    saved = prepare_saved(proposed, args.run_id, hand_specialist=args.hand_specialist, contrastive=args.contrastive)
     saved_name = "nw-" + uuid.uuid4().hex[:11] + "-v"
     if saved_name in views:
         raise RuntimeError("New saved-view ID collision; retry")
@@ -192,7 +210,7 @@ def main():
         handle.write("\n")
     print(json.dumps({
         "action": "apply" if args.apply else "dry-run", "backup": str(args.backup),
-        "first_section": "Hand-protection success" if args.hand_specialist else "Training success",
+        "first_section": "Contrastive training success" if args.contrastive else "Hand-protection success" if args.hand_specialist else "Training success",
         "training_charts": 1 if args.hand_specialist else 4,
         "personal_run_filter": "unchanged", "saved_view_run_filter": args.run_id,
         "previous_evaluation_charts": "preserved and collapsed",

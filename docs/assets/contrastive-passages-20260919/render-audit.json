@@ -1,0 +1,51 @@
+[
+  {
+    "role": "open",
+    "mode": "nominal",
+    "sideways": false,
+    "hand_min_separation_m": 0.37520432472229004,
+    "body_min_separation_m": 0.37520432472229004
+  },
+  {
+    "role": "forward_protected",
+    "mode": "raised",
+    "sideways": false,
+    "hand_min_separation_m": 0.16177119314670563,
+    "body_min_separation_m": 0.14013563096523285
+  },
+  {
+    "role": "narrow",
+    "mode": "nominal",
+    "sideways": true,
+    "hand_min_separation_m": 0.09322826564311981,
+    "body_min_separation_m": 0.07355179637670517
+  },
+  {
+    "role": "transition",
+    "mode": "nominal",
+    "sideways": true,
+    "hand_min_separation_m": 0.09322826564311981,
+    "body_min_separation_m": 0.07355179637670517
+  },
+  {
+    "role": "forward_protected",
+    "mode": "nominal",
+    "sideways": false,
+    "hand_min_separation_m": -0.008372858166694641,
+    "body_min_separation_m": -0.008372858166694641
+  },
+  {
+    "role": "forward_protected",
+    "mode": "raised",
+    "sideways": false,
+    "hand_min_separation_m": 0.16177119314670563,
+    "body_min_separation_m": 0.14013563096523285
+  },
+  {
+    "role": "forward_protected",
+    "mode": "tucked",
+    "sideways": false,
+    "hand_min_separation_m": 0.10702423751354218,
+    "body_min_separation_m": 0.10702423751354218
+  }
+]

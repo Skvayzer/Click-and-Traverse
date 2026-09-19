@@ -85,8 +85,9 @@ class SamplePFWrapper(wrapper.Wrapper):
         self._body_collision_enabled = bool(getattr(body_collision, "enabled", False))
         self._hand_curriculum_levels = getattr(
             getattr(env, "unwrapped", env), "_pf_hand_curriculum_levels", None)
+        self._contrast_roles = getattr(getattr(env, "unwrapped", env), "_pf_contrast_roles", None)
         self._online_navigation_groups = None
-        if bool(getattr(config, "wholebody_first_outcome_metrics", False)):
+        if bool(getattr(config, "wholebody_first_outcome_metrics", False)) or self._contrast_roles is not None:
             from cat_ppo.furniture.hand_curriculum import navigation_scene_groups
             raw = getattr(env, "unwrapped", env)
             self._online_navigation_groups = jnp.asarray(navigation_scene_groups(raw.field_bank_manifest))
@@ -133,15 +134,21 @@ class SamplePFWrapper(wrapper.Wrapper):
         if self._online_navigation_groups is not None:
             from cat_ppo.furniture.hand_curriculum import initial_navigation_outcomes
             state.info.update(initial_navigation_outcomes(state.done.shape))
+        if self._contrast_roles is not None:
+            from cat_ppo.furniture.contrastive_metrics import initial_contrast_outcomes
+            state.info.update(initial_contrast_outcomes(state.done.shape))
         return state
 
     @staticmethod
     def _update_pf_sampling_info(state, done, hand_curriculum_levels=None,
-                                 online_navigation_groups=None):
+                                 online_navigation_groups=None, contrast_roles=None):
         resolved, navigation_success = None, None
         if online_navigation_groups is not None:
             from cat_ppo.furniture.hand_curriculum import update_navigation_outcomes
             resolved, navigation_success = update_navigation_outcomes(state.info, done, online_navigation_groups)
+        if contrast_roles is not None:
+            from cat_ppo.furniture.contrastive_metrics import update_contrast_outcomes
+            update_contrast_outcomes(state.info, resolved, navigation_success)
         if "pf_success_ema" not in state.info:
             return state, None
 
@@ -166,6 +173,10 @@ class SamplePFWrapper(wrapper.Wrapper):
                 clean_goal if navigation_success is None else navigation_success)
             for key, value in zip(STATE_KEYS, values):
                 state.info[key] = jnp.broadcast_to(value, state.info[key].shape)
+        if contrast_roles is not None:
+            # Adapt within each role using first clean arrival, not timeout survival.
+            done_f = resolved.astype(jnp.float32)
+            success = navigation_success.astype(jnp.float32)
         expanded = "pf_sampling_group_ids" in state.info
         if expanded:
             # Thousands of scene slots must not materialize B x N one-hot
@@ -188,7 +199,10 @@ class SamplePFWrapper(wrapper.Wrapper):
 
         alpha = jnp.mean(state.info["pf_sampling_alpha"])
         weights = jnp.maximum((1.0 - success_rate) ** alpha, 1e-3)
-        if hand_curriculum_levels is not None:
+        if contrast_roles is not None:
+            from cat_ppo.furniture.contrastive_bank import role_balanced_logits
+            logits = role_balanced_logits(weights, contrast_roles)
+        elif hand_curriculum_levels is not None:
             from cat_ppo.furniture.hand_curriculum import hand_scene_logits
             logits = hand_scene_logits(
                 weights, state.info["pf_sampling_group_ids"][0],
@@ -219,6 +233,9 @@ class SamplePFWrapper(wrapper.Wrapper):
         if self._online_navigation_groups is not None:
             from cat_ppo.furniture.hand_curriculum import initial_navigation_outcomes
             state.info.update(initial_navigation_outcomes(state.done.shape))
+        if self._contrast_roles is not None:
+            from cat_ppo.furniture.contrastive_metrics import initial_contrast_outcomes
+            state.info.update(initial_contrast_outcomes(state.done.shape))
         return state
 
     def step(self, state: mjx_env.State, action) -> mjx_env.State:
@@ -229,7 +246,7 @@ class SamplePFWrapper(wrapper.Wrapper):
             done = done[None]
 
         state, pf_sampling_logits = self._update_pf_sampling_info(
-            state, done, self._hand_curriculum_levels, self._online_navigation_groups)
+            state, done, self._hand_curriculum_levels, self._online_navigation_groups, self._contrast_roles)
 
         rng = state.info["rng"]
         if pf_sampling_logits is None:
@@ -301,7 +318,7 @@ class SamplePFWrapper(wrapper.Wrapper):
         # Extension state must reset with its newly sampled scene. The original
         # CAT keys above deliberately retain their released wrapper semantics.
         for name in state_reset.info:
-            if name.startswith("wholebody_") or name == "room_navigation":
+            if name.startswith("wholebody_") or name in ("room_navigation", "hand_contrast"):
                 state.info[name] = jax.tree_util.tree_map(
                     reset_obs_leaf, state_reset.info[name], state.info[name])
         qpos = jnp.where(done_exp, state_reset.data.qpos, state.data.qpos)

@@ -18,7 +18,7 @@ class RoomNavigationMixin:
         super().__init__(*args, **kwargs)
         if self.compatibility_mode:
             return
-        from cat_ppo.furniture.room_navigation import pack_room_scenes
+        from cat_ppo.furniture.room_navigation import pack_room_scenes, scene_navigation_radius
         from cat_ppo.furniture.room_geometry import root_cylinder_segment_clearance
         manifest_path = Path(self._config.pf_config.bank_manifest).resolve()
         rooms, mapping = [None], []
@@ -33,17 +33,47 @@ class RoomNavigationMixin:
                 raise ValueError("Room bank predates conservative geometry/ordered navigation; rebuild into a NEW bank")
             geometry = json.loads((manifest_path.parent / record["path"] / "scene.json").read_text())
             route = np.asarray(geometry["route"])
-            if np.any(root_cylinder_segment_clearance(route[:-1], route[1:], geometry["boxes"]) <= 0.):
+            radius = scene_navigation_radius(geometry)
+            if geometry.get("hand_contrast") is not None:
+                self._validate_contrast_collision_contract(geometry)
+            if np.any(root_cylinder_segment_clearance(
+                    route[:-1], route[1:], geometry["boxes"], radius=radius) <= 0.):
                 raise ValueError(f"Room route fails continuous root-cylinder clearance: {record['scene_id']}")
             mapping.append(len(rooms))
             rooms.append(geometry)
         self._room_arrays = {key: jp.asarray(value) for key, value in pack_room_scenes(rooms).items()}
+        self._has_hand_contrast = any(scene is not None and scene.get("hand_contrast") is not None
+                                      for scene in rooms)
+        if self._has_hand_contrast != bool(getattr(self._config, "wholebody_hand_contrast", False)):
+            raise ValueError("Contrastive passage metadata and wholebody_hand_contrast must be enabled together")
+        if self._has_hand_contrast:
+            from cat_ppo.furniture.contrastive_rewards import pack_hand_contrast
+            self._room_arrays.update({"hand_contrast_" + key: jp.asarray(value)
+                                      for key, value in pack_hand_contrast(rooms).items()})
         self._room_scene_index = jp.asarray(mapping, dtype=jp.int32)
+
+    def _validate_contrast_collision_contract(self, geometry):
+        # BodyCollisionMixin initializes first through super().__init__ and
+        # validates both its field geometry and certified reset-bank hashes.
+        # A scene label or the enabled config flag alone is insufficient.
+        contract = getattr(self, "body_collision_contract", {})
+        if (not getattr(self, "body_collision_enabled", False)
+                or not hasattr(self, "_body_collision_bank")
+                or contract.get("schema") != "cat-body-collision-v1"):
+            raise ValueError("Contrastive passages require the validated full-body collision bank")
+        expected = geometry["hand_contrast"]["certificate"]["body_proxy_sha256"]
+        if contract.get("proxy_sha256") != expected:
+            raise ValueError("Contrastive passage certificate uses different body collision primitives")
 
     def observation_contract(self):
         contract = super().observation_contract()
         if hasattr(self, "_room_arrays"):
             contract["room_navigation"] = "ordered-certified-route-v1"
+        if getattr(self, "_has_hand_contrast", False):
+            contract["hand_contrast_navigation"] = {
+                "schema": "hand-contrast-v1", "radius": "certified per scene",
+                "body_collision_required": True, "observations_added": 0,
+            }
         return contract
 
     @contextmanager
@@ -90,14 +120,24 @@ class RoomNavigationMixin:
             root, root if previous is None else previous["root_xy"],
             jp.int32(0) if previous is None else previous["segment"],
             jp.array(False) if previous is None else previous["violation"],
-            meta["route"], meta["route_count"], meta["obstacles"], meta["obstacle_count"])
+            meta["route"], meta["route_count"], meta["obstacles"], meta["obstacle_count"],
+            radius=meta["navigation_radius"])
         context["root_xy"] = root
         context["enabled"] = meta["enabled"]
         context["violation"] &= meta["enabled"]
         for key in ("root_clearance", "swept_clearance"):
             context[key] = jp.where(meta["enabled"], context[key], 0.)
         self._room_context = context
-        return {"room_navigation": context}
+        result = {"room_navigation": context}
+        if getattr(self, "_has_hand_contrast", False):
+            from cat_ppo.furniture.contrastive_rewards import eval_context
+            arrays = {key.removeprefix("hand_contrast_"): value
+                      for key, value in self._room_arrays.items()
+                      if key.startswith("hand_contrast_")}
+            result["hand_contrast"] = eval_context(
+                arrays, self._room_scene_index[self._field_pf_id],
+                context["progress_m"], context["tangent"])
+        return result
 
     def _room_query_guidance(self, guidance, boundary, clearance, root_xy):
         from cat_ppo.furniture.room_navigation import swept_root_clearance
@@ -107,7 +147,8 @@ class RoomNavigationMixin:
         delta = context["target"] - root_xy
         length = jp.linalg.norm(delta)
         direction = delta / jp.maximum(length, 1e-6)
-        visible = swept_root_clearance(root_xy, context["target"], meta["obstacles"], meta["obstacle_count"]) > 0.
+        visible = swept_root_clearance(root_xy, context["target"], meta["obstacles"],
+                                       meta["obstacle_count"], radius=meta["navigation_radius"]) > 0.
         active = visible & ~context["blocked"] & ~context["violation"]
         speed = jp.linalg.norm(context["guidance"][:2])
         velocity = direction * speed * active

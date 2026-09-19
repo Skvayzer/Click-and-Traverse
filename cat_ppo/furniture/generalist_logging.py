@@ -44,6 +44,8 @@ def compact_metric_allowed(name):
     if not isinstance(name, str) or "/" not in name:
         return False
     namespace, key = name.split("/", 1)
+    if namespace == "success":
+        return re.fullmatch(r"(?:forward_protected|narrow_passage|posture_transition)_(?:success_rate|success_count|resolved_count)", key) is not None
     if namespace == "training":
         return (key in _COMPACT_TRAINING_KEYS
                 or re.fullmatch(r"(?:leg|upper|arm_conditional|arm_stationary)_std_[a-z_]+", key) is not None

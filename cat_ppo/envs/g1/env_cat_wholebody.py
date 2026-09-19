@@ -28,7 +28,7 @@ from cat_ppo.furniture.grippers import (
 
 
 def wholebody_config(base_config, *, bank_manifest=None, compatibility_mode=False,
-                     stabilization=False, hand_protection=False):
+                     stabilization=False, hand_protection=False, hand_contrast=False):
     """Extend the supplied *released* env config without replacing its settings.
 
     Compatibility mode uses the original robot and 12-action observation
@@ -48,8 +48,13 @@ def wholebody_config(base_config, *, bank_manifest=None, compatibility_mode=Fals
         raise ValueError("Stabilization adds whole-body rewards and cannot be used in exact CAT compatibility mode")
     if hand_protection and (compatibility_mode or not stabilization):
         raise ValueError("The hand-protection profile requires stabilized whole-body control")
+    if hand_contrast and (compatibility_mode or not stabilization):
+        raise ValueError("Hand contrast requires stabilized whole-body control")
     config.wholebody_stabilization = bool(stabilization)
     config.wholebody_hand_protection = bool(hand_protection)
+    config.wholebody_hand_contrast = bool(hand_contrast)
+    config.hand_contrast_region_scale = .15
+    config.hand_contrast_metric_tolerance = .05
     from cat_ppo.envs.g1.body_collision import PROPOSAL
     config.wholebody = config_dict.create(body_collision=config_dict.create(
         enabled=False, bank_manifest="", reset_manifest="", proposal=str(PROPOSAL),
@@ -90,6 +95,9 @@ def wholebody_config(base_config, *, bank_manifest=None, compatibility_mode=Fals
             config.reward_config.scales.wholebody_upper_target_velocity = -.05
             config.reward_config.scales.wholebody_upper_target_acceleration = -.02
             config.reward_config.scales.wholebody_upper_clear_posture = -.05
+        if hand_contrast:
+            config.reward_config.scales.wholebody_hand_contrast_heading = -1.
+            config.reward_config.scales.wholebody_hand_contrast_region = -1.
     return config
 
 
@@ -221,6 +229,9 @@ class _WholeBodyTask(G1CatEnv):
         telemetry["upper_joint_velocity_rms"] = jp.sqrt(jp.mean(state.data.qvel[18:35] ** 2))
         telemetry["upper_action_distance_normalized"] = jp.array(0.)
         self._add_hand_protection_pose_telemetry(telemetry, state.data, state.info)
+        if getattr(self._config, "wholebody_hand_contrast", False):
+            _, contrast_telemetry = self._hand_contrast_terms(state.data, state.info)
+            telemetry.update(contrast_telemetry)
         state.info["wholebody_telemetry"] = telemetry
         return state
 
@@ -254,7 +265,18 @@ class _WholeBodyTask(G1CatEnv):
             protection_target_clearance=getattr(self._config, "hand_protection_target_clearance", .04),
             protection_anticipation_distance=getattr(self._config, "hand_protection_anticipation_distance", .20),
             protection_near_weight=getattr(self._config, "hand_protection_near_weight", .8),
-            protection_posture_taper=getattr(self._config, "hand_protection_posture_taper", .10))
+            protection_posture_taper=getattr(self._config, "hand_protection_posture_taper", .10),
+            contrast_arm_active=(info["hand_contrast"]["hand_active"]
+                if getattr(self._config, "wholebody_hand_contrast", False) else None))
+
+    def _hand_contrast_terms(self, data, info):
+        from cat_ppo.furniture.contrastive_rewards import reward_terms
+        return reward_terms(
+            info["hand_contrast"], info["hands_pos"], data.qpos[:2],
+            data.site_xmat[self._pelvis_imu_site_id][:, 0],
+            data.site_xmat[self._torso_imu_site_id][:, 0],
+            region_scale=self._config.hand_contrast_region_scale,
+            hand_good_distance=self._config.hand_contrast_metric_tolerance)
 
     def _add_hand_protection_pose_telemetry(self, telemetry, data, info):
         if not getattr(self._config, "wholebody_hand_protection", False):
@@ -309,6 +331,8 @@ class _WholeBodyTask(G1CatEnv):
                     compatibility_mode=self.compatibility_mode)
         if getattr(self._config, "wholebody_hand_protection", False):
             contract["hand_protection_reward"] = "normalized-clearance-and-arm-motion-v1"
+        if getattr(self._config, "wholebody_hand_contrast", False):
+            contract["hand_contrast_reward"] = "route-phase-heading-paired-hand-regions-v1"
         return contract
 
     def _elbow_fields(self, positions, info, *, actor):
@@ -365,6 +389,10 @@ class _WholeBodyTask(G1CatEnv):
         info["wholebody_applied_upper_target"] = info["motor_targets"][12:]
         if self._config.wholebody_stabilization:
             rewards.update(costs)
+        if getattr(self._config, "wholebody_hand_contrast", False):
+            contrast_costs, contrast_telemetry = self._hand_contrast_terms(data, info)
+            rewards.update(contrast_costs)
+            telemetry.update(contrast_telemetry)
         return rewards
 
     def _crossed_goal(self, positions):
