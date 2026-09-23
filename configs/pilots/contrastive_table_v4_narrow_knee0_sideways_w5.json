@@ -1,0 +1,454 @@
+{
+  "schema": "cat-passage-rewards-v1",
+  "bank_sha256": "05a34a628f732b5e4d2805cb883a109f987299551c49ad05eedd053ff6583bdd",
+  "scenes": {
+    "contrast-train-20260919-narrow-7a713c0016d4": {
+      "0": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      },
+      "1": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      },
+      "2": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      }
+    },
+    "contrast-train-20260919-transition-c4f481e6194a": {
+      "1": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      }
+    },
+    "contrast-train-20260920-narrow-a033aa1992f1": {
+      "0": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      },
+      "1": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      },
+      "2": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      }
+    },
+    "contrast-train-20260920-transition-a586282baba5": {
+      "1": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      }
+    },
+    "contrast-train-20260921-narrow-7370df237e04": {
+      "0": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      },
+      "1": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      },
+      "2": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      }
+    },
+    "contrast-train-20260921-transition-7b2a0e9b25a5": {
+      "1": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      }
+    },
+    "contrast-train-20260922-narrow-a95ea31643e5": {
+      "0": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      },
+      "1": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      },
+      "2": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      }
+    },
+    "contrast-train-20260922-transition-4bae08e5712f": {
+      "1": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      }
+    },
+    "contrast-train-20260923-narrow-1224222e66b8": {
+      "0": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      },
+      "1": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      },
+      "2": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      }
+    },
+    "contrast-train-20260923-transition-f7f6a35db7d8": {
+      "1": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      }
+    },
+    "contrast-train-20260924-narrow-e57e87f97e85": {
+      "0": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      },
+      "1": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      },
+      "2": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      }
+    },
+    "contrast-train-20260924-transition-6b39b577684f": {
+      "1": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      }
+    },
+    "contrast-train-20260925-narrow-26b43475d00a": {
+      "0": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      },
+      "1": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      },
+      "2": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      }
+    },
+    "contrast-train-20260925-transition-82ddcb1ee6ea": {
+      "1": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      }
+    },
+    "contrast-train-20260926-narrow-8896c324b2da": {
+      "0": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      },
+      "1": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      },
+      "2": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      }
+    },
+    "contrast-train-20260926-transition-e040ebe4197c": {
+      "1": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      }
+    },
+    "contrast-train-20260927-narrow-063544de9d28": {
+      "0": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      },
+      "1": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      },
+      "2": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      }
+    },
+    "contrast-train-20260927-transition-88c4078b2c4e": {
+      "1": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      }
+    },
+    "contrast-train-20260928-narrow-741284b88a1d": {
+      "0": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      },
+      "1": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      },
+      "2": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      }
+    },
+    "contrast-train-20260928-transition-120d7c73c48d": {
+      "1": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      }
+    },
+    "contrast-train-20260929-narrow-8576e218f59a": {
+      "0": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      },
+      "1": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      },
+      "2": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      }
+    },
+    "contrast-train-20260929-transition-4f33780ca789": {
+      "1": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      }
+    },
+    "contrast-train-20260930-narrow-581b78414a44": {
+      "0": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      },
+      "1": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      },
+      "2": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      }
+    },
+    "contrast-train-20260930-transition-8abd63d8d5bb": {
+      "1": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      }
+    },
+    "contrast-train-20260931-narrow-77912104d4fe": {
+      "0": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      },
+      "1": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      },
+      "2": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      }
+    },
+    "contrast-train-20260931-transition-bcc44e45649d": {
+      "1": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      }
+    },
+    "contrast-train-20260932-narrow-cee24ad8ee77": {
+      "0": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      },
+      "1": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      },
+      "2": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      }
+    },
+    "contrast-train-20260932-transition-d738257b64a0": {
+      "1": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      }
+    },
+    "contrast-train-20260933-narrow-c2c27ee67f03": {
+      "0": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      },
+      "1": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      },
+      "2": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      }
+    },
+    "contrast-train-20260933-transition-b3c5c258273b": {
+      "1": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      }
+    },
+    "contrast-train-20260934-narrow-b9ce88d57907": {
+      "0": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      },
+      "1": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      },
+      "2": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      }
+    },
+    "contrast-train-20260934-transition-0f8bf14777d9": {
+      "1": {
+        "sdf_reward_knee": 0.0,
+        "heading_target_rad": 1.5707963267948966,
+        "heading_weight": 5.0,
+        "heading_axis": true
+      }
+    }
+  }
+}

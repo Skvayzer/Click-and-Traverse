@@ -47,6 +47,14 @@ the next level unlocks. Unlocked levels remain available. Native adaptive
 sampling remains unchanged for old scenes. Curriculum state survives autoresets
 and exact learner resume; it adds no policy observations.
 
+For a new mjlab run, `--hand-curriculum-success-threshold 0.35` overrides the
+hand-task advancement rate without changing the bank or reward coefficients.
+The 64-outcome minimum and three levels remain unchanged. The run override is
+recorded in the environment contract; otherwise the bank's
+`clean_goal_success_threshold` applies, with a legacy default of 0.6 when absent.
+This gate measures clean goals across all policies, not hand-region compliance
+or posture-qualified success, and is separate from the width ladder's gate.
+
 ## Reward and action distribution
 
 The policy still receives **222 observations**, the critic **310**, and produces

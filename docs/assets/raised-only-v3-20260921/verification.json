@@ -1,0 +1,760 @@
+{
+  "preflight_v2": {
+    "scene_count": 2375,
+    "roles": {
+      "narrow": 12,
+      "forward_protected": 12,
+      "transition": 12
+    },
+    "zones": 108,
+    "hand_active_zones": 60,
+    "active_hand_objective_zones": 60,
+    "positive_heading_zones": 60
+  },
+  "preflight_v3": {
+    "scene_count": 2375,
+    "roles": {
+      "narrow": 12,
+      "forward_protected": 12,
+      "transition": 12
+    },
+    "zones": 108,
+    "hand_active_zones": 60,
+    "active_hand_objective_zones": 60,
+    "positive_heading_zones": 60
+  },
+  "changed_zones": [
+    {
+      "scene": "contrast-train-20260919-r0-w0.700000-forward_protected-eb8db12731e1",
+      "zone": 0,
+      "z_centers": [
+        [
+          0.9398360252380371,
+          0.9398342967033386
+        ],
+        [
+          0.6102140545845032,
+          0.6102145910263062
+        ]
+      ],
+      "valid": [
+        true,
+        false
+      ]
+    },
+    {
+      "scene": "contrast-train-20260919-r0-w0.700000-forward_protected-eb8db12731e1",
+      "zone": 1,
+      "z_centers": [
+        [
+          0.9398360252380371,
+          0.9398342967033386
+        ],
+        [
+          0.6102140545845032,
+          0.6102145910263062
+        ]
+      ],
+      "valid": [
+        true,
+        false
+      ]
+    },
+    {
+      "scene": "contrast-train-20260919-r0-w0.700000-forward_protected-eb8db12731e1",
+      "zone": 2,
+      "z_centers": [
+        [
+          0.9398360252380371,
+          0.9398342967033386
+        ],
+        [
+          0.6102140545845032,
+          0.6102145910263062
+        ]
+      ],
+      "valid": [
+        true,
+        false
+      ]
+    },
+    {
+      "scene": "contrast-train-20260920-r0-w0.700000-forward_protected-96a57ca86054",
+      "zone": 0,
+      "z_centers": [
+        [
+          0.9398360252380371,
+          0.9398342967033386
+        ],
+        [
+          0.6102140545845032,
+          0.6102145910263062
+        ]
+      ],
+      "valid": [
+        true,
+        false
+      ]
+    },
+    {
+      "scene": "contrast-train-20260920-r0-w0.700000-forward_protected-96a57ca86054",
+      "zone": 1,
+      "z_centers": [
+        [
+          0.9398360252380371,
+          0.9398342967033386
+        ],
+        [
+          0.6102140545845032,
+          0.6102145910263062
+        ]
+      ],
+      "valid": [
+        true,
+        false
+      ]
+    },
+    {
+      "scene": "contrast-train-20260920-r0-w0.700000-forward_protected-96a57ca86054",
+      "zone": 2,
+      "z_centers": [
+        [
+          0.9398360252380371,
+          0.9398342967033386
+        ],
+        [
+          0.6102140545845032,
+          0.6102145910263062
+        ]
+      ],
+      "valid": [
+        true,
+        false
+      ]
+    },
+    {
+      "scene": "contrast-train-20260921-r0-w0.700000-forward_protected-6c5d142ebc47",
+      "zone": 0,
+      "z_centers": [
+        [
+          0.9398360252380371,
+          0.9398342967033386
+        ],
+        [
+          0.6102140545845032,
+          0.6102145910263062
+        ]
+      ],
+      "valid": [
+        true,
+        false
+      ]
+    },
+    {
+      "scene": "contrast-train-20260921-r0-w0.700000-forward_protected-6c5d142ebc47",
+      "zone": 1,
+      "z_centers": [
+        [
+          0.9398360252380371,
+          0.9398342967033386
+        ],
+        [
+          0.6102140545845032,
+          0.6102145910263062
+        ]
+      ],
+      "valid": [
+        true,
+        false
+      ]
+    },
+    {
+      "scene": "contrast-train-20260921-r0-w0.700000-forward_protected-6c5d142ebc47",
+      "zone": 2,
+      "z_centers": [
+        [
+          0.9398360252380371,
+          0.9398342967033386
+        ],
+        [
+          0.6102140545845032,
+          0.6102145910263062
+        ]
+      ],
+      "valid": [
+        true,
+        false
+      ]
+    },
+    {
+      "scene": "contrast-train-20260922-r0-w0.700000-forward_protected-3912f4985670",
+      "zone": 0,
+      "z_centers": [
+        [
+          0.9398360252380371,
+          0.9398342967033386
+        ],
+        [
+          0.6102140545845032,
+          0.6102145910263062
+        ]
+      ],
+      "valid": [
+        true,
+        false
+      ]
+    },
+    {
+      "scene": "contrast-train-20260922-r0-w0.700000-forward_protected-3912f4985670",
+      "zone": 1,
+      "z_centers": [
+        [
+          0.9398360252380371,
+          0.9398342967033386
+        ],
+        [
+          0.6102140545845032,
+          0.6102145910263062
+        ]
+      ],
+      "valid": [
+        true,
+        false
+      ]
+    },
+    {
+      "scene": "contrast-train-20260922-r0-w0.700000-forward_protected-3912f4985670",
+      "zone": 2,
+      "z_centers": [
+        [
+          0.9398360252380371,
+          0.9398342967033386
+        ],
+        [
+          0.6102140545845032,
+          0.6102145910263062
+        ]
+      ],
+      "valid": [
+        true,
+        false
+      ]
+    },
+    {
+      "scene": "contrast-train-20260919-r1-w0.640000-forward_protected-eb8db12731e1",
+      "zone": 0,
+      "z_centers": [
+        [
+          0.9398360252380371,
+          0.9398342967033386
+        ],
+        [
+          0.6102140545845032,
+          0.6102145910263062
+        ]
+      ],
+      "valid": [
+        true,
+        false
+      ]
+    },
+    {
+      "scene": "contrast-train-20260919-r1-w0.640000-forward_protected-eb8db12731e1",
+      "zone": 1,
+      "z_centers": [
+        [
+          0.9398360252380371,
+          0.9398342967033386
+        ],
+        [
+          0.6102140545845032,
+          0.6102145910263062
+        ]
+      ],
+      "valid": [
+        true,
+        false
+      ]
+    },
+    {
+      "scene": "contrast-train-20260919-r1-w0.640000-forward_protected-eb8db12731e1",
+      "zone": 2,
+      "z_centers": [
+        [
+          0.9398360252380371,
+          0.9398342967033386
+        ],
+        [
+          0.6102140545845032,
+          0.6102145910263062
+        ]
+      ],
+      "valid": [
+        true,
+        false
+      ]
+    },
+    {
+      "scene": "contrast-train-20260920-r1-w0.640000-forward_protected-96a57ca86054",
+      "zone": 0,
+      "z_centers": [
+        [
+          0.9398360252380371,
+          0.9398342967033386
+        ],
+        [
+          0.6102140545845032,
+          0.6102145910263062
+        ]
+      ],
+      "valid": [
+        true,
+        false
+      ]
+    },
+    {
+      "scene": "contrast-train-20260920-r1-w0.640000-forward_protected-96a57ca86054",
+      "zone": 1,
+      "z_centers": [
+        [
+          0.9398360252380371,
+          0.9398342967033386
+        ],
+        [
+          0.6102140545845032,
+          0.6102145910263062
+        ]
+      ],
+      "valid": [
+        true,
+        false
+      ]
+    },
+    {
+      "scene": "contrast-train-20260920-r1-w0.640000-forward_protected-96a57ca86054",
+      "zone": 2,
+      "z_centers": [
+        [
+          0.9398360252380371,
+          0.9398342967033386
+        ],
+        [
+          0.6102140545845032,
+          0.6102145910263062
+        ]
+      ],
+      "valid": [
+        true,
+        false
+      ]
+    },
+    {
+      "scene": "contrast-train-20260921-r1-w0.640000-forward_protected-6c5d142ebc47",
+      "zone": 0,
+      "z_centers": [
+        [
+          0.9398360252380371,
+          0.9398342967033386
+        ],
+        [
+          0.6102140545845032,
+          0.6102145910263062
+        ]
+      ],
+      "valid": [
+        true,
+        false
+      ]
+    },
+    {
+      "scene": "contrast-train-20260921-r1-w0.640000-forward_protected-6c5d142ebc47",
+      "zone": 1,
+      "z_centers": [
+        [
+          0.9398360252380371,
+          0.9398342967033386
+        ],
+        [
+          0.6102140545845032,
+          0.6102145910263062
+        ]
+      ],
+      "valid": [
+        true,
+        false
+      ]
+    },
+    {
+      "scene": "contrast-train-20260921-r1-w0.640000-forward_protected-6c5d142ebc47",
+      "zone": 2,
+      "z_centers": [
+        [
+          0.9398360252380371,
+          0.9398342967033386
+        ],
+        [
+          0.6102140545845032,
+          0.6102145910263062
+        ]
+      ],
+      "valid": [
+        true,
+        false
+      ]
+    },
+    {
+      "scene": "contrast-train-20260922-r1-w0.640000-forward_protected-3912f4985670",
+      "zone": 0,
+      "z_centers": [
+        [
+          0.9398360252380371,
+          0.9398342967033386
+        ],
+        [
+          0.6102140545845032,
+          0.6102145910263062
+        ]
+      ],
+      "valid": [
+        true,
+        false
+      ]
+    },
+    {
+      "scene": "contrast-train-20260922-r1-w0.640000-forward_protected-3912f4985670",
+      "zone": 1,
+      "z_centers": [
+        [
+          0.9398360252380371,
+          0.9398342967033386
+        ],
+        [
+          0.6102140545845032,
+          0.6102145910263062
+        ]
+      ],
+      "valid": [
+        true,
+        false
+      ]
+    },
+    {
+      "scene": "contrast-train-20260922-r1-w0.640000-forward_protected-3912f4985670",
+      "zone": 2,
+      "z_centers": [
+        [
+          0.9398360252380371,
+          0.9398342967033386
+        ],
+        [
+          0.6102140545845032,
+          0.6102145910263062
+        ]
+      ],
+      "valid": [
+        true,
+        false
+      ]
+    },
+    {
+      "scene": "contrast-train-20260919-r2-w0.580000-forward_protected-eb8db12731e1",
+      "zone": 0,
+      "z_centers": [
+        [
+          0.9398360252380371,
+          0.9398342967033386
+        ],
+        [
+          0.6102140545845032,
+          0.6102145910263062
+        ]
+      ],
+      "valid": [
+        true,
+        false
+      ]
+    },
+    {
+      "scene": "contrast-train-20260919-r2-w0.580000-forward_protected-eb8db12731e1",
+      "zone": 1,
+      "z_centers": [
+        [
+          0.9398360252380371,
+          0.9398342967033386
+        ],
+        [
+          0.6102140545845032,
+          0.6102145910263062
+        ]
+      ],
+      "valid": [
+        true,
+        false
+      ]
+    },
+    {
+      "scene": "contrast-train-20260919-r2-w0.580000-forward_protected-eb8db12731e1",
+      "zone": 2,
+      "z_centers": [
+        [
+          0.9398360252380371,
+          0.9398342967033386
+        ],
+        [
+          0.6102140545845032,
+          0.6102145910263062
+        ]
+      ],
+      "valid": [
+        true,
+        false
+      ]
+    },
+    {
+      "scene": "contrast-train-20260920-r2-w0.580000-forward_protected-96a57ca86054",
+      "zone": 0,
+      "z_centers": [
+        [
+          0.9398360252380371,
+          0.9398342967033386
+        ],
+        [
+          0.6102140545845032,
+          0.6102145910263062
+        ]
+      ],
+      "valid": [
+        true,
+        false
+      ]
+    },
+    {
+      "scene": "contrast-train-20260920-r2-w0.580000-forward_protected-96a57ca86054",
+      "zone": 1,
+      "z_centers": [
+        [
+          0.9398360252380371,
+          0.9398342967033386
+        ],
+        [
+          0.6102140545845032,
+          0.6102145910263062
+        ]
+      ],
+      "valid": [
+        true,
+        false
+      ]
+    },
+    {
+      "scene": "contrast-train-20260920-r2-w0.580000-forward_protected-96a57ca86054",
+      "zone": 2,
+      "z_centers": [
+        [
+          0.9398360252380371,
+          0.9398342967033386
+        ],
+        [
+          0.6102140545845032,
+          0.6102145910263062
+        ]
+      ],
+      "valid": [
+        true,
+        false
+      ]
+    },
+    {
+      "scene": "contrast-train-20260921-r2-w0.580000-forward_protected-6c5d142ebc47",
+      "zone": 0,
+      "z_centers": [
+        [
+          0.9398360252380371,
+          0.9398342967033386
+        ],
+        [
+          0.6102140545845032,
+          0.6102145910263062
+        ]
+      ],
+      "valid": [
+        true,
+        false
+      ]
+    },
+    {
+      "scene": "contrast-train-20260921-r2-w0.580000-forward_protected-6c5d142ebc47",
+      "zone": 1,
+      "z_centers": [
+        [
+          0.9398360252380371,
+          0.9398342967033386
+        ],
+        [
+          0.6102140545845032,
+          0.6102145910263062
+        ]
+      ],
+      "valid": [
+        true,
+        false
+      ]
+    },
+    {
+      "scene": "contrast-train-20260921-r2-w0.580000-forward_protected-6c5d142ebc47",
+      "zone": 2,
+      "z_centers": [
+        [
+          0.9398360252380371,
+          0.9398342967033386
+        ],
+        [
+          0.6102140545845032,
+          0.6102145910263062
+        ]
+      ],
+      "valid": [
+        true,
+        false
+      ]
+    },
+    {
+      "scene": "contrast-train-20260922-r2-w0.580000-forward_protected-3912f4985670",
+      "zone": 0,
+      "z_centers": [
+        [
+          0.9398360252380371,
+          0.9398342967033386
+        ],
+        [
+          0.6102140545845032,
+          0.6102145910263062
+        ]
+      ],
+      "valid": [
+        true,
+        false
+      ]
+    },
+    {
+      "scene": "contrast-train-20260922-r2-w0.580000-forward_protected-3912f4985670",
+      "zone": 1,
+      "z_centers": [
+        [
+          0.9398360252380371,
+          0.9398342967033386
+        ],
+        [
+          0.6102140545845032,
+          0.6102145910263062
+        ]
+      ],
+      "valid": [
+        true,
+        false
+      ]
+    },
+    {
+      "scene": "contrast-train-20260922-r2-w0.580000-forward_protected-3912f4985670",
+      "zone": 2,
+      "z_centers": [
+        [
+          0.9398360252380371,
+          0.9398342967033386
+        ],
+        [
+          0.6102140545845032,
+          0.6102145910263062
+        ]
+      ],
+      "valid": [
+        true,
+        false
+      ]
+    }
+  ],
+  "source_unchanged": true,
+  "source_file_counts": [
+    186,
+    2391,
+    2
+  ],
+  "changed_files": [
+    [
+      "manifest.json",
+      "scenes/contrast-train-20260919-r0-w0.700000-forward_protected-eb8db12731e1/scene.json",
+      "scenes/contrast-train-20260919-r1-w0.640000-forward_protected-eb8db12731e1/scene.json",
+      "scenes/contrast-train-20260919-r2-w0.580000-forward_protected-eb8db12731e1/scene.json",
+      "scenes/contrast-train-20260920-r0-w0.700000-forward_protected-96a57ca86054/scene.json",
+      "scenes/contrast-train-20260920-r1-w0.640000-forward_protected-96a57ca86054/scene.json",
+      "scenes/contrast-train-20260920-r2-w0.580000-forward_protected-96a57ca86054/scene.json",
+      "scenes/contrast-train-20260921-r0-w0.700000-forward_protected-6c5d142ebc47/scene.json",
+      "scenes/contrast-train-20260921-r1-w0.640000-forward_protected-6c5d142ebc47/scene.json",
+      "scenes/contrast-train-20260921-r2-w0.580000-forward_protected-6c5d142ebc47/scene.json",
+      "scenes/contrast-train-20260922-r0-w0.700000-forward_protected-3912f4985670/scene.json",
+      "scenes/contrast-train-20260922-r1-w0.640000-forward_protected-3912f4985670/scene.json",
+      "scenes/contrast-train-20260922-r2-w0.580000-forward_protected-3912f4985670/scene.json"
+    ],
+    [
+      "build-plan.json",
+      "geometry-inventory.json",
+      "manifest.json"
+    ],
+    [
+      "manifest.json"
+    ]
+  ],
+  "live_before": {
+    "bytes": 71946,
+    "lines": 6
+  },
+  "live_after": {
+    "bytes": 71946,
+    "lines": 6
+  },
+  "source_manifest_sha256": "646c6fb2b1c1ea0112032cfee2d24e42f091878b9eaa61a8a230b0c64093d0cc",
+  "v3_manifest_sha256": "f9978fa010792a9c00975800c4b2c7ca1dd7f49c318c435c70b310d385860802",
+  "region_counts": {
+    "v2": {
+      "narrow_zones": 36,
+      "narrow_exactly_one_valid": 0,
+      "forward_protected_zones": 36,
+      "forward_protected_exactly_one_valid": 0,
+      "transition_zones": 36,
+      "transition_exactly_one_valid": 0
+    },
+    "v3": {
+      "narrow_zones": 36,
+      "narrow_exactly_one_valid": 0,
+      "forward_protected_zones": 36,
+      "forward_protected_exactly_one_valid": 36,
+      "transition_zones": 36,
+      "transition_exactly_one_valid": 0
+    }
+  },
+  "raised_height_range_m": [
+    0.9398342967033386,
+    0.9398360252380371
+  ],
+  "cpu_reward_probe": {
+    "raised": {
+      "cost": 0.0,
+      "good": 1.0
+    },
+    "tucked": {
+      "cost": 0.9356459379196167,
+      "good": 0.0
+    }
+  },
+  "live_final": {
+    "bytes": 84052,
+    "lines": 7
+  },
+  "disk_bytes": {
+    "bank": 433362944,
+    "collision": 38880256,
+    "resets": 6564864,
+    "total": 478808064
+  },
+  "regression_tests": "5 passed"
+}

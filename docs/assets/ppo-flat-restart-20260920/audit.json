@@ -1,0 +1,118 @@
+{
+  "device": "cpu",
+  "checkpoints": {
+    "cat_flat_balance_v3_30720": {
+      "durable_updates": 0,
+      "durable_steps": 0,
+      "model_max_abs_errors": {
+        "action": 6.556510925292969e-07,
+        "mean": 7.152557373046875e-07,
+        "action_std": 7.450580596923828e-08,
+        "value": 5.245208740234375e-06
+      },
+      "fresh_optimizer_entries": 0,
+      "logged_updates": 20,
+      "last_logged_step": 19660800,
+      "vram_min_gib": 38.404052734375,
+      "vram_max_gib": 38.425537109375,
+      "control_steps_per_second_last": 11650.81762305399,
+      "proposed_score_replay_range": [
+        0.0555913639257059,
+        0.14771868843811492
+      ],
+      "proposed_score_replay_improvements": 14
+    },
+    "cat_flat_balance_v2_30720_20260920": {
+      "durable_updates": 13,
+      "durable_steps": 12779520,
+      "model_max_abs_errors": {
+        "action": 4.544854164123535e-07,
+        "mean": 5.960464477539062e-07,
+        "action_std": 6.705522537231445e-08,
+        "value": 6.198883056640625e-06
+      },
+      "fresh_optimizer_entries": 0,
+      "logged_updates": 13,
+      "last_logged_step": 12779520,
+      "vram_min_gib": 39.0181884765625,
+      "vram_max_gib": 39.0201416015625,
+      "control_steps_per_second_last": 11719.74879111701,
+      "proposed_score_replay_range": [
+        0.0519629030782196,
+        0.13785940204033137
+      ],
+      "proposed_score_replay_improvements": 13
+    }
+  },
+  "v3_initial_weights_equal_v2": true,
+  "memory": {
+    "physical_rollout_gib": 4.031982421875,
+    "augmented_with_diagnostics_gib": 4.742431640625,
+    "extra_augmented_retained_during_update_gib": 4.73388671875,
+    "follower_temporary_gib": 0.6719970703125,
+    "fixed_fields_collision_gib": 13.61239,
+    "baseline_gib": 38.425537109375,
+    "capacity_gib": 47.492,
+    "reserve_gib": 4.784,
+    "working_ceiling_gib": 42.708,
+    "model": "fixed + (baseline - fixed - savings_credit) * N/30720",
+    "conservative_credit_fraction": 0.5,
+    "extra_uncertainty_gib": 1.0,
+    "counts": {
+      "30720": {
+        "expected_gib": 33.691650390625,
+        "conservative_budget_gib": 37.05859375,
+        "budget_free_gib": 10.433406249999997,
+        "num_minibatches": 40,
+        "batch_size": 768,
+        "transitions": 983040,
+        "leader_data_multiple": 6.0
+      },
+      "33792": {
+        "expected_gib": 35.699576429687504,
+        "conservative_budget_gib": 39.303214125000004,
+        "budget_free_gib": 8.188785874999994,
+        "num_minibatches": 44,
+        "batch_size": 768,
+        "transitions": 1081344,
+        "leader_data_multiple": 6.6
+      },
+      "37632": {
+        "expected_gib": 38.20948397851563,
+        "conservative_budget_gib": 42.10898959375,
+        "budget_free_gib": 5.383010406249994,
+        "num_minibatches": 49,
+        "batch_size": 768,
+        "transitions": 1204224,
+        "leader_data_multiple": 7.35
+      },
+      "38400": {
+        "expected_gib": 38.71146548828125,
+        "conservative_budget_gib": 42.6701446875,
+        "budget_free_gib": 4.8218553124999985,
+        "num_minibatches": 50,
+        "batch_size": 768,
+        "transitions": 1228800,
+        "leader_data_multiple": 7.5
+      },
+      "39168": {
+        "expected_gib": 39.21344699804688,
+        "conservative_budget_gib": 43.23129978125,
+        "budget_free_gib": 4.260700218749996,
+        "num_minibatches": 51,
+        "batch_size": 768,
+        "transitions": 1253376,
+        "leader_data_multiple": 7.65
+      },
+      "49152": {
+        "expected_gib": 45.739206625,
+        "conservative_budget_gib": 50.52631600000001,
+        "budget_free_gib": -3.034316000000011,
+        "num_minibatches": 64,
+        "batch_size": 768,
+        "transitions": 1572864,
+        "leader_data_multiple": 9.6
+      }
+    }
+  }
+}

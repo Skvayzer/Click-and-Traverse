@@ -1,0 +1,716 @@
+{
+  "scenes": [
+    {
+      "id": "front-danger",
+      "target_surface_m": 0.07664013218772353,
+      "achieved_surface_m": [
+        0.07664012908935547
+      ],
+      "object_paths": [
+        {
+          "sampled_min_body_gap_m": 0.07664012908935547,
+          "continuous_body_lower_bound_m": 0.07649012908935547,
+          "sample_spacing_bound_m": 0.00015,
+          "samples": 1001
+        }
+      ],
+      "min_floor_clearance_m": 0.5523587915017097,
+      "initial_self_proxy_gap_m": 4.498717273693914e-05,
+      "robot_nonfoot_floor_gap_m": 0.0250959356965281,
+      "robot_foot_sole_floor_m": 0.0,
+      "joint_action_limits_passed": true,
+      "authoring_attempts": 0,
+      "passed": true,
+      "scope": "full approach/hold/retreat against stationary authored robot and all conservative covering proxies; not a no-contact promise for arbitrary robot motion"
+    },
+    {
+      "id": "front-anticipation",
+      "target_surface_m": 0.12870540564431152,
+      "achieved_surface_m": [
+        0.12870541214942932
+      ],
+      "object_paths": [
+        {
+          "sampled_min_body_gap_m": 0.12870541214942932,
+          "continuous_body_lower_bound_m": 0.1285554121494293,
+          "sample_spacing_bound_m": 0.00014999999999999996,
+          "samples": 1001
+        }
+      ],
+      "min_floor_clearance_m": 0.5723586395173567,
+      "initial_self_proxy_gap_m": 4.498717273693914e-05,
+      "robot_nonfoot_floor_gap_m": 0.0250959356965281,
+      "robot_foot_sole_floor_m": 0.0,
+      "joint_action_limits_passed": true,
+      "authoring_attempts": 0,
+      "passed": true,
+      "scope": "full approach/hold/retreat against stationary authored robot and all conservative covering proxies; not a no-contact promise for arbitrary robot motion"
+    },
+    {
+      "id": "front-negative",
+      "target_surface_m": 0.29310056858241357,
+      "achieved_surface_m": [
+        0.29310059547424316,
+        0.29310059547424316
+      ],
+      "object_paths": [
+        {
+          "sampled_min_body_gap_m": 0.28480979800224304,
+          "continuous_body_lower_bound_m": 0.28465979800224306,
+          "sample_spacing_bound_m": 0.00015000000000000001,
+          "samples": 1001
+        },
+        {
+          "sampled_min_body_gap_m": 0.2847614288330078,
+          "continuous_body_lower_bound_m": 0.28461142883300783,
+          "sample_spacing_bound_m": 0.00014999999999999996,
+          "samples": 1001
+        }
+      ],
+      "min_floor_clearance_m": 0.5323586395173567,
+      "initial_self_proxy_gap_m": 4.498717273693914e-05,
+      "robot_nonfoot_floor_gap_m": 0.0250959356965281,
+      "robot_foot_sole_floor_m": 0.0,
+      "joint_action_limits_passed": true,
+      "authoring_attempts": 0,
+      "passed": true,
+      "scope": "full approach/hold/retreat against stationary authored robot and all conservative covering proxies; not a no-contact promise for arbitrary robot motion"
+    },
+    {
+      "id": "front_left-danger",
+      "target_surface_m": 0.06533534974070254,
+      "achieved_surface_m": [
+        0.06533536314964294
+      ],
+      "object_paths": [
+        {
+          "sampled_min_body_gap_m": 0.06533536314964294,
+          "continuous_body_lower_bound_m": 0.06518536314964295,
+          "sample_spacing_bound_m": 0.00014999999999999996,
+          "samples": 1001
+        }
+      ],
+      "min_floor_clearance_m": 0.5723587915017098,
+      "initial_self_proxy_gap_m": 4.498717273693914e-05,
+      "robot_nonfoot_floor_gap_m": 0.0250959356965281,
+      "robot_foot_sole_floor_m": 0.0,
+      "joint_action_limits_passed": true,
+      "authoring_attempts": 0,
+      "passed": true,
+      "scope": "full approach/hold/retreat against stationary authored robot and all conservative covering proxies; not a no-contact promise for arbitrary robot motion"
+    },
+    {
+      "id": "front_left-anticipation",
+      "target_surface_m": 0.15337792953536925,
+      "achieved_surface_m": [
+        0.1533779352903366
+      ],
+      "object_paths": [
+        {
+          "sampled_min_body_gap_m": 0.1533779352903366,
+          "continuous_body_lower_bound_m": 0.1532279352903366,
+          "sample_spacing_bound_m": 0.00014999999999999996,
+          "samples": 1001
+        }
+      ],
+      "min_floor_clearance_m": 0.5323587915017098,
+      "initial_self_proxy_gap_m": 4.498717273693914e-05,
+      "robot_nonfoot_floor_gap_m": 0.0250959356965281,
+      "robot_foot_sole_floor_m": 0.0,
+      "joint_action_limits_passed": true,
+      "authoring_attempts": 0,
+      "passed": true,
+      "scope": "full approach/hold/retreat against stationary authored robot and all conservative covering proxies; not a no-contact promise for arbitrary robot motion"
+    },
+    {
+      "id": "front_left-negative",
+      "target_surface_m": 0.3220151123752503,
+      "achieved_surface_m": [
+        0.32201510667800903
+      ],
+      "object_paths": [
+        {
+          "sampled_min_body_gap_m": 0.32201510667800903,
+          "continuous_body_lower_bound_m": 0.32186510667800905,
+          "sample_spacing_bound_m": 0.00014999999999999996,
+          "samples": 1001
+        }
+      ],
+      "min_floor_clearance_m": 0.4973587915017098,
+      "initial_self_proxy_gap_m": 4.498717273693914e-05,
+      "robot_nonfoot_floor_gap_m": 0.0250959356965281,
+      "robot_foot_sole_floor_m": 0.0,
+      "joint_action_limits_passed": true,
+      "authoring_attempts": 0,
+      "passed": true,
+      "scope": "full approach/hold/retreat against stationary authored robot and all conservative covering proxies; not a no-contact promise for arbitrary robot motion"
+    },
+    {
+      "id": "left-danger",
+      "target_surface_m": 0.06950524067726108,
+      "achieved_surface_m": [
+        0.06950525939464569
+      ],
+      "object_paths": [
+        {
+          "sampled_min_body_gap_m": 0.06950525939464569,
+          "continuous_body_lower_bound_m": 0.0693552593946457,
+          "sample_spacing_bound_m": 0.00014999999999999996,
+          "samples": 1001
+        }
+      ],
+      "min_floor_clearance_m": 0.5323587915017098,
+      "initial_self_proxy_gap_m": 4.498717273693914e-05,
+      "robot_nonfoot_floor_gap_m": 0.0250959356965281,
+      "robot_foot_sole_floor_m": 0.0,
+      "joint_action_limits_passed": true,
+      "authoring_attempts": 0,
+      "passed": true,
+      "scope": "full approach/hold/retreat against stationary authored robot and all conservative covering proxies; not a no-contact promise for arbitrary robot motion"
+    },
+    {
+      "id": "left-anticipation",
+      "target_surface_m": 0.13308608036787983,
+      "achieved_surface_m": [
+        0.13308611512184143
+      ],
+      "object_paths": [
+        {
+          "sampled_min_body_gap_m": 0.13308611512184143,
+          "continuous_body_lower_bound_m": 0.13293611512184142,
+          "sample_spacing_bound_m": 0.00015000000000000001,
+          "samples": 1001
+        }
+      ],
+      "min_floor_clearance_m": 0.4973587915017098,
+      "initial_self_proxy_gap_m": 4.498717273693914e-05,
+      "robot_nonfoot_floor_gap_m": 0.0250959356965281,
+      "robot_foot_sole_floor_m": 0.0,
+      "joint_action_limits_passed": true,
+      "authoring_attempts": 0,
+      "passed": true,
+      "scope": "full approach/hold/retreat against stationary authored robot and all conservative covering proxies; not a no-contact promise for arbitrary robot motion"
+    },
+    {
+      "id": "left-negative",
+      "target_surface_m": 0.2122103315498479,
+      "achieved_surface_m": [
+        0.21221037209033966
+      ],
+      "object_paths": [
+        {
+          "sampled_min_body_gap_m": 0.21221037209033966,
+          "continuous_body_lower_bound_m": 0.21206037209033965,
+          "sample_spacing_bound_m": 0.00015000000000000001,
+          "samples": 1001
+        }
+      ],
+      "min_floor_clearance_m": 0.5523587915017097,
+      "initial_self_proxy_gap_m": 4.498717273693914e-05,
+      "robot_nonfoot_floor_gap_m": 0.0250959356965281,
+      "robot_foot_sole_floor_m": 0.0,
+      "joint_action_limits_passed": true,
+      "authoring_attempts": 0,
+      "passed": true,
+      "scope": "full approach/hold/retreat against stationary authored robot and all conservative covering proxies; not a no-contact promise for arbitrary robot motion"
+    },
+    {
+      "id": "back_left-danger",
+      "target_surface_m": 0.07580033560884614,
+      "achieved_surface_m": [
+        0.07580037415027618
+      ],
+      "object_paths": [
+        {
+          "sampled_min_body_gap_m": 0.07580037415027618,
+          "continuous_body_lower_bound_m": 0.07565037415027619,
+          "sample_spacing_bound_m": 0.00015,
+          "samples": 1001
+        }
+      ],
+      "min_floor_clearance_m": 0.4973587915017098,
+      "initial_self_proxy_gap_m": 4.498717273693914e-05,
+      "robot_nonfoot_floor_gap_m": 0.0250959356965281,
+      "robot_foot_sole_floor_m": 0.0,
+      "joint_action_limits_passed": true,
+      "authoring_attempts": 0,
+      "passed": true,
+      "scope": "full approach/hold/retreat against stationary authored robot and all conservative covering proxies; not a no-contact promise for arbitrary robot motion"
+    },
+    {
+      "id": "back_left-anticipation",
+      "target_surface_m": 0.19637639614239194,
+      "achieved_surface_m": [
+        0.19637639820575714
+      ],
+      "object_paths": [
+        {
+          "sampled_min_body_gap_m": 0.19637639820575714,
+          "continuous_body_lower_bound_m": 0.19622639820575713,
+          "sample_spacing_bound_m": 0.00014999999999999996,
+          "samples": 1001
+        }
+      ],
+      "min_floor_clearance_m": 0.5523587915017097,
+      "initial_self_proxy_gap_m": 4.498717273693914e-05,
+      "robot_nonfoot_floor_gap_m": 0.0250959356965281,
+      "robot_foot_sole_floor_m": 0.0,
+      "joint_action_limits_passed": true,
+      "authoring_attempts": 0,
+      "passed": true,
+      "scope": "full approach/hold/retreat against stationary authored robot and all conservative covering proxies; not a no-contact promise for arbitrary robot motion"
+    },
+    {
+      "id": "back_left-negative",
+      "target_surface_m": 0.31103555893206036,
+      "achieved_surface_m": [
+        0.3110355734825134
+      ],
+      "object_paths": [
+        {
+          "sampled_min_body_gap_m": 0.3110355734825134,
+          "continuous_body_lower_bound_m": 0.31088557348251344,
+          "sample_spacing_bound_m": 0.00014999999999999996,
+          "samples": 1001
+        }
+      ],
+      "min_floor_clearance_m": 0.5723587915017098,
+      "initial_self_proxy_gap_m": 4.498717273693914e-05,
+      "robot_nonfoot_floor_gap_m": 0.0250959356965281,
+      "robot_foot_sole_floor_m": 0.0,
+      "joint_action_limits_passed": true,
+      "authoring_attempts": 0,
+      "passed": true,
+      "scope": "full approach/hold/retreat against stationary authored robot and all conservative covering proxies; not a no-contact promise for arbitrary robot motion"
+    },
+    {
+      "id": "back-danger",
+      "target_surface_m": 0.07431765199054853,
+      "achieved_surface_m": [
+        0.07431763410568237
+      ],
+      "object_paths": [
+        {
+          "sampled_min_body_gap_m": 0.07431763410568237,
+          "continuous_body_lower_bound_m": 0.07416763410568238,
+          "sample_spacing_bound_m": 0.00015,
+          "samples": 1001
+        }
+      ],
+      "min_floor_clearance_m": 0.5523587915017097,
+      "initial_self_proxy_gap_m": 4.498717273693914e-05,
+      "robot_nonfoot_floor_gap_m": 0.0250959356965281,
+      "robot_foot_sole_floor_m": 0.0,
+      "joint_action_limits_passed": true,
+      "authoring_attempts": 0,
+      "passed": true,
+      "scope": "full approach/hold/retreat against stationary authored robot and all conservative covering proxies; not a no-contact promise for arbitrary robot motion"
+    },
+    {
+      "id": "back-anticipation",
+      "target_surface_m": 0.1740904961777684,
+      "achieved_surface_m": [
+        0.17409051954746246
+      ],
+      "object_paths": [
+        {
+          "sampled_min_body_gap_m": 0.17409051954746246,
+          "continuous_body_lower_bound_m": 0.17394051954746245,
+          "sample_spacing_bound_m": 0.00014999999999999996,
+          "samples": 1001
+        }
+      ],
+      "min_floor_clearance_m": 0.5723586395173567,
+      "initial_self_proxy_gap_m": 4.498717273693914e-05,
+      "robot_nonfoot_floor_gap_m": 0.0250959356965281,
+      "robot_foot_sole_floor_m": 0.0,
+      "joint_action_limits_passed": true,
+      "authoring_attempts": 0,
+      "passed": true,
+      "scope": "full approach/hold/retreat against stationary authored robot and all conservative covering proxies; not a no-contact promise for arbitrary robot motion"
+    },
+    {
+      "id": "back-negative",
+      "target_surface_m": 0.2870798700447612,
+      "achieved_surface_m": [
+        0.2870798707008362,
+        0.2870798707008362
+      ],
+      "object_paths": [
+        {
+          "sampled_min_body_gap_m": 0.2870798707008362,
+          "continuous_body_lower_bound_m": 0.2869298707008362,
+          "sample_spacing_bound_m": 0.00014999999999999996,
+          "samples": 1001
+        },
+        {
+          "sampled_min_body_gap_m": 0.2870798707008362,
+          "continuous_body_lower_bound_m": 0.2869298707008362,
+          "sample_spacing_bound_m": 0.00015,
+          "samples": 1001
+        }
+      ],
+      "min_floor_clearance_m": 0.5323586395173567,
+      "initial_self_proxy_gap_m": 4.498717273693914e-05,
+      "robot_nonfoot_floor_gap_m": 0.0250959356965281,
+      "robot_foot_sole_floor_m": 0.0,
+      "joint_action_limits_passed": true,
+      "authoring_attempts": 0,
+      "passed": true,
+      "scope": "full approach/hold/retreat against stationary authored robot and all conservative covering proxies; not a no-contact promise for arbitrary robot motion"
+    },
+    {
+      "id": "back_right-danger",
+      "target_surface_m": 0.050101992902622315,
+      "achieved_surface_m": [
+        0.05010199546813965
+      ],
+      "object_paths": [
+        {
+          "sampled_min_body_gap_m": 0.05010199546813965,
+          "continuous_body_lower_bound_m": 0.04995199546813965,
+          "sample_spacing_bound_m": 0.00015,
+          "samples": 1001
+        }
+      ],
+      "min_floor_clearance_m": 0.5723586395173567,
+      "initial_self_proxy_gap_m": 4.498717273693914e-05,
+      "robot_nonfoot_floor_gap_m": 0.0250959356965281,
+      "robot_foot_sole_floor_m": 0.0,
+      "joint_action_limits_passed": true,
+      "authoring_attempts": 0,
+      "passed": true,
+      "scope": "full approach/hold/retreat against stationary authored robot and all conservative covering proxies; not a no-contact promise for arbitrary robot motion"
+    },
+    {
+      "id": "back_right-anticipation",
+      "target_surface_m": 0.1075542183090413,
+      "achieved_surface_m": [
+        0.10755422711372375
+      ],
+      "object_paths": [
+        {
+          "sampled_min_body_gap_m": 0.10755422711372375,
+          "continuous_body_lower_bound_m": 0.10740422711372376,
+          "sample_spacing_bound_m": 0.00015,
+          "samples": 1001
+        }
+      ],
+      "min_floor_clearance_m": 0.5323586395173567,
+      "initial_self_proxy_gap_m": 4.498717273693914e-05,
+      "robot_nonfoot_floor_gap_m": 0.0250959356965281,
+      "robot_foot_sole_floor_m": 0.0,
+      "joint_action_limits_passed": true,
+      "authoring_attempts": 0,
+      "passed": true,
+      "scope": "full approach/hold/retreat against stationary authored robot and all conservative covering proxies; not a no-contact promise for arbitrary robot motion"
+    },
+    {
+      "id": "back_right-negative",
+      "target_surface_m": 0.329268857107646,
+      "achieved_surface_m": [
+        0.32926881313323975
+      ],
+      "object_paths": [
+        {
+          "sampled_min_body_gap_m": 0.32926881313323975,
+          "continuous_body_lower_bound_m": 0.32911881313323976,
+          "sample_spacing_bound_m": 0.00014999999999999996,
+          "samples": 1001
+        }
+      ],
+      "min_floor_clearance_m": 0.4973586395173567,
+      "initial_self_proxy_gap_m": 4.498717273693914e-05,
+      "robot_nonfoot_floor_gap_m": 0.0250959356965281,
+      "robot_foot_sole_floor_m": 0.0,
+      "joint_action_limits_passed": true,
+      "authoring_attempts": 0,
+      "passed": true,
+      "scope": "full approach/hold/retreat against stationary authored robot and all conservative covering proxies; not a no-contact promise for arbitrary robot motion"
+    },
+    {
+      "id": "right-danger",
+      "target_surface_m": 0.06865376001542887,
+      "achieved_surface_m": [
+        0.06865374743938446
+      ],
+      "object_paths": [
+        {
+          "sampled_min_body_gap_m": 0.06865374743938446,
+          "continuous_body_lower_bound_m": 0.06850374743938446,
+          "sample_spacing_bound_m": 0.00014999999999999996,
+          "samples": 1001
+        }
+      ],
+      "min_floor_clearance_m": 0.5323586395173567,
+      "initial_self_proxy_gap_m": 4.498717273693914e-05,
+      "robot_nonfoot_floor_gap_m": 0.0250959356965281,
+      "robot_foot_sole_floor_m": 0.0,
+      "joint_action_limits_passed": true,
+      "authoring_attempts": 0,
+      "passed": true,
+      "scope": "full approach/hold/retreat against stationary authored robot and all conservative covering proxies; not a no-contact promise for arbitrary robot motion"
+    },
+    {
+      "id": "right-anticipation",
+      "target_surface_m": 0.12044692660542237,
+      "achieved_surface_m": [
+        0.12044695019721985
+      ],
+      "object_paths": [
+        {
+          "sampled_min_body_gap_m": 0.12044695019721985,
+          "continuous_body_lower_bound_m": 0.12029695019721985,
+          "sample_spacing_bound_m": 0.00014999999999999996,
+          "samples": 1001
+        }
+      ],
+      "min_floor_clearance_m": 0.4973586395173567,
+      "initial_self_proxy_gap_m": 4.498717273693914e-05,
+      "robot_nonfoot_floor_gap_m": 0.0250959356965281,
+      "robot_foot_sole_floor_m": 0.0,
+      "joint_action_limits_passed": true,
+      "authoring_attempts": 0,
+      "passed": true,
+      "scope": "full approach/hold/retreat against stationary authored robot and all conservative covering proxies; not a no-contact promise for arbitrary robot motion"
+    },
+    {
+      "id": "right-negative",
+      "target_surface_m": 0.2520152059793159,
+      "achieved_surface_m": [
+        0.25201523303985596
+      ],
+      "object_paths": [
+        {
+          "sampled_min_body_gap_m": 0.25201523303985596,
+          "continuous_body_lower_bound_m": 0.251865233039856,
+          "sample_spacing_bound_m": 0.00014999999999999996,
+          "samples": 1001
+        }
+      ],
+      "min_floor_clearance_m": 0.5523586395173566,
+      "initial_self_proxy_gap_m": 4.498717273693914e-05,
+      "robot_nonfoot_floor_gap_m": 0.0250959356965281,
+      "robot_foot_sole_floor_m": 0.0,
+      "joint_action_limits_passed": true,
+      "authoring_attempts": 0,
+      "passed": true,
+      "scope": "full approach/hold/retreat against stationary authored robot and all conservative covering proxies; not a no-contact promise for arbitrary robot motion"
+    },
+    {
+      "id": "front_right-danger",
+      "target_surface_m": 0.055998497652046404,
+      "achieved_surface_m": [
+        0.05599850416183472
+      ],
+      "object_paths": [
+        {
+          "sampled_min_body_gap_m": 0.05599850416183472,
+          "continuous_body_lower_bound_m": 0.05584850416183472,
+          "sample_spacing_bound_m": 0.00014999999999999996,
+          "samples": 1001
+        }
+      ],
+      "min_floor_clearance_m": 0.4973586395173567,
+      "initial_self_proxy_gap_m": 4.498717273693914e-05,
+      "robot_nonfoot_floor_gap_m": 0.0250959356965281,
+      "robot_foot_sole_floor_m": 0.0,
+      "joint_action_limits_passed": true,
+      "authoring_attempts": 0,
+      "passed": true,
+      "scope": "full approach/hold/retreat against stationary authored robot and all conservative covering proxies; not a no-contact promise for arbitrary robot motion"
+    },
+    {
+      "id": "front_right-anticipation",
+      "target_surface_m": 0.12563271882059746,
+      "achieved_surface_m": [
+        0.12563270330429077
+      ],
+      "object_paths": [
+        {
+          "sampled_min_body_gap_m": 0.12563270330429077,
+          "continuous_body_lower_bound_m": 0.12548270330429076,
+          "sample_spacing_bound_m": 0.00014999999999999996,
+          "samples": 1001
+        }
+      ],
+      "min_floor_clearance_m": 0.5523586395173566,
+      "initial_self_proxy_gap_m": 4.498717273693914e-05,
+      "robot_nonfoot_floor_gap_m": 0.0250959356965281,
+      "robot_foot_sole_floor_m": 0.0,
+      "joint_action_limits_passed": true,
+      "authoring_attempts": 0,
+      "passed": true,
+      "scope": "full approach/hold/retreat against stationary authored robot and all conservative covering proxies; not a no-contact promise for arbitrary robot motion"
+    },
+    {
+      "id": "front_right-negative",
+      "target_surface_m": 0.2356289174039627,
+      "achieved_surface_m": [
+        0.23562894761562347
+      ],
+      "object_paths": [
+        {
+          "sampled_min_body_gap_m": 0.23562894761562347,
+          "continuous_body_lower_bound_m": 0.23547894761562346,
+          "sample_spacing_bound_m": 0.00014999999999999996,
+          "samples": 1001
+        }
+      ],
+      "min_floor_clearance_m": 0.5723586395173567,
+      "initial_self_proxy_gap_m": 4.498717273693914e-05,
+      "robot_nonfoot_floor_gap_m": 0.0250959356965281,
+      "robot_foot_sole_floor_m": 0.0,
+      "joint_action_limits_passed": true,
+      "authoring_attempts": 0,
+      "passed": true,
+      "scope": "full approach/hold/retreat against stationary authored robot and all conservative covering proxies; not a no-contact promise for arbitrary robot motion"
+    },
+    {
+      "id": "above-danger",
+      "target_surface_m": 0.07652729872999317,
+      "achieved_surface_m": [
+        0.07652732729911804
+      ],
+      "object_paths": [
+        {
+          "sampled_min_body_gap_m": 0.05465008690953255,
+          "continuous_body_lower_bound_m": 0.05450008690953255,
+          "sample_spacing_bound_m": 0.00015000000000000001,
+          "samples": 1001
+        }
+      ],
+      "min_floor_clearance_m": 0.8731351221337879,
+      "initial_self_proxy_gap_m": 0.02006633533135567,
+      "robot_nonfoot_floor_gap_m": 0.0250959356965281,
+      "robot_foot_sole_floor_m": 0.0,
+      "joint_action_limits_passed": true,
+      "authoring_attempts": 1,
+      "passed": true,
+      "scope": "full approach/hold/retreat against stationary authored robot and all conservative covering proxies; not a no-contact promise for arbitrary robot motion"
+    },
+    {
+      "id": "above-anticipation",
+      "target_surface_m": 0.09901873159183763,
+      "achieved_surface_m": [
+        0.09901873767375946
+      ],
+      "object_paths": [
+        {
+          "sampled_min_body_gap_m": 0.08654904365539551,
+          "continuous_body_lower_bound_m": 0.08639904365539551,
+          "sample_spacing_bound_m": 0.00014999999999999996,
+          "samples": 1001
+        }
+      ],
+      "min_floor_clearance_m": 0.9486892319734224,
+      "initial_self_proxy_gap_m": 0.026591301392649702,
+      "robot_nonfoot_floor_gap_m": 0.0250959356965281,
+      "robot_foot_sole_floor_m": 0.0,
+      "joint_action_limits_passed": true,
+      "authoring_attempts": 1,
+      "passed": true,
+      "scope": "full approach/hold/retreat against stationary authored robot and all conservative covering proxies; not a no-contact promise for arbitrary robot motion"
+    },
+    {
+      "id": "above-negative",
+      "target_surface_m": 0.3128653321891395,
+      "achieved_surface_m": [
+        0.31286537647247314
+      ],
+      "object_paths": [
+        {
+          "sampled_min_body_gap_m": 0.02387288585305214,
+          "continuous_body_lower_bound_m": 0.02372288585305214,
+          "sample_spacing_bound_m": 0.00015000000000000001,
+          "samples": 1001
+        }
+      ],
+      "min_floor_clearance_m": 1.013670270554136,
+      "initial_self_proxy_gap_m": 4.498717273693914e-05,
+      "robot_nonfoot_floor_gap_m": 0.0250959356965281,
+      "robot_foot_sole_floor_m": 0.0,
+      "joint_action_limits_passed": true,
+      "authoring_attempts": 0,
+      "passed": true,
+      "scope": "full approach/hold/retreat against stationary authored robot and all conservative covering proxies; not a no-contact promise for arbitrary robot motion"
+    },
+    {
+      "id": "below-danger",
+      "target_surface_m": 0.04626058739185999,
+      "achieved_surface_m": [
+        0.04626061022281647
+      ],
+      "object_paths": [
+        {
+          "sampled_min_body_gap_m": 0.04296025633811951,
+          "continuous_body_lower_bound_m": 0.04276293034919116,
+          "sample_spacing_bound_m": 0.00019732598892834464,
+          "samples": 1001
+        }
+      ],
+      "min_floor_clearance_m": 0.002999999999999999,
+      "initial_self_proxy_gap_m": 4.498717273693914e-05,
+      "robot_nonfoot_floor_gap_m": 0.0250959356965281,
+      "robot_foot_sole_floor_m": 0.0,
+      "joint_action_limits_passed": true,
+      "authoring_attempts": 0,
+      "passed": true,
+      "scope": "full approach/hold/retreat against stationary authored robot and all conservative covering proxies; not a no-contact promise for arbitrary robot motion"
+    },
+    {
+      "id": "below-anticipation",
+      "target_surface_m": 0.09775146125647553,
+      "achieved_surface_m": [
+        0.09775145351886749
+      ],
+      "object_paths": [
+        {
+          "sampled_min_body_gap_m": 0.03794899582862854,
+          "continuous_body_lower_bound_m": 0.03778741532311166,
+          "sample_spacing_bound_m": 0.0001615805055168778,
+          "samples": 1001
+        }
+      ],
+      "min_floor_clearance_m": 0.0030000000000000027,
+      "initial_self_proxy_gap_m": 4.498717273693914e-05,
+      "robot_nonfoot_floor_gap_m": 0.0250959356965281,
+      "robot_foot_sole_floor_m": 0.0,
+      "joint_action_limits_passed": true,
+      "authoring_attempts": 0,
+      "passed": true,
+      "scope": "full approach/hold/retreat against stationary authored robot and all conservative covering proxies; not a no-contact promise for arbitrary robot motion"
+    },
+    {
+      "id": "below-negative",
+      "target_surface_m": 0.21780521057439875,
+      "achieved_surface_m": [
+        0.2178051918745041,
+        0.21780522167682648
+      ],
+      "object_paths": [
+        {
+          "sampled_min_body_gap_m": 0.06854519248008728,
+          "continuous_body_lower_bound_m": 0.06841663877176334,
+          "sample_spacing_bound_m": 0.00012855370832394713,
+          "samples": 1001
+        },
+        {
+          "sampled_min_body_gap_m": 0.06859315931797028,
+          "continuous_body_lower_bound_m": 0.0684646056856385,
+          "sample_spacing_bound_m": 0.00012855363233177058,
+          "samples": 1001
+        }
+      ],
+      "min_floor_clearance_m": 0.002999999999999999,
+      "initial_self_proxy_gap_m": 4.498717273693914e-05,
+      "robot_nonfoot_floor_gap_m": 0.0250959356965281,
+      "robot_foot_sole_floor_m": 0.0,
+      "joint_action_limits_passed": true,
+      "authoring_attempts": 0,
+      "passed": true,
+      "scope": "full approach/hold/retreat against stationary authored robot and all conservative covering proxies; not a no-contact promise for arbitrary robot motion"
+    }
+  ],
+  "all_passed": true
+}

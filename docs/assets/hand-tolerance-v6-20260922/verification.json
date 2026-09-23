@@ -1,0 +1,48 @@
+{
+  "preflight": {
+    "scene_count": 2375,
+    "roles": {
+      "narrow": 12,
+      "forward_protected": 12,
+      "transition": 12
+    },
+    "zones": 108,
+    "hand_active_zones": 60,
+    "active_hand_objective_zones": 60,
+    "positive_heading_zones": 60
+  },
+  "existing_files_verified": 57181,
+  "existing_bytes_identical": true,
+  "existing_snapshot_sha256": "844b34ccfeb826a9d39b44d8e1fec80457c1ed13d095431130b2fe2fd40e864f",
+  "changed_files": [
+    "cat_flat_hand_balance_v6_20260922/manifest.json",
+    "cat_flat_hand_balance_v6_20260922_collision/build-plan.json",
+    "cat_flat_hand_balance_v6_20260922_collision/manifest.json",
+    "cat_flat_hand_balance_v6_20260922_resets/manifest.json"
+  ],
+  "reset_masses": [
+    0.11,
+    0.22,
+    0.034375,
+    0.020625,
+    0.0275,
+    0.1375,
+    0.3,
+    0.15
+  ],
+  "free_before_bytes": 5030019072,
+  "free_after_bytes": 4553048064,
+  "bank_logical_bytes": {
+    "cat_flat_hand_balance_v6_20260922": 1002961891,
+    "cat_flat_hand_balance_v6_20260922_collision": 104894763,
+    "cat_flat_hand_balance_v6_20260922_resets": 11166748
+  },
+  "live_before": {
+    "size": 226303,
+    "mtime_ns": 1790022272930685758
+  },
+  "live_after": {
+    "size": 284736,
+    "mtime_ns": 1790022355818187408
+  }
+}

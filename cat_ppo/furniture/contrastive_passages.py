@@ -63,7 +63,7 @@ def _navigation_report(route, boxes, radius):
     return report
 
 
-def generate_contrastive_group(seed, split="train", *, certify=True):
+def generate_contrastive_group(seed, split="train", *, certify=True, narrow_width_range=None, curriculum_rung=None):
     """Return four deterministic, matched layouts in ``ROLES`` order.
 
     ``certify=False`` is for previews only. Training loaders must reject absent
@@ -71,13 +71,25 @@ def generate_contrastive_group(seed, split="train", *, certify=True):
     """
     if type(seed) is not int or seed < 0 or split not in SPLITS:
         raise ValueError("Expected a nonnegative integer seed and a known split")
+    if narrow_width_range is not None:
+        bounds = np.asarray(narrow_width_range, dtype=float)
+        if bounds.shape != (2,) or not np.isfinite(bounds).all() or not .4 <= bounds[0] <= bounds[1] <= .74:
+            raise ValueError("Narrow width range must be ordered within [.4, .74] metres")
+        if type(curriculum_rung) is not int or curriculum_rung < 0:
+            raise ValueError("Explicit width ranges require a nonnegative curriculum rung")
+    elif curriculum_rung is not None:
+        raise ValueError("A curriculum rung requires a width range")
     rng = random.Random(int(_digest([GENERATOR, split, seed]), 16))
     yaw = rng.uniform(-.10, .10)
     center = np.array([4.5 + rng.uniform(-.04, .04), 1.8 + rng.uniform(-.04, .04)])
     height, depth = rng.uniform(1.24, 1.28), rng.uniform(.55, .62)
     widths = dict(open=rng.uniform(1.50, 1.52), forward_protected=rng.uniform(.729, .741),
                   narrow=rng.uniform(.400, .410))
+    if narrow_width_range is not None:
+        widths['narrow'] = rng.uniform(*narrow_width_range)
     group_id = f"contrast-{split}-{seed:06d}"
+    if narrow_width_range is not None:
+        group_id += f"-r{curriculum_rung}-w{widths['narrow']:.6f}"
     region_min, region_max = _regions()
     scenes = []
     for role in ROLES:
@@ -133,9 +145,24 @@ def generate_contrastive_group(seed, split="train", *, certify=True):
         scene["hand_contrast"] = contrast
         scene["feasibility"] = _navigation_report(route, boxes, radius)
         scene["case_feasibility"] = [copy.deepcopy(scene["feasibility"])]
+        if narrow_width_range is not None:
+            contrast['certificate_semantics'] = 'width-curriculum-scaffold-v1'
         validate_scene(scene)
         if certify:
             contrast["certificate"] = certify_contrastive_scene(scene)
+        if narrow_width_range is not None:
+            # The audited forward-blocking property is descriptive, not required
+            # for easy scaffolds. Geometry/route/stance safety is still mandatory.
+            scene['difficulty'] = 'width_curriculum'
+            if certify:
+                for module, zone, audit in zip(modules, zones, contrast['certificate']['module_audit']):
+                    if module['role'] == 'narrow':
+                        zone['certified_achievable_clearance_m'] = audit['achievable_hand_field_min_m']
+                        # Per-rung metadata is ready for reward ablations; retain
+                        # the established knee relaxation only as clearance shrinks.
+                        zone['sdf_reward_knee'] = float(np.clip(audit['achievable_hand_field_min_m']-.05, 0., .05))
+            contrast['curriculum_rung'] = curriculum_rung
+            contrast['narrow_width_range_m'] = list(narrow_width_range)
         scene["source"] = dict(hand_contrast=copy.deepcopy(contrast))
         scenes.append(scene)
     return scenes
@@ -369,8 +396,20 @@ def certify_contrastive_scene(scene):
             raise ValueError("Open contrast does not comfortably admit nominal forward posture")
         if module["role"] == "forward_protected" and not (row["nominal_forward_hand_min_m"] < -.002 and row["raised_forward_body_min_m"] > .03):
             raise ValueError("Protected contrast must block nominal hands and admit raised forward posture")
-        if module["role"] == "narrow" and not (max(row["raised_forward_body_min_m"], row["tucked_forward_body_min_m"] ,row["nominal_forward_body_min_m"]) < -.005 and row["nominal_sideways_body_min_m"] > .03):
-            raise ValueError("Narrow contrast must block all tested forward postures and admit sideways posture")
+        if module["role"] == "narrow":
+            blocked = max(row["raised_forward_body_min_m"], row["tucked_forward_body_min_m"], row["nominal_forward_body_min_m"]) < -.005
+            scaffold = contrast.get('certificate_semantics') == 'width-curriculum-scaffold-v1'
+            if row['nominal_sideways_body_min_m'] <= .03 or (not scaffold and not blocked):
+                raise ValueError("Narrow contrast must block all tested forward postures and admit sideways posture")
+            if scaffold:
+                positions = _poses(scene, np.linspace(module['center_local_x_m']-.325, module['center_local_x_m']+.325, 15), math.pi/2)
+                candidates = [pose_separations(scene, positions)] + [
+                    _configuration_separations(scene, positions, _floor_referenced_pose('nominal', variant))
+                    for variant in ('crouch_shallow', 'crouch_deep', 'step_left', 'step_right')]
+                row.update(tested_forward_postures_blocked=bool(blocked),
+                    achievable_body_min_m=min(float(item['body'].min()) for item in candidates),
+                    achievable_hand_field_min_m=min(float(_hand_field_clearance(sdf, origin, item).min()) for item in candidates),
+                    achievable_clearance_method='sampled sideways route: nominal, crouches and stepping stances; not dynamic')
         role_rows.append(row)
         if any(zone["hand_active"]):
             local_xs = np.linspace(zone["start_m"] - ROUTE_LIMIT, zone["end_m"] - ROUTE_LIMIT,

@@ -1,0 +1,110 @@
+{
+  "v3": {
+    "full_file_verification": true,
+    "collision_verified": true,
+    "reset_hashes_verified": true,
+    "preflight": {
+      "scene_count": 2375,
+      "roles": {
+        "narrow": 12,
+        "forward_protected": 12,
+        "transition": 12
+      },
+      "zones": 108,
+      "hand_active_zones": 60,
+      "active_hand_objective_zones": 60,
+      "positive_heading_zones": 60
+    }
+  },
+  "v5": {
+    "full_file_verification": true,
+    "collision_verified": true,
+    "reset_hashes_verified": true,
+    "preflight": {
+      "scene_count": 2375,
+      "roles": {
+        "narrow": 12,
+        "forward_protected": 12,
+        "transition": 12
+      },
+      "zones": 108,
+      "hand_active_zones": 60,
+      "active_hand_objective_zones": 60,
+      "positive_heading_zones": 60
+    }
+  },
+  "v6": {
+    "full_file_verification": true,
+    "collision_verified": true,
+    "reset_hashes_verified": true,
+    "preflight": {
+      "scene_count": 2375,
+      "roles": {
+        "narrow": 12,
+        "forward_protected": 12,
+        "transition": 12
+      },
+      "zones": 108,
+      "hand_active_zones": 60,
+      "active_hand_objective_zones": 60,
+      "positive_heading_zones": 60
+    }
+  },
+  "pilot": {
+    "arguments": {
+      "command": "run",
+      "num_envs": 30720,
+      "algorithm": "ppo",
+      "from_scratch": true,
+      "checkpoint_npz": null,
+      "checkpoint_native": null,
+      "passage_rewards": null,
+      "checkpoint_selection_weights": [
+        0.6,
+        0.2,
+        0.1,
+        0.1
+      ],
+      "flat_bonus_scale": 1.0,
+      "flat_region_scale": 0.4,
+      "hand_contrast_region_weight": -3.0,
+      "hand_reward_soft_floor": 0.2,
+      "hand_contrast_heading_weight": -5.0,
+      "hand_contrast_approach_distance": 0.4,
+      "hand_raised_reset_fraction": 0.5,
+      "max_action_std": 0.0,
+      "init_action_std": null,
+      "discounting": 0.98,
+      "hand_curriculum_success_threshold": null,
+      "hand_speed_curriculum": false,
+      "hand_speed_curriculum_window": 256,
+      "hand_speed_curriculum_success_threshold": 0.8,
+      "hand_speed_curriculum_demote_threshold": 0.4,
+      "hand_tolerance_curriculum": false,
+      "hand_tolerance_curriculum_window": 256,
+      "require_hand_contrast": true,
+      "bank_manifest": "data/furniture/cat_flat_hand_balance_v6_20260922/manifest.json",
+      "body_collision_bank": "data/furniture/cat_flat_hand_balance_v6_20260922_collision/manifest.json",
+      "body_collision_resets": "data/furniture/cat_flat_hand_balance_v6_20260922_resets/manifest.json",
+      "run_dir": "outputs/cat_hand_reward_floor_v6_pilot50_20260922",
+      "batch_size": 768,
+      "num_minibatches": 40,
+      "unroll_length": 32,
+      "seed": 0,
+      "device": "cuda:0",
+      "nconmax": 64,
+      "njmax": 256,
+      "compile_task": true,
+      "max_updates": 50,
+      "checkpoint_interval_updates": 10,
+      "wandb_mode": "online",
+      "wandb_project": "CAT-wholebody",
+      "wandb_entity": "skvayzer",
+      "resume": false,
+      "fresh_optimizer": false
+    },
+    "method": "Parsed exact shell command with real parser; verified field/collision/reset banks and preflight separately. Never imported runner, called main/run, constructed simulation, or stepped an environment.",
+    "training_started": false,
+    "gpu_used": false
+  }
+}

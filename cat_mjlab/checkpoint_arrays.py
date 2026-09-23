@@ -72,12 +72,14 @@ def sampling_state_from_archive(metadata, arrays, bank_sha256):
 
 
 def expand_released_params(params, target_contract=None, *, new_action_std=.05):
-    """Use the existing named 162/250/12 -> 222/310/29 expansion unchanged."""
-    from cat_ppo.furniture.control import legacy_observation_contract, wholebody_observation_contract
+    """Use the existing named 162/250/12 -> current mjlab named-feature expansion."""
+    from cat_ppo.furniture.control import legacy_observation_contract, mjlab_observation_contract
     from cat_ppo.furniture.learning import adapt_native_params, dense_layers
 
     source_contract = legacy_observation_contract()
-    target_contract = target_contract or wholebody_observation_contract()
+    target_contract = target_contract or mjlab_observation_contract()
+    if target_contract != mjlab_observation_contract():
+        raise ValueError('Export target must be the native 222/310 named observation contract')
     target = [dict(), copy.deepcopy(params[1]), copy.deepcopy(params[2])]
     for slot, feature in ((1, "actor_features"), (2, "critic_features")):
         names = dense_layers(target[slot])

@@ -1,0 +1,82 @@
+{
+  "preflight": {
+    "scene_count": 2375,
+    "roles": {
+      "narrow": 12,
+      "forward_protected": 12,
+      "transition": 12
+    },
+    "zones": 108,
+    "hand_active_zones": 60,
+    "active_hand_objective_zones": 60,
+    "positive_heading_zones": 60
+  },
+  "free_bytes": 4547543040,
+  "launch_parsed_not_executed": true,
+  "pilot_source": "outputs/cat_hand_feasible_v5_seeded_pilot50_20260921/metrics.jsonl",
+  "pilot_updates": 50,
+  "pilot_fall_count_sum": 69.0,
+  "pilot_nonzero_fall_updates": [
+    5,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    18,
+    19,
+    21,
+    22,
+    25,
+    27,
+    28,
+    29,
+    30,
+    31,
+    34,
+    35,
+    36,
+    37,
+    38,
+    40,
+    42,
+    43,
+    44,
+    45,
+    49
+  ],
+  "pilot_endpoints": {
+    "balance/policy_root_height_p50_m": [
+      0.7583414316177368,
+      0.7706291079521179
+    ],
+    "balance/policy_route_speed_mean_mps": [
+      0.39753889517789864,
+      0.7611586148893069
+    ]
+  },
+  "live_latest_step": 12779520,
+  "tests": {
+    "passed": 66,
+    "seconds": 21.4,
+    "suites": [
+      "speed_curriculum",
+      "tolerance_curriculum",
+      "mjlab_hand_curriculum_gate",
+      "mjlab_runner",
+      "mjlab_hand_approach",
+      "mjlab_raised_reset",
+      "mjlab_logging_diagnostics"
+    ]
+  },
+  "fall_metric_population": "flat scenes only; not evidence of protected-scene fall rate",
+  "training_launched": false,
+  "gpu_used": false,
+  "final_speed_runner_recheck": {
+    "passed": 20,
+    "seconds": 3.25
+  }
+}

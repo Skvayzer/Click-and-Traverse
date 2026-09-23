@@ -1,0 +1,451 @@
+{
+  "query": [
+    "rg",
+    "-n",
+    "254|342|hand_objective",
+    "--glob",
+    "*.py",
+    "--glob",
+    "*.sh",
+    "cat_mjlab",
+    "cat_ppo",
+    "scripts",
+    "tests",
+    "configs"
+  ],
+  "fixed_files_original_hits": [
+    {
+      "file": "WHOLE_BODY.md",
+      "status": "updated",
+      "original_hits": [
+        {
+          "line": 3,
+          "text": "**2026-09-22 native mjlab update:** [Explicit hand-objective observations](docs/HAND_OBJECTIVE_OBSERVATIONS_20260922.md) use 254 actor / 342 critic inputs. The 222/310 descriptions below document the historical JAX/v2 contract."
+        }
+      ]
+    },
+    {
+      "file": "cat_mjlab/config.py",
+      "status": "updated",
+      "original_hits": [
+        {
+          "line": 4,
+          "text": "from .hand_objective import ACTOR_SIZE, CRITIC_SIZE"
+        }
+      ]
+    },
+    {
+      "file": "cat_mjlab/learning.py",
+      "status": "updated",
+      "original_hits": [
+        {
+          "line": 22,
+          "text": "from .hand_objective import ACTOR_SIZE, CRITIC_SIZE"
+        }
+      ]
+    },
+    {
+      "file": "cat_mjlab/task.py",
+      "status": "updated",
+      "original_hits": [
+        {
+          "line": 16,
+          "text": "from .hand_objective import ACTOR_SIZE, CRITIC_SIZE, objective_features"
+        }
+      ]
+    },
+    {
+      "file": "cat_ppo/furniture/control.py",
+      "status": "updated",
+      "original_hits": [
+        {
+          "line": 171,
+          "text": "def hand_objective_features():"
+        },
+        {
+          "line": 173,
+          "text": "    return ([f\"hand_objective.region.{region}.{side}.{kind}.{axis}\""
+        },
+        {
+          "line": 176,
+          "text": "            + [f\"hand_objective.{side}.active\" for side in ('left', 'right')]"
+        },
+        {
+          "line": 177,
+          "text": "            + [f\"hand_objective.region.{region}.valid\" for region in range(2)]"
+        },
+        {
+          "line": 178,
+          "text": "            + ['hand_objective.zone.progress', 'hand_objective.zone.weight',"
+        },
+        {
+          "line": 179,
+          "text": "               'hand_objective.route.cos_yaw', 'hand_objective.route.sin_yaw'])"
+        },
+        {
+          "line": 185,
+          "text": "    features = hand_objective_features()"
+        },
+        {
+          "line": 189,
+          "text": "        hand_objective=dict(frame='route tangent, left normal, world up',"
+        }
+      ]
+    },
+    {
+      "file": "configs/pilots/hand_reward_floor_v6_50.sh",
+      "status": "updated",
+      "original_hits": [
+        {
+          "line": 2,
+          "text": "# Prepared only. From scratch for actor 254 / critic 342; bounded IK is certified at startup."
+        }
+      ]
+    },
+    {
+      "file": "docs/CLEARANCE_PRIMARY_CPU_20260922.md",
+      "status": "updated",
+      "original_hits": [
+        {
+          "line": 73,
+          "text": "**Manipulation mode \u2014 design only, not implemented.** Append an explicit task-provided `manipulation_mode` observation scalar (0 avoidance, 1 intended reaching) to both actor and critic and gate hand-clearance pressure by `(1-mode)` before averaging/scaling. Default zero preserves avoidance. Actor 254\u2192255 and critic 342\u2192343 require a versioned observation contract/checkpoint upgrade, including normalizer entries; initialize new first-layer columns to zero. For this checkpoint's 512/1024 first layers, that adds 1,536 weights (~6 KiB FP32; ~12 KiB Adam moments), plus roughly 7.5 MiB for both added observation columns in a 30,720\u00d732 rollout. Runtime multiplication is negligible; estimates exclude extra next-observation/storage copies. No new model input or gate has been implemented now."
+        }
+      ]
+    },
+    {
+      "file": "docs/HAND_OBJECTIVE_OBSERVATIONS_20260922.md",
+      "status": "updated",
+      "original_hits": [
+        {
+          "line": 23,
+          "text": "**254 actor inputs, 342 critic inputs, 29 actions**. It appends 32 identical"
+        },
+        {
+          "line": 61,
+          "text": "hand_objective.region.0.left.delta.x"
+        },
+        {
+          "line": 62,
+          "text": "hand_objective.region.0.left.delta.y"
+        },
+        {
+          "line": 63,
+          "text": "hand_objective.region.0.left.delta.z"
+        },
+        {
+          "line": 64,
+          "text": "hand_objective.region.0.left.half_extent.x"
+        },
+        {
+          "line": 65,
+          "text": "hand_objective.region.0.left.half_extent.y"
+        },
+        {
+          "line": 66,
+          "text": "hand_objective.region.0.left.half_extent.z"
+        },
+        {
+          "line": 67,
+          "text": "hand_objective.region.0.right.delta.x"
+        },
+        {
+          "line": 68,
+          "text": "hand_objective.region.0.right.delta.y"
+        },
+        {
+          "line": 69,
+          "text": "hand_objective.region.0.right.delta.z"
+        },
+        {
+          "line": 70,
+          "text": "hand_objective.region.0.right.half_extent.x"
+        },
+        {
+          "line": 71,
+          "text": "hand_objective.region.0.right.half_extent.y"
+        },
+        {
+          "line": 72,
+          "text": "hand_objective.region.0.right.half_extent.z"
+        },
+        {
+          "line": 73,
+          "text": "hand_objective.region.1.left.delta.x"
+        },
+        {
+          "line": 74,
+          "text": "hand_objective.region.1.left.delta.y"
+        },
+        {
+          "line": 75,
+          "text": "hand_objective.region.1.left.delta.z"
+        },
+        {
+          "line": 76,
+          "text": "hand_objective.region.1.left.half_extent.x"
+        },
+        {
+          "line": 77,
+          "text": "hand_objective.region.1.left.half_extent.y"
+        },
+        {
+          "line": 78,
+          "text": "hand_objective.region.1.left.half_extent.z"
+        },
+        {
+          "line": 79,
+          "text": "hand_objective.region.1.right.delta.x"
+        },
+        {
+          "line": 80,
+          "text": "hand_objective.region.1.right.delta.y"
+        },
+        {
+          "line": 81,
+          "text": "hand_objective.region.1.right.delta.z"
+        },
+        {
+          "line": 82,
+          "text": "hand_objective.region.1.right.half_extent.x"
+        },
+        {
+          "line": 83,
+          "text": "hand_objective.region.1.right.half_extent.y"
+        },
+        {
+          "line": 84,
+          "text": "hand_objective.region.1.right.half_extent.z"
+        },
+        {
+          "line": 85,
+          "text": "hand_objective.left.active"
+        },
+        {
+          "line": 86,
+          "text": "hand_objective.right.active"
+        },
+        {
+          "line": 87,
+          "text": "hand_objective.region.0.valid"
+        },
+        {
+          "line": 88,
+          "text": "hand_objective.region.1.valid"
+        },
+        {
+          "line": 89,
+          "text": "hand_objective.zone.progress"
+        },
+        {
+          "line": 90,
+          "text": "hand_objective.zone.weight"
+        },
+        {
+          "line": 91,
+          "text": "hand_objective.route.cos_yaw"
+        },
+        {
+          "line": 92,
+          "text": "hand_objective.route.sin_yaw"
+        },
+        {
+          "line": 99,
+          "text": "export/expansion now maps named features into 254/342 and zero-initializes added"
+        },
+        {
+          "line": 127,
+          "text": "Tests in `tests/test_mjlab_hand_objective.py` cover hand-calculated rotated-route"
+        },
+        {
+          "line": 141,
+          "text": "  tests/test_mjlab_hand_objective.py tests/test_mjlab_hand_approach.py \\"
+        },
+        {
+          "line": 182,
+          "text": "  --run-dir outputs/cat_hand_objective_v3_scratch_30720_20260922 \\"
+        },
+        {
+          "line": 230,
+          "text": "- `tests/test_mjlab_hand_objective.py`"
+        }
+      ]
+    },
+    {
+      "file": "docs/LATERAL_CORRIDOR_IMPLEMENTATION_CPU_20260922.md",
+      "status": "updated",
+      "original_hits": [
+        {
+          "line": 96,
+          "text": "CUDA_VISIBLE_DEVICES='' PYTHONDONTWRITEBYTECODE=1 OMP_NUM_THREADS=1 .venv-mjlab/bin/python -m pytest -q -p no:cacheprovider tests/test_lateral_corridor.py tests/test_mjlab_acceptance.py tests/test_upper_control.py tests/test_mjlab_passage_heading.py tests/test_protected_objective_fixes.py tests/test_flat_balance.py tests/test_mjlab_hand_objective.py tests/test_mjlab_hand_approach.py tests/test_mjlab_logging_diagnostics.py"
+        }
+      ]
+    },
+    {
+      "file": "docs/MJLAB_MIGRATION_20260919.md",
+      "status": "updated",
+      "original_hits": [
+        {
+          "line": 3,
+          "text": "**2026-09-22 native mjlab update:** [Explicit hand-objective observations](HAND_OBJECTIVE_OBSERVATIONS_20260922.md) use 254 actor / 342 critic inputs. The 222/310 descriptions below document the historical JAX/v2 contract."
+        }
+      ]
+    },
+    {
+      "file": "docs/REWARD_FLOOR_FIX_20260922.md",
+      "status": "updated",
+      "original_hits": [
+        {
+          "line": 64,
+          "text": "Prepared only: `bash configs/pilots/hand_reward_floor_v6_50.sh`. It uses v6's **30% protected + 15% transition** mixture; 50% bounded-IK seeding of protected resets leaves half unseeded; actor 254 / critic 342 from scratch; 60/20/10/10 selection; uncapped std; 50 updates; online W&B CAT-wholebody/skvayzer. No speed/tolerance ladder is added to this floor pilot. Startup uses existing command-bounded IK certification; banks are read-only. No training was launched."
+        }
+      ]
+    },
+    {
+      "file": "docs/contrastive-hand-protection.md",
+      "status": "updated",
+      "original_hits": [
+        {
+          "line": 3,
+          "text": "**2026-09-22 native mjlab update:** [Explicit hand-objective observations](HAND_OBJECTIVE_OBSERVATIONS_20260922.md) use 254 actor / 342 critic inputs. The 222/310 descriptions below document the historical JAX/v2 contract."
+        }
+      ]
+    },
+    {
+      "file": "scripts/evaluate_paired_cat.py",
+      "status": "updated",
+      "original_hits": [
+        {
+          "line": 44,
+          "text": "    from cat_mjlab.hand_objective import ACTOR_SIZE, CRITIC_SIZE"
+        },
+        {
+          "line": 375,
+          "text": "        from cat_mjlab.hand_objective import ACTOR_SIZE"
+        },
+        {
+          "line": 378,
+          "text": "                                               else 'hand_objective_v3')"
+        }
+      ]
+    },
+    {
+      "file": "scripts/record_mjlab_rollout.py",
+      "status": "updated",
+      "original_hits": [
+        {
+          "line": 208,
+          "text": "    from cat_mjlab.hand_objective import ACTOR_SIZE, CRITIC_SIZE"
+        }
+      ]
+    },
+    {
+      "file": "scripts/verify_checkpoint_upgrade_cpu.py",
+      "status": "updated",
+      "original_hits": [
+        {
+          "line": 44,
+          "text": "    from cat_mjlab.hand_objective import CONTRACT"
+        },
+        {
+          "line": 46,
+          "text": "    assert (learner.config.actor_obs, learner.config.critic_obs) == (254,342)"
+        },
+        {
+          "line": 47,
+          "text": "    result = dict(native_load=True, named_observation_contract=True, dimensions=[254,342],"
+        }
+      ]
+    },
+    {
+      "file": "tests/test_mjlab_checkpoint_upgrade.py",
+      "status": "updated",
+      "original_hits": [
+        {
+          "line": 38,
+          "text": "        a=torch.randn(11,254);c=torch.randn(11,342)"
+        },
+        {
+          "line": 68,
+          "text": "    assert env['num_obs']==254 and env['num_pri']==342"
+        }
+      ]
+    },
+    {
+      "file": "tests/test_mjlab_hand_objective.py",
+      "status": "removed",
+      "original_hits": [
+        {
+          "line": 7,
+          "text": "from cat_mjlab.hand_objective import ACTOR_SIZE, CRITIC_SIZE, objective_features"
+        },
+        {
+          "line": 9,
+          "text": "from cat_ppo.furniture.control import (hand_objective_features,"
+        },
+        {
+          "line": 140,
+          "text": "    assert (ACTOR_SIZE, CRITIC_SIZE) == (254, 342)"
+        },
+        {
+          "line": 141,
+          "text": "    assert (CATTask.observation_size, CATTask.privileged_observation_size) == (254, 342)"
+        },
+        {
+          "line": 143,
+          "text": "    assert (cfg['num_obs'], cfg['num_pri']) == (254, 342)"
+        },
+        {
+          "line": 144,
+          "text": "    assert (LearnerConfig().actor_obs, LearnerConfig().critic_obs) == (254, 342)"
+        },
+        {
+          "line": 146,
+          "text": "        assert new[key] == old[key] + hand_objective_features()"
+        },
+        {
+          "line": 244,
+          "text": "    assert (made[0].config.actor_obs, made[0].config.critic_obs) == (254, 342)"
+        },
+        {
+          "line": 271,
+          "text": "    assert actor_observation_for_policy(current, state).shape == (3, 254)"
+        }
+      ]
+    },
+    {
+      "file": "tests/test_mjlab_task.py",
+      "status": "updated",
+      "original_hits": [
+        {
+          "line": 265,
+          "text": "    assert task.obs['state'].shape==(2,254)"
+        },
+        {
+          "line": 266,
+          "text": "    assert task.obs['privileged_state'].shape==(2,342)"
+        }
+      ]
+    },
+    {
+      "file": "tests/test_reward_floor.py",
+      "status": "updated",
+      "original_hits": [
+        {
+          "line": 85,
+          "text": "    assert (cfg['num_obs'],cfg['num_pri'])==(254,342)"
+        }
+      ]
+    }
+  ],
+  "remaining_active_tree_matches": [
+    "tests/test_hand_balance_bank.py:29:    assert result['active_hand_objective_zones'] == result['positive_heading_zones'] == 60",
+    "cat_ppo/furniture/contrast_preflight.py:27:                  hand_active_zones=hand, active_hand_objective_zones=active,",
+    "scripts/smoke_hand_posture_bank.py:23:    indices=torch.tensor([0,64,2338,2342,2346,2350,2354,2358]);task.reset(scene_ids=indices)",
+    "scripts/build_flat_balance_bank.py:97: if args.hand_objectives:",
+    "scripts/audit_hand_balance_bank.py:26:            counts['active_hand_objective'] += int(any(z['hand_active']) and any(z['region_valid']))",
+    "scripts/build_cat_setup_report.py:182:    r.text(342, 517, 'Snapshot: 15 Sep 2026, 14:47 UTC / 18:47 Dubai', 9, MUTED)",
+    "tests/test_cat_body_collision_bank.py:64:    radius = .21254",
+    "tests/test_observation_contract.py:45:        assert not any(name.startswith('hand_objective.') for name in contract[key])"
+  ],
+  "remaining_disposition": "Scene metadata audit/build identifiers (diagnostics only), absence assertion, or unrelated numeric substring/layout coordinate. No runtime dimension or feature dependency remains. Historical docs and immutable run data retain original measurements, with superseded banners on former operating instructions."
+}

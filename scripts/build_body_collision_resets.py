@@ -370,11 +370,37 @@ def _make_checker(model, compiled, arrays, *, max_candidates):
     return jax.jit(jax.vmap(query))
 
 
+def _make_native_cpu_checker(model, proposal, arrays, *, max_candidates):
+    """CPU MuJoCo FK plus the exact native Torch collision kernels; no simulation steps."""
+    import mujoco
+    import torch
+    from cat_mjlab.collision import compile_proposal, body_collisions
+    torch.set_num_threads(2)
+    compiled=compile_proposal(proposal,model,'cpu')
+    bank={key:torch.as_tensor(np.asarray(value).copy()) for key,value in arrays.items()}
+    data=mujoco.MjData(model)
+    def query(scene_ids,qpos):
+        positions=[];rotations=[]
+        for pose in qpos:
+            data.qpos[:]=pose
+            mujoco.mj_kinematics(model,data)
+            positions.append(data.xpos.copy());rotations.append(data.xmat.copy().reshape(-1,3,3))
+        with torch.no_grad():
+            return body_collisions(compiled,bank,torch.as_tensor(scene_ids,dtype=torch.long),
+                torch.as_tensor(np.asarray(positions),dtype=torch.float32),
+                torch.as_tensor(np.asarray(rotations),dtype=torch.float32),max_candidates=max_candidates).numpy()
+    return query
+
+
 def build(args):
     import jax
     import mujoco
-    from cat_ppo.envs.g1 import constants
-    from cat_ppo.envs.g1.env_cat_wholebody import assemble_training_xml
+    if getattr(args,'cpu_native',False):
+        from cat_mjlab import constants
+        from cat_mjlab.model import assemble_training_xml
+    else:
+        from cat_ppo.envs.g1 import constants
+        from cat_ppo.envs.g1.env_cat_wholebody import assemble_training_xml
     from cat_ppo.furniture.body_collision_bank import load_body_collision_bank
     from cat_ppo.furniture.body_collision_geometry import compile_proposal
     from cat_ppo.furniture.generalist_fields import load_generalist_manifest
@@ -411,8 +437,11 @@ def build(args):
     center, span = .5 * (lower + upper), upper - lower
     soft_lower = (center - .5 * span * .95).astype(np.float32)
     soft_upper = (center + .5 * span * .95).astype(np.float32)
-    checker = _make_checker(model, compiled, arrays,
-                            max_candidates=int(collision_meta["static_candidate_count"]))
+    if getattr(args,'cpu_native',False):
+        checker=_make_native_cpu_checker(model,proposal,arrays,max_candidates=int(collision_meta['static_candidate_count']))
+    else:
+        checker = _make_checker(model, compiled, arrays,
+                                max_candidates=int(collision_meta["static_candidate_count"]))
     base_pool, base_records, base_proof = None, [], None
     if getattr(args, "base_reset_manifest", None) is not None:
         base_pool, base_records, base_proof = load_append_base(
@@ -439,7 +468,8 @@ def build(args):
         body_margin_m=proposal["body_margin_m"],
         mesh_coverage=mesh_coverage,
         shape_names=list(compiled["shape_names"]),
-        backend=jax.default_backend(), devices=[str(device) for device in jax.devices()],
+        backend='native-cpu' if getattr(args,'cpu_native',False) else jax.default_backend(),
+        devices=['CPU'] if getattr(args,'cpu_native',False) else [str(device) for device in jax.devices()],
         source_sha256={name: sha256(ROOT / name) for name in (
             "scripts/build_body_collision_resets.py", "cat_ppo/envs/g1/body_collision.py",
             "scripts/collision_proxy_preview_geometry.py",
@@ -508,6 +538,7 @@ def build(args):
 
 def main():
     parser = argparse.ArgumentParser(description=__doc__)
+    parser.add_argument("--cpu-native", action="store_true", help="CPU-only MuJoCo FK and native Torch collision certification")
     parser.add_argument("--field-manifest", type=Path, required=True)
     parser.add_argument("--collision-bank", type=Path, required=True)
     parser.add_argument("--proposal", type=Path, default=ROOT / "docs/assets/collision-proxy-proposal-20260916/proposal.json")

@@ -26,7 +26,7 @@ def test_exact_wholebody_configuration_scales():
         expected=legacy(config_dict.ConfigDict(base),stabilization=True,hand_protection=protection,hand_contrast=contrast).to_dict()
         actual=wholebody_config(base,stabilization=True,hand_protection=protection,hand_contrast=contrast)
         for key in expected:
-            if key=='wholebody':continue
+            if key in ('wholebody','num_obs','num_pri'):continue
             assert actual[key]==expected[key],key
 
 
@@ -230,7 +230,7 @@ class _CPUSimulation:
 def _tiny_bank(num_scenes=2):
     from cat_ppo.furniture.room_navigation import pack_room_scenes
     from cat_ppo.furniture.contrastive_rewards import pack_hand_contrast
-    from cat_ppo.envs.g1.constants import DEFAULT_QPOS
+    from cat_mjlab.constants import DEFAULT_QPOS
     bank=SimpleNamespace(count=num_scenes,device=torch.device('cpu'),has_contrast=False,levels=None,roles=None,
         is_cat=torch.ones(num_scenes,dtype=torch.bool),reset_is_cat=torch.ones(num_scenes,dtype=torch.bool),
         crossed_is_plane=torch.ones(num_scenes,dtype=torch.bool),reset_yaws=torch.zeros(num_scenes),
@@ -397,6 +397,7 @@ def test_sampler_transfer_rejects_changed_fixed_group_mass_and_partial_state():
     from cat_mjlab.config import wholebody_config
     from cat_mjlab.scene_bank import SceneBank
     bank=_tiny_bank(4);bank.roles=torch.arange(4);bank.weights=torch.ones(4)
+    bank.width_levels=None;bank.sampling_ids=bank.roles;bank.sampling_masses=torch.full((4,),.25)
     bank.probabilities=lambda weights=None,stage=None:SceneBank.probabilities(bank,weights,stage)
     task=CATTask(_CPUSimulation(1),bank,wholebody_config(),seed=7)
     state=task.sampling_state()
@@ -414,6 +415,7 @@ def _contrast_outcome_task(roles,policy_ids):
     task.device=torch.device('cpu');task.num_envs=len(roles)
     task.config={'pf_config':{'sampling_ema_decay':.95,'sampling_alpha':1.}}
     task.bank=SimpleNamespace(count=4,roles=torch.arange(4),levels=None,
+        width_levels=None,sampling_ids=torch.arange(4),sampling_masses=torch.full((4,),.25),
         groups=None,device=task.device,weights=torch.ones(4),navigation_groups=torch.full((4,),2))
     task.bank.probabilities=lambda weights=None,stage=None:SceneBank.probabilities(task.bank,weights,stage)
     task.scene_ids=torch.tensor(roles,dtype=torch.long)
@@ -424,6 +426,7 @@ def _contrast_outcome_task(roles,policy_ids):
     task.set_policy_ids(torch.tensor(policy_ids))
     task.outcome_counted=torch.zeros(task.num_envs,dtype=torch.bool)
     task.hand_contrast=True
+    task.info=dict(sdf=torch.ones(task.num_envs,11,1),minimum_episode_hand_clearance=torch.ones(task.num_envs))
     required=torch.zeros((task.num_envs,6),dtype=torch.bool)
     required[:,0]=(task.scene_ids==1)|(task.scene_ids==3)
     task.contrast=dict(role=task.scene_ids,zone_index=torch.zeros(task.num_envs,dtype=torch.long),
@@ -448,12 +451,12 @@ def test_success_counts_describe_leader_but_sampler_uses_every_policy():
     resolved,clean=task._outcomes(done,torch.zeros_like(done))
     assert resolved.all() and clean.sum()==7
     assert torch.equal(task.navigation_counts[3],torch.tensor([4,3]))
-    assert torch.equal(task.contrast_counts,torch.tensor([[1,0],[1,1],[1,0]]))
-    assert torch.equal(task.role_counts,torch.tensor([[1,1],[1,0],[1,1],[1,0]]))
-    # Physical follower outcomes still inform task sampling. A leader's clean
-    # sideways transition fails the posture objective even though it navigated.
+    assert torch.equal(task.contrast_counts,torch.tensor([[1,0],[1,1],[1,1]]))
+    assert torch.equal(task.role_counts,torch.tensor([[1,1],[1,0],[1,1],[1,1]]))
+    # Physical follower outcomes still inform sampling. Box/yaw compliance
+    # is diagnostic only and cannot disqualify an otherwise clear goal.
     close(task.scene_episode_ema,[2,2,2,2])
-    close(task.scene_success_ema,[2,1,2,1])
+    close(task.scene_success_ema,[2,1,2,2])
     before=task.role_counts.clone()
     again,_=task._outcomes(done,torch.zeros_like(done))
     assert not again.any() and torch.equal(task.role_counts,before)
@@ -461,29 +464,15 @@ def test_success_counts_describe_leader_but_sampler_uses_every_policy():
         task.set_policy_ids(torch.zeros(8,dtype=torch.long))
 
 
-def test_protected_sampling_requires_each_zone_and_ninety_percent_posture():
-    # Two examples of each role, all reaching clean goals. Even open/narrow
-    # bad posture remains successful: only protected/transition sampling changes.
+def test_protected_sampling_uses_clearance_not_box_compliance():
     task=_contrast_outcome_task([0,0,1,1,2,2,3,3],[0]*8)
     task.episode['goal_reached'][:]=True
-    task.zone_steps[:,0]=torch.tensor([9,8,8])
     task.telemetry['hand_contrast_heading_good'][:]=0.
     task.telemetry['hand_contrast_hand_good'][:]=0.
-    # One protected world achieves exactly 90%, its matched one only 80%.
-    task.telemetry['hand_contrast_heading_good'][2]=1.
-    task.telemetry['hand_contrast_hand_good'][2]=1.
-    # First transition has perfect posture in visited zone zero but never
-    # visits required zone one. Second qualifies in both zones.
-    for key in ('required_forward_zones','required_hand_zones'):
-        task.contrast[key][6:,1]=True
-    task.zone_steps[6:,0]=torch.tensor([9,9,9])
-    task.telemetry['hand_contrast_heading_good'][6:]=1.
-    task.telemetry['hand_contrast_hand_good'][6:]=1.
-    task.zone_steps[7,1]=torch.tensor([10,9,9])
+    task.info['minimum_episode_hand_clearance'][[3,6]]=.03
     task._outcomes(torch.zeros(8,dtype=torch.bool),torch.zeros(8,dtype=torch.bool))
     close(task.scene_success_ema,[2,1,2,1])
     assert torch.equal(task.role_counts,torch.tensor([[2,2],[2,1],[2,2],[2,1]]))
-    # The fixed behavior-role masses survive adaptation.
     close(task.probabilities,torch.full((4,),.25))
 
 

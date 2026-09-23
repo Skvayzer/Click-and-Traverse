@@ -1,0 +1,138 @@
+{
+  "perception": {
+    "passed": true,
+    "feature": "pf.hands.df.0.distance",
+    "actor_index": 178,
+    "hand_radius_m": 0.10344617068767548,
+    "robot_qpos_max_change": 0.0,
+    "physics_steps": 0,
+    "scope": "CATTask._fields -> CATTask._observe -> native 222 actor; no bank.sample replacement",
+    "samples": [
+      {
+        "time_s": 0.0,
+        "actor_hand_distance_m": 0.34999996423721313,
+        "hand_bf": [
+          -1.0,
+          0.0,
+          0.0
+        ],
+        "true_hand_distance_m": 0.34999996423721313
+      },
+      {
+        "time_s": 1.0,
+        "actor_hand_distance_m": 0.24999995529651642,
+        "hand_bf": [
+          -1.0,
+          0.0,
+          0.0
+        ],
+        "true_hand_distance_m": 0.24999995529651642
+      },
+      {
+        "time_s": 2.0,
+        "actor_hand_distance_m": 0.14999999105930328,
+        "hand_bf": [
+          -1.0,
+          0.0,
+          0.0
+        ],
+        "true_hand_distance_m": 0.14999999105930328
+      },
+      {
+        "time_s": 3.0,
+        "actor_hand_distance_m": 0.04999999701976776,
+        "hand_bf": [
+          -1.0,
+          0.0,
+          0.0
+        ],
+        "true_hand_distance_m": 0.04999999701976776
+      },
+      {
+        "time_s": 4.0,
+        "actor_hand_distance_m": 0.05000002682209015,
+        "hand_bf": [
+          -1.0,
+          0.0,
+          0.0
+        ],
+        "true_hand_distance_m": 0.05000002682209015
+      },
+      {
+        "time_s": 5.0,
+        "actor_hand_distance_m": 0.14999999105930328,
+        "hand_bf": [
+          -1.0,
+          0.0,
+          0.0
+        ],
+        "true_hand_distance_m": 0.14999999105930328
+      },
+      {
+        "time_s": 7.0,
+        "actor_hand_distance_m": 0.34999996423721313,
+        "hand_bf": [
+          -1.0,
+          0.0,
+          0.0
+        ],
+        "true_hand_distance_m": 0.34999996423721313
+      }
+    ]
+  },
+  "benchmark": [
+    {
+      "objects": 1,
+      "envs": 30720,
+      "device": "cpu",
+      "threads": 2,
+      "median_ms": 536.3941395044094,
+      "min_ms": 519.0801279968582,
+      "max_ms": 549.2999060079455,
+      "persistent_object_bytes": 2734080,
+      "incremental_peak_tensor_bytes": 84602880,
+      "scope": "4 eager hybrid queries (11+11+2+2 points), clock/poses, normals, min and guidance; excludes static lookup, forearm capsules, safety guard and physics"
+    },
+    {
+      "objects": 2,
+      "envs": 30720,
+      "device": "cpu",
+      "threads": 2,
+      "median_ms": 1147.813663003035,
+      "min_ms": 1110.1338180014864,
+      "max_ms": 1171.4755920111202,
+      "persistent_object_bytes": 5468160,
+      "incremental_peak_tensor_bytes": 167792640,
+      "scope": "4 eager hybrid queries (11+11+2+2 points), clock/poses, normals, min and guidance; excludes static lookup, forearm capsules, safety guard and physics"
+    },
+    {
+      "objects": 4,
+      "envs": 30720,
+      "device": "cpu",
+      "threads": 2,
+      "median_ms": 2211.4032430108637,
+      "min_ms": 2158.362907008268,
+      "max_ms": 2259.935203997884,
+      "persistent_object_bytes": 10936320,
+      "incremental_peak_tensor_bytes": 326123520,
+      "scope": "4 eager hybrid queries (11+11+2+2 points), clock/poses, normals, min and guidance; excludes static lookup, forearm capsules, safety guard and physics"
+    },
+    {
+      "objects": 8,
+      "envs": 30720,
+      "device": "cpu",
+      "threads": 2,
+      "median_ms": 4284.283386004972,
+      "min_ms": 4156.57416000613,
+      "max_ms": 4355.898339010309,
+      "persistent_object_bytes": 21872640,
+      "incremental_peak_tensor_bytes": 642785280,
+      "scope": "4 eager hybrid queries (11+11+2+2 points), clock/poses, normals, min and guidance; excludes static lookup, forearm capsules, safety guard and physics"
+    }
+  ],
+  "cuda_available": false,
+  "gpu_max_affordable_objects": null,
+  "training_ready": false,
+  "disk_free_before_bytes": 5202116608,
+  "disk_free_after_bytes": 5201461248
+}

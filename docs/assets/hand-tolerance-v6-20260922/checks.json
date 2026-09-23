@@ -1,0 +1,24 @@
+{
+  "source": "outputs/cat_hand_priority_30720_20260922/metrics.jsonl:5",
+  "metrics": {
+    "global_step": 4915200,
+    "training/policy_forward_protected_unseeded_hand_contrast_mean_region_cost": 0.7615814296830024,
+    "training/policy_forward_protected_seeded_after100_hand_contrast_hand_region_compliance_fraction": 0.0,
+    "training/policy_forward_protected_seeded_after100_hand_contrast_hand_region_compliance_fraction_sample_count": 95632.0
+  },
+  "recorded_max_action_std": 0.15,
+  "tests": [
+    {
+      "passed": 42,
+      "seconds": 33.3,
+      "suites": "tolerance_curriculum (first four), mjlab_hand_curriculum_gate, mjlab_hand_approach, mjlab_runner, balanced_region_bank, width_curriculum"
+    },
+    {
+      "passed": 23,
+      "seconds": 19.44,
+      "suites": "tolerance_curriculum (all five), mjlab_logging_diagnostics, mjlab_raised_reset"
+    }
+  ],
+  "training_launched": false,
+  "gpu_used": false
+}

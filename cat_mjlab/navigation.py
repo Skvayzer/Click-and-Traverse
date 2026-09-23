@@ -117,7 +117,7 @@ def route_context(root_xy, previous_xy, segment, sticky_violation, route, route_
                 cross_track=torch.linalg.vector_norm(root-projection,dim=-1),root_xy=root.clone())
 
 
-def hand_contrast_context(metadata, progress, tangent):
+def hand_contrast_context(metadata, progress, tangent, *, approach_distance=0.):
     inside = metadata['zone_valid'] & (progress[:,None]>=metadata['start_m']) & (progress[:,None]<metadata['end_m'])
     enabled = metadata['enabled'] & inside.any(-1)
     index = inside.to(torch.int64).argmax(-1)
@@ -125,7 +125,7 @@ def hand_contrast_context(metadata, progress, tangent):
     ramp = (torch.minimum(progress-start,end-progress)/fade.clamp_min(1e-8)).clamp(0,1)
     weight = torch.where(enabled,torch.where(fade>0,ramp,1.),0.)
     tangent = tangent/torch.linalg.vector_norm(tangent,dim=-1,keepdim=True).clamp_min(1e-8)
-    return dict(enabled=enabled,role=metadata['role'],zone_index=index,phase_weight=weight,
+    context = dict(enabled=enabled,role=metadata['role'],zone_index=index,phase_weight=weight,
                 core_active=enabled & (weight>=1.-1e-6),
                 required_forward_zones=metadata['enabled'][:,None]&metadata['zone_valid']&(metadata['forward_weight']>0),
                 required_hand_zones=metadata['enabled'][:,None]&metadata['zone_valid']&metadata['hand_active'].any(-1),
@@ -134,6 +134,37 @@ def hand_contrast_context(metadata, progress, tangent):
                 hand_regions_min=_pick(metadata['hand_regions_min'],index),
                 hand_regions_max=_pick(metadata['hand_regions_max'],index),
                 region_valid=_pick(metadata['region_valid'],index)&enabled[:,None],route_tangent=tangent)
+    if 'heading_override' in metadata:
+        override = _pick(metadata['heading_override'],index) & enabled
+        context.update(heading_override=override,
+            heading_target_rad=_pick(metadata['heading_target_rad'],index),
+            heading_axis=_pick(metadata['heading_axis'],index),
+            heading_weight=torch.where(override,
+                _pick(metadata['heading_weight'],index)*weight.square()*(3-2*weight),
+                context['forward_weight']))
+    if approach_distance > 0:
+        # Only forward-protected scenes. Never borrow a target across the
+        # preceding zone; heading and compliance retain their original timing.
+        previous_end = torch.cat((torch.zeros_like(metadata['end_m'][:,:1]),
+                                  metadata['end_m'][:,:-1]), -1)
+        early_start = torch.maximum(metadata['start_m']-approach_distance, previous_end)
+        early_start = torch.where((metadata['role']==1)[:,None], early_start, metadata['start_m'])
+        early = dict(metadata, start_m=early_start,
+                     fade_m=metadata['fade_m']+metadata['start_m']-early_start)
+        reward_context = hand_contrast_context(early, progress, tangent)
+        # Preserve the original outgoing fade (the extension is incoming only).
+        idx = reward_context['zone_index']
+        end, fade = (_pick(metadata[k],idx) for k in ('end_m','fade_m'))
+        incoming_fade = _pick(early['fade_m'],idx)
+        incoming = torch.where(incoming_fade>0,
+            ((progress-_pick(early_start,idx))/incoming_fade.clamp_min(1e-8)).clamp(0,1), 1.)
+        outgoing = torch.where(fade>0, ((end-progress)/fade.clamp_min(1e-8)).clamp(0,1), 1.)
+        reward_context['phase_weight'] = torch.where(reward_context['enabled'], torch.minimum(incoming,outgoing), 0.)
+        reward_context['phase_weight'] = torch.where(metadata['role']==1,
+            reward_context['phase_weight'], context['phase_weight'])
+        for key in ('enabled','phase_weight','hand_active','region_valid','hand_regions_min','hand_regions_max'):
+            context['reward_'+key] = reward_context[key]
+    return context
 
 
 def contrast_reward_terms(context,hands_world,root_xy,pelvis_forward,torso_forward,
@@ -142,6 +173,17 @@ def contrast_reward_terms(context,hands_world,root_xy,pelvis_forward,torso_forwa
     headings=torch.stack((pelvis_forward[:,:2],torso_forward[:,:2]),1)
     cosine=((headings*tangent[:,None]).sum(-1)/torch.linalg.vector_norm(headings,dim=-1).clamp_min(1e-8)).clamp(-1,1)
     heading=(1.-cosine).mean(-1)*context['forward_weight']
+    heading_good=(cosine>=math.cos(math.radians(15))).all(-1)
+    if 'heading_override' in context:
+        angle=context['heading_target_rad']
+        normal=torch.stack((-tangent[:,1],tangent[:,0]),-1)
+        target=angle.cos()[:,None]*tangent+angle.sin()[:,None]*normal
+        alignment=((headings*target[:,None]).sum(-1)/torch.linalg.vector_norm(headings,dim=-1).clamp_min(1e-8)).clamp(-1,1)
+        alignment=torch.where(context['heading_axis'][:,None],alignment.abs(),alignment)
+        heading=torch.where(context['heading_override'],
+            (1-alignment).mean(-1)*context['heading_weight'],heading)
+        heading_good=torch.where(context['heading_override'],
+            (alignment>=math.cos(math.radians(15))).all(-1),heading_good)
     delta=hands_world[:,:,:2]-root_xy[:,None]
     normal=torch.stack((-tangent[:,1],tangent[:,0]),-1)
     local=torch.stack(((delta*tangent[:,None]).sum(-1),(delta*normal[:,None]).sum(-1),hands_world[:,:,2]),-1)
@@ -154,8 +196,14 @@ def contrast_reward_terms(context,hands_world,root_xy,pelvis_forward,torso_forwa
     hand=torch.where(any_active,cost*context['phase_weight'],0.)
     inside=((squared<=hand_good_distance**2+1e-10)|~context['hand_active'][:,None]).all(-1)
     good=~any_active|(inside&context['region_valid']).any(-1)
+    if 'reward_enabled' in context:
+        reward_context = {key: value for key,value in context.items() if not key.startswith('reward_')}
+        reward_context.update({key[7:]: value for key,value in context.items() if key.startswith('reward_')})
+        shaped,_ = contrast_reward_terms(reward_context,hands_world,root_xy,pelvis_forward,torso_forward,
+                                         region_scale=region_scale,hand_good_distance=hand_good_distance)
+        hand = shaped['wholebody_hand_contrast_region']
     return {'wholebody_hand_contrast_heading':heading,'wholebody_hand_contrast_region':hand},dict(
         hand_contrast_heading_cost=heading,hand_contrast_region_cost=hand,
-        hand_contrast_heading_good=(cosine>=math.cos(math.radians(15))).all(-1).float(),
+        hand_contrast_heading_good=heading_good.float(),
         hand_contrast_hand_good=good.float(),hand_contrast_forward_weight=context['forward_weight'],
         hand_contrast_hand_active=any_active.float())

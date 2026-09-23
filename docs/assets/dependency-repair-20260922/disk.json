@@ -1,0 +1,10 @@
+{
+  "hardlinked_binary_files": 2499,
+  "independent_json_files": 80,
+  "independent_file_bytes": 19859155,
+  "independent_allocated_bytes": 4284416,
+  "before_used_bytes": 963529539584,
+  "before_available_bytes": 5498339328,
+  "after_used_bytes": 963533864960,
+  "after_available_bytes": 5493227520
+}

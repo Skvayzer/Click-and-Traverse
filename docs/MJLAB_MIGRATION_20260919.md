@@ -1,5 +1,7 @@
 # Whole-body CAT migration to mjlab — 19 September 2026
 
+**Current native contract:** actor **222** / critic **310**. Authored box features and rewards are removed; see [removal and from-scratch launch](NATIVE_CLEARANCE_REMOVAL_20260922.md).
+
 ## Scope and preservation
 
 The new `cat_mjlab` backend uses **mjlab 1.6.0 / MuJoCo Warp 3.11.0** for GPU physics and native PyTorch for the task, PPO and SAPG. It does not wrap a JAX task or substitute mjlab's example humanoid task. Original JAX/MJX entry points remain intact.

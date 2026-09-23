@@ -96,9 +96,9 @@ def test_ppo_parameter_load_into_sapg_preserves_all_initial_outputs():
 
 def test_released_checkpoint_expansion_preserves_named_inputs_actions_and_value():
     from brax.training.agents.ppo.networks import make_ppo_networks
-    from cat_ppo.furniture.control import legacy_observation_contract, wholebody_observation_contract
+    from cat_ppo.furniture.control import legacy_observation_contract, mjlab_observation_contract
     from cat_ppo.furniture.learning import verify_warmstart_parity
-    source_contract, target_contract = legacy_observation_contract(), wholebody_observation_contract()
+    source_contract, target_contract = legacy_observation_contract(), mjlab_observation_contract()
     network = make_ppo_networks({"state": (162,), "privileged_state": (250,)}, 12,
         policy_hidden_layer_sizes=(7, 5), value_hidden_layer_sizes=(9, 6),
         policy_obs_key="state", value_obs_key="privileged_state")
@@ -113,7 +113,7 @@ def test_released_checkpoint_expansion_preserves_named_inputs_actions_and_value(
     learner = Learner(LearnerConfig(actor_hidden=(7, 5), critic_hidden=(9, 6)), device="cpu")
     load_native_params(learner, expanded)
     with torch.no_grad():
-        logits = learner.model.logits(torch.randn(4, 222))
+        logits = learner.model.logits(torch.randn(4, learner.config.actor_obs))
     assert logits.shape == (4, 58)
     torch.testing.assert_close(logits[:, 12:29], torch.zeros(4, 17))
     torch.testing.assert_close(torch.nn.functional.softplus(logits[:, 41:]) + .001,

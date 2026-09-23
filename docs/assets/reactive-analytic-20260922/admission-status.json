@@ -1,0 +1,17 @@
+{
+  "status": "BLOCKED",
+  "training_launched": false,
+  "perception": "PASS",
+  "gpu_affordability": "BLOCKED: no CUDA device exposed",
+  "forearm_capsules": "NOT_IMPLEMENTED",
+  "no_contact_certification": "NOT_IMPLEMENTED",
+  "bank": "NOT_BUILT",
+  "bank_preflight": "NOT_RUN",
+  "renders": "NOT_BUILT",
+  "launch_command": "NOT_ISSUED",
+  "tests": {
+    "passed": 22,
+    "dependency_blocked": 7
+  },
+  "disk_free_bytes": 5201985536
+}

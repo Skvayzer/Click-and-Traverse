@@ -125,18 +125,37 @@ def _download_file(relative, destination, expected_sha256):
 
 
 def _field_records(directory):
-    records = {}
+    """Accept raw float32 fields, or their packed encoding.
+
+    Packed scenes store distances as float16 and directions as two int16
+    octahedral codes beside a validity bitmask; SceneBank decodes them back to
+    float32 on load. The shape checks below are expressed against the decoded
+    geometry so both layouts are held to the same standard.
+    """
+    records, packed = {}, False
     for name in FIELD_NAMES:
         file = Path(directory) / f"{name}.npy"
         array = np.load(file, mmap_mode="r", allow_pickle=False)
-        if array.dtype != np.float32 or not np.isfinite(array).all():
-            raise ValueError(f"Field must be finite float32: {file}")
+        if array.dtype == np.float32:
+            if not np.isfinite(array).all():
+                raise ValueError(f"Field must be finite float32: {file}")
+        elif name == "sdf" and array.dtype == np.float16:
+            packed = True
+            if not np.isfinite(array).all():
+                raise ValueError(f"Packed distance field must be finite: {file}")
+        elif name in ("bf", "gf") and array.dtype == np.int16 and array.shape[-1] == 2:
+            packed = True
+            if not (Path(directory) / f"{name}_valid.npy").exists():
+                raise ValueError(f"Packed direction field is missing its validity mask: {file}")
+        else:
+            raise ValueError(f"Field must be finite float32 or a known packed encoding: {file}")
         records[name] = dict(file=file.name, sha256=sha256(file), shape=list(array.shape),
                              dtype=str(array.dtype), size_bytes=file.stat().st_size)
     shape = records["sdf"]["shape"]
     if len(shape) != 3 or min(shape) < 3:
         raise ValueError("SDF must have three spatial dimensions of at least three samples")
-    if any(records[name]["shape"] != shape + [3] for name in ("bf", "gf")):
+    channels = 2 if packed else 3
+    if any(records[name]["shape"] != shape + [channels] for name in ("bf", "gf")):
         raise ValueError("Boundary and guidance fields must match SDF spatial dimensions")
     return records
 
@@ -410,6 +429,24 @@ def _validate_expanded_scene_metadata(manifest):
         raise ValueError("Every represented sampling group needs positive scene weight")
 
 
+def scene_directory(manifest, manifest_path, record):
+    """Resolve immutable fields, optionally in a hash-pinned retention bank.
+
+    External roots are allowed only by validated width or hand-posture mixtures;
+    ordinary bank records retain their original strict local-path boundary.
+    """
+    root=Path(manifest_path).resolve().parent
+    balance=manifest.get('flat_balance')
+    if balance is not None and not record.get('source',{}).get('hand_contrast') and not record.get('source',{}).get('flat_balance'):
+        root=Path(balance['retention_storage_root']).resolve()
+    external=manifest.get('external_retention_bank')
+    if external is not None and not record.get('source',{}).get('hand_contrast'):
+        root=Path(external['manifest']).resolve().parent
+    directory=(root/record['path']).resolve()
+    if not directory.is_relative_to(root):raise ValueError('Field-bank path escapes its pinned root')
+    return directory
+
+
 def load_generalist_manifest(path, *, verify_files=True):
     path = Path(path).resolve()
     manifest = json.loads(path.read_text())
@@ -417,13 +454,39 @@ def load_generalist_manifest(path, *, verify_files=True):
     if _json_hash(manifest) != expected or manifest.get("schema") not in (SCHEMA, EXPANDED_SCHEMA):
         raise ValueError("Field-bank manifest hash/schema mismatch")
     expanded = manifest["schema"] == EXPANDED_SCHEMA
+    external=manifest.get('external_retention_bank')
+    if external is not None:
+        if 'width_curriculum' not in manifest and 'hand_posture_upgrade' not in manifest:
+            raise ValueError('External retention roots require an explicit validated mixture')
+        reference=Path(external['manifest']).resolve()
+        if reference==path or sha256(reference)!=external['sha256']:
+            raise ValueError('External retention manifest hash/path differs')
+        raw=json.loads(reference.read_text())
+        if 'external_retention_bank' in raw or 'width_curriculum' in raw or 'hand_posture_upgrade' in raw:
+            raise ValueError('Nested external retention references are forbidden')
+        pinned=load_generalist_manifest(reference,verify_files=False)
+        if 'hand_posture_upgrade' in manifest:
+            from .hand_posture_upgrade import validate_hand_posture_upgrade
+            validate_hand_posture_upgrade(manifest,pinned,path=path,verify_files=verify_files)
+        else:
+            n=manifest['width_curriculum']['retained_scene_count']
+            if n!=len(pinned['scenes']) or manifest['scenes'][:n]!=pinned['scenes']:
+                raise ValueError('External retention records are not an exact immutable prefix')
+    elif 'hand_posture_upgrade' in manifest:
+        raise ValueError('Posture upgrade requires a pinned parent bank')
     manifest["manifest_sha256"] = expected
     if len(manifest["scenes"]) != manifest["scene_count"]:
         raise ValueError("Manifest scene count differs")
     if manifest.get("released_config_sha256") != RELEASED_CONFIG_SHA256 or manifest.get("dataset_revision") != DATASET_REVISION:
         raise ValueError("Field-bank release/configuration source pin differs")
     originals = [scene for scene in manifest["scenes"] if scene["family"] == "original_cat"]
-    if "contrastive_specialist" in manifest:
+    if 'width_curriculum' in manifest:
+        from .width_curriculum import validate_width_manifest
+        validate_width_manifest(manifest,path=path,verify_files=verify_files)
+    if 'width_curriculum' in manifest and manifest['width_curriculum']['retained_scene_count']==0:
+        if any(manifest[k]!=0 for k in ('original_count','byte_verified_original_count','reconstructed_original_count')):
+            raise ValueError('Standalone width bank must declare zero originals')
+    elif "contrastive_specialist" in manifest:
         from cat_ppo.furniture.contrastive_bank import validate_contrastive_manifest
         validate_contrastive_manifest(manifest, path=path, verify_files=verify_files)
     elif "specialist" in manifest:
@@ -444,12 +507,13 @@ def load_generalist_manifest(path, *, verify_files=True):
         if (unchanged != manifest["byte_verified_original_count"]
                 or reconstructed != manifest["reconstructed_original_count"] or unchanged + reconstructed != 37):
             raise ValueError("Field-bank original-source provenance counts differ")
+    if 'flat_balance' in manifest:
+        from .balance_bank import validate_balance_manifest
+        validate_balance_manifest(manifest,path=path,verify_files=verify_files)
     if expanded:
         _validate_expanded_scene_metadata(manifest)
     for scene in manifest["scenes"]:
-        directory = (path.parent / scene["path"]).resolve()
-        if not directory.is_relative_to(path.parent):
-            raise ValueError("Field-bank path escapes its directory")
+        directory = scene_directory(manifest,path,scene)
         if len(scene["origin"]) != 3 or len(scene["shape"]) != 3 or min(scene["shape"]) < 3:
             raise ValueError("Invalid field-bank spatial metadata")
         if not np.isfinite(scene["origin"]).all() or not math.isfinite(scene["dx"]) or scene["dx"] <= 0:
@@ -566,6 +630,8 @@ class RaggedSceneMixin:
             self.field_bank_manifest,
             enabled=bool(getattr(config, "wholebody_hand_protection", False)))
         self._pf_hand_curriculum_levels = None if hand_levels is None else jp.asarray(hand_levels)
+        if 'width_curriculum' in self.field_bank_manifest:
+            raise ValueError('Width curriculum progression currently requires train_cat_mjlab.py (native backend)')
         from cat_ppo.furniture.contrastive_bank import contrastive_roles, role_balanced_logits
         contrast_roles = contrastive_roles(self.field_bank_manifest)
         self._pf_contrast_roles = None if contrast_roles is None else jp.asarray(contrast_roles)
@@ -591,7 +657,7 @@ class RaggedSceneMixin:
         if self._pf_contrast_roles is not None:
             if np.any(weights <= 0):
                 raise ValueError("Contrastive scene weights must all be positive")
-            self._pf_sampling_logits = role_balanced_logits(jp.asarray(weights), self._pf_contrast_roles)
+            self._pf_sampling_logits = role_balanced_logits(jp.asarray(weights), self._pf_contrast_roles, jp.asarray([self.field_bank_manifest['contrastive_specialist']['role_reset_masses'][r] for r in ('open','forward_protected','narrow','transition')]))
         self._pf_sampling_alpha = float(getattr(config.pf_config, "sampling_alpha", 1.))
         self._pf_sampling_ema_decay = float(getattr(config.pf_config, "sampling_ema_decay", .95))
 

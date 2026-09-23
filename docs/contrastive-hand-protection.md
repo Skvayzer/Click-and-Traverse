@@ -1,5 +1,7 @@
 # Contrastive hand-protection specialist
 
+**Current native contract:** actor **222** / critic **310**. Authored box features and rewards are removed; see [removal and from-scratch launch](NATIVE_CLEARANCE_REMOVAL_20260922.md).
+
 A [table-height extension](table-edge-hand-protection.md) adds 32 matched table scenes to this 64-scene cabinet bank, preserving the original scenes and training objective weights.
 
 The previous specialist could reach goals by turning sideways or lowering its body without moving its arms appreciably. Its clearance penalties discourage contact, but do not prefer forward-facing travel or a particular safe hand posture. The neutral-arm penalty could also return immediately after raised hands became clear.

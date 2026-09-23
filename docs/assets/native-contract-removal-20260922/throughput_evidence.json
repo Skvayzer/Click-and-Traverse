@@ -1,0 +1,35 @@
+[
+  {
+    "run": "cat_recover_23_30720_20260922",
+    "initialization": "native_weights_only",
+    "recorded_updates": 82,
+    "transitions_per_update": 983040,
+    "measured_throughput_median": 11793.78889980509,
+    "median_seconds_per_update": 83.35234828700777,
+    "measured_throughput_min": 11770.743372398518,
+    "measured_throughput_max": 11818.093018045007,
+    "excluded_startup_updates": 5
+  },
+  {
+    "run": "cat_lateral_corridor_pilot50_20260922",
+    "initialization": "native_weights_only",
+    "recorded_updates": 33,
+    "transitions_per_update": 983040,
+    "measured_throughput_median": 11801.436774862927,
+    "median_seconds_per_update": 83.29833212290526,
+    "measured_throughput_min": 11789.35453307583,
+    "measured_throughput_max": 11815.42504487076,
+    "excluded_startup_updates": 5
+  },
+  {
+    "run": "cat_flat_balance_ppo_37632_20260920",
+    "initialization": "native_weights_only",
+    "recorded_updates": 242,
+    "transitions_per_update": 1204224,
+    "measured_throughput_median": 11906.815499819915,
+    "median_seconds_per_update": 101.13736960299866,
+    "measured_throughput_min": 7373.824910512406,
+    "measured_throughput_max": 11940.557817821162,
+    "excluded_startup_updates": 5
+  }
+]

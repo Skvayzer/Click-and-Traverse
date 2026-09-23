@@ -11,13 +11,15 @@ from concurrent.futures import ProcessPoolExecutor, as_completed
 import hashlib
 import json
 import math
+import os
+import shutil
 from pathlib import Path
 
 import numpy as np
 
 from cat_ppo.furniture.generalist_fields import (
     DATASET_REPO, DATASET_REVISION, _download_file, _json_hash,
-    load_generalist_manifest, sha256,
+    load_generalist_manifest, sha256, scene_directory,
 )
 from cat_ppo.furniture.legacy_scenes import merge_occupied_voxels
 
@@ -211,7 +213,7 @@ def _extract_scene(payload):
 
 
 def build_body_collision_bank(field_manifest, proposal_path, output, *, cell_size=.25,
-                              workers=4, download=False, progress=None, inventory_only=False):
+                              workers=4, download=False, progress=None, inventory_only=False, base_collision_manifest=None):
     """Build provenance-verified geometry, measure exact K, then publish last."""
     field_manifest, proposal_path, output = map(lambda p: Path(p).resolve(),
                                                 (field_manifest, proposal_path, output))
@@ -228,6 +230,8 @@ def build_body_collision_bank(field_manifest, proposal_path, output, *, cell_siz
                field_manifest_content_sha256=manifest["manifest_sha256"],
                proxy_sha256=sha256(proposal_path), query_radius_m=radius, cell_size_m=cell_size,
                outward_epsilon_m=OUTWARD_EPSILON_M)
+    if base_collision_manifest is not None:
+        key['base_collision_manifest_sha256']=sha256(base_collision_manifest)
     output.mkdir(parents=True, exist_ok=True)
     plan_path = output / "build-plan.json"
     if plan_path.exists() and json.loads(plan_path.read_text()) != key:
@@ -241,11 +245,35 @@ def build_body_collision_bank(field_manifest, proposal_path, output, *, cell_siz
             raise ValueError("Cached geometry inventory differs")
     else:
         scenes = [None] * manifest["scene_count"]
-        payloads = [(i, record, str(field_manifest.parent), str(output), download)
-                    for i, record in enumerate(manifest["scenes"])]
+        preserved=0
+        if base_collision_manifest is not None:
+            base_path=Path(base_collision_manifest).resolve()
+            _,base=load_body_collision_bank(base_path,expected_proxy_sha256=key['proxy_sha256'])
+            # Scene identities plus full SDF/geometry/source hashes bind reused geometry.
+            for i,old in enumerate(base['scenes']):
+                record=manifest['scenes'][i]
+                if record['scene_id']!=old['scene_id']:raise ValueError('Collision base is not a scene prefix')
+                source_hash=old['provenance']['source_sha256']
+                if record['task_kind']=='room':
+                    if record['scene_sha256']!=source_hash:raise ValueError('Base room geometry differs')
+                elif (record['fields']['sdf']['sha256']!=old['provenance']['sdf_sha256']
+                      or record['origin']!=old['provenance']['sample_origin']
+                      or record['dx']!=old['provenance']['voxel_size_m']):
+                    raise ValueError('Base CAT voxel geometry differs')
+                source=base_path.parent/old['geometry_file'];target=output/old['geometry_file']
+                if sha256(source)!=old['geometry_sha256']:raise ValueError('Base geometry cache differs')
+                target.parent.mkdir(parents=True,exist_ok=True)
+                if not target.exists():
+                    try:os.link(source,target)
+                    except OSError:shutil.copy2(source,target)  # Small geometry caches, never fields.
+                elif sha256(target)!=old['geometry_sha256']:raise ValueError('Existing geometry cache differs')
+                scenes[i]=dict(old)
+            preserved=len(base['scenes'])
+        payloads = [(i, record, str(scene_directory(manifest,field_manifest,record).parents[len(Path(record["path"]).parts)-1]), str(output), download)
+                    for i, record in enumerate(manifest["scenes"]) if i>=preserved]
         with ProcessPoolExecutor(max_workers=workers) as executor:
             futures = [executor.submit(_extract_scene, payload) for payload in payloads]
-            completed = 0
+            completed = preserved
             for future in as_completed(futures):
                 result = future.result(); scenes[result["index"]] = result; completed += 1
                 if progress and (completed % 100 == 0 or completed == len(scenes)):

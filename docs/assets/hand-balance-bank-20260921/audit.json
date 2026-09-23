@@ -1,0 +1,37 @@
+{
+  "cat_flat_balance_v1_20260920": {
+    "scenes": 2351,
+    "roles": {
+      "open": 0,
+      "forward_protected": 0,
+      "narrow": 12,
+      "transition": 0
+    },
+    "zones": 36,
+    "hand_active": 0,
+    "active_hand_objective": 0,
+    "positive_heading": 0
+  },
+  "cat_flat_hand_balance_v2_20260921": {
+    "scenes": 2375,
+    "roles": {
+      "open": 0,
+      "forward_protected": 12,
+      "narrow": 12,
+      "transition": 12
+    },
+    "zones": 108,
+    "hand_active": 60,
+    "active_hand_objective": 60,
+    "positive_heading": 60,
+    "reset_shape": [
+      2375,
+      32,
+      36
+    ],
+    "exact_source_pose_rows": 76000,
+    "logical_bytes": 1119024280,
+    "allocated_bytes": 478411776,
+    "exclusive_file_bytes": 33242112
+  }
+}

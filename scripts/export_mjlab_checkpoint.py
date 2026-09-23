@@ -65,7 +65,7 @@ def export_runtime(source, destination, expected_sha256=None):
 
 def export_released(source, destination):
     from cat_ppo.furniture.learning import load_native
-    from cat_ppo.furniture.control import wholebody_observation_contract
+    from cat_ppo.furniture.control import mjlab_observation_contract
     source = Path(source)
     params, expansion = expand_released_params(load_native(source))
     paths, arrays = [], []
@@ -77,7 +77,7 @@ def export_released(source, destination):
     files = {str(path.relative_to(source)): hashlib.sha256(path.read_bytes()).hexdigest()
              for path in sorted(source.rglob("*")) if path.is_file()}
     metadata = dict(kind="released_expanded", source_path=str(source.resolve()), source_files_sha256=files,
-        step=0, paths=paths, expansion=expansion, observation_contract=wholebody_observation_contract(),
+        step=0, paths=paths, expansion=expansion, observation_contract=mjlab_observation_contract(),
         normalize_observations=False, omitted="unused normalizer; original release contains no Adam state")
     return write_array_archive(destination, metadata, arrays)
 

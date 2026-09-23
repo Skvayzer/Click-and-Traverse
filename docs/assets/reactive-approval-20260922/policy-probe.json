@@ -1,0 +1,98 @@
+{
+  "device": "cpu",
+  "checkpoint": "outputs/cat_flat_balance_ppo_37632_20260920/resume.pt",
+  "policy": "frozen policy with its own sampled action noise; no scripted tuck",
+  "scenes": [
+    {
+      "id": "above-danger",
+      "seeds": 8,
+      "falls": 0,
+      "contacts": 0,
+      "robot_initiated_contacts": 0,
+      "object_initiated_contacts": 0,
+      "minimum_hand_surface_m": [
+        0.2652240991592407,
+        0.24498619139194489,
+        0.3126891255378723,
+        0.2912440299987793,
+        0.2567349076271057,
+        0.2494416981935501,
+        0.2630506157875061,
+        0.2794962525367737
+      ],
+      "steps": [
+        261,
+        261,
+        261,
+        261,
+        261,
+        261,
+        261,
+        261
+      ],
+      "horizon_s": 5.209957354626591
+    },
+    {
+      "id": "above-anticipation",
+      "seeds": 8,
+      "falls": 0,
+      "contacts": 0,
+      "robot_initiated_contacts": 0,
+      "object_initiated_contacts": 0,
+      "minimum_hand_surface_m": [
+        0.26932281255722046,
+        0.2743992209434509,
+        0.278125524520874,
+        0.3338276743888855,
+        0.2846735715866089,
+        0.28640323877334595,
+        0.3351881504058838,
+        0.31675851345062256
+      ],
+      "steps": [
+        162,
+        162,
+        162,
+        162,
+        162,
+        162,
+        162,
+        162
+      ],
+      "horizon_s": 3.239960574402001
+    },
+    {
+      "id": "above-negative",
+      "seeds": 8,
+      "falls": 0,
+      "contacts": 0,
+      "robot_initiated_contacts": 0,
+      "object_initiated_contacts": 0,
+      "minimum_hand_surface_m": [
+        0.31292420625686646,
+        0.31834596395492554,
+        0.3267456889152527,
+        0.3069922924041748,
+        0.3135223984718323,
+        0.3142595887184143,
+        0.31589680910110474,
+        0.3128686547279358
+      ],
+      "steps": [
+        134,
+        134,
+        134,
+        134,
+        134,
+        134,
+        134,
+        134
+      ],
+      "horizon_s": 2.6702542012743273
+    }
+  ],
+  "seconds": 220.39748969400534,
+  "scope": "real physics; terminated trajectories censored, not a stationary full-path certificate",
+  "total_falls": 0,
+  "total_trials": 24
+}

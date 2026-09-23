@@ -1,0 +1,55 @@
+# Native clearance contract — removal completed 2026-09-22
+
+No training was launched. No checkpoint was opened, copied, trimmed, modified, or generated during this removal. In particular, `outputs/cat_recover_23_30720_20260922/best.pt` was left untouched. Only text run records were inspected. Banks were read for tests and not modified.
+
+## Implementation and verification
+
+The complete 32-feature authored hand-objective extension is removed. `cat_mjlab/hand_objective.py` and its old tests are retired; the shared native contract is exactly **actor 222 / critic 310 / actions 29** (`cat_ppo/furniture/control.py:138`, `cat_mjlab/observation_contract.py:1`). All 14 hand GF/BF/distance channels remain. The full named list is saved in [observation_contract.json](assets/native-contract-removal-20260922/observation_contract.json).
+
+Both `wholebody_hand_contrast_region` and `wholebody_hand_contrast_heading` are unconditionally zero, even when a caller supplies False for the legacy disable flag or mutates their scales to nonzero values. Config scales are zero; the reward accumulator also explicitly zeros both terms (`cat_mjlab/task.py:517`, `cat_mjlab/task.py:528`). Legacy CLI switches are accepted as no-ops. The box-based flat posture bonus is also zero, so it cannot silently reintroduce the same objective. Box telemetry remains diagnostic. Box-based arm-regularization masking is removed. Sampling qualification uses minimum hand clearance instead of box compliance; incompatible box speed/tolerance curricula are rejected. Clearance remains outside the reward floor so clipping cannot erase its incentive.
+
+CPU results: **111 passed, 7 deselected, 36.40 seconds** ([test log](assets/native-contract-removal-20260922/cpu_tests.txt)). Seven historical JAX/reference tests were deselected because this environment lacks their optional dependencies; this is not a claim of full-suite success. Tests cover exact dimensions, invariance to changed box flags/regions/zone/yaw metadata, permanently zero box ledger entries, clearance scales/shapes, native startup, retired conversion failing before file IO, acceptance anti-gaming, upper control, and real-bank defaults.
+
+Independent source-function comparison: **55 per-world evaluations**, five steps in each of flat, clutter, CAT, narrow, and protected scenes, **all 30 weighted terms and total reward max absolute difference 0** against the preceding clearance-primary implementation. This uses identical physical states and zero actions, not a trained policy. Details: [reward_equivalence.json](assets/native-contract-removal-20260922/reward_equivalence.json). Default-versus-explicit-default observations, physics positions and rewards were also bitwise equal. This proves short CPU transition equivalence, not long-horizon learned behavior. The legacy box-enabled reward is intentionally different.
+
+## Reference audit
+
+[reference_audit.json](assets/native-contract-removal-20260922/reference_audit.json) records every original matching line in changed files and every remaining source match for `254|342|hand_objective`.
+
+Fixed runtime/contract references: `cat_ppo/furniture/control.py`; `cat_mjlab/{config,learning,task}.py`; new `observation_contract.py`; removed `hand_objective.py`; `scripts/{evaluate_paired_cat,record_mjlab_rollout}.py`. Native runner now accepts 222/310 and rejects obsolete contracts before allocation. Evaluator prefix slicing is removed. Conversion/export checks derive the native contract and reject incompatible named targets (`runner.py`, `conversion.py`, `checkpoint_arrays.py`). The old expansion implementation and its two commands (`checkpoint_upgrade.py`, `upgrade_mjlab_checkpoint.py`, `verify_checkpoint_upgrade_cpu.py`) now fail without checkpoint IO; no trimming replacement exists.
+
+Fixed test references: removed `test_mjlab_hand_objective.py`, replaced with `test_observation_contract.py`; updated `test_mjlab_checkpoint_upgrade.py`, `test_mjlab_task.py`, `test_reward_floor.py`, `test_clearance_primary.py`. CLI scratch help and launcher contracts updated; `hand_reward_floor_v6_50.sh` dimension comment corrected. `WHOLE_BODY.md`, migration and contrastive-hand-protection docs point to this contract. Historical hand-objective, checkpoint-surgery, reward-floor, lateral-corridor-implementation and clearance-primary reports explicitly carry superseded notices; historical dimensions remain as historical facts, not executable requirements. Immutable outputs, scene banks and historical numeric artifacts are not rewritten.
+
+Remaining active-tree matches are intentional: `active_hand_objective_zones` in `contrast_preflight.py` and its bank test; `active_hand_objective` in the bank audit; `args.hand_objectives` in the historical bank authoring tool; the assertion that observation names do not start with `hand_objective.`. These describe diagnostic metadata, never actor/critic channels. Remaining numeric substring hits are scene index 2342, radius .21254 and report-page coordinate 342. None requires actor 254 or critic 342. Legacy 162/250 export support is unchanged, but its native target is 222/310.
+
+## Prepared launch — not executed
+
+```bash
+bash configs/pilots/clearance_primary_50.sh
+```
+
+This is `--from-scratch`, native 222/310, clearance weight **-20**, target **0.04 m**, anticipation **0.20 m**, near weight **0.5**, box rewards off, W&B **online / CAT-wholebody / skvayzer**. It contains no checkpoint input. It uses 30,720 environments, unroll 32, batch 768, 40 minibatches, and a bounded **50-update screening budget**. Scratch exploration does not inherit the old warm-start action-standard-deviation cap (`--max-action-std 0`). Fifty updates is not a promised walking policy. The actual complete command is in the linked launcher source; review the output directory and available storage before a later authorized launch.
+
+## Training cost: measurements versus estimates
+
+**Measured existing text logs:** recovery run 82 updates, median **11,793.79 control transitions/s**, excluding the first five updates; lateral run 33 updates, median **11,801.44/s**. Both are warm starts on the former contract, not fresh-network learning curves. The flat run has 242 logged updates and median 11,906.82/s at a different environment count. [Throughput evidence](assets/native-contract-removal-20260922/throughput_evidence.json) records these samples. No completed from-scratch learning curve was found among the 17 inspected native run records. The **98.9% falls after 19 updates** is the supplied prior measurement, also recorded in the historical surgery report; it was not independently reproduced here.
+
+**Arithmetic:** 30,720 × 32 = **983,040 environment control transitions/update**. Nineteen updates = **18,677,760 transitions**; fifty = **49,152,000**. Using measured warm-start throughput gives approximately **83 seconds/update**, or **1.16 GPU hours for 50**, excluding startup, evaluation, logging and checkpoint overhead. These are environment steps, not simulator substeps or optimizer minibatch steps.
+
+**Engineering planning estimates, not measured convergence:** budget roughly **300–1,000 updates** (**0.295–0.983 billion transitions**, approximately **7–23 GPU hours**) for basic sustained commanded walking; **1,000–3,000 total updates** (**0.983–2.949 billion**, approximately **23–70 hours**) for clearance-primary competence. These are broad provisional budgets, not confidence intervals or guaranteed milestones. Starting on mixed difficult passages with strong repulsion can stall indefinitely without curriculum changes. The released generalist config's 5-billion-step budget (`configs/cat_generalist_released.json:208`) is a configured budget, not proof of a fresh PPO learning time; the existing donor was DAgger trained. Check learning trends after the screening budget and at 100/300 updates before committing to the upper range. Measure walking by completed flat commanded-distance trials without falls, then passage completion plus clearance; mean return alone is insufficient.
+
+## Other observation features worth reviewing (not removed)
+
+The full list was inspected (`cat_ppo/furniture/control.py:94`, `cat_mjlab/task_math.py` observation assembly).
+
+* **39 `pf.*.gf.*` actor channels:** goal/route guidance rather than pure local obstacle measurements. For room scenes, `_navigation` and `_fields` derive replacement guidance from authored route/waypoint data (`cat_mjlab/task.py:223`, `:239`). These are the strongest remaining metadata concern. They are legitimate inputs if a deployed planner reconstructs them from a map and goal; training currently supplies privileged authored guidance. Audit planner/sensor equivalence before calling the policy geometry-only.
+* **Four `command.*` channels:** task intent generated through the navigation/guidance machinery, not physical sensing. Plausible with a real navigation controller, but route-derived commands can inherit authored-route shortcuts. Keep task intent distinct from claims of geometry-only inputs.
+* **One `foot_height` and four phase channels:** sampled gait target and internal oscillator state, not measured foot height. These are controller context rather than authored scene flags. They are reproducible on a robot and lower concern.
+* **Critic-only privileged hints:** 33 world-position components can let the value function exploit scene location; 31 gain/random-force components (`kp_scale`, `kd_scale`, 29 `rfi`) are exact simulation randomization parameters, not normally directly sensed. Other critic hints are physical velocities/orientation/contact/gait quantities. Privileged critic inputs are deliberate, but should be distinguished from deployable actor measurements.
+* Joint state, gyro/gravity, prior actions/motor targets, and BF/DF geometry channels have plausible sensing/controller equivalents. No scene ID, hand-active flag or region-valid bit remains in the named actor/critic feature list. All hand geometry channels remain.
+
+Removing zone progress and route yaw could reduce anticipation, but there is **no measured evidence of harm** here. Navigation commands and GF guidance already carry directional context; a local geometry objective should not require authored hand zones. All 32 requested features were removed, and no additional observation features were removed.
+
+## Failure mode and mitigation
+
+Pure repulsion can favor refusing a narrow passage, detouring, or slowing down. Weight -20 makes this more consequential, especially from scratch. Preserve passage progress/goal incentives and require assigned-trial completion alongside clearance. The existing clearance acceptance gate rejects refuse-entry, crawl, bypass, and fall-first; these CPU adversarial cases pass. Report failures with the assigned-trial denominator, not only successful entrants. If basic locomotion stalls, stage navigation learning and ramp clearance strength while retaining the same 222/310 contract, then evaluate the full requested -20 configuration. This mitigation is proposed, not an unrequested training/config change.

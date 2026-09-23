@@ -86,6 +86,9 @@ class SamplePFWrapper(wrapper.Wrapper):
         self._hand_curriculum_levels = getattr(
             getattr(env, "unwrapped", env), "_pf_hand_curriculum_levels", None)
         self._contrast_roles = getattr(getattr(env, "unwrapped", env), "_pf_contrast_roles", None)
+        manifest=getattr(getattr(env, "unwrapped", env), "field_bank_manifest", {})
+        masses=manifest.get('contrastive_specialist',{}).get('role_reset_masses')
+        self._contrast_masses=None if masses is None else jnp.asarray([masses[r] for r in ('open','forward_protected','narrow','transition')])
         self._online_navigation_groups = None
         if bool(getattr(config, "wholebody_first_outcome_metrics", False)) or self._contrast_roles is not None:
             from cat_ppo.furniture.hand_curriculum import navigation_scene_groups
@@ -141,7 +144,7 @@ class SamplePFWrapper(wrapper.Wrapper):
 
     @staticmethod
     def _update_pf_sampling_info(state, done, hand_curriculum_levels=None,
-                                 online_navigation_groups=None, contrast_roles=None):
+                                 online_navigation_groups=None, contrast_roles=None, contrast_masses=None):
         resolved, navigation_success = None, None
         if online_navigation_groups is not None:
             from cat_ppo.furniture.hand_curriculum import update_navigation_outcomes
@@ -201,7 +204,7 @@ class SamplePFWrapper(wrapper.Wrapper):
         weights = jnp.maximum((1.0 - success_rate) ** alpha, 1e-3)
         if contrast_roles is not None:
             from cat_ppo.furniture.contrastive_bank import role_balanced_logits
-            logits = role_balanced_logits(weights, contrast_roles)
+            logits = role_balanced_logits(weights, contrast_roles, contrast_masses)
         elif hand_curriculum_levels is not None:
             from cat_ppo.furniture.hand_curriculum import hand_scene_logits
             logits = hand_scene_logits(
@@ -246,7 +249,7 @@ class SamplePFWrapper(wrapper.Wrapper):
             done = done[None]
 
         state, pf_sampling_logits = self._update_pf_sampling_info(
-            state, done, self._hand_curriculum_levels, self._online_navigation_groups, self._contrast_roles)
+            state, done, self._hand_curriculum_levels, self._online_navigation_groups, self._contrast_roles, self._contrast_masses)
 
         rng = state.info["rng"]
         if pf_sampling_logits is None:

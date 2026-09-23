@@ -1,0 +1,259 @@
+--- a/cat_mjlab/task.py
++++ b/cat_mjlab/task.py
+@@ -40,7 +40,7 @@
+     privileged_observation_size=CRITIC_SIZE
+     action_size=29
+ 
+-    def __init__(self,sim,bank,config,*,collision=None,num_envs=None,device=None,seed=0,analytic_objects=None):
++    def __init__(self,sim,bank,config,*,collision=None,num_envs=None,device=None,seed=0,analytic_objects=None,reactive_bank=None):
+         from cat_mjlab import constants as const
+         from cat_ppo.furniture.control import JOINT_NAMES,mjlab_observation_contract
+         from cat_ppo.furniture.grippers import hand_sphere
+@@ -61,6 +61,11 @@
+         self.data,self.model=sim.data,sim.model
+         self.device=self.data.qpos.device if device is None else torch.device(device)
+         self.num_envs=len(self.data.qpos) if num_envs is None else num_envs
++        self.reactive=None
++        if reactive_bank is not None:
++            if analytic_objects is not None:raise ValueError('Choose one moving-object engine')
++            from .reactive import StandingObjects
++            analytic_objects=self.reactive=StandingObjects(bank=reactive_bank,num_envs=self.num_envs,model=self.model,device=self.device)
+         self.analytic_objects=analytic_objects
+         if analytic_objects is not None:
+             if analytic_objects.state['start'].shape[0]!=self.num_envs or analytic_objects.state['start'].device!=self.device:
+@@ -175,6 +180,7 @@
+                 (self.num_envs,),generator=self.generator,device=self.device)
+             if getattr(self,'balance_settings',None) is not None:
+                 self.info['wrapper_steps'][self.bank.flat_balance[self.scene_ids]]=0
++            if self.reactive is not None:self.info['wrapper_steps'][self.reactive.state['active']]=0
+ 
+     def set_policy_ids(self,policy_ids):
+         """Assign fixed world policies; policy zero supplies success metrics.
+@@ -274,6 +280,8 @@
+             radii=sdf.new_zeros((1,positions.shape[1],1));radii[:,5:7,0]=self.hand_radii
+             gf,bf,sdf=self.analytic_objects.merge(self._poses(ids),ids,self.data.time[ids],
+                 gf,bf,sdf,radii)
++        if self.reactive is not None:
++            cmd=torch.where(self.reactive.state['active'][ids,None],0.,cmd)
+         return gf,bf,sdf,cmd
+ 
+     def _elbow_fields(self,ids,actor):
+@@ -289,7 +297,9 @@
+         replacement-=(replacement*normal).sum(-1,keepdim=True).clamp_max(0)*normal*(sdf<.5)
+         replacement*=(command[:,0]>.5)[:,None,None]
+         gf=torch.where(self.navigation['enabled'][ids,None,None],replacement,gf)
+-        if self.analytic_objects is not None:
++        if self.reactive is not None:
++            gf,bf,sdf=self.reactive.arm_fields(self.data,ids,gf,bf,sdf)
++        elif self.analytic_objects is not None:
+             gf,bf,sdf=self.analytic_objects.merge(self.data.site_xpos[ids][:,self.elbow_ids],ids,
+                 self.data.time[ids],gf,bf,sdf,.05)
+         move=(self.info['step'][ids]==0)|(self.info['command'][ids,0]>.5)
+@@ -328,6 +338,8 @@
+         if scene_ids is None:
+             cdf=self.probabilities.cumsum(0);cdf=cdf/cdf[-1]
+             scene_ids=torch.searchsorted(cdf,self._rand((n,))).clamp_max(self.bank.count-1)
++        if self.reactive is not None:
++            scene_ids,reactive_active,reactive_qpos=self.reactive.choose(ids,self._rand((n,2)),scene_ids)
+         self.scene_ids[ids]=scene_ids
+         qpos=self.init_q.expand(n,-1).clone();qpos[:,:2]+=self._rand((n,2),-1,1);qpos[:,2]=.8
+         yaw=self._rand((n,),-np.pi/2,np.pi/2)
+@@ -344,10 +356,14 @@
+             seeded=self.raised_reset_eligible[scenes]&(self._rand((n,))<self.raised_reset_fraction)
+             pick=torch.randint(self.raised_reset_pool.shape[1],(n,),generator=self.generator,device=self.device)
+             qpos=torch.where(seeded[:,None],self.raised_reset_pool[scenes,pick],qpos)
++        if self.reactive is not None:
++            qpos=torch.where(reactive_active[:,None],reactive_qpos,qpos)
+         self.sim.reset_data(ids)
+         self.data.qpos[ids]=qpos;self.data.qvel[ids]=0.;self.data.qvel[ids,:6]=self._rand((n,6),-.5,.5)
+         if self.raised_reset_fraction:
+             self.data.qvel[ids]=torch.where(seeded[:,None],0.,self.data.qvel[ids])
++        if self.reactive is not None:
++            self.data.qvel[ids]=torch.where(reactive_active[:,None],0.,self.data.qvel[ids])
+         self.data.ctrl[ids]=qpos[:,7:];self.sim.forward(ids)
+         replaced=torch.zeros(n,dtype=torch.bool,device=self.device)
+         if self.collision is not None:
+@@ -397,6 +413,15 @@
+         defaults['kd']=self._rand((n,),*_get(self.config,'dm_rand_config.kd_range',[.75,1.25])) if _get(self.config,'dm_rand_config.enable_pd',True) else torch.ones(n,device=self.device)
+         defaults['rfi']=self._rand((n,29),*_get(self.config,'dm_rand_config.rfi_lim_range',[.5,1.5]))*float(_get(self.config,'dm_rand_config.rfi_lim',.1))*self.torque_limit
+         if not _get(self.config,'dm_rand_config.enable_rfi',True):defaults['rfi'].zero_()
++        if self.reactive is not None:
++            defaults['motor_targets']=torch.where(reactive_active[:,None],qpos[:,7:],defaults['motor_targets'])
++            for key in ('previous_upper','previous_previous_upper'):
++                defaults[key]=torch.where(reactive_active[:,None],qpos[:,19:],defaults[key])
++            # Match reset controller histories to the admitted posture.
++            action=torch.zeros_like(defaults['last_act'])
++            action[:,12:]=(qpos[:,19:]-self.nominal[12:])/self.upper_action_scales
++            for key in ('last_act','last_last_act'):
++                defaults[key]=torch.where(reactive_active[:,None],action,defaults[key])
+         for k,v in defaults.items():self._put(self.info,k,ids,v)
+         self._navigation(ids,reset=True)
+         if hasattr(self, 'speed_state'):
+@@ -408,6 +433,7 @@
+         bf=bf/(torch.linalg.vector_norm(bf,dim=-1,keepdim=True)+1e-6)
+         normalized_command=self.math.compute_cmd_from_rtf(gf[:,1],gf[:,[0,3,4,5,6]],bf[:,[0,3,4,5,6]])
+         command=torch.where(self.navigation['enabled'][ids,None],command,normalized_command)
++        if self.reactive is not None:command=torch.where(self.reactive.state['active'][ids,None],0.,command)
+         for k,v in dict(gf=gf,bf=bf,sdf=sdf,gf_delay=gf,bf_delay=bf,sdf_delay=sdf,positions=positions,
+                         velocities=torch.zeros_like(positions),command=command,command_delay=command,last_command=torch.zeros_like(command)).items():
+             self._put(self.info,k,ids,v)
+@@ -453,6 +479,7 @@
+         xy=((root[:,:2]<origin[:,:2])|(root[:,:2]>extent[:,:2])).any(-1)
+         outside=self.episode['outside_bounds'][ids]|torch.where(self.bank.crossed_is_plane[scenes],lateral,xy)
+         raw=self._crossed(points,ids).all(-1)&~xy
++        if self.reactive is not None:raw=raw&~self.reactive.state['active'][ids]
+         return raw&~outside,raw,outside
+ 
+     def _termination(self,regions,contacts):
+@@ -494,6 +521,7 @@
+         balance=getattr(self,'balance_settings',None) is not None
+         if balance:
+             flat=self.bank.flat_balance[self.scene_ids]
++            if self.reactive is not None:flat=flat&~self.reactive.state['active']
+         costs,telemetry=self.math.upper_stability_terms(i['motor_targets'][:,12:],i['previous_upper'],i['previous_previous_upper'],self.nominal[12:],
+             i['sdf'][:,5:7],i['elbow_clearance'],dt=self.dt,velocity_scale=float(_get(self.config,'upper_velocity_cost_scale',2.)),
+             acceleration_scale=float(_get(self.config,'upper_acceleration_cost_scale',20.)),posture_scale=float(_get(self.config,'upper_action_scale',.8)),
+@@ -672,7 +700,11 @@
+             action_scale=float(_get(self.config,'action_scale',.5)),upper_action_scale=self.upper_action_scales,
+             upper_target_rate=float(_get(self.config,'upper_target_rate',2.)),dt=self.dt)
+         regions=torch.zeros((self.num_envs,6),dtype=torch.bool,device=self.device)
++        robot_contacts=torch.zeros(self.num_envs,dtype=torch.bool,device=self.device)
++        dynamic_contacts=torch.zeros_like(robot_contacts)
+         for _ in range(self.n_substeps):
++            if self.reactive is not None:
++                moving_ids,before,before_gap=self.reactive.advance(self.sim.final_collision_data(),self.sim_dt)
+             feedforward=None
+             if self.upper_gravity is not None:
+                 # Derived poses after mj_step are pre-integration; refresh kinematics.
+@@ -683,6 +715,9 @@
+                 i['rfi'],self._rand((self.num_envs,29),-1.,1.),self.torque_limit,feedforward=feedforward)
+             d.ctrl.copy_(torque)
+             self.sim.step()
++            if self.reactive is not None:
++                dynamic,robot=self.reactive.contacts(self.sim.final_collision_data(),moving_ids,before,before_gap)
++                regions|=dynamic;robot_contacts|=robot;dynamic_contacts|=dynamic.any(-1)
+             if self.collision is not None:regions|=self.collision(self.scene_ids,d)
+         if self.collision is not None:regions|=self.collision(self.scene_ids,self.sim.final_collision_data())
+         contacts=self.sim.contact_flags(self.contact_pairs)
+@@ -714,6 +749,11 @@
+             from .speed_curriculum import speed_limit, standing_phase
+             _,_,hold=speed_limit(self.speed_state,self.contrast,ids,self.dt)
+             command,command_delay,stop,phase,gait=standing_phase(command,command_delay,stop,phase,gait,hold)
++        if self.reactive is not None:
++            active=self.reactive.state['active']
++            command=torch.where(active[:,None],0.,command)
++            command_delay=torch.where(active[:,None],0.,command_delay)
++            gait=torch.where(active[:,None],0.,gait)
+         move=(command[:,0]>.5)[:,None,None]
+         normalize=lambda field:field/(torch.linalg.vector_norm(field,dim=-1,keepdim=True)+1e-6)
+         normalized_gfd,normalized_bfd=normalize(gfd)*move,normalize(bfd)
+@@ -722,6 +762,7 @@
+         # Room guidance is an explicit override independent of this projection.
+         native_delayed=self.math.compute_cmd_from_rtf(normalized_gfd[:,1],normalized_gfd[:,[0,3,4,5,6]],normalized_bfd[:,[0,3,4,5,6]])
+         command_delay=torch.where(self.navigation['enabled'][:,None],command_delay,native_delayed)
++        if self.reactive is not None:command_delay=torch.where(self.reactive.state['active'][:,None],0.,command_delay)
+         i.update(gf=normalize(gf)*move,bf=normalize(bf),sdf=sdf,gf_delay=normalized_gfd,bf_delay=normalized_bfd,sdf_delay=sdfd,
+                  command=command,command_delay=command_delay,odom_delay=odom,stop_timestep=stop,phase=phase,gait=gait,
+                  positions=positions,velocities=velocities)
+@@ -733,7 +774,9 @@
+         penalty=-float(_get(self.config,'wholebody.body_collision.event_penalty',1.))*regions.any(-1)
+         if self.collision is not None:reward+=penalty;components['body_collision_event']=penalty
+         i['wrapper_steps']+=1
+-        timeout=i['wrapper_steps']>=self.bank.episode_lengths[self.scene_ids]
++        horizon=self.bank.episode_lengths[self.scene_ids]
++        if self.reactive is not None:horizon=torch.where(self.reactive.state['active'],self.reactive.episode_steps,horizon)
++        timeout=i['wrapper_steps']>=horizon
+         truncated=timeout&~terminated;done=terminated|timeout
+         resolved,successful=self._outcomes(done,truncated)
+         self.episode_reward+=reward
+@@ -742,6 +785,11 @@
+         metrics.update(navigation_counts=self.navigation_counts.clone(),contrast_counts=self.contrast_counts.clone(),role_counts=self.role_counts.clone(),
+             episode_return=self.episode_reward.clone(),episode_length=i['step'].clone(),resolved=resolved,successful=successful,
+             scene_ids=self.scene_ids.clone(),collision_regions=regions)
++        if self.reactive is not None:
++            metrics.update({'reactive/active_steps':self.reactive.state['active'].clone(),
++                'reactive/robot_initiated_contacts':robot_contacts,
++                'reactive/object_initiated_contacts':dynamic_contacts&~robot_contacts,
++                'reactive/completed_episodes':self.reactive.state['active']&done})
+         metrics['acceptance/hand_clearance']=i['sdf'][:,5:7,0].clone()
+         metrics['acceptance/root_xy']=d.qpos[:,:2].clone()
+         from .response_split import initial, advance, PREFIX
+@@ -779,6 +827,7 @@
+             metrics['contrast_zone_seen'], metrics['contrast_zone_required'] = self._zone_progress_counts()
+         if getattr(self,'balance_settings',None) is not None:
+             flat=self.bank.flat_balance[self.scene_ids];t=self.telemetry
++            if self.reactive is not None:flat=flat&~self.reactive.state['active']
+             valid=flat&t['balance_walking']&t['balance_compliant']&~terminated
+             self.balance_streak=torch.where(valid,self.balance_streak+1,0)
+             metrics.update({'balance/flat':flat,'balance/walking':t['balance_walking'],
+@@ -943,8 +992,13 @@
+         restored_objects=None
+         if self.analytic_objects is not None:
+             from .analytic_objects import AnalyticObjects
+-            restored_objects=AnalyticObjects(**restored['analytic_object_state'])
++            if self.reactive is None:
++                restored_objects=AnalyticObjects(**restored['analytic_object_state'])
++            else:
++                restored_objects=self.reactive
+         # Validate everything before mutating the live task.
+         self.generator.set_state(state['rng'].cpu())
+         for name,value in restored.items():setattr(self,name,value)
+-        if restored_objects is not None:self.analytic_objects=restored_objects
++        if restored_objects is not None:
++            self.analytic_objects=restored_objects
++            self.analytic_objects.state=self.analytic_object_state
+--- a/train_cat_mjlab.py
++++ b/train_cat_mjlab.py
+@@ -67,6 +67,7 @@
+                             help="Rolling unseeded completed episodes per protected/transition role (default 256)")
+         target.add_argument("--require-hand-contrast", action="store_true",
+                             help="Fail before GPU allocation unless hand and heading objectives have coverage")
++        target.add_argument("--reactive-bank", type=Path, help="Opt-in pinned 75/25 standing-object overlay")
+         target.add_argument("--bank-manifest", type=Path, required=True)
+         target.add_argument("--body-collision-bank", type=Path, required=True)
+         target.add_argument("--body-collision-resets", type=Path, required=True)
+--- a/cat_mjlab/runner.py
++++ b/cat_mjlab/runner.py
+@@ -271,6 +271,7 @@
+     outcomes = {}
+     dense = {}
+     response_counts = {}
++    reactive_counts = {}
+     from .balance import BalanceMetrics
+     balance_metrics=BalanceMetrics()
+     acceptance = getattr(task, 'acceptance_observer', None)
+@@ -301,6 +302,8 @@
+             done = transition["done"]
+             metrics = transition["metrics"]
+             for key, value in metrics.items():
++                if key.startswith('reactive/'):
++                    reactive_counts[key]=reactive_counts.get(key,0)+value.sum()
+                 if key.startswith('response_split/') and not key.endswith('active_count'):
+                     name = key.split('/',1)[1]
+                     response_counts[name] = response_counts.get(name, 0) + value.sum()
+@@ -368,6 +371,7 @@
+     info["metrics"] = {"training/completed_episode_count": float(completed), "training/action_std": float(info["action_std"])}
+     info["dense"] = dense
+     info['metrics'].update(balance_metrics.result())
++    info['metrics'].update({'training/'+k:float(v) for k,v in reactive_counts.items()})
+     from .response_split import summaries
+     info['metrics'].update({'training/response_split/'+k:v for k,v in
+         summaries({k:float(v) for k,v in response_counts.items()}).items()})
+@@ -492,7 +496,7 @@
+     resolved=reward_overrides(bank.balance_settings,config.get('flat_balance_reward'),
+         bonus_scale=getattr(args,'flat_bonus_scale',None),region_scale=getattr(args,'flat_region_scale',None))
+     if resolved is not None:config['flat_balance_reward']=resolved
+-    task = CATTask(sim, bank, config, collision=collision, seed=args.seed)
++    task = CATTask(sim, bank, config, collision=collision, seed=args.seed, reactive_bank=getattr(args,"reactive_bank",None))
+     if args.compile_task:
+         task.enable_compilation()
+     return task, sim, config
+@@ -658,6 +662,8 @@
+         contract["initial_action_std"] = initial_std
+     if getattr(args, "passage_rewards", None) is not None:
+         contract["passage_rewards_sha256"] = _file_hash(args.passage_rewards)
++    if getattr(args,'reactive_bank',None) is not None:
++        contract['reactive_bank_sha256']=_file_hash(args.reactive_bank)
+     contract = json.loads(json.dumps(contract))  # tuples -> JSON lists consistently
+     selection = "role-balanced leader training success" if task.hand_contrast else "leader mean physical rollout reward"
+     hand_upgrade = getattr(task, 'checkpoint_selection_roles', (0, 1, 2, 3)) == (1,)

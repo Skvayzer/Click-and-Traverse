@@ -19,6 +19,8 @@ No evaluation, retention gate, rollback, learning-rate schedule or reward change
 """
 from __future__ import annotations
 
+from .observation_contract import ACTOR_SIZE, CRITIC_SIZE
+
 from dataclasses import asdict, dataclass
 import math
 
@@ -30,8 +32,8 @@ from torch.nn import functional as F
 @dataclass(frozen=True)
 class LearnerConfig:
     algorithm: str = "sapg"
-    actor_obs: int = 222
-    critic_obs: int = 310
+    actor_obs: int = ACTOR_SIZE
+    critic_obs: int = CRITIC_SIZE
     action_size: int = 29
     actor_hidden: tuple[int, ...] = (512, 256, 128, 64)
     critic_hidden: tuple[int, ...] = (1024, 512, 256, 128)
@@ -48,6 +50,7 @@ class LearnerConfig:
     num_minibatches: int = 64
     num_updates_per_batch: int = 4
     prepare_chunk_size: int = 64
+    max_action_std: float | None = None
 
     def __post_init__(self):
         if self.algorithm not in ("ppo", "sapg"):
@@ -62,6 +65,8 @@ class LearnerConfig:
             raise ValueError("Invalid clipping or discount/GAE coefficient")
         if any(not math.isfinite(v) or v < 0 for v in (self.learning_rate, self.entropy_cost, self.reward_scaling)):
             raise ValueError("Learning and reward coefficients must be finite and nonnegative")
+        if self.max_action_std is not None and (not math.isfinite(self.max_action_std) or self.max_action_std <= .001):
+            raise ValueError("max_action_std must exceed the distribution floor .001 or be None")
         if self.max_grad_norm is not None and (not math.isfinite(self.max_grad_norm) or self.max_grad_norm <= 0):
             raise ValueError("max_grad_norm must be positive or None")
 
@@ -104,7 +109,14 @@ class ActorCritic(nn.Module):
         return torch.cat((observations, F.embedding(ids, self.policy_embeddings)), dim=-1)
 
     def logits(self, state, policy_ids=0):
-        return self.actor(self.condition(state, policy_ids))
+        logits = self.actor(self.condition(state, policy_ids))
+        if self.config.max_action_std is None:
+            return logits
+        # CAT parameterizes sigma with softplus, not an independent log-sigma.
+        # Capping this monotone head is equivalent to capping log(sigma).
+        mean, raw_scale = logits.chunk(2, dim=-1)
+        maximum = math.log(math.expm1(self.config.max_action_std - .001))
+        return torch.cat((mean, raw_scale.clamp_max(maximum)), dim=-1)
 
     def value(self, privileged_state, policy_ids=0):
         return self.critic(self.condition(privileged_state, policy_ids)).squeeze(-1)
@@ -248,6 +260,9 @@ def prepare_sapg_rollout(model, data, config, *, follower_id=None):
     leader_advantage = (leader_target - leader_baseline) * (1 - follower["truncation"])
     result = {key: torch.cat((value, follower[key]), dim=0) for key, value in data.items()}
     advantage = torch.cat((advantage, leader_advantage), dim=0)
+    if 'task_bucket' in result:
+        result['raw_advantage']=advantage.clone()
+        result['initial_value_error']=torch.cat((target-baseline,leader_target-leader_baseline))
     if config.normalize_advantage:
         advantage = _normalize(advantage)
     advantage *= 1 - result["truncation"]
@@ -258,6 +273,47 @@ def prepare_sapg_rollout(model, data, config, *, follower_id=None):
         target_policy_id=torch.cat((ids, leader_ids)),
         action_std=torch.cat((std, std[selected])),
     )
+    return result
+
+
+@torch.no_grad()
+def ratio_diagnostics(log_prob, data, config):
+    """Detached minibatch diagnostics; ESS uses shifted weights to avoid overflow.
+
+    Quantiles/ESS are averaged over nonempty minibatches by update(); maxima
+    retain the maximum across the update. Counts include repeated PPO epochs.
+    """
+    behavior = data["policy_id"]
+    target = data.get("target_policy_id", behavior)
+    old = data.get("old_target_log_prob", data["log_prob"])
+    importance = data.get("log_importance", torch.zeros_like(log_prob))
+    ratio = log_prob.detach() - old
+    lower, upper = math.log1p(-config.clipping_epsilon), math.log1p(config.clipping_epsilon)
+    result = {}
+    for name, mask in (("on_policy_leader", (target == 0) & (behavior == 0)),
+                       ("followers", target != 0),
+                       ("relabeled_leader", (target == 0) & (behavior != 0))):
+        weights = importance[mask].double()
+        if not weights.numel():
+            continue
+        prefix = f"diagnostics/{name}/"
+        result[prefix + "sample_count"] = weights.new_tensor(weights.numel())
+        for label, q in (("p01", .01), ("p50", .5), ("p95", .95), ("p99", .99)):
+            result[prefix + "importance_log_weight_" + label] = torch.quantile(weights, q)
+        result[prefix + "importance_log_weight_max"] = weights.max()
+        shifted = (weights - weights.max()).exp()
+        ess = shifted.sum().square() / shifted.square().sum()
+        result[prefix + "importance_ess"] = ess
+        result[prefix + "importance_ess_fraction"] = ess / weights.numel()
+        result[prefix + "ppo_ratio_clip_fraction"] = ((ratio[mask] < lower) | (ratio[mask] > upper)).double().mean()
+    if 'task_bucket' in data:
+        bucket=data['task_bucket']
+        for name,mask in [('retention',bucket<4),('narrow',bucket==4),('flat',bucket==5)]:
+            selected=ratio[mask]
+            if selected.numel():
+                prefix=f'diagnostics/task_updates/{name}/'
+                result[prefix+'sample_count']=selected.new_tensor(selected.numel())
+                result[prefix+'ppo_ratio_clip_fraction']=((selected<lower)|(selected>upper)).float().mean()
     return result
 
 
@@ -288,7 +344,32 @@ def compute_loss(model, data, config, *, entropy_noise=None):
     value_loss = .25 * (targets - baseline).square().mean()
     entropy_loss = -config.entropy_cost * transformed_entropy(logits, entropy_noise).mean()
     total = policy_loss + value_loss + entropy_loss
-    return total, dict(total_loss=total, policy_loss=policy_loss, v_loss=value_loss, entropy_loss=entropy_loss)
+    return total, dict(total_loss=total, policy_loss=policy_loss, v_loss=value_loss, entropy_loss=entropy_loss) | ratio_diagnostics(log_prob, data, config)
+
+
+@torch.no_grad()
+def task_share_diagnostics(data):
+    """Augmented SAPG batch, before optimization; descriptive shares, not gradients."""
+    if 'raw_advantage' not in data:return {}
+    raw=data['raw_advantage'];adv=data['advantage'];reward=data['reward'];err=data['initial_value_error']
+    bucket=data['task_bucket'];prefix='diagnostics/task_share/'
+    out={prefix+'raw_advantage_mean':float(raw.mean()),prefix+'raw_advantage_std':float(raw.std(correction=0))}
+    denom_adv=adv.abs().sum().clamp_min(1e-12);denom_reward=reward.abs().sum().clamp_min(1e-12)
+    denom_value=err.square().sum().clamp_min(1e-12)
+    for name,mask in [('retention',bucket<4),('narrow',bucket==4),('flat',bucket==5)]:
+        p=prefix+name+'/'
+        count=int(mask.sum());out[p+'sample_count']=count;out[p+'sample_fraction']=count/raw.numel()
+        if not count:continue
+        out.update({p+'reward_mean':float(reward[mask].mean()),
+            p+'absolute_reward_share':float(reward[mask].abs().sum()/denom_reward),
+            p+'raw_advantage_mean':float(raw[mask].mean()),p+'raw_advantage_std':float(raw[mask].std(correction=0)),
+            p+'normalized_advantage_abs_mean':float(adv[mask].abs().mean()),
+            p+'normalized_advantage_mean':float(adv[mask].mean()),
+            p+'normalized_advantage_positive_fraction':float((adv[mask]>0).float().mean()),
+            p+'normalized_advantage_abs_share':float(adv[mask].abs().sum()/denom_adv),
+            p+'initial_value_error_mse':float(err[mask].square().mean()),
+            p+'initial_value_error_squared_share':float(err[mask].square().sum()/denom_value)})
+    return out
 
 
 class Learner:
@@ -301,6 +382,16 @@ class Learner:
                                            betas=(.9, .999), eps=1e-8, foreach=False)
         self.updates = 0
         self.env_steps = 0
+
+    @torch.no_grad()
+    def reset_action_std(self, sigma):
+        if not math.isfinite(sigma) or sigma <= .001 or (self.config.max_action_std is not None and sigma > self.config.max_action_std):
+            raise ValueError("Initial sigma must exceed .001 and not exceed its ceiling")
+        if self.optimizer.state:
+            raise ValueError("Resetting sigma requires a fresh optimizer")
+        layer = self.model.actor.layers[-1]
+        layer.weight[self.config.action_size:].zero_()
+        layer.bias[self.config.action_size:].fill_(math.log(math.expm1(sigma - .001)))
 
     @torch.no_grad()
     def act(self, state, privileged_state=None, policy_ids=None, *, deterministic=False):
@@ -324,10 +415,13 @@ class Learner:
         reward_proxy = data["reward"][leader].mean()
         if self.config.algorithm == "sapg":
             data = prepare_sapg_rollout(self.model, data, self.config)
+        shares=task_share_diagnostics(data)
+        for key in ('raw_advantage','initial_value_error'):data.pop(key,None)
         rows = data["reward"].shape[0]
         if rows % self.config.num_minibatches:
             raise ValueError("Augmented trajectory count must divide evenly into num_minibatches")
         totals = {}
+        metric_steps = {}
         steps = 0
         for _ in range(self.config.num_updates_per_batch):
             permutation = torch.randperm(rows, device=self.device)
@@ -350,22 +444,27 @@ class Learner:
                         gradient.mul_(factor)
                 self.optimizer.step()
                 for key, value in metrics.items():
-                    totals[key] = totals.get(key, 0.) + value.detach()
+                    value = value.detach()
+                    if key.endswith("_max"):
+                        totals[key] = torch.maximum(totals.get(key, value), value)
+                    else:
+                        totals[key] = totals.get(key, 0.) + value
+                    metric_steps[key] = metric_steps.get(key, 0) + 1
                 steps += 1
         self.updates += 1
         self.env_steps += physical
-        return {key: float(value / steps) for key, value in totals.items()} | {
+        return {key: float(value if key.endswith(("_max", "/sample_count")) else value / metric_steps[key]) for key, value in totals.items()} | {
             "rollout_reward_mean": float(reward_proxy), "optimizer_steps": steps,
             "physical_transitions": physical, "optimizer_transitions": data["reward"].numel(),
             "env_steps": self.env_steps, "updates": self.updates,
-        }
+        } | shares
 
     def state_dict(self):
         return dict(schema="cat-mjlab-learner-v1", config=asdict(self.config), model=self.model.state_dict(),
                     optimizer=self.optimizer.state_dict(), updates=self.updates, env_steps=self.env_steps)
 
     def load_state_dict(self, state):
-        if state.get("schema") != "cat-mjlab-learner-v1" or state.get("config") != asdict(self.config):
+        if state.get("schema") != "cat-mjlab-learner-v1" or dict(state.get("config", {}), max_action_std=state.get("config", {}).get("max_action_std")) != asdict(self.config):
             raise ValueError("Learner schema or configuration differs")
         self.model.load_state_dict(state["model"], strict=True)
         self.optimizer.load_state_dict(state["optimizer"])

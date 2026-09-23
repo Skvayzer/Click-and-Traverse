@@ -31,7 +31,7 @@ PROPOSAL = Path(__file__).resolve().parents[2] / "docs/assets/collision-proxy-pr
 @lru_cache(maxsize=1)
 def _robot():
     import mujoco
-    from cat_ppo.envs.g1.env_cat_wholebody import assemble_training_xml
+    from cat_mjlab.model import assemble_training_xml
     from cat_ppo.furniture.body_collision_geometry import compile_proposal
     model = mujoco.MjModel.from_xml_string(assemble_training_xml())
     return model, compile_proposal(json.loads(PROPOSAL.read_text()), model)
@@ -40,7 +40,7 @@ def _robot():
 def arm_pose(mode="nominal", fraction=1.):
     """Actual 29-joint G1/Dex3 qpos; arm offsets stay within ±0.8 rad."""
     import mujoco
-    from cat_ppo.envs.g1.constants import DEFAULT_QPOS
+    from cat_mjlab.constants import DEFAULT_QPOS
     if mode not in ("nominal", "raised", "tucked") or not 0 <= fraction <= 1:
         raise ValueError("Invalid pose mode or interpolation fraction")
     model, _ = _robot()

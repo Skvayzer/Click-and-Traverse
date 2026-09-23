@@ -59,8 +59,9 @@ def motor_targets(action,previous,nominal,lower,upper,*,action_scale=.5,upper_ac
     return torch.cat((legs,arms),-1)
 
 
-def pd_torque(joint_pos,joint_vel,targets,kps,kds,kp_scale,kd_scale,rfi_scale,noise,torque_limit):
+def pd_torque(joint_pos,joint_vel,targets,kps,kds,kp_scale,kd_scale,rfi_scale,noise,torque_limit,feedforward=None):
     torque=(kp_scale[:,None]*kps)*(targets-joint_pos)+(kd_scale[:,None]*kds)*(-joint_vel)
+    if feedforward is not None:torque=torque+feedforward
     torque=torque+rfi_scale*noise
     return torch.maximum(torch.minimum(torque,torque_limit),-torque_limit)
 
@@ -190,15 +191,20 @@ def gf_reward(guidance,velocity,sdf,crossed,*,tau):
     return torch.where(crossed,4.,near).mean(-1)
 
 
-def sdf_reward(sdf):
-    return (-20.*F.softplus((.05-sdf)/.02)).flatten(1).mean(-1)
+def sdf_reward(sdf, knee=None):
+    legacy = (-20.*F.softplus((.05-sdf)/.02)).flatten(1).mean(-1)
+    if knee is None:
+        return legacy
+    modified = (-20.*F.softplus((knee[:, None, None]-sdf)/.02)).flatten(1).mean(-1)
+    # Preserve the exact legacy arithmetic for every unmodified/outside row.
+    return torch.where(knee == .05, legacy, modified)
 
 
 def native_rewards(*,action,last_action,last_last_action,joint_pos,joint_vel,last_joint_vel,
         lower,upper,actuator_force,command,pelvis_rpy,torso_rpy,head_z,torso_height,
         global_velocity,torso_angvel,navi,leg_rotations,feet_pos,feet_sensor_velocity,
         subtree_com,feet_contact,gait,foot_height,foot_height_stance,gf,positions,velocities,sdf,
-        crossed,dt=.02,max_yaw=.5):
+        crossed,dt=.02,max_yaw=.5,sdf_knee=None):
     move=command[:,0];cmd=command[:,1:]
     pitch_negative=torso_rpy[:,1].clamp(-torch.pi,0).abs()
     orientation=pelvis_rpy[:,0].abs()+torso_rpy[:,0].abs()+pitch_negative+(head_z>torso_height+.1)*torso_rpy[:,1].abs()
@@ -232,5 +238,21 @@ def native_rewards(*,action,last_action,last_last_action,joint_pos,joint_vel,las
         if name=='feet':mask=mask|(gait==1)
         rewards[name+'gf']=gf_reward(gf[:,section],velocities[:,section],sdf[:,section],mask,tau=tau)
     for name,section in (('head',slice(0,1)),('feet',slice(3,5)),('hands',slice(5,7)),('knees',slice(7,9)),('shlds',slice(9,11))):
-        rewards[name+'df']=sdf_reward(sdf[:,section])
+        rewards[name+'df']=sdf_reward(sdf[:,section],sdf_knee)
     return {k:torch.where(torch.isnan(v),0.,v) for k,v in rewards.items()}
+
+
+def protected_hand_sdf_reward(sdf, context, knee=None):
+    """Relax positive-clearance comfort shaping only in protected hand zones.
+
+    Preserve original penalty at/below contact, fade the discretionary margin
+    to zero at >=5 cm clearance. Collision checks are unchanged.
+    """
+    legacy_knee = torch.full_like(sdf, .05) if knee is None else knee[:,None,None].expand_as(sdf)
+    active = context['hand_active'] & (context['role']==1)[:,None]
+    phase = context['phase_weight'].clamp(0,1)
+    blend = phase.square()*(3-2*phase)
+    u = (sdf/.05).clamp(0,1)
+    clearance_blend = u.square()*(3-2*u)
+    effective = legacy_knee*(1-blend[:,None,None]*active[:,:,None]*clearance_blend)
+    return (-20.*F.softplus((effective-sdf)/.02)).flatten(1).mean(-1)

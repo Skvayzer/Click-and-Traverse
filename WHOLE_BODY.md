@@ -1,5 +1,7 @@
 # CAT whole-body traversal and hand protection
 
+**Current native contract:** actor **222** / critic **310**. Authored box features and rewards are removed; see [removal and from-scratch launch](docs/NATIVE_CLEARANCE_REMOVAL_20260922.md).
+
 **2026-09-16 update:** [full-body primitive collision training and restart](docs/CAT_BODY_COLLISION_TRAINING_20260916.md) adds the approved 35 shapes, physics-substep collision termination and an explicit terminal penalty, together with the corrected room routes. The contract remains [222 actor inputs / 310 critic inputs / 29 actions](docs/CAT_COMPACT_SPHERE_SETUP_20260916.md). The implementation report records capacity and current launch status; [earlier stopped-run evidence](docs/ROOM_NAVIGATION_FIX_20260916.md) is preserved.
 
 The setup, run settings and commands below describe the **September 15 historical configuration**, including its retired 406-input contract; use the dated September 16 reports above for the current state.

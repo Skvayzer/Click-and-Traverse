@@ -14,6 +14,7 @@ def main():
     parser.add_argument("--field-manifest", type=Path, required=True)
     parser.add_argument("--proposal", type=Path, default=Path("docs/assets/collision-proxy-proposal-20260916/proposal.json"))
     parser.add_argument("--output", type=Path, required=True)
+    parser.add_argument("--base-collision-manifest", type=Path, help="Reuse a verified immutable geometry prefix")
     parser.add_argument("--cell-size", type=float, default=.25)
     parser.add_argument("--workers", type=int, default=4)
     parser.add_argument("--download", action="store_true", help="Fetch missing released occupancy by its pinned LFS SHA256")
@@ -21,7 +22,7 @@ def main():
     args = parser.parse_args()
     result = build_body_collision_bank(args.field_manifest, args.proposal, args.output,
         cell_size=args.cell_size, workers=args.workers, download=args.download,
-        inventory_only=args.inventory_only,
+        inventory_only=args.inventory_only, base_collision_manifest=args.base_collision_manifest,
         progress=lambda record: print(json.dumps(record), flush=True))
     print(json.dumps({key: value for key, value in result.items() if key not in ("scenes", "arrays")}, indent=2))
 

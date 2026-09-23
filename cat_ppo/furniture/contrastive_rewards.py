@@ -25,7 +25,7 @@ def pack_hand_contrast(scenes):
     count = len(scenes)
     arrays = {
         "enabled": np.zeros(count, dtype=bool),
-        "role": np.zeros(count, dtype=np.int32),
+        "role": np.full(count, -1, dtype=np.int32),
         "zone_valid": np.zeros((count, MAX_ZONES), dtype=bool),
         "start_m": np.zeros((count, MAX_ZONES), dtype=np.float32),
         "end_m": np.zeros((count, MAX_ZONES), dtype=np.float32),

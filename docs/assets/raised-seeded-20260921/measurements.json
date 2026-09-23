@@ -1,0 +1,58 @@
+{
+  "motion": {
+    "method": "Prescribed filtered targets + CPU FK; static root, full zone weight; pre-clipping reward units",
+    "observed_joint_trajectory_available": false,
+    "nominal_region_cost": 0.9278778433799744,
+    "raised_region_cost": 0.0,
+    "raised_compliance": 1.0,
+    "comparisons": [
+      {
+        "rate_rad_s": 2.0,
+        "motion_steps": 20,
+        "hold_steps": 100,
+        "velocity": 0.0015890925824643034,
+        "acceleration": 0.0004236776873471622,
+        "waist_and_posture": 0.0,
+        "region_benefit": 6.00320828989149,
+        "hold_benefit": 5.567267060279855,
+        "discounted_cost": 0.0017224556530463894,
+        "discounted_benefit": 1.9371890863702848,
+        "total_motion_cost": 0.002012770269811466
+      },
+      {
+        "rate_rad_s": 1.0,
+        "motion_steps": 39,
+        "hold_steps": 100,
+        "velocity": 0.0007982265073929021,
+        "acceleration": 0.0001111764115993989,
+        "waist_and_posture": 0.0,
+        "region_benefit": 6.355651413621391,
+        "hold_benefit": 5.567267060279855,
+        "discounted_cost": 0.0006674191573269923,
+        "discounted_benefit": 1.538940467040309,
+        "total_motion_cost": 0.000909402918992301
+      }
+    ]
+  },
+  "reset_certificate": {
+    "schema": "cat-raised-reset-v1",
+    "scenes": 12,
+    "poses": 48,
+    "qpos_sha256": "5066060fd4e1521d5e1c813aea1288f755969bd754b737572b99118a4ae7b325",
+    "minimum_native_field_clearance_m": 0.10760949552059174,
+    "body_collision_count": 0,
+    "hand_region_cost_max": 0.0,
+    "compliance_fraction": 1.0,
+    "preset_fraction": 0.95,
+    "dynamic_feasibility_validated": false
+  },
+  "validation": {
+    "targeted_cpu_tests_passed": 20,
+    "pilot_shell_syntax": "pass",
+    "pilot_parser_only": "pass",
+    "training_launched": false,
+    "checkpoint_opened": false,
+    "gpu_used": false,
+    "broader_legacy_suite": "Missing jaxlie, ml_collections, mujoco_playground; two stale width_levels fixtures. Not green."
+  }
+}

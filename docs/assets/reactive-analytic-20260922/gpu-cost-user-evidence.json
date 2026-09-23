@@ -1,0 +1,56 @@
+{
+  "gate": "8-object observation query cost cleared from user GPU evidence; full guard/collision cost unmeasured",
+  "log_line": 154,
+  "update_seconds": 101.05985484000121,
+  "steps_per_env_per_update": 32.0,
+  "amortized_seconds_per_batched_control_step": 3.1581204637500377,
+  "rollout_learning_split": "not recorded; no training launched to measure it",
+  "measurements": [
+    {
+      "objects": 1,
+      "source": "user-provided external RTX 6000 Ada run; not independently measured in sandbox",
+      "envs": 30720,
+      "median_ms": 3.429,
+      "persistent_bytes": 2734080,
+      "peak_incremental_bytes": 86691840,
+      "estimated_ms_at_37632": 4.200525,
+      "estimated_update_overhead_fraction": 0.0013300711762629165,
+      "estimated_peak_bytes_at_37632": 106197504.00000001
+    },
+    {
+      "objects": 2,
+      "source": "user-provided external RTX 6000 Ada run; not independently measured in sandbox",
+      "envs": 30720,
+      "median_ms": 5.85,
+      "persistent_bytes": 5468160,
+      "peak_incremental_bytes": 167792640,
+      "estimated_ms_at_37632": 7.16625,
+      "estimated_update_overhead_fraction": 0.0022691503007110122,
+      "estimated_peak_bytes_at_37632": 205545984.00000003
+    },
+    {
+      "objects": 4,
+      "source": "user-provided external RTX 6000 Ada run; not independently measured in sandbox",
+      "envs": 30720,
+      "median_ms": 10.96,
+      "persistent_bytes": 10936320,
+      "peak_incremental_bytes": 328957952,
+      "estimated_ms_at_37632": 13.426000000000002,
+      "estimated_update_overhead_fraction": 0.00425126278560559,
+      "estimated_peak_bytes_at_37632": 402973491.20000005
+    },
+    {
+      "objects": 8,
+      "source": "user-provided external RTX 6000 Ada run; not independently measured in sandbox",
+      "envs": 30720,
+      "median_ms": 21.315,
+      "persistent_bytes": 21872640,
+      "peak_incremental_bytes": 643203072,
+      "estimated_ms_at_37632": 26.110875000000004,
+      "estimated_update_overhead_fraction": 0.008267852762334228,
+      "estimated_peak_bytes_at_37632": 787923763.2
+    }
+  ],
+  "disk_free_bytes": 444071936,
+  "completion": false
+}

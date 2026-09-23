@@ -17,15 +17,19 @@ def validate_contrastive_manifest(manifest, *, path=None, verify_files=False):
     marker = manifest.get("contrastive_specialist", {})
     if (marker.get("schema") not in (MARKER, TABLE_MARKER) or manifest.get("schema") != "cat-generalist-field-bank-v2"
             or "specialist" in manifest or manifest.get("hand_protection_curriculum")
-            or marker.get("role_reset_masses") != dict.fromkeys(ROLES, .25)
             or any(manifest.get(key) != 0 for key in
                    ("original_count", "byte_verified_original_count", "reconstructed_original_count"))):
         raise ValueError("Invalid explicit contrastive specialist bank")
+    masses=marker.get('role_reset_masses',{})
+    if set(masses)!=set(ROLES) or any(not np.isfinite(v) or v<=0 for v in masses.values()) or not np.isclose(sum(masses.values()),1.):
+        raise ValueError('Role reset masses must be positive and sum to one')
     from cat_ppo.furniture.contrastive_rewards import pack_hand_contrast
     from cat_ppo.furniture.room_navigation import scene_navigation_radius
     groups, seen_seeds, families = defaultdict(dict), {}, {}
     for record in manifest["scenes"]:
         contrast = record.get("source", {}).get("hand_contrast", {})
+        if contrast.get('certificate_semantics')=='width-curriculum-scaffold-v1':
+            raise ValueError('Width scaffolds require their explicit curriculum manifest, not a specialist label')
         group, role = contrast.get("group_id"), contrast.get("role")
         if (record.get("family") != "generic_clutter" or role not in ROLES
                 or not isinstance(group, str) or role in groups[group]
@@ -85,6 +89,10 @@ def validate_contrastive_manifest(manifest, *, path=None, verify_files=False):
 
 
 def contrastive_roles(manifest):
+    if 'width_curriculum' in manifest:
+        from .width_curriculum import validate_width_manifest
+        validate_width_manifest(manifest)
+        return np.asarray([ROLES.index(s['source']['hand_contrast']['role']) if s.get('source',{}).get('hand_contrast') else -1 for s in manifest['scenes']],np.int32)
     if "contrastive_specialist" not in manifest:
         return None
     validate_contrastive_manifest(manifest)
@@ -92,11 +100,12 @@ def contrastive_roles(manifest):
                        for s in manifest["scenes"]], np.int32)
 
 
-def role_balanced_logits(weights, roles):
-    """25% reset probability per role, adapting only within that role."""
+def role_balanced_logits(weights, roles, masses=None):
+    """Configured role masses; the legacy default remains 25% each."""
     import jax.numpy as jp
-    totals = jp.zeros(4, weights.dtype).at[roles].add(weights)
-    probabilities = .25 * weights / jp.maximum(totals[roles], 1e-20)
+    masses = jp.asarray([.25]*4 if masses is None else masses, dtype=weights.dtype)
+    totals = jp.zeros(len(masses), weights.dtype).at[roles].add(weights)
+    probabilities = masses[roles] * weights / jp.maximum(totals[roles], 1e-20)
     return jp.where(probabilities > 0, jp.log(jp.maximum(probabilities, 1e-30)), -jp.inf)
 
 

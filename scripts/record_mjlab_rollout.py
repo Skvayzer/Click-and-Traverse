@@ -29,6 +29,8 @@ def parser():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--checkpoint", type=Path, required=True, help="Native mjlab best.pt or resume.pt")
     p.add_argument("--bank-manifest", type=Path, required=True)
+    p.add_argument("--reactive-bank", type=Path,
+                   help="Optional cat-reactive-standing-v1 manifest; adds approaching objects")
     p.add_argument("--body-collision-bank", type=Path, required=True)
     p.add_argument("--body-collision-resets", type=Path, required=True)
     p.add_argument("--scene-id", required=True)
@@ -153,7 +155,9 @@ def write_geometry(directory, bank_manifest, record):
     from cat_mjlab.model import assemble_training_xml
     xml = ET.fromstring(assemble_training_xml())
     world = xml.find("worldbody")
-    scene_dir = Path(bank_manifest).resolve().parent / record["path"]
+    from cat_ppo.furniture.generalist_fields import load_generalist_manifest, scene_directory
+    _mp = Path(bank_manifest).resolve()
+    scene_dir = scene_directory(load_generalist_manifest(_mp, verify_files=False), _mp, record)
     is_cat = record.get("task_kind", "cat" if record["family"] == "original_cat" else "room") == "cat"
     if is_cat:
         from scripts.evaluate_clutter_checkpoint import cat_obstacle_mesh
@@ -193,8 +197,8 @@ def main(argv=None):
     import numpy as np
     import torch
     from cat_mjlab.runner import create_task
-    if torch.device(args.device).type != "cuda" or not torch.cuda.is_available():
-        raise ValueError("Native mjlab recording requires a CUDA device")
+    if torch.device(args.device).type == "cuda" and not torch.cuda.is_available():
+        raise ValueError("Native mjlab recording requested CUDA but no CUDA device is available")
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed_all(args.seed)
     torch.backends.cuda.matmul.allow_tf32 = False
@@ -205,8 +209,9 @@ def main(argv=None):
     selected = [i for i, scene in enumerate(manifest["scenes"]) if str(scene["scene_id"]) == args.scene_id]
     if len(selected) != 1:
         raise ValueError("--scene-id must identify exactly one scene in the checkpoint bank")
-    if (learner.config.actor_obs, learner.config.critic_obs, learner.config.action_size) != (222, 310, 29):
-        raise ValueError("Checkpoint is not the preserved whole-body observation/action contract")
+    from cat_mjlab.observation_contract import ACTOR_SIZE, CRITIC_SIZE
+    if (learner.config.actor_obs, learner.config.critic_obs, learner.config.action_size) != (ACTOR_SIZE, CRITIC_SIZE, 29):
+        raise ValueError("Checkpoint differs from native 222/310 observation contract; obsolete checkpoints are unsupported")
     source_hash = saved["checkpoint_sha256"]
     factory_args = SimpleNamespace(**vars(args), num_envs=1, compile_task=False,
                                   nconmax=contract["nconmax"], njmax=contract["njmax"])

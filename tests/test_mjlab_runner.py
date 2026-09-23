@@ -91,7 +91,7 @@ def test_success_section_contains_only_rates_and_omits_absent_scene_groups():
     assert metrics["success/ordinary_clutter_goal_success_rate"] == .5
     assert "success/cat_goal_success_rate" not in metrics
     assert all(key.endswith("_success_rate") for key in metrics if key.startswith("success/"))
-    assert "success/ordinary_clutter_goal_success_rate" not in window.metrics(contrastive=True)
+    assert window.metrics(contrastive=True)["success/ordinary_clutter_goal_success_rate"] == .5
 
 
 def test_role_balanced_selection_does_not_reward_easy_scene_frequency():

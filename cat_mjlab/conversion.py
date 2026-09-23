@@ -21,6 +21,30 @@ from cat_mjlab.learning import Learner
 from cat_mjlab.checkpoint_arrays import expand_released_params, read_array_archive
 
 
+def extract_native_leader(weights, source_config):
+    """Collapse constant leader conditioning into both first-layer biases.
+
+    Preserves actor (including scale head) and critic functions up to floating
+    point rounding. Adam moments cannot be transformed by this weight mapping.
+    """
+    if source_config["algorithm"] != "sapg":
+        raise ValueError("Leader extraction requires SAPG weights")
+    table = weights["policy_embeddings"]
+    if tuple(table.shape) != (source_config["num_policies"], source_config["embedding_dim"]):
+        raise ValueError("SAPG embedding shape differs from source configuration")
+    if any(not bool(torch.isfinite(value).all()) for value in weights.values()):
+        raise ValueError("Nonfinite source model")
+    result = {key: value.clone() for key, value in weights.items() if key != "policy_embeddings"}
+    for trunk, width in (("actor", source_config["actor_obs"]), ("critic", source_config["critic_obs"])):
+        name = f"{trunk}.layers.0"
+        matrix = weights[name + ".weight"]
+        if matrix.shape[1] != width + table.shape[1]:
+            raise ValueError("SAPG input width differs from source configuration")
+        result[name + ".weight"] = matrix[:, :width].clone()
+        result[name + ".bias"] = weights[name + ".bias"] + matrix[:, width:] @ table[0]
+    return result
+
+
 def _array(value):
     value = np.asarray(value)
     if not np.issubdtype(value.dtype, np.floating) or not np.isfinite(value).all():
@@ -200,6 +224,9 @@ def load_jax_runtime(learner: Learner, snapshot, *, restore_optimizer=True):
 def load_array_archive(learner, path, *, restore_optimizer=True):
     """Load an offline NPZ export without installing JAX, Brax, Flax or Orbax."""
     metadata, arrays = read_array_archive(path)
+    from cat_ppo.furniture.control import mjlab_observation_contract
+    if metadata.get('observation_contract', mjlab_observation_contract()) != mjlab_observation_contract():
+        raise ValueError('Archive observation contract differs from native 222/310; no conversion is performed')
     arrays = arrays[:metadata.get("training_array_count", len(arrays))]
     paths = metadata["paths"]
     if len(paths) != len(arrays) or len(set(paths)) != len(paths):

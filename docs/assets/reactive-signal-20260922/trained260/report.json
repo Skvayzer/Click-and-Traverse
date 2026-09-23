@@ -1,0 +1,2241 @@
+{
+  "sweep": {
+    "scope": "both hands at distance, both elbows at matched clearance; one-side-only costs/slopes are half",
+    "negative_band_exactly_zero": true,
+    "cost_monotone": true,
+    "rows": [
+      {
+        "distance_m": 0.35000000000000003,
+        "hand_cost_per_s": 0.0,
+        "hand_cost_per_step": 0.0,
+        "arm_cost_per_s": 0.0,
+        "arm_cost_per_step": 0.0,
+        "hand_slope_per_s_per_m": 0.0,
+        "arm_slope_per_s_per_m": -0.0,
+        "native_handsdf_cost_per_s_at_weight_1": 6.118045474274399e-06,
+        "combined_hand_distance_cost_per_s": 6.118045474274399e-06
+      },
+      {
+        "distance_m": 0.34500000000000003,
+        "hand_cost_per_s": 0.0,
+        "hand_cost_per_step": 0.0,
+        "arm_cost_per_s": 0.0,
+        "arm_cost_per_step": 0.0,
+        "hand_slope_per_s_per_m": 0.0,
+        "arm_slope_per_s_per_m": -0.0,
+        "native_handsdf_cost_per_s_at_weight_1": 7.855725548151265e-06,
+        "combined_hand_distance_cost_per_s": 7.855725548151265e-06
+      },
+      {
+        "distance_m": 0.34,
+        "hand_cost_per_s": 0.0,
+        "hand_cost_per_step": 0.0,
+        "arm_cost_per_s": 0.0,
+        "arm_cost_per_step": 0.0,
+        "hand_slope_per_s_per_m": 0.0,
+        "arm_slope_per_s_per_m": -0.0,
+        "native_handsdf_cost_per_s_at_weight_1": 1.0086950707692951e-05,
+        "combined_hand_distance_cost_per_s": 1.0086950707692951e-05
+      },
+      {
+        "distance_m": 0.335,
+        "hand_cost_per_s": 0.0,
+        "hand_cost_per_step": 0.0,
+        "arm_cost_per_s": 0.0,
+        "arm_cost_per_step": 0.0,
+        "hand_slope_per_s_per_m": 0.0,
+        "arm_slope_per_s_per_m": -0.0,
+        "native_handsdf_cost_per_s_at_weight_1": 1.2951900157890548e-05,
+        "combined_hand_distance_cost_per_s": 1.2951900157890548e-05
+      },
+      {
+        "distance_m": 0.33,
+        "hand_cost_per_s": 0.0,
+        "hand_cost_per_step": 0.0,
+        "arm_cost_per_s": 0.0,
+        "arm_cost_per_step": 0.0,
+        "hand_slope_per_s_per_m": 0.0,
+        "arm_slope_per_s_per_m": -0.0,
+        "native_handsdf_cost_per_s_at_weight_1": 1.6630567467675055e-05,
+        "combined_hand_distance_cost_per_s": 1.6630567467675055e-05
+      },
+      {
+        "distance_m": 0.325,
+        "hand_cost_per_s": 0.0,
+        "hand_cost_per_step": 0.0,
+        "arm_cost_per_s": 0.0,
+        "arm_cost_per_step": 0.0,
+        "hand_slope_per_s_per_m": 0.0,
+        "arm_slope_per_s_per_m": -0.0,
+        "native_handsdf_cost_per_s_at_weight_1": 2.1354068800785198e-05,
+        "combined_hand_distance_cost_per_s": 2.1354068800785198e-05
+      },
+      {
+        "distance_m": 0.32,
+        "hand_cost_per_s": 0.0,
+        "hand_cost_per_step": 0.0,
+        "arm_cost_per_s": 0.0,
+        "arm_cost_per_step": 0.0,
+        "hand_slope_per_s_per_m": 0.0,
+        "arm_slope_per_s_per_m": -0.0,
+        "native_handsdf_cost_per_s_at_weight_1": 2.74191629324107e-05,
+        "combined_hand_distance_cost_per_s": 2.74191629324107e-05
+      },
+      {
+        "distance_m": 0.315,
+        "hand_cost_per_s": 0.0,
+        "hand_cost_per_step": 0.0,
+        "arm_cost_per_s": 0.0,
+        "arm_cost_per_step": 0.0,
+        "hand_slope_per_s_per_m": 0.0,
+        "arm_slope_per_s_per_m": -0.0,
+        "native_handsdf_cost_per_s_at_weight_1": 3.5206895254968365e-05,
+        "combined_hand_distance_cost_per_s": 3.5206895254968365e-05
+      },
+      {
+        "distance_m": 0.31,
+        "hand_cost_per_s": 0.0,
+        "hand_cost_per_step": 0.0,
+        "arm_cost_per_s": 0.0,
+        "arm_cost_per_step": 0.0,
+        "hand_slope_per_s_per_m": 0.0,
+        "arm_slope_per_s_per_m": -0.0,
+        "native_handsdf_cost_per_s_at_weight_1": 4.520653704880779e-05,
+        "combined_hand_distance_cost_per_s": 4.520653704880779e-05
+      },
+      {
+        "distance_m": 0.305,
+        "hand_cost_per_s": 0.0,
+        "hand_cost_per_step": 0.0,
+        "arm_cost_per_s": 0.0,
+        "arm_cost_per_step": 0.0,
+        "hand_slope_per_s_per_m": 0.0,
+        "arm_slope_per_s_per_m": -0.0,
+        "native_handsdf_cost_per_s_at_weight_1": 5.804632393853352e-05,
+        "combined_hand_distance_cost_per_s": 5.804632393853352e-05
+      },
+      {
+        "distance_m": 0.3,
+        "hand_cost_per_s": 0.0,
+        "hand_cost_per_step": 0.0,
+        "arm_cost_per_s": 0.0,
+        "arm_cost_per_step": 0.0,
+        "hand_slope_per_s_per_m": 0.0,
+        "arm_slope_per_s_per_m": -0.0,
+        "native_handsdf_cost_per_s_at_weight_1": 7.453292456247981e-05,
+        "combined_hand_distance_cost_per_s": 7.453292456247981e-05
+      },
+      {
+        "distance_m": 0.295,
+        "hand_cost_per_s": 0.0,
+        "hand_cost_per_step": 0.0,
+        "arm_cost_per_s": 0.0,
+        "arm_cost_per_step": 0.0,
+        "hand_slope_per_s_per_m": 0.0,
+        "arm_slope_per_s_per_m": -0.0,
+        "native_handsdf_cost_per_s_at_weight_1": 9.570211886982606e-05,
+        "combined_hand_distance_cost_per_s": 9.570211886982606e-05
+      },
+      {
+        "distance_m": 0.29,
+        "hand_cost_per_s": 0.0,
+        "hand_cost_per_step": 0.0,
+        "arm_cost_per_s": 0.0,
+        "arm_cost_per_step": 0.0,
+        "hand_slope_per_s_per_m": 0.0,
+        "arm_slope_per_s_per_m": -0.0,
+        "native_handsdf_cost_per_s_at_weight_1": 0.00012288386955465613,
+        "combined_hand_distance_cost_per_s": 0.00012288386955465613
+      },
+      {
+        "distance_m": 0.28500000000000003,
+        "hand_cost_per_s": 0.0,
+        "hand_cost_per_step": 0.0,
+        "arm_cost_per_s": 0.0,
+        "arm_cost_per_step": 0.0,
+        "hand_slope_per_s_per_m": 0.0,
+        "arm_slope_per_s_per_m": -0.0,
+        "native_handsdf_cost_per_s_at_weight_1": 0.0001577858741328155,
+        "combined_hand_distance_cost_per_s": 0.0001577858741328155
+      },
+      {
+        "distance_m": 0.28,
+        "hand_cost_per_s": 0.0,
+        "hand_cost_per_step": 0.0,
+        "arm_cost_per_s": 0.0,
+        "arm_cost_per_step": 0.0,
+        "hand_slope_per_s_per_m": 0.0,
+        "arm_slope_per_s_per_m": -0.0,
+        "native_handsdf_cost_per_s_at_weight_1": 0.0002026008457915809,
+        "combined_hand_distance_cost_per_s": 0.0002026008457915809
+      },
+      {
+        "distance_m": 0.275,
+        "hand_cost_per_s": 0.0,
+        "hand_cost_per_step": 0.0,
+        "arm_cost_per_s": 0.0,
+        "arm_cost_per_step": 0.0,
+        "hand_slope_per_s_per_m": 0.0,
+        "arm_slope_per_s_per_m": -0.0,
+        "native_handsdf_cost_per_s_at_weight_1": 0.00026014426119810055,
+        "combined_hand_distance_cost_per_s": 0.00026014426119810055
+      },
+      {
+        "distance_m": 0.27,
+        "hand_cost_per_s": 0.0,
+        "hand_cost_per_step": 0.0,
+        "arm_cost_per_s": 0.0,
+        "arm_cost_per_step": 0.0,
+        "hand_slope_per_s_per_m": 0.0,
+        "arm_slope_per_s_per_m": -0.0,
+        "native_handsdf_cost_per_s_at_weight_1": 0.0003340312263678786,
+        "combined_hand_distance_cost_per_s": 0.0003340312263678786
+      },
+      {
+        "distance_m": 0.265,
+        "hand_cost_per_s": 0.0,
+        "hand_cost_per_step": 0.0,
+        "arm_cost_per_s": 0.0,
+        "arm_cost_per_step": 0.0,
+        "hand_slope_per_s_per_m": 0.0,
+        "arm_slope_per_s_per_m": -0.0,
+        "native_handsdf_cost_per_s_at_weight_1": 0.00042890356734215525,
+        "combined_hand_distance_cost_per_s": 0.00042890356734215525
+      },
+      {
+        "distance_m": 0.26,
+        "hand_cost_per_s": 0.0,
+        "hand_cost_per_step": 0.0,
+        "arm_cost_per_s": 0.0,
+        "arm_cost_per_step": 0.0,
+        "hand_slope_per_s_per_m": 0.0,
+        "arm_slope_per_s_per_m": -0.0,
+        "native_handsdf_cost_per_s_at_weight_1": 0.0005507214045737093,
+        "combined_hand_distance_cost_per_s": 0.0005507214045737093
+      },
+      {
+        "distance_m": 0.255,
+        "hand_cost_per_s": 0.0,
+        "hand_cost_per_step": 0.0,
+        "arm_cost_per_s": 0.0,
+        "arm_cost_per_step": 0.0,
+        "hand_slope_per_s_per_m": 0.0,
+        "arm_slope_per_s_per_m": -0.0,
+        "native_handsdf_cost_per_s_at_weight_1": 0.0007071375157742098,
+        "combined_hand_distance_cost_per_s": 0.0007071375157742098
+      },
+      {
+        "distance_m": 0.25,
+        "hand_cost_per_s": 0.0,
+        "hand_cost_per_step": 0.0,
+        "arm_cost_per_s": 0.0,
+        "arm_cost_per_step": 0.0,
+        "hand_slope_per_s_per_m": 0.0,
+        "arm_slope_per_s_per_m": -0.0,
+        "native_handsdf_cost_per_s_at_weight_1": 0.0009079779843372929,
+        "combined_hand_distance_cost_per_s": 0.0009079779843372929
+      },
+      {
+        "distance_m": 0.245,
+        "hand_cost_per_s": 0.0,
+        "hand_cost_per_step": 0.0,
+        "arm_cost_per_s": 0.0,
+        "arm_cost_per_step": 0.0,
+        "hand_slope_per_s_per_m": 0.0,
+        "arm_slope_per_s_per_m": -0.0,
+        "native_handsdf_cost_per_s_at_weight_1": 0.0011658592932597962,
+        "combined_hand_distance_cost_per_s": 0.0011658592932597962
+      },
+      {
+        "distance_m": 0.24,
+        "hand_cost_per_s": 0.0,
+        "hand_cost_per_step": 0.0,
+        "arm_cost_per_s": 0.0,
+        "arm_cost_per_step": 0.0,
+        "hand_slope_per_s_per_m": 0.0,
+        "arm_slope_per_s_per_m": -0.0,
+        "native_handsdf_cost_per_s_at_weight_1": 0.0014969805725853435,
+        "combined_hand_distance_cost_per_s": 0.0014969805725853435
+      },
+      {
+        "distance_m": 0.23500000000000001,
+        "hand_cost_per_s": 0.0,
+        "hand_cost_per_step": 0.0,
+        "arm_cost_per_s": 0.0,
+        "arm_cost_per_step": 0.0,
+        "hand_slope_per_s_per_m": 0.0,
+        "arm_slope_per_s_per_m": -0.0,
+        "native_handsdf_cost_per_s_at_weight_1": 0.0019221406726496913,
+        "combined_hand_distance_cost_per_s": 0.0019221406726496913
+      },
+      {
+        "distance_m": 0.23,
+        "hand_cost_per_s": 0.0,
+        "hand_cost_per_step": 0.0,
+        "arm_cost_per_s": 0.0,
+        "arm_cost_per_step": 0.0,
+        "hand_slope_per_s_per_m": 0.0,
+        "arm_slope_per_s_per_m": -0.0,
+        "native_handsdf_cost_per_s_at_weight_1": 0.0024680437944651764,
+        "combined_hand_distance_cost_per_s": 0.0024680437944651764
+      },
+      {
+        "distance_m": 0.225,
+        "hand_cost_per_s": 0.0,
+        "hand_cost_per_step": 0.0,
+        "arm_cost_per_s": 0.0,
+        "arm_cost_per_step": 0.0,
+        "hand_slope_per_s_per_m": 0.0,
+        "arm_slope_per_s_per_m": -0.0,
+        "native_handsdf_cost_per_s_at_weight_1": 0.0031689754289227156,
+        "combined_hand_distance_cost_per_s": 0.0031689754289227156
+      },
+      {
+        "distance_m": 0.22,
+        "hand_cost_per_s": 0.0,
+        "hand_cost_per_step": 0.0,
+        "arm_cost_per_s": 0.0,
+        "arm_cost_per_step": 0.0,
+        "hand_slope_per_s_per_m": 0.0,
+        "arm_slope_per_s_per_m": -0.0,
+        "native_handsdf_cost_per_s_at_weight_1": 0.0040689534425888615,
+        "combined_hand_distance_cost_per_s": 0.0040689534425888615
+      },
+      {
+        "distance_m": 0.215,
+        "hand_cost_per_s": 0.0,
+        "hand_cost_per_step": 0.0,
+        "arm_cost_per_s": 0.0,
+        "arm_cost_per_step": 0.0,
+        "hand_slope_per_s_per_m": 0.0,
+        "arm_slope_per_s_per_m": -0.0,
+        "native_handsdf_cost_per_s_at_weight_1": 0.005224488704555589,
+        "combined_hand_distance_cost_per_s": 0.005224488704555589
+      },
+      {
+        "distance_m": 0.21,
+        "hand_cost_per_s": 0.0,
+        "hand_cost_per_step": 0.0,
+        "arm_cost_per_s": 0.0,
+        "arm_cost_per_step": 0.0,
+        "hand_slope_per_s_per_m": 0.0,
+        "arm_slope_per_s_per_m": -0.0,
+        "native_handsdf_cost_per_s_at_weight_1": 0.006708127457915382,
+        "combined_hand_distance_cost_per_s": 0.006708127457915382
+      },
+      {
+        "distance_m": 0.20500000000000002,
+        "hand_cost_per_s": 0.0,
+        "hand_cost_per_step": 0.0,
+        "arm_cost_per_s": 0.0,
+        "arm_cost_per_step": 0.0,
+        "hand_slope_per_s_per_m": 0.0,
+        "arm_slope_per_s_per_m": -0.0,
+        "native_handsdf_cost_per_s_at_weight_1": 0.00861299595277638,
+        "combined_hand_distance_cost_per_s": 0.00861299595277638
+      },
+      {
+        "distance_m": 0.2,
+        "hand_cost_per_s": 0.0,
+        "hand_cost_per_step": 0.0,
+        "arm_cost_per_s": 0.0,
+        "arm_cost_per_step": 0.0,
+        "hand_slope_per_s_per_m": 0.0,
+        "arm_slope_per_s_per_m": -0.0,
+        "native_handsdf_cost_per_s_at_weight_1": 0.011058629507215917,
+        "combined_hand_distance_cost_per_s": 0.011058629507215917
+      },
+      {
+        "distance_m": 0.195,
+        "hand_cost_per_s": 0.002500000000000004,
+        "hand_cost_per_step": 5.000000000000008e-05,
+        "arm_cost_per_s": 0.0,
+        "arm_cost_per_step": 0.0,
+        "hand_slope_per_s_per_m": -1.0000000000000007,
+        "arm_slope_per_s_per_m": -0.0,
+        "native_handsdf_cost_per_s_at_weight_1": 0.014198446686786131,
+        "combined_hand_distance_cost_per_s": 0.016698446686786134
+      },
+      {
+        "distance_m": 0.19,
+        "hand_cost_per_s": 0.010000000000000016,
+        "hand_cost_per_step": 0.0002000000000000003,
+        "arm_cost_per_s": 0.0,
+        "arm_cost_per_step": 0.0,
+        "hand_slope_per_s_per_m": -2.0000000000000013,
+        "arm_slope_per_s_per_m": -0.0,
+        "native_handsdf_cost_per_s_at_weight_1": 0.018229329075484878,
+        "combined_hand_distance_cost_per_s": 0.028229329075484894
+      },
+      {
+        "distance_m": 0.185,
+        "hand_cost_per_s": 0.022500000000000037,
+        "hand_cost_per_step": 0.00045000000000000075,
+        "arm_cost_per_s": 0.0,
+        "arm_cost_per_step": 0.0,
+        "hand_slope_per_s_per_m": -3.000000000000002,
+        "arm_slope_per_s_per_m": -0.0,
+        "native_handsdf_cost_per_s_at_weight_1": 0.023403893517091167,
+        "combined_hand_distance_cost_per_s": 0.045903893517091204
+      },
+      {
+        "distance_m": 0.18,
+        "hand_cost_per_s": 0.04000000000000006,
+        "hand_cost_per_step": 0.0008000000000000012,
+        "arm_cost_per_s": 0.0,
+        "arm_cost_per_step": 0.0,
+        "hand_slope_per_s_per_m": -4.000000000000003,
+        "arm_slope_per_s_per_m": -0.0,
+        "native_handsdf_cost_per_s_at_weight_1": 0.03004620319508568,
+        "combined_hand_distance_cost_per_s": 0.07004620319508574
+      },
+      {
+        "distance_m": 0.17500000000000002,
+        "hand_cost_per_s": 0.06249999999999996,
+        "hand_cost_per_step": 0.0012499999999999992,
+        "arm_cost_per_s": 0.0,
+        "arm_cost_per_step": 0.0,
+        "hand_slope_per_s_per_m": -4.999999999999998,
+        "arm_slope_per_s_per_m": -0.0,
+        "native_handsdf_cost_per_s_at_weight_1": 0.03857186408438762,
+        "combined_hand_distance_cost_per_s": 0.10107186408438758
+      },
+      {
+        "distance_m": 0.17,
+        "hand_cost_per_s": 0.08999999999999997,
+        "hand_cost_per_step": 0.0017999999999999995,
+        "arm_cost_per_s": 0.0,
+        "arm_cost_per_step": 0.0,
+        "hand_slope_per_s_per_m": -5.999999999999998,
+        "arm_slope_per_s_per_m": -0.0,
+        "native_handsdf_cost_per_s_at_weight_1": 0.049513702754608944,
+        "combined_hand_distance_cost_per_s": 0.13951370275460892
+      },
+      {
+        "distance_m": 0.165,
+        "hand_cost_per_s": 0.1225,
+        "hand_cost_per_step": 0.00245,
+        "arm_cost_per_s": 0.0,
+        "arm_cost_per_step": 0.0,
+        "hand_slope_per_s_per_m": -7.0,
+        "arm_slope_per_s_per_m": -0.0,
+        "native_handsdf_cost_per_s_at_weight_1": 0.06355452942819853,
+        "combined_hand_distance_cost_per_s": 0.18605452942819853
+      },
+      {
+        "distance_m": 0.16,
+        "hand_cost_per_s": 0.16000000000000003,
+        "hand_cost_per_step": 0.0032000000000000006,
+        "arm_cost_per_s": 0.0,
+        "arm_cost_per_step": 0.0,
+        "hand_slope_per_s_per_m": -7.999999999999999,
+        "arm_slope_per_s_per_m": -0.0,
+        "native_handsdf_cost_per_s_at_weight_1": 0.0815688654114144,
+        "combined_hand_distance_cost_per_s": 0.24156886541141442
+      },
+      {
+        "distance_m": 0.155,
+        "hand_cost_per_s": 0.20250000000000004,
+        "hand_cost_per_step": 0.004050000000000001,
+        "arm_cost_per_s": 0.0,
+        "arm_cost_per_step": 0.0,
+        "hand_slope_per_s_per_m": -9.0,
+        "arm_slope_per_s_per_m": -0.0,
+        "native_handsdf_cost_per_s_at_weight_1": 0.10467596303486063,
+        "combined_hand_distance_cost_per_s": 0.30717596303486067
+      },
+      {
+        "distance_m": 0.15,
+        "hand_cost_per_s": 0.25000000000000017,
+        "hand_cost_per_step": 0.005000000000000004,
+        "arm_cost_per_s": 0.0,
+        "arm_cost_per_step": 0.0,
+        "hand_slope_per_s_per_m": -10.000000000000002,
+        "arm_slope_per_s_per_m": -0.0,
+        "native_handsdf_cost_per_s_at_weight_1": 0.13430696978236137,
+        "combined_hand_distance_cost_per_s": 0.38430696978236156
+      },
+      {
+        "distance_m": 0.145,
+        "hand_cost_per_s": 0.3025000000000002,
+        "hand_cost_per_step": 0.006050000000000004,
+        "arm_cost_per_s": 0.0,
+        "arm_cost_per_step": 0.0,
+        "hand_slope_per_s_per_m": -11.000000000000004,
+        "arm_slope_per_s_per_m": -0.0,
+        "native_handsdf_cost_per_s_at_weight_1": 0.17228967524351133,
+        "combined_hand_distance_cost_per_s": 0.47478967524351157
+      },
+      {
+        "distance_m": 0.14,
+        "hand_cost_per_s": 0.3599999999999999,
+        "hand_cost_per_step": 0.007199999999999998,
+        "arm_cost_per_s": 0.0,
+        "arm_cost_per_step": 0.0,
+        "hand_slope_per_s_per_m": -11.999999999999996,
+        "arm_slope_per_s_per_m": -0.0,
+        "native_handsdf_cost_per_s_at_weight_1": 0.22095489697187615,
+        "combined_hand_distance_cost_per_s": 0.5809548969718761
+      },
+      {
+        "distance_m": 0.135,
+        "hand_cost_per_s": 0.4225,
+        "hand_cost_per_step": 0.00845,
+        "arm_cost_per_s": 0.0,
+        "arm_cost_per_step": 0.0,
+        "hand_slope_per_s_per_m": -12.999999999999998,
+        "arm_slope_per_s_per_m": -0.0,
+        "native_handsdf_cost_per_s_at_weight_1": 0.2832691386300995,
+        "combined_hand_distance_cost_per_s": 0.7057691386300995
+      },
+      {
+        "distance_m": 0.13,
+        "hand_cost_per_s": 0.49,
+        "hand_cost_per_step": 0.0098,
+        "arm_cost_per_s": 0.0,
+        "arm_cost_per_step": 0.0,
+        "hand_slope_per_s_per_m": -14.0,
+        "arm_slope_per_s_per_m": -0.0,
+        "native_handsdf_cost_per_s_at_weight_1": 0.36299855835619477,
+        "combined_hand_distance_cost_per_s": 0.8529985583561948
+      },
+      {
+        "distance_m": 0.125,
+        "hand_cost_per_s": 0.5625000000000001,
+        "hand_cost_per_step": 0.011250000000000003,
+        "arm_cost_per_s": 0.0,
+        "arm_cost_per_step": 0.0,
+        "hand_slope_per_s_per_m": -14.999999999999998,
+        "arm_slope_per_s_per_m": -0.0,
+        "native_handsdf_cost_per_s_at_weight_1": 0.4649092874485005,
+        "combined_hand_distance_cost_per_s": 1.0274092874485006
+      },
+      {
+        "distance_m": 0.12,
+        "hand_cost_per_s": 0.6400000000000001,
+        "hand_cost_per_step": 0.012800000000000002,
+        "arm_cost_per_s": 0.0,
+        "arm_cost_per_step": 0.0,
+        "hand_slope_per_s_per_m": -15.999999999999998,
+        "arm_slope_per_s_per_m": -0.0,
+        "native_handsdf_cost_per_s_at_weight_1": 0.5950083654524116,
+        "combined_hand_distance_cost_per_s": 1.2350083654524118
+      },
+      {
+        "distance_m": 0.115,
+        "hand_cost_per_s": 0.7224999999999999,
+        "hand_cost_per_step": 0.01445,
+        "arm_cost_per_s": 0.0,
+        "arm_cost_per_step": 0.0,
+        "hand_slope_per_s_per_m": -16.999999999999996,
+        "arm_slope_per_s_per_m": -0.0,
+        "native_handsdf_cost_per_s_at_weight_1": 0.7608274337556625,
+        "combined_hand_distance_cost_per_s": 1.4833274337556626
+      },
+      {
+        "distance_m": 0.11,
+        "hand_cost_per_s": 0.8100000000000002,
+        "hand_cost_per_step": 0.016200000000000003,
+        "arm_cost_per_s": 0.0,
+        "arm_cost_per_step": 0.0,
+        "hand_slope_per_s_per_m": -18.0,
+        "arm_slope_per_s_per_m": -0.0,
+        "native_handsdf_cost_per_s_at_weight_1": 0.9717470314748412,
+        "combined_hand_distance_cost_per_s": 1.7817470314748414
+      },
+      {
+        "distance_m": 0.105,
+        "hand_cost_per_s": 0.9025000000000001,
+        "hand_cost_per_step": 0.018050000000000004,
+        "arm_cost_per_s": 0.0,
+        "arm_cost_per_step": 0.0,
+        "hand_slope_per_s_per_m": -19.0,
+        "arm_slope_per_s_per_m": -0.0,
+        "native_handsdf_cost_per_s_at_weight_1": 1.2393517800639728,
+        "combined_hand_distance_cost_per_s": 2.141851780063973
+      },
+      {
+        "distance_m": 0.1,
+        "hand_cost_per_s": 0.9999999999999998,
+        "hand_cost_per_step": 0.019999999999999997,
+        "arm_cost_per_s": 0.0,
+        "arm_cost_per_step": 0.0,
+        "hand_slope_per_s_per_m": -19.999999999999996,
+        "arm_slope_per_s_per_m": -0.0,
+        "native_handsdf_cost_per_s_at_weight_1": 1.5777946858509926,
+        "combined_hand_distance_cost_per_s": 2.5777946858509924
+      },
+      {
+        "distance_m": 0.095,
+        "hand_cost_per_s": 1.1024999999999998,
+        "hand_cost_per_step": 0.022049999999999997,
+        "arm_cost_per_s": 0.0,
+        "arm_cost_per_step": 0.0,
+        "hand_slope_per_s_per_m": -20.999999999999996,
+        "arm_slope_per_s_per_m": -0.0,
+        "native_handsdf_cost_per_s_at_weight_1": 2.0041311783349443,
+        "combined_hand_distance_cost_per_s": 3.1066311783349443
+      },
+      {
+        "distance_m": 0.09,
+        "hand_cost_per_s": 1.21,
+        "hand_cost_per_step": 0.0242,
+        "arm_cost_per_s": 0.0,
+        "arm_cost_per_step": 0.0,
+        "hand_slope_per_s_per_m": -21.999999999999996,
+        "arm_slope_per_s_per_m": -0.0,
+        "native_handsdf_cost_per_s_at_weight_1": 2.53856022085945,
+        "combined_hand_distance_cost_per_s": 3.74856022085945
+      },
+      {
+        "distance_m": 0.085,
+        "hand_cost_per_s": 1.3718827160493827,
+        "hand_cost_per_step": 0.027437654320987655,
+        "arm_cost_per_s": 0.0,
+        "arm_cost_per_step": 0.0,
+        "hand_slope_per_s_per_m": -42.753086419753046,
+        "arm_slope_per_s_per_m": -0.0,
+        "native_handsdf_cost_per_s_at_weight_1": 3.204483008761744,
+        "combined_hand_distance_cost_per_s": 4.576365724811127
+      },
+      {
+        "distance_m": 0.08,
+        "hand_cost_per_s": 1.6375308641975308,
+        "hand_cost_per_step": 0.032750617283950616,
+        "arm_cost_per_s": 0.0,
+        "arm_cost_per_step": 0.0,
+        "hand_slope_per_s_per_m": -63.50617283950615,
+        "arm_slope_per_s_per_m": -0.0,
+        "native_handsdf_cost_per_s_at_weight_1": 4.028265559655048,
+        "combined_hand_distance_cost_per_s": 5.665796423852578
+      },
+      {
+        "distance_m": 0.075,
+        "hand_cost_per_s": 2.006944444444444,
+        "hand_cost_per_step": 0.040138888888888884,
+        "arm_cost_per_s": 0.00020000000000000036,
+        "arm_cost_per_step": 4.0000000000000074e-06,
+        "hand_slope_per_s_per_m": -84.25925925925925,
+        "arm_slope_per_s_per_m": -0.08000000000000007,
+        "native_handsdf_cost_per_s_at_weight_1": 5.038581626907459,
+        "combined_hand_distance_cost_per_s": 7.045526071351903
+      },
+      {
+        "distance_m": 0.07,
+        "hand_cost_per_s": 2.4801234567901225,
+        "hand_cost_per_step": 0.04960246913580245,
+        "arm_cost_per_s": 0.0007999999999999992,
+        "arm_cost_per_step": 1.5999999999999982e-05,
+        "hand_slope_per_s_per_m": -105.0123456790123,
+        "arm_slope_per_s_per_m": -0.15999999999999992,
+        "native_handsdf_cost_per_s_at_weight_1": 6.265233750364455,
+        "combined_hand_distance_cost_per_s": 8.745357207154578
+      },
+      {
+        "distance_m": 0.065,
+        "hand_cost_per_s": 3.057067901234567,
+        "hand_cost_per_step": 0.06114135802469134,
+        "arm_cost_per_s": 0.0018,
+        "arm_cost_per_step": 3.6e-05,
+        "hand_slope_per_s_per_m": -125.76543209876539,
+        "arm_slope_per_s_per_m": -0.24,
+        "native_handsdf_cost_per_s_at_weight_1": 7.737420122297999,
+        "combined_hand_distance_cost_per_s": 10.794488023532566
+      },
+      {
+        "distance_m": 0.06,
+        "hand_cost_per_s": 3.7377777777777776,
+        "hand_cost_per_step": 0.07475555555555556,
+        "arm_cost_per_s": 0.0032000000000000015,
+        "arm_cost_per_step": 6.400000000000002e-05,
+        "hand_slope_per_s_per_m": -146.5185185185185,
+        "arm_slope_per_s_per_m": -0.32000000000000006,
+        "native_handsdf_cost_per_s_at_weight_1": 9.481539683602135,
+        "combined_hand_distance_cost_per_s": 13.219317461379912
+      },
+      {
+        "distance_m": 0.055,
+        "hand_cost_per_s": 4.522253086419752,
+        "hand_cost_per_step": 0.09044506172839505,
+        "arm_cost_per_s": 0.005000000000000001,
+        "arm_cost_per_step": 0.00010000000000000002,
+        "hand_slope_per_s_per_m": -167.2716049382716,
+        "arm_slope_per_s_per_m": -0.4,
+        "native_handsdf_cost_per_s_at_weight_1": 11.518788397576873,
+        "combined_hand_distance_cost_per_s": 16.041041483996626
+      },
+      {
+        "distance_m": 0.05,
+        "hand_cost_per_s": 5.410493827160494,
+        "hand_cost_per_step": 0.10820987654320988,
+        "arm_cost_per_s": 0.0072,
+        "arm_cost_per_step": 0.000144,
+        "hand_slope_per_s_per_m": -188.02469135802465,
+        "arm_slope_per_s_per_m": -0.48,
+        "native_handsdf_cost_per_s_at_weight_1": 13.862943611198906,
+        "combined_hand_distance_cost_per_s": 19.2734374383594
+      },
+      {
+        "distance_m": 0.045,
+        "hand_cost_per_s": 6.4025,
+        "hand_cost_per_step": 0.12805,
+        "arm_cost_per_s": 0.009800000000000001,
+        "arm_cost_per_step": 0.00019600000000000002,
+        "hand_slope_per_s_per_m": -208.77777777777774,
+        "arm_slope_per_s_per_m": -0.56,
+        "native_handsdf_cost_per_s_at_weight_1": 16.518788397576873,
+        "combined_hand_distance_cost_per_s": 22.921288397576873
+      },
+      {
+        "distance_m": 0.04,
+        "hand_cost_per_s": 7.498271604938271,
+        "hand_cost_per_step": 0.14996543209876542,
+        "arm_cost_per_s": 0.0128,
+        "arm_cost_per_step": 0.00025600000000000004,
+        "hand_slope_per_s_per_m": -229.53086419753083,
+        "arm_slope_per_s_per_m": -0.64,
+        "native_handsdf_cost_per_s_at_weight_1": 19.481539683602133,
+        "combined_hand_distance_cost_per_s": 26.979811288540404
+      },
+      {
+        "distance_m": 0.035,
+        "hand_cost_per_s": 8.697808641975307,
+        "hand_cost_per_step": 0.17395617283950615,
+        "arm_cost_per_s": 0.0162,
+        "arm_cost_per_step": 0.000324,
+        "hand_slope_per_s_per_m": -250.28395061728392,
+        "arm_slope_per_s_per_m": -0.72,
+        "native_handsdf_cost_per_s_at_weight_1": 22.737420122297998,
+        "combined_hand_distance_cost_per_s": 31.435228764273305
+      },
+      {
+        "distance_m": 0.03,
+        "hand_cost_per_s": 10.001111111111111,
+        "hand_cost_per_step": 0.20002222222222224,
+        "arm_cost_per_s": 0.020000000000000004,
+        "arm_cost_per_step": 0.0004000000000000001,
+        "hand_slope_per_s_per_m": -271.037037037037,
+        "arm_slope_per_s_per_m": -0.8,
+        "native_handsdf_cost_per_s_at_weight_1": 26.26523375036446,
+        "combined_hand_distance_cost_per_s": 36.266344861475574
+      },
+      {
+        "distance_m": 0.025,
+        "hand_cost_per_s": 11.40817901234568,
+        "hand_cost_per_step": 0.2281635802469136,
+        "arm_cost_per_s": 0.0242,
+        "arm_cost_per_step": 0.000484,
+        "hand_slope_per_s_per_m": -291.7901234567901,
+        "arm_slope_per_s_per_m": -0.88,
+        "native_handsdf_cost_per_s_at_weight_1": 30.038581626907458,
+        "combined_hand_distance_cost_per_s": 41.44676063925314
+      },
+      {
+        "distance_m": 0.02,
+        "hand_cost_per_s": 12.919012345679011,
+        "hand_cost_per_step": 0.25838024691358025,
+        "arm_cost_per_s": 0.0288,
+        "arm_cost_per_step": 0.000576,
+        "hand_slope_per_s_per_m": -312.5432098765432,
+        "arm_slope_per_s_per_m": -0.96,
+        "native_handsdf_cost_per_s_at_weight_1": 34.02826555965505,
+        "combined_hand_distance_cost_per_s": 46.94727790533406
+      },
+      {
+        "distance_m": 0.015,
+        "hand_cost_per_s": 14.533611111111108,
+        "hand_cost_per_step": 0.29067222222222217,
+        "arm_cost_per_s": 0.033800000000000004,
+        "arm_cost_per_step": 0.0006760000000000001,
+        "hand_slope_per_s_per_m": -333.29629629629625,
+        "arm_slope_per_s_per_m": -1.04,
+        "native_handsdf_cost_per_s_at_weight_1": 38.20448300876175,
+        "combined_hand_distance_cost_per_s": 52.738094119872855
+      },
+      {
+        "distance_m": 0.01,
+        "hand_cost_per_s": 16.251975308641974,
+        "hand_cost_per_step": 0.3250395061728395,
+        "arm_cost_per_s": 0.039200000000000006,
+        "arm_cost_per_step": 0.0007840000000000001,
+        "hand_slope_per_s_per_m": -354.04938271604937,
+        "arm_slope_per_s_per_m": -1.12,
+        "native_handsdf_cost_per_s_at_weight_1": 42.53856022085945,
+        "combined_hand_distance_cost_per_s": 58.790535529501426
+      },
+      {
+        "distance_m": 0.005,
+        "hand_cost_per_s": 18.074104938271603,
+        "hand_cost_per_step": 0.3614820987654321,
+        "arm_cost_per_s": 0.045,
+        "arm_cost_per_step": 0.0009,
+        "hand_slope_per_s_per_m": -374.8024691358024,
+        "arm_slope_per_s_per_m": -1.2,
+        "native_handsdf_cost_per_s_at_weight_1": 47.00413117833495,
+        "combined_hand_distance_cost_per_s": 65.07823611660655
+      },
+      {
+        "distance_m": 0.0,
+        "hand_cost_per_s": 19.999999999999996,
+        "hand_cost_per_step": 0.3999999999999999,
+        "arm_cost_per_s": 0.0512,
+        "arm_cost_per_step": 0.0010240000000000002,
+        "hand_slope_per_s_per_m": -395.5555555555555,
+        "arm_slope_per_s_per_m": -1.28,
+        "native_handsdf_cost_per_s_at_weight_1": 51.57779468585099,
+        "combined_hand_distance_cost_per_s": 71.57779468585099
+      }
+    ],
+    "ratio_at_contact": 390.625,
+    "at_66_41_mm": {
+      "hand_cost_per_s": 2.8838645630864193,
+      "arm_cost_per_s": 0.001477504800000001,
+      "ratio": 1951.847847185618
+    }
+  },
+  "disk_before_bytes": 14153809920,
+  "metadata": {
+    "device": "cuda:0",
+    "seeds": 16,
+    "steps": 250,
+    "dt": 0.02,
+    "speed": 0.1,
+    "checkpoint": "outputs/cat_reactive_standing_20260923/resume.pt",
+    "policy_config": {
+      "algorithm": "ppo",
+      "actor_obs": 222,
+      "critic_obs": 310,
+      "action_size": 29,
+      "actor_hidden": [
+        512,
+        256,
+        128,
+        64
+      ],
+      "critic_hidden": [
+        1024,
+        512,
+        256,
+        128
+      ],
+      "num_policies": 1,
+      "embedding_dim": 16,
+      "learning_rate": 0.0003,
+      "entropy_cost": 0.003,
+      "discounting": 0.98,
+      "gae_lambda": 0.95,
+      "clipping_epsilon": 0.2,
+      "reward_scaling": 1.0,
+      "max_grad_norm": 1.0,
+      "normalize_advantage": true,
+      "num_minibatches": 40,
+      "num_updates_per_batch": 4,
+      "prepare_chunk_size": 64,
+      "max_action_std": null
+    },
+    "initial_hand_distances": [
+      0.34999996423721313,
+      0.34999996423721313,
+      0.04999999701976776,
+      0.30000001192092896,
+      0.34999996423721313,
+      0.34999996423721313,
+      0.04999999701976776,
+      0.30000001192092896,
+      0.34999996423721313,
+      0.34999996423721313,
+      0.04999999701976776,
+      0.30000001192092896,
+      0.34999996423721313,
+      0.34999996423721313,
+      0.04999999701976776,
+      0.30000001192092896,
+      0.34999996423721313,
+      0.34999996423721313,
+      0.04999999701976776,
+      0.30000001192092896,
+      0.34999996423721313,
+      0.34999996423721313,
+      0.04999999701976776,
+      0.30000001192092896,
+      0.34999996423721313,
+      0.34999996423721313,
+      0.04999999701976776,
+      0.30000001192092896,
+      0.34999996423721313,
+      0.34999996423721313,
+      0.04999999701976776,
+      0.30000001192092896,
+      0.34999996423721313,
+      0.34999996423721313,
+      0.04999999701976776,
+      0.30000001192092896,
+      0.34999996423721313,
+      0.34999996423721313,
+      0.04999999701976776,
+      0.30000001192092896,
+      0.34999996423721313,
+      0.34999996423721313,
+      0.04999999701976776,
+      0.30000001192092896,
+      0.34999996423721313,
+      0.34999996423721313,
+      0.04999999701976776,
+      0.30000001192092896,
+      0.34999996423721313,
+      0.34999996423721313,
+      0.04999999701976776,
+      0.30000001192092896,
+      0.34999996423721313,
+      0.34999996423721313,
+      0.04999999701976776,
+      0.30000001192092896,
+      0.34999996423721313,
+      0.34999996423721313,
+      0.04999999701976776,
+      0.30000001192092896,
+      0.34999996423721313,
+      0.34999996423721313,
+      0.04999999701976776,
+      0.30000001192092896
+    ],
+    "tuck": {
+      "requested_hands": [
+        [
+          -0.12537266833514932,
+          0.2735257780692104,
+          0.7111566088096047
+        ],
+        [
+          -0.1253744416740647,
+          -0.2735158330449031,
+          0.7111564568252516
+        ]
+      ],
+      "achieved_hands": [
+        [
+          -0.1254462617715258,
+          0.2737490614619969,
+          0.7103523171273017
+        ],
+        [
+          -0.12544804002740007,
+          -0.27373911840400916,
+          0.7103521584991823
+        ]
+      ],
+      "nominal_hands": [
+        [
+          -0.005372668335149322,
+          0.2735257780692104,
+          0.6111566088096048
+        ],
+        [
+          -0.0053744416740647005,
+          -0.2735158330449031,
+          0.6111564568252517
+        ]
+      ],
+      "upper_target": [
+        0.0,
+        0.0,
+        0.0,
+        0.9421237916244808,
+        0.4536394685631145,
+        0.012187867213782561,
+        0.8794468166319857,
+        -0.05186768503470701,
+        -0.6641043182448099,
+        -0.2293448845440395,
+        0.9421266746549525,
+        -0.4536408259308641,
+        -0.012187204253143437,
+        0.8794424595947526,
+        0.05186870134001258,
+        -0.6641034663393578,
+        0.22934840548499427
+      ]
+    },
+    "configuration": {
+      "task_type": "flat_terrain",
+      "ctrl_dt": 0.02,
+      "sim_dt": 0.002,
+      "episode_length": 1000,
+      "action_repeat": 1,
+      "action_scale": 0.5,
+      "history_len": 15,
+      "num_obs": 222,
+      "num_pri": 310,
+      "num_act": 29,
+      "restricted_joint_range": false,
+      "soft_joint_pos_limit_factor": 0.95,
+      "gait_config": {
+        "gait_bound": 0.6,
+        "freq_range": [
+          1.3,
+          1.5
+        ],
+        "foot_height_range": [
+          0.07,
+          0.07
+        ]
+      },
+      "dm_rand_config": {
+        "enable_pd": false,
+        "kp_range": [
+          0.75,
+          1.25
+        ],
+        "kd_range": [
+          0.75,
+          1.25
+        ],
+        "enable_rfi": false,
+        "rfi_lim": 0.1,
+        "rfi_lim_range": [
+          0.5,
+          1.5
+        ],
+        "enable_ctrl_delay": false,
+        "ctrl_delay_range": [
+          0,
+          2
+        ]
+      },
+      "noise_config": {
+        "level": 0.0,
+        "scales": {
+          "joint_pos": 0.03,
+          "joint_vel": 1.5,
+          "gravity": 0.05,
+          "gyro": 0.2
+        }
+      },
+      "reward_config": {
+        "scales": {
+          "tracking_orientation": 2.0,
+          "tracking_root_field": 1.0,
+          "body_motion": -0.5,
+          "body_rotation": 1.0,
+          "foot_contact": -1.0,
+          "foot_clearance": -15.0,
+          "foot_slip": -0.5,
+          "foot_balance": -30,
+          "foot_far": 0,
+          "straight_knee": -30,
+          "smoothness_joint": -1e-06,
+          "smoothness_action": -0.001,
+          "joint_limits": -1.0,
+          "joint_torque": -0.0001,
+          "headgf": 1.0,
+          "handsgf": 1.0,
+          "feetgf": 2.0,
+          "headdf": 1.0,
+          "handsdf": 1.0,
+          "feetdf": 2.0,
+          "kneesdf": 1.0,
+          "shldsdf": 1.0,
+          "wholebody_hand_clearance": -20.0,
+          "wholebody_arm_clearance": -8.0,
+          "wholebody_upper_target_velocity": -0.05,
+          "wholebody_upper_target_acceleration": -0.02,
+          "wholebody_upper_clear_posture": -0.05,
+          "wholebody_hand_contrast_heading": 0.0,
+          "wholebody_hand_contrast_region": 0.0
+        },
+        "base_height_target": 0.75,
+        "foot_height_stance": 0.0
+      },
+      "term_collision_threshold": 0.0,
+      "push_config": {
+        "enable": false,
+        "interval_range": [
+          5.0,
+          10.0
+        ],
+        "magnitude_range": [
+          0.1,
+          1.0
+        ]
+      },
+      "command_config": {
+        "resampling_time": 10.0,
+        "stop_prob": 0.2
+      },
+      "lin_vel_x": [
+        -0.5,
+        0.5
+      ],
+      "lin_vel_y": [
+        -0.3,
+        0.3
+      ],
+      "ang_vel_yaw": [
+        -0.5,
+        0.5
+      ],
+      "torso_height": [
+        0.5,
+        1.0
+      ],
+      "pf_config": {
+        "dx": 0.04,
+        "path": "data/assets/RandObs/D8G0L1O0S3",
+        "origin": [
+          -0.5,
+          -1.0,
+          0.0
+        ],
+        "sampling_weights": [
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0,
+          1.0
+        ],
+        "sampling_alpha": 1.0,
+        "sampling_ema_decay": 0.95,
+        "paths": [
+          "data/assets/RandObs/D8G0L1O0S3",
+          "data/assets/RandObs/D8G0L1O0S13",
+          "data/assets/RandObs/D8G0L1O1S4",
+          "data/assets/RandObs/D8G0L1O1S17",
+          "data/assets/RandObs/D8G0L1O2S6",
+          "data/assets/RandObs/D8G0L1O2S21",
+          "data/assets/RandObs/D8G0L3O0S6",
+          "data/assets/RandObs/D8G0L3O0S25",
+          "data/assets/RandObs/D8G0L3O1S9",
+          "data/assets/RandObs/D8G0L3O1S33",
+          "data/assets/RandObs/D8G0L3O2S13",
+          "data/assets/RandObs/D8G0L3O2S41",
+          "data/assets/RandObs/D8G1L1O0S5",
+          "data/assets/RandObs/D8G1L1O0S19",
+          "data/assets/RandObs/D8G1L1O1S8",
+          "data/assets/RandObs/D8G1L1O1S25",
+          "data/assets/RandObs/D8G1L1O2S11",
+          "data/assets/RandObs/D8G1L1O2S31",
+          "data/assets/RandObs/D8G1L3O0S11",
+          "data/assets/RandObs/D8G1L3O0S37",
+          "data/assets/RandObs/D8G1L3O1S18",
+          "data/assets/RandObs/D8G1L3O1S49",
+          "data/assets/RandObs/D8G1L3O2S25",
+          "data/assets/RandObs/D8G1L3O2S61",
+          "data/assets/RandObs/D8G2L1O0S7",
+          "data/assets/RandObs/D8G2L1O0S25",
+          "data/assets/RandObs/D8G2L1O1S12",
+          "data/assets/RandObs/D8G2L1O1S33",
+          "data/assets/RandObs/D8G2L1O2S16",
+          "data/assets/RandObs/D8G2L1O2S41",
+          "data/assets/RandObs/D8G2L3O0S16",
+          "data/assets/RandObs/D8G2L3O0S49",
+          "data/assets/RandObs/D8G2L3O1S27",
+          "data/assets/RandObs/D8G2L3O1S65",
+          "data/assets/RandObs/D8G2L3O2S13",
+          "data/assets/RandObs/D8G2L3O2S37",
+          "data/assets/RandObs/D8G2L3O2S81"
+        ]
+      },
+      "randomize_initial_episode_steps": false,
+      "compatibility_mode": false,
+      "wholebody_stabilization": true,
+      "wholebody_hand_protection": true,
+      "wholebody_hand_contrast": false,
+      "wholebody_first_outcome_metrics": true,
+      "hand_contrast_region_scale": 0.15,
+      "hand_contrast_metric_tolerance": 0.05,
+      "upper_action_scale": 0.8,
+      "upper_target_rate": 2.0,
+      "hand_protection_enabled": true,
+      "terminate_on_elbow_collision": true,
+      "hand_clearance_margin": 0.12,
+      "arm_clearance_margin": 0.08,
+      "clutter_episode_length": 4000,
+      "upper_velocity_cost_scale": 2.0,
+      "upper_acceleration_cost_scale": 20.0,
+      "upper_posture_clearance_taper": 0.12,
+      "upper_cost_waist_weight": 4.0,
+      "hand_protection_target_clearance": 0.09,
+      "hand_protection_anticipation_distance": 0.2,
+      "hand_protection_near_weight": 0.8,
+      "hand_protection_posture_taper": 0.1,
+      "upper_arm_velocity_weight": 0.5,
+      "upper_arm_acceleration_weight": 0.1,
+      "wholebody": {
+        "body_collision": {
+          "enabled": false,
+          "bank_manifest": "",
+          "reset_manifest": "",
+          "proposal": "/home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab/docs/assets/collision-proxy-proposal-20260916/proposal.json",
+          "event_penalty": 1.0
+        }
+      },
+      "hand_curriculum_success_threshold": 0.35,
+      "flat_balance_reward": {
+        "bonus_scale": 10.0,
+        "region_scale": 0.4
+      },
+      "hand_reward_soft_floor": 0.0,
+      "hand_contrast_approach_distance": 0.0,
+      "hand_raised_reset_fraction": 0,
+      "arm_clearance_weight_override": -8.0,
+      "disable_hand_contrast": true,
+      "clearance_objective_parameters": {
+        "weight": -20.0,
+        "target": 0.09,
+        "anticipation": 0.2,
+        "near_weight": 0.8
+      },
+      "upper_gravity_compensation": true,
+      "protected_hand_sdf_margin": false,
+      "lateral_corridor": false,
+      "upper_action_scales": {},
+      "checkpoint_selection_weights": [
+        0.6,
+        0.2,
+        0.1,
+        0.1
+      ]
+    },
+    "seconds": 42.61605963401962,
+    "caveats": [
+      "Canonical empty-floor standing reset; no retention-bank or protected-core population inference.",
+      "Physics and full-body sphere-object terminal checks every 2 ms; no contact forces from virtual objects.",
+      "Arm observations use current production elbow points, not the unfinished capsule draft.",
+      "All observations are noise-free; exploration is checkpoint Gaussian action noise, uncapped beyond checkpoint setting.",
+      "Ended trajectories are absorbing for analysis; zero future reward to the shared finite horizon.",
+      "Local distance derivatives are controlled partial derivatives, not policy gradients."
+    ]
+  },
+  "measurements": {
+    "floor": {
+      "overall": {
+        "n": 4000,
+        "base_clipped_fraction": 0.00025,
+        "hypothetical_all_inside_clipped_fraction": 0.00025,
+        "pre_partial_slope_per_step_per_m": {
+          "n": 4000,
+          "min": -6.442663288908079e-05,
+          "p10": 1.05111611858888e-08,
+          "p50": 1.1793717476393795e-05,
+          "p90": 0.0018250350840389646,
+          "max": 2.5571186542510986,
+          "std": 0.07232361369965977
+        },
+        "post_partial_slope_per_step_per_m": {
+          "n": 4000,
+          "min": -6.442663288908079e-05,
+          "p10": 1.0382098647454543e-08,
+          "p50": 1.1793717476393795e-05,
+          "p90": 0.0018250350840389646,
+          "max": 2.5571186542510986,
+          "std": 0.07232361370003783
+        }
+      },
+      "d_lt_020": {
+        "n": 234,
+        "base_clipped_fraction": 0.0,
+        "hypothetical_all_inside_clipped_fraction": 0.0,
+        "pre_partial_slope_per_step_per_m": {
+          "n": 234,
+          "min": 0.005938354879617691,
+          "p10": 0.010461128596216441,
+          "p50": 0.05417199246585369,
+          "p90": 0.19566847681999214,
+          "max": 2.5571186542510986,
+          "std": 0.2764723212180926
+        },
+        "post_partial_slope_per_step_per_m": {
+          "n": 234,
+          "min": 0.005938354879617691,
+          "p10": 0.010461128596216441,
+          "p50": 0.05417199246585369,
+          "p90": 0.19566847681999214,
+          "max": 2.5571186542510986,
+          "std": 0.2764723212180926
+        }
+      },
+      "d_lt_009": {
+        "n": 3,
+        "base_clipped_fraction": 0.0,
+        "hypothetical_all_inside_clipped_fraction": 0.0,
+        "pre_partial_slope_per_step_per_m": {
+          "n": 3,
+          "min": 2.0137369632720947,
+          "p10": 2.0487091064453127,
+          "p50": 2.1885976791381836,
+          "p90": 2.4834144592285154,
+          "max": 2.5571186542510986,
+          "std": 0.22648218991606198
+        },
+        "post_partial_slope_per_step_per_m": {
+          "n": 3,
+          "min": 2.0137369632720947,
+          "p10": 2.0487091064453127,
+          "p50": 2.1885976791381836,
+          "p90": 2.4834144592285154,
+          "max": 2.5571186542510986,
+          "std": 0.22648218991606198
+        }
+      },
+      "d_lt_005": {
+        "n": 0,
+        "base_clipped_fraction": null,
+        "hypothetical_all_inside_clipped_fraction": null,
+        "pre_partial_slope_per_step_per_m": {
+          "n": 0
+        },
+        "post_partial_slope_per_step_per_m": {
+          "n": 0
+        }
+      },
+      "clipped_approach_or_fixed_steps": {
+        "n": 72,
+        "pre": {
+          "n": 72,
+          "min": 0.860199511051178,
+          "p10": 2.0900915622711183,
+          "p50": 6.633013725280762,
+          "p90": 7.284782552719116,
+          "max": 7.546262741088867,
+          "std": 1.996681299914174
+        },
+        "post": {
+          "n": 72,
+          "min": 0.19438302516937256,
+          "p10": 0.49849583208560944,
+          "p50": 1.8185959458351135,
+          "p90": 1.981182301044464,
+          "max": 2.0466864109039307,
+          "std": 0.5705098938357283
+        },
+        "zero_post_slope_count": 0
+      }
+    },
+    "slope_buckets": {
+      "0.00_0.05": {
+        "n": 0,
+        "pre": {
+          "n": 0
+        },
+        "post": {
+          "n": 0
+        }
+      },
+      "0.05_0.09": {
+        "n": 3,
+        "pre": {
+          "n": 3,
+          "min": 2.0137369632720947,
+          "p10": 2.0487091064453127,
+          "p50": 2.1885976791381836,
+          "p90": 2.4834144592285154,
+          "max": 2.5571186542510986,
+          "std": 0.22648218991606198
+        },
+        "post": {
+          "n": 3,
+          "min": 2.0137369632720947,
+          "p10": 2.0487091064453127,
+          "p50": 2.1885976791381836,
+          "p90": 2.4834144592285154,
+          "max": 2.5571186542510986,
+          "std": 0.22648218991606198
+        }
+      },
+      "0.09_0.20": {
+        "n": 231,
+        "pre": {
+          "n": 231,
+          "min": 0.005938354879617691,
+          "p10": 0.010418025776743889,
+          "p50": 0.05327688902616501,
+          "p90": 0.188287153840065,
+          "max": 1.2208143472671509,
+          "std": 0.1294851590053053
+        },
+        "post": {
+          "n": 231,
+          "min": 0.005938354879617691,
+          "p10": 0.010418025776743889,
+          "p50": 0.05327688902616501,
+          "p90": 0.188287153840065,
+          "max": 1.2208143472671509,
+          "std": 0.1294851590053053
+        }
+      },
+      "0.20_0.35": {
+        "n": 2425,
+        "pre": {
+          "n": 2425,
+          "min": -6.442663288908079e-05,
+          "p10": 4.44548550149193e-06,
+          "p50": 2.9843147785868496e-05,
+          "p90": 0.0011894003720954046,
+          "max": 0.005473277531564236,
+          "std": 0.0009007717087550915
+        },
+        "post": {
+          "n": 2425,
+          "min": -6.442663288908079e-05,
+          "p10": 4.44548550149193e-06,
+          "p50": 2.9843147785868496e-05,
+          "p90": 0.0011894003720954046,
+          "max": 0.005473277531564236,
+          "std": 0.0009007717087550915
+        }
+      }
+    },
+    "contrast": {
+      "near": {
+        "inside_anticipation_fraction": 0.07875,
+        "clearance_pooled": {
+          "n": 4000,
+          "min": 0.045990005135536194,
+          "p10": 0.2125639259815216,
+          "p50": 0.3131544888019562,
+          "p90": 0.37546250224113464,
+          "max": 0.48145049810409546,
+          "std": 0.07069952687806996
+        },
+        "reward_pooled": {
+          "n": 4000,
+          "min": -0.06197843328118324,
+          "p10": 0.04426685608923437,
+          "p50": 0.36290253698825836,
+          "p90": 0.37495856881141665,
+          "max": 0.38645607233047485,
+          "std": 0.12554573542334488
+        },
+        "common_step": 249,
+        "clearance_at_common_step": {
+          "n": 16,
+          "min": 0.12687890231609344,
+          "p10": 0.23077772557735443,
+          "p50": 0.3219653069972992,
+          "p90": 0.3545472323894501,
+          "max": 0.3964890241622925,
+          "std": 0.06624485696220134
+        },
+        "reward_at_common_step": {
+          "n": 16,
+          "min": 0.3406878709793091,
+          "p10": 0.34953904151916504,
+          "p50": 0.36024124920368195,
+          "p90": 0.37715741991996765,
+          "max": 0.3811942934989929,
+          "std": 0.011646284044725529
+        },
+        "hand_cost_at_common_step": {
+          "n": 16,
+          "min": 0.0,
+          "p10": 0.0,
+          "p50": 0.0,
+          "p90": 0.0,
+          "max": 0.005346694961190224,
+          "std": 0.001294228783871303
+        },
+        "raw_gae_at_common_step": {
+          "n": 16,
+          "min": -0.09122010827064386,
+          "p10": -0.07558712422847869,
+          "p50": 0.02584855020046284,
+          "p90": 0.07155934631824401,
+          "max": 0.0911094152927383,
+          "std": 0.05465256613555894
+        },
+        "raw_gae_first_step": {
+          "n": 16,
+          "min": -1.5625993905551114,
+          "p10": -1.4454678419923495,
+          "p50": -1.360547815620206,
+          "p90": -1.1260300973299988,
+          "max": -1.1114238097340536,
+          "std": 0.13096774753629825
+        },
+        "ppo_advantage_at_common_step": {
+          "n": 16,
+          "min": -0.09122010827064386,
+          "p10": -0.07558712422847869,
+          "p50": 0.02584855020046284,
+          "p90": 0.07155934631824401,
+          "max": 0.0911094152927383,
+          "std": 0.05465256613555894
+        },
+        "ppo_advantage_first_step": {
+          "n": 16,
+          "min": -1.416541275949708,
+          "p10": -1.2487864516147784,
+          "p50": -1.0809134687762763,
+          "p90": -0.9181928525287875,
+          "max": -0.8885129933884883,
+          "std": 0.14556456300669274
+        },
+        "returns": {
+          "n": 16,
+          "min": 73.74908986873925,
+          "p10": 74.5681904454832,
+          "p50": 75.53427626471967,
+          "p90": 76.09613041905686,
+          "max": 76.46329575031996,
+          "std": 0.6702052965984724
+        },
+        "initial_pre_tanh_std": {
+          "n": 272,
+          "min": 0.19382762908935547,
+          "p10": 0.23814885318279266,
+          "p50": 0.3581331670284271,
+          "p90": 0.5913918614387512,
+          "max": 0.6101144552230835,
+          "std": 0.126863910880539
+        }
+      },
+      "negative": {
+        "inside_anticipation_fraction": 0.00325,
+        "clearance_pooled": {
+          "n": 4000,
+          "min": 0.1620180755853653,
+          "p10": 0.28647040128707885,
+          "p50": 0.3898274600505829,
+          "p90": 0.5169900536537171,
+          "max": 0.6835631132125854,
+          "std": 0.09140013138936871
+        },
+        "reward_pooled": {
+          "n": 4000,
+          "min": 0.0025827190838754177,
+          "p10": 0.08876808732748032,
+          "p50": 0.3682701587677002,
+          "p90": 0.37859259843826293,
+          "max": 0.387619286775589,
+          "std": 0.12076363030720193
+        },
+        "common_step": 249,
+        "clearance_at_common_step": {
+          "n": 16,
+          "min": 0.2653796076774597,
+          "p10": 0.31002292037010193,
+          "p50": 0.37001413106918335,
+          "p90": 0.49346277117729187,
+          "max": 0.6230248212814331,
+          "std": 0.08729489471506004
+        },
+        "reward_at_common_step": {
+          "n": 16,
+          "min": 0.34857726097106934,
+          "p10": 0.35522690415382385,
+          "p50": 0.368902251124382,
+          "p90": 0.38001351058483124,
+          "max": 0.38211140036582947,
+          "std": 0.009424541815609429
+        },
+        "hand_cost_at_common_step": {
+          "n": 16,
+          "min": 0.0,
+          "p10": 0.0,
+          "p50": 0.0,
+          "p90": 0.0,
+          "max": 0.0,
+          "std": 0.0
+        },
+        "raw_gae_at_common_step": {
+          "n": 16,
+          "min": -0.0724718260765087,
+          "p10": -0.060396952629089284,
+          "p50": -0.00844954311847701,
+          "p90": 0.0799634826183322,
+          "max": 0.13897497296333228,
+          "std": 0.05721296431288501
+        },
+        "raw_gae_first_step": {
+          "n": 16,
+          "min": -2.6852625568916233,
+          "p10": -2.5608865957827165,
+          "p50": -2.4445914982119907,
+          "p90": -2.3249295587318115,
+          "max": -2.304401233612318,
+          "std": 0.10737525384355803
+        },
+        "ppo_advantage_at_common_step": {
+          "n": 16,
+          "min": -0.0724718260765087,
+          "p10": -0.060396952629089284,
+          "p50": -0.00844954311847701,
+          "p90": 0.0799634826183322,
+          "max": 0.13897497296333228,
+          "std": 0.05721296431288501
+        },
+        "ppo_advantage_first_step": {
+          "n": 16,
+          "min": -2.4513109944315747,
+          "p10": -2.3104077966203125,
+          "p50": -2.196277701597147,
+          "p90": -2.005651898072319,
+          "max": -1.9573471462866383,
+          "std": 0.13230179300215025
+        },
+        "returns": {
+          "n": 16,
+          "min": 76.29013258498162,
+          "p10": 76.71729186363518,
+          "p50": 77.149187840987,
+          "p90": 77.44347790023312,
+          "max": 77.61719250213355,
+          "std": 0.3193650352271883
+        },
+        "initial_pre_tanh_std": {
+          "n": 272,
+          "min": 0.2828708589076996,
+          "p10": 0.3348277807235718,
+          "p50": 0.46573156118392944,
+          "p90": 0.6409316062927246,
+          "max": 0.6804686188697815,
+          "std": 0.11785959427316353
+        }
+      }
+    },
+    "counterfactual": {
+      "pairs": [
+        {
+          "seed": 0,
+          "delta_return": 1.4545847699046135,
+          "delta_common_prefix_return": 1.4545847699046135,
+          "A_steps": 250,
+          "B_steps": 250,
+          "A_return": 76.69227403774858,
+          "B_return": 78.14685880765319,
+          "delta_common_hand_clearance": -0.019812655746936803
+        },
+        {
+          "seed": 1,
+          "delta_return": 1.3181542251259089,
+          "delta_common_prefix_return": 1.3181542251259089,
+          "A_steps": 250,
+          "B_steps": 250,
+          "A_return": 76.38892524968833,
+          "B_return": 77.70707947481424,
+          "delta_common_hand_clearance": -0.029245522677898428
+        },
+        {
+          "seed": 2,
+          "delta_return": -2.1757794627919793,
+          "delta_common_prefix_return": -2.1757794627919793,
+          "A_steps": 250,
+          "B_steps": 250,
+          "A_return": 76.80255509354174,
+          "B_return": 74.62677563074976,
+          "delta_common_hand_clearance": 0.004669806301593804
+        },
+        {
+          "seed": 3,
+          "delta_return": 2.156064654700458,
+          "delta_common_prefix_return": 2.156064654700458,
+          "A_steps": 250,
+          "B_steps": 250,
+          "A_return": 75.78874639142305,
+          "B_return": 77.9448110461235,
+          "delta_common_hand_clearance": -0.03245004683732983
+        },
+        {
+          "seed": 4,
+          "delta_return": 2.4139039404690266,
+          "delta_common_prefix_return": 2.4139039404690266,
+          "A_steps": 250,
+          "B_steps": 250,
+          "A_return": 75.52620776090771,
+          "B_return": 77.94011170137674,
+          "delta_common_hand_clearance": -0.026800886332988716
+        },
+        {
+          "seed": 5,
+          "delta_return": 2.674646871164441,
+          "delta_common_prefix_return": 2.674646871164441,
+          "A_steps": 250,
+          "B_steps": 250,
+          "A_return": 75.64835490100086,
+          "B_return": 78.3230017721653,
+          "delta_common_hand_clearance": -0.050462427079677574
+        },
+        {
+          "seed": 6,
+          "delta_return": 1.7316227862611413,
+          "delta_common_prefix_return": 1.7316227862611413,
+          "A_steps": 250,
+          "B_steps": 250,
+          "A_return": 74.74193946481682,
+          "B_return": 76.47356225107796,
+          "delta_common_hand_clearance": -0.06201111727952957
+        },
+        {
+          "seed": 7,
+          "delta_return": 0.6317763617262244,
+          "delta_common_prefix_return": 0.6317763617262244,
+          "A_steps": 250,
+          "B_steps": 250,
+          "A_return": 77.26430493872613,
+          "B_return": 77.89608130045235,
+          "delta_common_hand_clearance": 0.0670057480931282
+        },
+        {
+          "seed": 8,
+          "delta_return": 1.4884452025871724,
+          "delta_common_prefix_return": 1.4884452025871724,
+          "A_steps": 250,
+          "B_steps": 250,
+          "A_return": 76.33407382830046,
+          "B_return": 77.82251903088763,
+          "delta_common_hand_clearance": -0.01298825240135193
+        },
+        {
+          "seed": 9,
+          "delta_return": 2.4514439031481743,
+          "delta_common_prefix_return": 2.4514439031481743,
+          "A_steps": 250,
+          "B_steps": 250,
+          "A_return": 75.46433938387781,
+          "B_return": 77.91578328702599,
+          "delta_common_hand_clearance": -0.0019628228545188753
+        },
+        {
+          "seed": 10,
+          "delta_return": 1.620103819295764,
+          "delta_common_prefix_return": 1.620103819295764,
+          "A_steps": 250,
+          "B_steps": 250,
+          "A_return": 76.42449736222625,
+          "B_return": 78.04460118152201,
+          "delta_common_hand_clearance": -0.03513760989904402
+        },
+        {
+          "seed": 11,
+          "delta_return": 0.4429829362779856,
+          "delta_common_prefix_return": 0.4429829362779856,
+          "A_steps": 250,
+          "B_steps": 250,
+          "A_return": 76.8615148998797,
+          "B_return": 77.30449783615768,
+          "delta_common_hand_clearance": -0.0013553588986396914
+        },
+        {
+          "seed": 12,
+          "delta_return": 1.8525044275447726,
+          "delta_common_prefix_return": 1.8525044275447726,
+          "A_steps": 250,
+          "B_steps": 250,
+          "A_return": 76.23477629572153,
+          "B_return": 78.0872807232663,
+          "delta_common_hand_clearance": -0.029577745437622094
+        },
+        {
+          "seed": 13,
+          "delta_return": 0.44805434346199036,
+          "delta_common_prefix_return": 0.44805434346199036,
+          "A_steps": 250,
+          "B_steps": 250,
+          "A_return": 76.46432638447732,
+          "B_return": 76.91238072793931,
+          "delta_common_hand_clearance": -0.03867319315671924
+        },
+        {
+          "seed": 14,
+          "delta_return": 0.5596744380891323,
+          "delta_common_prefix_return": 0.5596744380891323,
+          "A_steps": 250,
+          "B_steps": 250,
+          "A_return": 77.32017133524641,
+          "B_return": 77.87984577333555,
+          "delta_common_hand_clearance": 0.027523825883865316
+        },
+        {
+          "seed": 15,
+          "delta_return": 2.305329879745841,
+          "delta_common_prefix_return": 2.305329879745841,
+          "A_steps": 250,
+          "B_steps": 250,
+          "A_return": 75.64769816864282,
+          "B_return": 77.95302804838866,
+          "delta_common_hand_clearance": -0.04270275366306303
+        }
+      ],
+      "delta_return": {
+        "mean": 1.3358445685444167,
+        "ci95": [
+          0.702283313665248,
+          1.8441196112424223
+        ]
+      },
+      "delta_common_prefix_return": {
+        "mean": 1.3358445685444167,
+        "ci95": [
+          0.7254655717886636,
+          1.8433644206445023
+        ]
+      },
+      "terms": {
+        "tracking_orientation": {
+          "mean": -0.24978665099479258,
+          "ci95": [
+            -0.3533692961675115,
+            -0.13992037177376912
+          ]
+        },
+        "tracking_root_field": {
+          "mean": 0.06005782391366665,
+          "ci95": [
+            0.044001016548554615,
+            0.0758908995991078
+          ]
+        },
+        "body_motion": {
+          "mean": 0.15755729452115474,
+          "ci95": [
+            0.13291636296073647,
+            0.18013977881267068
+          ]
+        },
+        "body_rotation": {
+          "mean": -0.0521260331152007,
+          "ci95": [
+            -0.10336070522898808,
+            0.0009634550158807569
+          ]
+        },
+        "foot_contact": {
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "foot_clearance": {
+          "mean": 3.1724455603621138e-06,
+          "ci95": [
+            -3.881925376258977e-06,
+            1.109290383633499e-05
+          ]
+        },
+        "foot_slip": {
+          "mean": 0.04931748401675917,
+          "ci95": [
+            0.003364837626707626,
+            0.10142837369010593
+          ]
+        },
+        "foot_balance": {
+          "mean": 0.14478125260143315,
+          "ci95": [
+            -0.28069246478585824,
+            0.4952247439826385
+          ]
+        },
+        "straight_knee": {
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "foot_far": {
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "joint_limits": {
+          "mean": -0.0010908790660550949,
+          "ci95": [
+            -0.0032366583473063316,
+            8.937085939919599e-06
+          ]
+        },
+        "joint_torque": {
+          "mean": 0.041405302079510875,
+          "ci95": [
+            -0.0017837851043623226,
+            0.08487850433948553
+          ]
+        },
+        "smoothness_joint": {
+          "mean": 0.15442478754494005,
+          "ci95": [
+            0.12593770723192393,
+            0.1808659036420522
+          ]
+        },
+        "smoothness_action": {
+          "mean": 0.031949913253811246,
+          "ci95": [
+            0.03068389801559306,
+            0.03323419205095206
+          ]
+        },
+        "headgf": {
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "feetgf": {
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "handsgf": {
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "headdf": {
+          "mean": -3.4971135017038236e-08,
+          "ci95": [
+            -4.8124911384950174e-08,
+            -2.2581251298110214e-08
+          ]
+        },
+        "feetdf": {
+          "mean": -7.087767985099734e-11,
+          "ci95": [
+            -1.0264017909164819e-10,
+            -4.151745908727589e-11
+          ]
+        },
+        "handsdf": {
+          "mean": -0.042472063773567895,
+          "ci95": [
+            -0.14134428717201128,
+            0.01867117925586003
+          ]
+        },
+        "kneesdf": {
+          "mean": -0.0005402276893782275,
+          "ci95": [
+            -0.0008190475908690056,
+            -0.00030374160234096536
+          ]
+        },
+        "shldsdf": {
+          "mean": -3.281488737508369e-05,
+          "ci95": [
+            -4.461973315347172e-05,
+            -2.1059997926928032e-05
+          ]
+        },
+        "wholebody_hand_clearance": {
+          "mean": -0.05056576999404894,
+          "ci95": [
+            -0.15077530159229816,
+            0.007229137248395505
+          ]
+        },
+        "wholebody_arm_clearance": {
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "wholebody_upper_target_velocity": {
+          "mean": 0.11991221172359356,
+          "ci95": [
+            0.11935038038832424,
+            0.12045831580372982
+          ]
+        },
+        "wholebody_upper_target_acceleration": {
+          "mean": 0.9865139922832218,
+          "ci95": [
+            0.9463595351491482,
+            1.0255364766647377
+          ]
+        },
+        "wholebody_upper_clear_posture": {
+          "mean": -0.013465235052024127,
+          "ci95": [
+            -0.01510412832239041,
+            -0.011890250320671213
+          ]
+        },
+        "floor_lift": {
+          "mean": -1.2113014236092567e-07,
+          "ci95": [
+            -3.63390427082777e-07,
+            0.0
+          ]
+        },
+        "collision_event": {
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        }
+      },
+      "common_prefix_terms": {
+        "tracking_orientation": {
+          "mean": -0.24978665099479258,
+          "ci95": [
+            -0.35499910825747066,
+            -0.14454011639754752
+          ]
+        },
+        "tracking_root_field": {
+          "mean": 0.06005782391366665,
+          "ci95": [
+            0.04461819850266693,
+            0.0760092538742356
+          ]
+        },
+        "body_motion": {
+          "mean": 0.15755729452115474,
+          "ci95": [
+            0.13338152755938354,
+            0.18007323955335153
+          ]
+        },
+        "body_rotation": {
+          "mean": -0.0521260331152007,
+          "ci95": [
+            -0.10464932013273938,
+            -0.0025389287016878365
+          ]
+        },
+        "foot_contact": {
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "foot_clearance": {
+          "mean": 3.1724455603621138e-06,
+          "ci95": [
+            -3.837154262709141e-06,
+            1.093704566943743e-05
+          ]
+        },
+        "foot_slip": {
+          "mean": 0.04931748401675917,
+          "ci95": [
+            0.00389311429660596,
+            0.09768543659457032
+          ]
+        },
+        "foot_balance": {
+          "mean": 0.14478125260143315,
+          "ci95": [
+            -0.2728037309204357,
+            0.497773964651804
+          ]
+        },
+        "straight_knee": {
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "foot_far": {
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "joint_limits": {
+          "mean": -0.0010908790660550949,
+          "ci95": [
+            -0.0032294869541544813,
+            6.331506774870389e-06
+          ]
+        },
+        "joint_torque": {
+          "mean": 0.041405302079510875,
+          "ci95": [
+            -0.002208608228647788,
+            0.08749047706805868
+          ]
+        },
+        "smoothness_joint": {
+          "mean": 0.15442478754494005,
+          "ci95": [
+            0.12450736033487146,
+            0.1816057491652714
+          ]
+        },
+        "smoothness_action": {
+          "mean": 0.031949913253811246,
+          "ci95": [
+            0.0305994030424813,
+            0.03323050202112654
+          ]
+        },
+        "headgf": {
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "feetgf": {
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "handsgf": {
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "headdf": {
+          "mean": -3.4971135017038236e-08,
+          "ci95": [
+            -4.7379286248109095e-08,
+            -2.276334272463873e-08
+          ]
+        },
+        "feetdf": {
+          "mean": -7.087767985099734e-11,
+          "ci95": [
+            -1.0539829473779187e-10,
+            -4.117190142474184e-11
+          ]
+        },
+        "handsdf": {
+          "mean": -0.042472063773567895,
+          "ci95": [
+            -0.14008176368819153,
+            0.018060030426238334
+          ]
+        },
+        "kneesdf": {
+          "mean": -0.0005402276893782275,
+          "ci95": [
+            -0.0008238475691857382,
+            -0.0003008827945226747
+          ]
+        },
+        "shldsdf": {
+          "mean": -3.281488737508369e-05,
+          "ci95": [
+            -4.4453360781056854e-05,
+            -2.1101820451378047e-05
+          ]
+        },
+        "wholebody_hand_clearance": {
+          "mean": -0.05056576999404894,
+          "ci95": [
+            -0.15243356566589752,
+            0.007511268812566764
+          ]
+        },
+        "wholebody_arm_clearance": {
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        },
+        "wholebody_upper_target_velocity": {
+          "mean": 0.11991221172359356,
+          "ci95": [
+            0.11935837028450717,
+            0.1204411225169223
+          ]
+        },
+        "wholebody_upper_target_acceleration": {
+          "mean": 0.9865139922832218,
+          "ci95": [
+            0.9466727138706604,
+            1.0250817432892472
+          ]
+        },
+        "wholebody_upper_clear_posture": {
+          "mean": -0.013465235052024127,
+          "ci95": [
+            -0.01512307645207187,
+            -0.011851287880563888
+          ]
+        },
+        "floor_lift": {
+          "mean": -1.2113014236092567e-07,
+          "ci95": [
+            -3.63390427082777e-07,
+            0.0
+          ]
+        },
+        "collision_event": {
+          "mean": 0.0,
+          "ci95": [
+            0.0,
+            0.0
+          ]
+        }
+      }
+    },
+    "outcomes": {
+      "approach_A": {
+        "fall": 0,
+        "contact": 0,
+        "done": 0
+      },
+      "approach_B": {
+        "fall": 0,
+        "contact": 0,
+        "done": 0
+      },
+      "near": {
+        "fall": 0,
+        "contact": 0,
+        "done": 0
+      },
+      "negative": {
+        "fall": 0,
+        "contact": 0,
+        "done": 0
+      }
+    }
+  },
+  "per_step_logged_seeds": 8,
+  "disk_after_bytes": 14153416704
+}

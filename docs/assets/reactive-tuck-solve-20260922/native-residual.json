@@ -1,0 +1,288 @@
+{
+  "rows": [
+    {
+      "distance_m": 0.2,
+      "native_cost_per_s_both": 0.011058629507215917,
+      "explicit_cost_per_s_both": 0.0,
+      "episodes": [
+        {
+          "seconds": 5,
+          "native_both": 0.055293147536079584,
+          "native_single": 0.027646573768039792,
+          "explicit_both": 0.0,
+          "explicit_single": 0.0
+        },
+        {
+          "seconds": 10,
+          "native_both": 0.11058629507215917,
+          "native_single": 0.055293147536079584,
+          "explicit_both": 0.0,
+          "explicit_single": 0.0
+        },
+        {
+          "seconds": 20,
+          "native_both": 0.22117259014431834,
+          "native_single": 0.11058629507215917,
+          "explicit_both": 0.0,
+          "explicit_single": 0.0
+        },
+        {
+          "seconds": 80,
+          "native_both": 0.8846903605772733,
+          "native_single": 0.4423451802886367,
+          "explicit_both": 0.0,
+          "explicit_single": 0.0
+        }
+      ]
+    },
+    {
+      "distance_m": 0.25,
+      "native_cost_per_s_both": 0.0009079779843372929,
+      "explicit_cost_per_s_both": 0.0,
+      "episodes": [
+        {
+          "seconds": 5,
+          "native_both": 0.004539889921686464,
+          "native_single": 0.002269944960843232,
+          "explicit_both": 0.0,
+          "explicit_single": 0.0
+        },
+        {
+          "seconds": 10,
+          "native_both": 0.009079779843372928,
+          "native_single": 0.004539889921686464,
+          "explicit_both": 0.0,
+          "explicit_single": 0.0
+        },
+        {
+          "seconds": 20,
+          "native_both": 0.018159559686745857,
+          "native_single": 0.009079779843372928,
+          "explicit_both": 0.0,
+          "explicit_single": 0.0
+        },
+        {
+          "seconds": 80,
+          "native_both": 0.07263823874698343,
+          "native_single": 0.036319119373491714,
+          "explicit_both": 0.0,
+          "explicit_single": 0.0
+        }
+      ]
+    },
+    {
+      "distance_m": 0.3,
+      "native_cost_per_s_both": 7.453292456247981e-05,
+      "explicit_cost_per_s_both": 0.0,
+      "episodes": [
+        {
+          "seconds": 5,
+          "native_both": 0.0003726646228123991,
+          "native_single": 0.00018633231140619954,
+          "explicit_both": 0.0,
+          "explicit_single": 0.0
+        },
+        {
+          "seconds": 10,
+          "native_both": 0.0007453292456247981,
+          "native_single": 0.0003726646228123991,
+          "explicit_both": 0.0,
+          "explicit_single": 0.0
+        },
+        {
+          "seconds": 20,
+          "native_both": 0.0014906584912495963,
+          "native_single": 0.0007453292456247981,
+          "explicit_both": 0.0,
+          "explicit_single": 0.0
+        },
+        {
+          "seconds": 80,
+          "native_both": 0.005962633964998385,
+          "native_single": 0.0029813169824991926,
+          "explicit_both": 0.0,
+          "explicit_single": 0.0
+        }
+      ]
+    },
+    {
+      "distance_m": 0.35,
+      "native_cost_per_s_both": 6.11804547427441e-06,
+      "explicit_cost_per_s_both": 0.0,
+      "episodes": [
+        {
+          "seconds": 5,
+          "native_both": 3.059022737137205e-05,
+          "native_single": 1.5295113685686026e-05,
+          "explicit_both": 0.0,
+          "explicit_single": 0.0
+        },
+        {
+          "seconds": 10,
+          "native_both": 6.11804547427441e-05,
+          "native_single": 3.059022737137205e-05,
+          "explicit_both": 0.0,
+          "explicit_single": 0.0
+        },
+        {
+          "seconds": 20,
+          "native_both": 0.0001223609094854882,
+          "native_single": 6.11804547427441e-05,
+          "explicit_both": 0.0,
+          "explicit_single": 0.0
+        },
+        {
+          "seconds": 80,
+          "native_both": 0.0004894436379419528,
+          "native_single": 0.0002447218189709764,
+          "explicit_both": 0.0,
+          "explicit_single": 0.0
+        }
+      ]
+    },
+    {
+      "distance_m": 0.09,
+      "native_cost_per_s_both": 2.538560220859451,
+      "explicit_cost_per_s_both": 1.21,
+      "episodes": [
+        {
+          "seconds": 5,
+          "native_both": 12.692801104297256,
+          "native_single": 6.346400552148628,
+          "explicit_both": 6.05,
+          "explicit_single": 3.025
+        },
+        {
+          "seconds": 10,
+          "native_both": 25.385602208594513,
+          "native_single": 12.692801104297256,
+          "explicit_both": 12.1,
+          "explicit_single": 6.05
+        },
+        {
+          "seconds": 20,
+          "native_both": 50.771204417189026,
+          "native_single": 25.385602208594513,
+          "explicit_both": 24.2,
+          "explicit_single": 12.1
+        },
+        {
+          "seconds": 80,
+          "native_both": 203.0848176687561,
+          "native_single": 101.54240883437805,
+          "explicit_both": 96.8,
+          "explicit_single": 48.4
+        }
+      ]
+    },
+    {
+      "distance_m": 0.05,
+      "native_cost_per_s_both": 13.862943611198906,
+      "explicit_cost_per_s_both": 5.410493827160494,
+      "episodes": [
+        {
+          "seconds": 5,
+          "native_both": 69.31471805599453,
+          "native_single": 34.657359027997266,
+          "explicit_both": 27.05246913580247,
+          "explicit_single": 13.526234567901234
+        },
+        {
+          "seconds": 10,
+          "native_both": 138.62943611198907,
+          "native_single": 69.31471805599453,
+          "explicit_both": 54.10493827160494,
+          "explicit_single": 27.05246913580247
+        },
+        {
+          "seconds": 20,
+          "native_both": 277.25887222397813,
+          "native_single": 138.62943611198907,
+          "explicit_both": 108.20987654320987,
+          "explicit_single": 54.10493827160494
+        },
+        {
+          "seconds": 80,
+          "native_both": 1109.0354888959125,
+          "native_single": 554.5177444479563,
+          "explicit_both": 432.8395061728395,
+          "explicit_single": 216.41975308641975
+        }
+      ]
+    },
+    {
+      "distance_m": 0.03,
+      "native_cost_per_s_both": 26.26523375036446,
+      "explicit_cost_per_s_both": 10.00111111111111,
+      "episodes": [
+        {
+          "seconds": 5,
+          "native_both": 131.3261687518223,
+          "native_single": 65.66308437591115,
+          "explicit_both": 50.005555555555546,
+          "explicit_single": 25.002777777777773
+        },
+        {
+          "seconds": 10,
+          "native_both": 262.6523375036446,
+          "native_single": 131.3261687518223,
+          "explicit_both": 100.01111111111109,
+          "explicit_single": 50.005555555555546
+        },
+        {
+          "seconds": 20,
+          "native_both": 525.3046750072892,
+          "native_single": 262.6523375036446,
+          "explicit_both": 200.02222222222218,
+          "explicit_single": 100.01111111111109
+        },
+        {
+          "seconds": 80,
+          "native_both": 2101.218700029157,
+          "native_single": 1050.6093500145785,
+          "explicit_both": 800.0888888888887,
+          "explicit_single": 400.04444444444437
+        }
+      ]
+    },
+    {
+      "distance_m": 0.0,
+      "native_cost_per_s_both": 51.57779468585099,
+      "explicit_cost_per_s_both": 20.0,
+      "episodes": [
+        {
+          "seconds": 5,
+          "native_both": 257.888973429255,
+          "native_single": 128.9444867146275,
+          "explicit_both": 100.0,
+          "explicit_single": 50.0
+        },
+        {
+          "seconds": 10,
+          "native_both": 515.77794685851,
+          "native_single": 257.888973429255,
+          "explicit_both": 200.0,
+          "explicit_single": 100.0
+        },
+        {
+          "seconds": 20,
+          "native_both": 1031.55589371702,
+          "native_single": 515.77794685851,
+          "explicit_both": 400.0,
+          "explicit_single": 200.0
+        },
+        {
+          "seconds": 80,
+          "native_both": 4126.22357486808,
+          "native_single": 2063.11178743404,
+          "explicit_both": 1600.0,
+          "explicit_single": 800.0
+        }
+      ]
+    }
+  ],
+  "derived": true,
+  "assumption": "constant matched surface distance, no term changes/floor clipping; these are upper bounds on recoverable native reward when the base floor clips",
+  "horizons": "5 s probe; 10 s flat v2 (500 steps); 20 s 1000-step scenes; 80 s 4000-step scenes",
+  "negative_vs_5cm_explicit_ratio": 0.0020439223960855434
+}

@@ -136,7 +136,8 @@ ELBOW_RADIUS_M = 0.05
 
 
 def wholebody_observation_contract():
-    """Compact CAT: existing hand slots plus one CAT-style field sample/elbow."""
+    """Shared native/JAX contract: hand sphere fields plus one sample/elbow.
+    """
     actor, critic = _base_features(JOINT_NAMES, JOINT_NAMES)
     # Match CAT's per-group layout: both GF vectors, both BF vectors, distances.
     elbows = [f"pf.elbows.{field}.{i}.{axis}"
@@ -163,3 +164,8 @@ def route_coordinate(position, route, xp=np):
     segment = xp.argmin(distance)
     offsets = xp.concatenate([xp.zeros(1), xp.cumsum(lengths)[:-1]])
     return offsets[segment] + t[segment] * lengths[segment], distance[segment]
+
+
+def mjlab_observation_contract():
+    """Native geometry/sensor contract: exactly actor 222 / critic 310."""
+    return wholebody_observation_contract()

@@ -1,0 +1,26 @@
+[
+  {
+    "command": [
+      ".venv-mjlab/bin/python",
+      "-m",
+      "cat_ppo.furniture.contrast_preflight",
+      "data/furniture/cat_flat_balance_v1_20260920/manifest.json",
+      "--require-hand-contrast"
+    ],
+    "exit_code": 1,
+    "stdout": "Hand-contrast preflight: {\"active_hand_objective_zones\": 0, \"hand_active_zones\": 0, \"positive_heading_zones\": 0, \"roles\": {\"narrow\": 12}, \"scene_count\": 2351, \"zones\": 36}\n",
+    "stderr": "Traceback (most recent call last):\n  File \"<frozen runpy>\", line 198, in _run_module_as_main\n  File \"<frozen runpy>\", line 88, in _run_code\n  File \"/home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab/cat_ppo/furniture/contrast_preflight.py\", line 43, in <module>\n    contrast_preflight(args.manifest, require_hand_contrast=True if args.require_hand_contrast else None)\n  File \"/home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab/cat_ppo/furniture/contrast_preflight.py\", line 33, in contrast_preflight\n    raise ValueError('Hand-contrast training requested but active hand/heading coverage is zero')\nValueError: Hand-contrast training requested but active hand/heading coverage is zero\n"
+  },
+  {
+    "command": [
+      ".venv-mjlab/bin/python",
+      "-m",
+      "cat_ppo.furniture.contrast_preflight",
+      "data/furniture/cat_flat_hand_balance_v2_20260921/manifest.json",
+      "--require-hand-contrast"
+    ],
+    "exit_code": 0,
+    "stdout": "Hand-contrast preflight: {\"active_hand_objective_zones\": 60, \"hand_active_zones\": 60, \"positive_heading_zones\": 60, \"roles\": {\"forward_protected\": 12, \"narrow\": 12, \"transition\": 12}, \"scene_count\": 2375, \"zones\": 108}\n",
+    "stderr": ""
+  }
+]
