@@ -366,6 +366,12 @@ def collect_rollout(task, learner, *, unroll_length, trajectories, policy_ids):
                 reactive_counts['ended'] = reactive_counts.get('ended', 0.) + float(ended_reactive.sum())
                 reactive_counts['left_spot'] = reactive_counts.get('left_spot', 0.) + float((ended_reactive & metrics.get('episode/reactive_left_spot', torch.zeros_like(done)).bool()).sum())
                 reactive_counts['displacement_sum'] = reactive_counts.get('displacement_sum', 0.) + float((metrics['reactive/root_displacement_m'] * active).sum())
+                # Stance quietness: how much the body moves while it is supposed to stand still
+                # (baseline recording: 0.12 m/s planar speed, 0.40 rad/s yaw rate, 2 cm shoulder sway).
+                standing = active & ~metrics['reactive/walking'].bool()
+                reactive_counts['standing_steps'] = reactive_counts.get('standing_steps', 0.) + float(standing.sum())
+                reactive_counts['stance_speed_sum'] = reactive_counts.get('stance_speed_sum', 0.) + float((metrics['reactive/root_speed_m_s'] * standing).sum())
+                reactive_counts['stance_yaw_sum'] = reactive_counts.get('stance_yaw_sum', 0.) + float((metrics['reactive/yaw_rate_rad_s'] * standing).sum())
                 finished = metrics['reactive/event_finished'].bool()
                 if bool(finished.any()):
                     success = metrics['reactive/event_success'].bool(); bucket_id = metrics['reactive/event_bucket']
@@ -516,6 +522,8 @@ def collect_rollout(task, learner, *, unroll_length, trajectories, policy_ids):
             **{f'reactive/event_success_rate_{name}': reactive_counts.get(f'event_success_{name}', 0.) / max(reactive_counts.get(f'events_{name}', 0.), 1.)
                for name in ('danger', 'anticipation', 'negative')},
             'reactive/root_displacement_mean_m': reactive_counts.get('displacement_sum', 0.) / max(active, 1.),
+            'reactive/stance_speed_mean_m_s': reactive_counts.get('stance_speed_sum', 0.) / max(reactive_counts.get('standing_steps', 0.), 1.),
+            'reactive/stance_yaw_rate_mean_rad_s': reactive_counts.get('stance_yaw_sum', 0.) / max(reactive_counts.get('standing_steps', 0.), 1.),
             'reactive/object_initiated_contact_rate': reactive_counts['object_hit'] / max(active, 1.),
             'reactive/mean_hand_gap_m': reactive_counts['active_gap_sum'] / max(active, 1.),
             'reactive/min_hand_gap_m': (reactive_counts['active_gap_min']
@@ -1244,6 +1252,7 @@ def run(args):
                     ('reactive/avoidance_margin_min_m', 'progress/p1_avoidance_margin_worst_m'),
                     ('reactive/event_success_rate', 'progress/p1_event_success_rate'),
                     ('reactive/left_spot_rate', 'progress/p1_left_spot_rate'),
+                    ('reactive/stance_speed_mean_m_s', 'progress/p1_stance_speed_m_s'),
                     ('reactive/active_fraction', 'health/reactive_experience_share'),
                     ('training/timeout_rate', 'health/episodes_timed_out'),
                     ('performance/update_seconds', 'health/seconds_per_update'),

@@ -897,6 +897,8 @@ class CATTask:
                 'reactive/object_initiated_contact':object_initiated,
                 'reactive/root_displacement_m':self.reactive_root_displacement.clone(),
                 'reactive/walking':self.reactive_objects.state['walking'].clone(),
+                'reactive/root_speed_m_s':torch.linalg.vector_norm(self._sensor('global_linvel_pelvis',self.all_ids)[:,:2],dim=-1),
+                'reactive/yaw_rate_rad_s':self.info['torso_angvel'][:,2].abs(),
                 'reactive/event_finished':self.reactive_objects.state['event_finished'].clone(),
                 'reactive/event_success':self.reactive_objects.state['event_success'].clone(),
                 'reactive/event_bucket':self.reactive_objects.state['event_bucket'].clone(),
