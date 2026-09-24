@@ -47,7 +47,9 @@ def main(argv=None):
             directory = args.output / relative
             directory.mkdir(parents=True, exist_ok=True)
             record = make_clutter_fields(scene, directory, dx=args.dx)
-            source = dict(record["source"], kind="table-edge-passage", hand_contrast=scene.get("hand_contrast"))
+            # hand_contrast is kept: it is what makes the scene resolve inside this bank and carries
+            # the zone metadata; the cabinet-only corridor gate skips geometry_family=table_edges.
+            source = dict(record["source"], kind="table-edge-passage", hand_contrast=scene["hand_contrast"])
             (directory / "source.json").write_text(json.dumps(source, indent=2) + "\n")
             source["metadata_sha256"] = sha256(directory / "source.json")
             record.update(path=str(relative), source=source, task_kind="room", reset_mode="room",

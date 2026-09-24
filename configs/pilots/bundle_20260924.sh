@@ -34,9 +34,9 @@ CHECKPOINT=${CHECKPOINT:-outputs/cat_reactive_standing_20260923/resume.pt}   # p
   --num-minibatches 40 --unroll-length 32 \
   --checkpoint-native "$CHECKPOINT" \
   --fresh-optimizer --max-action-std 0 \
-  --bank-manifest data/furniture/procedural_rooms_v2_20260923/manifest.json \
-  --body-collision-bank data/furniture/full_collision_20260924b/manifest.json \
-  --body-collision-resets data/furniture/full_resets_20260924b/manifest.json \
+  --bank-manifest data/furniture/table_edges_v1_packed/manifest.json \
+  --body-collision-bank data/furniture/table_edges_v1_collision/manifest.json \
+  --body-collision-resets data/furniture/table_edges_v1_resets/manifest.json \
   --reactive-bank data/furniture/reactive_standing_v2_20260923/manifest.json \
   --experience-masses 0.17 0.34 0.08 0.20 0.10 0.02 0.06 0.03 \
   --experience-rebalance-every 5 --experience-reactive-share 0.08 \

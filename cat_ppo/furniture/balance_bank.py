@@ -68,6 +68,17 @@ def validate_balance_manifest(manifest, *, path, verify_files=False):
     return marker
 
 
+def _extended_plan(manifest):
+    """Parent prefix keeps its own plan; appended scenes join their declared group."""
+    import json as _json
+    from .generalist_fields import SAMPLING_GROUPS
+    parent = _json.loads(Path(manifest['flat_balance']['parent']['manifest']).read_text())
+    ids, masses = sampling_plan(parent)
+    extra = [SAMPLING_GROUPS.index(s['sampling_group'])
+             for s in manifest['scenes'][len(parent['scenes']):]]
+    return np.concatenate([ids, np.asarray(extra, np.int64)]), masses
+
+
 def sampling_plan(manifest):
     if manifest['flat_balance']['schema'] == 'cat-protected-heavy-v6':
         from .protected_heavy_bank import sampling_plan as heavy_plan
@@ -76,20 +87,17 @@ def sampling_plan(manifest):
         from .hand_balance_bank import sampling_plan as revised_plan
         return revised_plan(manifest)
     if manifest['flat_balance']['schema'] == 'cat-packed-balance-v1':
+        if 'parent' in manifest['flat_balance'] and 'additions' in manifest['flat_balance']:
+            # A packed EXTENDED bank keeps the parent/additions pins, so it samples like the
+            # extended bank it was packed from (the legacy plan below hard-codes 2375 scenes).
+            return _extended_plan(manifest)
         # A packed bank holds exactly the source's scenes, so it samples exactly as the
         # source did. Without this it fell through to the v1 branch below, whose scene
         # counts are hard-coded and produced a 2351-long plan for a 2375-scene bank.
         from .hand_balance_bank import sampling_plan as revised_plan
         return revised_plan(manifest)
     if manifest['flat_balance']['schema'] == 'cat-extended-balance-v1':
-        # Parent prefix keeps its own plan; appended scenes join their declared group.
-        import json as _json
-        from .generalist_fields import SAMPLING_GROUPS
-        parent = _json.loads(Path(manifest['flat_balance']['parent']['manifest']).read_text())
-        ids, masses = sampling_plan(parent)
-        extra = [SAMPLING_GROUPS.index(s['sampling_group'])
-                 for s in manifest['scenes'][len(parent['scenes']):]]
-        return np.concatenate([ids, np.asarray(extra, np.int64)]), masses
+        return _extended_plan(manifest)
     from .generalist_fields import SAMPLING_GROUPS
     ids=[SAMPLING_GROUPS.index(s['sampling_group']) for s in manifest['scenes'][:2338]]+[4]*12+[5]
     return np.asarray(ids,np.int64),np.asarray(MASSES,np.float32)

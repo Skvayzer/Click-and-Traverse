@@ -36,7 +36,9 @@ def pack_geometry(rooms):
         if room is None or not room.get('hand_contrast'):
             continue
         contrast = room['hand_contrast']
-        if contrast.get('role') == 'forward_protected':
+        if contrast.get('role') == 'forward_protected' and contrast.get('geometry_family', 'cabinet') != 'table_edges':
+            # Table-edge passages have no cabinet faces; their hand protection is judged by
+            # goal success and hand clearance, not the lateral-corridor acceptance gate.
             from .lateral_corridor import scene_faces, MARGIN
             from cat_ppo.furniture.grippers import hand_sphere
             lower, upper = scene_faces(room)

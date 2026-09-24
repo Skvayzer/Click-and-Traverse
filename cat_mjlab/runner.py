@@ -614,6 +614,7 @@ SCENE_BUCKETS = ('procedural_cat', 'original_cat', 'published_cat',
                  'clutter_dense', 'clutter_pilot', 'clutter_legacy',
                  'furniture_dense', 'furniture_pilot', 'furniture_legacy',
                  'narrow_passage', 'protected_passage', 'transition_passage',
+                 'table_edges',
                  'open_passage', 'flat_balance', 'reactive_standing', 'reactive_walking')
 
 
@@ -634,6 +635,8 @@ def _scene_buckets(manifest):
         difficulty = source.get('difficulty')
         if scene['scene_id'] == 'flat-balance-walk-v1':
             name = 'flat_balance'
+        elif source.get('kind') == 'table-edge-passage':
+            name = 'table_edges'
         elif role:
             name = {'narrow': 'narrow_passage', 'forward_protected': 'protected_passage',
                     'transition': 'transition_passage', 'open': 'open_passage'}.get(role, 'open_passage')
@@ -875,10 +878,25 @@ def create_task(args, *, environment_config=None):
         from .reactive import StandingObjects, validate_bank
         meta = validate_bank(json.loads(Path(reactive_manifest).read_text()))
         pinned = Path(meta['base_bank']['path']).resolve()
-        if pinned != Path(args.bank_manifest).resolve():
-            raise ValueError(f'Reactive bank pins base bank {pinned}, but --bank-manifest is '
-                             f'{Path(args.bank_manifest).resolve()}; the approaching-object scenes would '
-                             f'reference a different scene distribution than training loads')
+        loaded = Path(args.bank_manifest).resolve()
+        # An EXTENSION of the pinned bank (parent chain appends scenes, never reorders) keeps
+        # the background scene at the same index; the object rows only supply parameters now
+        # that approaches are aimed at the live hand, so such a bank is accepted.
+        chain, cursor = [], loaded
+        while cursor is not None and len(chain) < 8:
+            chain.append(cursor)
+            marker = json.loads(cursor.read_text()).get('flat_balance', {})
+            cursor = Path(marker['parent']['manifest']).resolve() if marker.get('parent') else None
+        if pinned not in chain:
+            raise ValueError(f'Reactive bank pins base bank {pinned}, but --bank-manifest is {loaded} and does not '
+                             f'extend it; the approaching-object scenes would reference a different scene distribution')
+        if pinned != loaded:
+            background = meta['background_scene_index']
+            pinned_id = json.loads(pinned.read_text())['scenes'][background]['scene_id']
+            loaded_id = bank.manifest['scenes'][background]['scene_id']
+            if pinned_id != loaded_id:
+                raise ValueError(f'Reactive background scene index {background} is {loaded_id} in the loaded bank, '
+                                 f'{pinned_id} in the pinned base')
         objects = StandingObjects(bank=str(reactive_manifest), num_envs=len(sim.data.qpos),
                                   model=sim.model, device=sim.data.qpos.device)
     task = CATTask(sim, bank, config, collision=collision, seed=args.seed, analytic_objects=objects)

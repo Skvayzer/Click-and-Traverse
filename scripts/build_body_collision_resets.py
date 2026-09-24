@@ -570,7 +570,7 @@ def main():
                         help="Preserve a verified reset pool prefix; generate only appended scenes")
     parser.add_argument("--base-robot-xml", type=lambda v: v if v == "UNVERIFIED" else Path(v),
                         help="Exact old assembled XML for proving unchanged mesh assets after source relocation")
-    p.add_argument("--allow-contact-pair-change", action="store_true",
+    parser.add_argument("--allow-contact-pair-change", action="store_true",
                    help="Accept a base robot XML that differs from the current one ONLY in <contact> pairs")
     parser.add_argument("--poses-per-scene", type=int, default=32)
     parser.add_argument("--seed", type=int, default=20260916)
