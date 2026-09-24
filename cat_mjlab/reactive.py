@@ -243,7 +243,7 @@ class StandingObjects(AnalyticObjects):
         self.last_object_contacts[ids]=(full.amin(-1)>0)&(after_gap.amin((1,2))<=0)
         return ids,p,after_gap
 
-    def rearm(self, data, ids, generator):
+    def rearm(self, data, ids, generator, redraw=True):
         """Re-aim a finished object at where the hand IS, and send it in again.
 
         An authored approach fires once and then the object parks at its start for the
@@ -261,17 +261,14 @@ class StandingObjects(AnalyticObjects):
         if not len(ids):
             return
         state = self.state
-        if self.mixed_buckets:
+        if redraw and self.mixed_buckets and self.force_rows is None:
+            # A forced row (recordings, approval checks) keeps its authored object parameters.
             self.redraw(ids, generator)
         centers = self.geometry.spheres(data, ids)
         hands = centers[:, self.geometry.hand_mask]
         pick = torch.randint(hands.shape[1], (len(ids),), device=self.device, generator=generator)
         hand = hands[torch.arange(len(ids), device=self.device), pick]
         actual = hand
-        # Continuous ray, elevation bounded so a rising approach still starts above the floor.
-        azimuth = torch.rand(len(ids), device=self.device, generator=generator) * 2 * torch.pi
-        elevation = torch.deg2rad(torch.rand(len(ids), device=self.device, generator=generator) * 100. - 35.)
-        ray = torch.stack((elevation.cos() * azimuth.cos(), elevation.cos() * azimuth.sin(), elevation.sin()), -1)
         gap = state['clearance'][ids, 0]
         radius = float(self.geometry.radii[self.geometry.hand_mask].max())
         if self.hand_velocity is not None:
@@ -279,7 +276,23 @@ class StandingObjects(AnalyticObjects):
             v = self.hand_velocity[ids][torch.arange(len(ids), device=self.device), pick]
             lead = (.335 + gap + radius) / state['speed'][ids, 0].clamp_min(1e-3)
             hand = hand + v * (lead * state['walking'][ids].float())[:, None]
-        end = hand + ray * (gap + radius)[:, None]
+        # Approach from a side where the HAND is the first thing the object meets: with the
+        # hands hanging at the thighs, a ray from the body side parks the object against the
+        # leg and any leg motion ends the episode as a body collision. Try several rays and
+        # keep the one whose end point is clearest of the non-hand body spheres.
+        others = centers[:, ~self.geometry.hand_mask]; other_r = self.geometry.radii[~self.geometry.hand_mask]
+        size = state['sizes'][ids, 0].max(-1).values
+        best_clear = torch.full((len(ids),), -torch.inf, device=self.device); ray = None; end = None
+        for _ in range(8):
+            azimuth = torch.rand(len(ids), device=self.device, generator=generator) * 2 * torch.pi
+            elevation = torch.deg2rad(torch.rand(len(ids), device=self.device, generator=generator) * 100. - 35.)
+            candidate = torch.stack((elevation.cos() * azimuth.cos(), elevation.cos() * azimuth.sin(), elevation.sin()), -1)
+            candidate_end = hand + candidate * (gap + radius)[:, None]
+            clear = (torch.linalg.vector_norm(candidate_end[:, None] - others, dim=-1) - other_r[None]).amin(-1) - size
+            better = clear > best_clear
+            best_clear = torch.where(better, clear, best_clear)
+            ray = candidate if ray is None else torch.where(better[:, None], candidate, ray)
+            end = candidate_end if end is None else torch.where(better[:, None], candidate_end, end)
         start = end + ray * (.22 + torch.rand(len(ids), device=self.device, generator=generator) * .23)[:, None]
         support = state['sizes'][ids, 0].max(-1).values
         floor = support + .003

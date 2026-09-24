@@ -221,8 +221,18 @@ def _normalized_robot_xml(xml):
     return hashlib.sha256(canonical.encode()).hexdigest(), mesh_count
 
 
-def verify_robot_xml_identity(expected_old_sha256, new_sha256, *, new_xml=None, base_robot_xml=None):
-    """Accept identical XML, or a hash-bound proof of mesh-path relocation only."""
+def _without_contact(xml_text):
+    root = ET.fromstring(xml_text)
+    for contact in root.findall("contact"):
+        root.remove(contact)
+    return ET.canonicalize(ET.tostring(root, encoding="unicode"), strip_text=True)
+
+
+def verify_robot_xml_identity(expected_old_sha256, new_sha256, *, new_xml=None, base_robot_xml=None,
+                              allow_contact_pair_change=False):
+    """Accept identical XML, a hash-bound proof of mesh-path relocation, or -- when explicitly
+    allowed -- an XML that differs ONLY in its <contact> pairs (self-contact pairs do not change
+    the robot geometry the reset poses were certified against)."""
     if expected_old_sha256 == new_sha256:
         return dict(verification="raw-XML-identity", old_raw_sha256=expected_old_sha256,
                     new_raw_sha256=new_sha256, old_normalized_sha256=None, new_normalized_sha256=None)
@@ -230,6 +240,11 @@ def verify_robot_xml_identity(expected_old_sha256, new_sha256, *, new_xml=None, 
         raise ValueError("Base reset compiled robot XML differs; supply --base-robot-xml for an asset-relocation proof")
     old_path = Path(base_robot_xml).resolve()
     old_bytes = old_path.read_bytes()
+    if hashlib.sha256(old_bytes).hexdigest() != expected_old_sha256:
+        raise ValueError("--base-robot-xml does not hash to the base reset bank's recorded robot XML")
+    if allow_contact_pair_change and _without_contact(old_bytes.decode()) == _without_contact(new_xml):
+        return dict(verification="contact-pairs-only-change", old_raw_sha256=expected_old_sha256,
+                    new_raw_sha256=new_sha256, old_normalized_sha256=None, new_normalized_sha256=None)
     old_raw = hashlib.sha256(old_bytes).hexdigest()
     if old_raw != expected_old_sha256:
         raise ValueError("Base robot XML proof raw SHA256 differs from the reset manifest")
@@ -249,7 +264,7 @@ def verify_robot_xml_identity(expected_old_sha256, new_sha256, *, new_xml=None, 
 
 def load_append_base(base_path, *, field_path, fields, collision_path, collision_arrays,
                      collision_meta, proposal_path, robot_xml_sha256, poses_per_scene,
-                     nq, shape_names, robot_xml=None, base_robot_xml=None):
+                     nq, shape_names, robot_xml=None, base_robot_xml=None, allow_contact_pair_change=False):
     """Verify an immutable base and prove that every old scene is unchanged.
 
     Both field banks and collision arrays are verified with their normal
@@ -278,7 +293,8 @@ def load_append_base(base_path, *, field_path, fields, collision_path, collision
     if base["proxy_sha256"] != proxy_hash:
         raise ValueError("Base reset proposal differs from the approved collision proposal")
     robot_proof = verify_robot_xml_identity(base.get("robot_xml_sha256"), robot_xml_sha256,
-                                            new_xml=robot_xml, base_robot_xml=base_robot_xml)
+                                            new_xml=robot_xml, base_robot_xml=base_robot_xml,
+                                            allow_contact_pair_change=allow_contact_pair_change)
     old_fields = load_generalist_manifest(base_field, verify_files=True)
     # Validate new bytes too; a matching record alone cannot prove its file.
     verified_fields = load_generalist_manifest(field_path, verify_files=True)
@@ -449,7 +465,8 @@ def build(args):
             collision_path=collision_path, collision_arrays=arrays, collision_meta=collision_meta,
             proposal_path=proposal_path, robot_xml_sha256=hashlib.sha256(xml.encode()).hexdigest(),
             poses_per_scene=args.poses_per_scene, nq=model.nq, shape_names=compiled["shape_names"],
-            robot_xml=xml, base_robot_xml=getattr(args, "base_robot_xml", None))
+            robot_xml=xml, base_robot_xml=getattr(args, "base_robot_xml", None),
+            allow_contact_pair_change=getattr(args, "allow_contact_pair_change", False))
     preserved_count = len(base_records)
     output.mkdir(parents=True, exist_ok=False)
     provenance = dict(
@@ -547,6 +564,8 @@ def main():
                         help="Preserve a verified reset pool prefix; generate only appended scenes")
     parser.add_argument("--base-robot-xml", type=Path,
                         help="Exact old assembled XML for proving unchanged mesh assets after source relocation")
+    p.add_argument("--allow-contact-pair-change", action="store_true",
+                   help="Accept a base robot XML that differs from the current one ONLY in <contact> pairs")
     parser.add_argument("--poses-per-scene", type=int, default=32)
     parser.add_argument("--seed", type=int, default=20260916)
     parser.add_argument("--batch-size", type=int, default=1024)
