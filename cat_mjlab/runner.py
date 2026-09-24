@@ -352,6 +352,8 @@ def collect_rollout(task, learner, *, unroll_length, trajectories, policy_ids):
             for key, value in metrics.items():
                 if key.startswith('reward/'):
                     reward_totals[key] = reward_totals.get(key, 0.) + value.sum()
+                elif key in TELEMETRY_MEANS:
+                    reward_totals['telemetry/' + key] = reward_totals.get('telemetry/' + key, 0.) + value.float().sum()
             reward_steps += float(done.numel())
             if 'reactive/active' in metrics:
                 active = metrics['reactive/active'].bool()
@@ -489,10 +491,13 @@ def collect_rollout(task, learner, *, unroll_length, trajectories, policy_ids):
         # Emitted twice: raw per-step magnitude for debugging, and a share of the total
         # positive/negative mass so it is obvious at a glance what dominates the reward.
         per_step = {k: float(v) / reward_steps for k, v in reward_totals.items()}
-        positive = sum(v for v in per_step.values() if v > 0) or 1.
-        negative = -sum(v for v in per_step.values() if v < 0) or 1.
+        positive = sum(v for k, v in per_step.items() if v > 0 and not k.startswith('telemetry/')) or 1.
+        negative = -sum(v for k, v in per_step.items() if v < 0 and not k.startswith('telemetry/')) or 1.
         for key, value in sorted(per_step.items()):
             term = key.split('/', 1)[1]
+            if key.startswith('telemetry/'):
+                info['metrics']['posture/' + term if term in ('crouch_required', 'torso_pitch_abs') else 'self_clearance/' + term.removeprefix('self_clearance_')] = value
+                continue
             info['metrics']['reward_term/' + term] = value
             info['metrics']['reward_share/' + term] = value / (positive if value > 0 else negative)
         info['metrics']['reward_term_total/positive_per_step'] = positive
@@ -603,6 +608,8 @@ def environment_config_from_archive(metadata):
 
 
 GOALLESS_BUCKETS = ('reactive_standing', 'reactive_walking', 'flat_balance')
+# Per-step task telemetry averaged over the update: posture/* and self_clearance/*.
+TELEMETRY_MEANS = ('self_clearance_min_m', 'self_clearance_violation', 'crouch_required', 'torso_pitch_abs')
 SCENE_BUCKETS = ('procedural_cat', 'original_cat', 'published_cat',
                  'clutter_dense', 'clutter_pilot', 'clutter_legacy',
                  'furniture_dense', 'furniture_pilot', 'furniture_legacy',
