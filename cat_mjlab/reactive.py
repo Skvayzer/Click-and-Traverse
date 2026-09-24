@@ -99,6 +99,8 @@ def capsule_query(endpoints, radii, centers, rotations, sizes, kinds, valid):
 
 
 class StandingObjects(AnalyticObjects):
+    repeat_approaches = True
+
     def __init__(self, *, bank, num_envs, model, device, seed=731):
         self.manifest=json.loads(Path(bank).read_text());self.path=Path(bank).resolve()
         validate_bank(self.manifest)
@@ -133,7 +135,9 @@ class StandingObjects(AnalyticObjects):
         return self.choose(ids,random,scene_ids)
 
     def choose(self,ids,random,scene_ids):
-        active=random[:,0]<.25
+        # Share of resets that become a standing-object episode. .25 was hard-coded and sat
+        # outside the experience solver; the runner now sets it from realized episode lengths.
+        active=random[:,0]<float(getattr(self,'reactive_fraction',.25))
         rows=torch.searchsorted(self.row_cdf,random[:,1]).clamp_max(len(self.rows)-1)
         if self.force_rows is not None:
             active=torch.ones_like(active);rows=self.force_rows[ids]
@@ -193,11 +197,57 @@ class StandingObjects(AnalyticObjects):
         step=torch.minimum(step,floor_budget.clamp_min(0))*s['valid'][ids]
         motion=step[...,None]*direction
         s['position'][ids]+=motion;s['velocity'][ids]=motion/dt;s['clock'][ids]+=dt
+        if self.repeat_approaches:
+            home=torch.linalg.vector_norm(s['position'][ids]-s['start'][ids],dim=-1).amin(-1)
+            finished=s['retreating'][ids].all(-1)&(home<=.01)
+            if bool(finished.any()):
+                self.rearm(data,ids[finished],self.sampling_generator)
         # Store start-of-robot-motion clearance after safe object movement.
         d,_=self.distances(p,ids)
         after_gap=d-self.geometry.radii[None,:,None]
         self.last_object_contacts[ids]=(full.amin(-1)>0)&(after_gap.amin((1,2))<=0)
         return ids,p,after_gap
+
+    def rearm(self, data, ids, generator):
+        """Re-aim a finished object at where the hand IS, and send it in again.
+
+        An authored approach fires once and then the object parks at its start for the
+        rest of the episode: measured, an object is in motion for 3.49 s of an 80 s
+        episode, a 4.4% duty cycle. The other 95.6% is a robot standing on an empty plane
+        with nothing to react to, which is most of what half the batch was buying.
+
+        The new path is computed from the CURRENT hand position rather than the authored
+        pose. Re-using the authored start/end would recreate exactly the defect this bank
+        was rebuilt to fix -- objects flying at a hand height the policy had long since
+        left, 0.306 m away, arriving at empty air. Safety is not weakened by computing the
+        path at runtime: the per-substep guard in advance() bounds every motion by the
+        live full-body gap, which is what has kept object-initiated contact at zero.
+        """
+        if not len(ids):
+            return
+        state = self.state
+        centers = self.geometry.spheres(data, ids)
+        hands = centers[:, self.geometry.hand_mask]
+        pick = torch.randint(hands.shape[1], (len(ids),), device=self.device, generator=generator)
+        hand = hands[torch.arange(len(ids), device=self.device), pick]
+        # Continuous ray, elevation bounded so a rising approach still starts above the floor.
+        azimuth = torch.rand(len(ids), device=self.device, generator=generator) * 2 * torch.pi
+        elevation = torch.deg2rad(torch.rand(len(ids), device=self.device, generator=generator) * 100. - 35.)
+        ray = torch.stack((elevation.cos() * azimuth.cos(), elevation.cos() * azimuth.sin(), elevation.sin()), -1)
+        gap = state['clearance'][ids, 0]
+        radius = float(self.geometry.radii[self.geometry.hand_mask].max())
+        end = hand + ray * (gap + radius)[:, None]
+        start = end + ray * (.22 + torch.rand(len(ids), device=self.device, generator=generator) * .23)[:, None]
+        support = state['sizes'][ids, 0].max(-1).values
+        floor = support + .003
+        start = torch.cat((start[:, :2], start[:, 2:].clamp_min(floor[:, None])), -1)
+        end = torch.cat((end[:, :2], end[:, 2:].clamp_min(floor[:, None])), -1)
+        state['start'][ids, 0] = start
+        state['end'][ids, 0] = end
+        state['position'][ids, 0] = start
+        state['velocity'][ids] = 0.
+        state['clock'][ids] = 0.
+        state['retreating'][ids] = False
 
     def contacts(self,data,ids,before,before_gap):
         regions=torch.zeros((len(self.state['active']),6),dtype=torch.bool,device=self.device)

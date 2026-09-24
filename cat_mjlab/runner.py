@@ -273,6 +273,21 @@ def collect_rollout(task, learner, *, unroll_length, trajectories, policy_ids):
     response_counts = {}
     reactive_counts = {'steps': 0., 'active': 0., 'robot_hit': 0., 'object_hit': 0.,
                        'active_gap_sum': 0., 'active_gap_min': float('inf'), 'inside_anticipation': 0.}
+    # Per-term reward totals. The task computes every component each step and the loop
+    # below used to discard them, so a run could report 867 metrics and not one of them
+    # said which term the policy was actually being paid by.
+    reward_totals, reward_steps = {}, 0.
+    # [attempted, resolved, successful, timed_out] per scene type.
+    bucket_of_scene = torch.as_tensor(_scene_buckets(task.bank.manifest), device=task.device)
+    bucket_stats = torch.zeros((len(SCENE_BUCKETS), 4), dtype=torch.float64, device=task.device)
+    reactive_bucket = SCENE_BUCKETS.index('reactive_standing')
+    # Realized experience per sampling group: steps every step, lengths at episode end.
+    sampling_ids = getattr(task.bank, 'sampling_ids', None)
+    n_groups = int(task.bank.sampling_masses.numel()) if sampling_ids is not None else 0
+    group_steps = torch.zeros(max(n_groups, 1), dtype=torch.float64, device=task.device)
+    group_length_sum = torch.zeros_like(group_steps); group_length_count = torch.zeros_like(group_steps)
+    reactive_steps = torch.zeros((), dtype=torch.float64, device=task.device)
+    reactive_length_sum = torch.zeros_like(reactive_steps); reactive_length_count = torch.zeros_like(reactive_steps)
     from .balance import BalanceMetrics
     balance_metrics=BalanceMetrics()
     acceptance = getattr(task, 'acceptance_observer', None)
@@ -306,6 +321,23 @@ def collect_rollout(task, learner, *, unroll_length, trajectories, policy_ids):
                 if key.startswith('response_split/') and not key.endswith('active_count'):
                     name = key.split('/',1)[1]
                     response_counts[name] = response_counts.get(name, 0) + value.sum()
+            bucket = bucket_of_scene[metrics['scene_ids']]
+            if 'reactive/active' in metrics:
+                # Reactive scenes borrow a flat background scene id, so they are
+                # indistinguishable by scene_id alone and would be miscounted as flat_balance.
+                bucket = torch.where(metrics['reactive/active'].bool(), reactive_bucket, bucket)
+            # Counted on different events on purpose: a verdict can land hundreds of steps
+            # before the episode ends, so terminations and resolutions are not the same
+            # population and must not be divided by one another within an update.
+            ended = done.bool()
+            verdict = metrics['resolved'].bool()
+            undecided = ended & ~metrics['outcome_counted'].bool() & ~verdict
+            for column, flag in enumerate((ended, verdict, metrics['successful'].bool(), undecided)):
+                bucket_stats[:, column].scatter_add_(0, bucket, flag.double())
+            for key, value in metrics.items():
+                if key.startswith('reward/'):
+                    reward_totals[key] = reward_totals.get(key, 0.) + value.sum()
+            reward_steps += float(done.numel())
             if 'reactive/active' in metrics:
                 active = metrics['reactive/active'].bool()
                 reactive_counts['steps'] += float(active.numel())
@@ -314,12 +346,28 @@ def collect_rollout(task, learner, *, unroll_length, trajectories, policy_ids):
                 reactive_counts['object_hit'] += float((metrics['reactive/object_initiated_contact'] & active).sum())
                 if active.any() and 'acceptance/hand_clearance' in metrics:
                     gap = metrics['acceptance/hand_clearance'].amin(-1)[active]
+                    if 'reactive/target_clearance' in metrics:
+                        margin = gap - metrics['reactive/target_clearance'][active]
+                        reactive_counts['margin_sum'] = reactive_counts.get('margin_sum', 0.) + float(margin.sum())
+                        reactive_counts['margin_min'] = min(reactive_counts.get('margin_min', float('inf')),
+                                                            float(margin.amin()))
                     reactive_counts['active_gap_sum'] += float(gap.sum())
                     reactive_counts['active_gap_min'] = min(reactive_counts['active_gap_min'], float(gap.amin()))
                     reactive_counts['inside_anticipation'] += float((gap < .20).sum())
             completed += done.sum()
             sum_return += torch.where(done, metrics["episode_return"], 0.).sum()
             sum_length += torch.where(done, metrics["episode_length"], 0.).sum()
+            if n_groups:
+                # Reactive envs borrow the flat background scene id; count them on their own,
+                # not against the flat group.
+                goal = ~metrics['reactive/active'].bool() if 'reactive/active' in metrics else torch.ones_like(done, dtype=torch.bool)
+                group = sampling_ids[metrics["scene_ids"]]
+                ended = torch.where(done, metrics["episode_length"], 0.).double()
+                group_steps.scatter_add_(0, group, goal.double())
+                group_length_sum.scatter_add_(0, group, ended * goal)
+                group_length_count.scatter_add_(0, group, (done & goal).double())
+                reactive_steps += (~goal).sum(); reactive_length_sum += (ended * ~goal).sum()
+                reactive_length_count += (done & ~goal).sum()
             collisions += (done & metrics.get("episode/body_collision", torch.zeros_like(done))).sum()
             std_sum += acted["action_std"].sum()
             leg_std += acted["action_std"][..., :12].sum()
@@ -384,6 +432,39 @@ def collect_rollout(task, learner, *, unroll_length, trajectories, policy_ids):
     from .response_split import summaries
     info['metrics'].update({'training/response_split/'+k:v for k,v in
         summaries({k:float(v) for k,v in response_counts.items()}).items()})
+    stats = bucket_stats.cpu().numpy()
+    for index, name in enumerate(SCENE_BUCKETS):
+        ended, resolved, successful, undecided = (float(x) for x in stats[index])
+        decided = resolved + undecided
+        if not (ended or resolved):
+            continue
+        # success_rate keeps the legacy semantics (of episodes that DECIDED); completion_rate
+        # is the honest one (of every episode started), since 37-43% decide nothing and are
+        # silently dropped from the legacy denominator.
+        info['metrics'][f'scene/{name}/episodes_ended'] = ended
+        info['metrics'][f'scene/{name}/resolved'] = resolved
+        if name in GOALLESS_BUCKETS:
+            # Standing scenes have no goal, so a success rate would be a constant 0 that
+            # reads as failure. Their outcomes live under reactive/ and balance/ instead.
+            continue
+        info['metrics'][f'scene/{name}/success_rate'] = successful / resolved if resolved else 0.
+        # Denominator is every episode that finished, whether or not it reached a verdict,
+        # so an episode that ran out the clock counts against success instead of vanishing.
+        info['metrics'][f'scene/{name}/completion_rate'] = successful / decided if decided else 0.
+        info['metrics'][f'scene/{name}/undecided_rate'] = undecided / decided if decided else 0.
+    if reward_steps:
+        # Emitted twice: raw per-step magnitude for debugging, and a share of the total
+        # positive/negative mass so it is obvious at a glance what dominates the reward.
+        per_step = {k: float(v) / reward_steps for k, v in reward_totals.items()}
+        positive = sum(v for v in per_step.values() if v > 0) or 1.
+        negative = -sum(v for v in per_step.values() if v < 0) or 1.
+        for key, value in sorted(per_step.items()):
+            term = key.split('/', 1)[1]
+            info['metrics']['reward_term/' + term] = value
+            info['metrics']['reward_share/' + term] = value / (positive if value > 0 else negative)
+        info['metrics']['reward_term_total/positive_per_step'] = positive
+        info['metrics']['reward_term_total/negative_per_step'] = -negative
+        info['metrics']['reward_term_total/net_per_step'] = positive - negative
     if reactive_counts['steps']:
         active = reactive_counts['active']
         info['metrics'].update({
@@ -394,7 +475,14 @@ def collect_rollout(task, learner, *, unroll_length, trajectories, policy_ids):
             'reactive/mean_hand_gap_m': reactive_counts['active_gap_sum'] / max(active, 1.),
             'reactive/min_hand_gap_m': (reactive_counts['active_gap_min']
                                         if reactive_counts['active_gap_min'] != float('inf') else float('nan')),
-            'reactive/inside_anticipation_fraction': reactive_counts['inside_anticipation'] / max(active, 1.)})
+            'reactive/inside_anticipation_fraction': reactive_counts['inside_anticipation'] / max(active, 1.),
+            # Positive means the hand ended up further from the object than the scene placed it,
+            # i.e. the robot actively retreated. Zero means it did nothing. This is the priority-#1
+            # number; inside_anticipation_fraction is only a validity check that objects arrive.
+            'reactive/avoidance_margin_mean_m': reactive_counts.get('margin_sum', 0.) / max(active, 1.),
+            'reactive/avoidance_margin_min_m': (reactive_counts.get('margin_min', float('inf'))
+                                                if reactive_counts.get('margin_min', float('inf')) != float('inf')
+                                                else float('nan'))})
     if 'response_split/active_count' in metrics:
         info['metrics']['training/response_split/pending_event_count'] = float(metrics['response_split/active_count'].sum())
     if acceptance is not None:
@@ -445,6 +533,10 @@ def collect_rollout(task, learner, *, unroll_length, trajectories, policy_ids):
     if hasattr(task, 'speed_state'):
         from .speed_curriculum import metrics
         info['metrics'].update(metrics(task.speed_state))
+    if n_groups:
+        objects = getattr(task, 'reactive_objects', None)
+        reactive = None if objects is None else (float(reactive_steps), float(reactive_length_sum), float(reactive_length_count), objects)
+        _adapt_experience_masses(task.bank, group_steps, group_length_sum, group_length_count, info, reactive)
     return rollout, info
 
 
@@ -470,6 +562,185 @@ def environment_config_from_archive(metadata):
     return dict(config, randomize_initial_episode_steps=randomize)
 
 
+GOALLESS_BUCKETS = ('reactive_standing', 'flat_balance')
+SCENE_BUCKETS = ('procedural_cat', 'original_cat', 'published_cat',
+                 'clutter_dense', 'clutter_pilot', 'clutter_legacy',
+                 'furniture_dense', 'furniture_pilot', 'furniture_legacy',
+                 'narrow_passage', 'protected_passage', 'transition_passage',
+                 'open_passage', 'flat_balance', 'reactive_standing')
+
+
+def _scene_buckets(manifest):
+    """One reporting bucket per scene TYPE, not per sampling group.
+
+    The three navigation groups collapse 2290 CAT scenes into a single number and mix
+    clutter rooms with furniture rooms, so "what is actually failing" was unanswerable
+    from the logs: a flat cat_goal could be procedural improving while the 37 authored
+    scenes rot, and nobody could see it. These buckets are for reading, not sampling.
+    """
+    import numpy as _np
+    ids = []
+    for scene in manifest['scenes']:
+        family = scene['family']
+        source = scene.get('source', {}) or {}
+        role = (source.get('hand_contrast') or {}).get('role')
+        difficulty = source.get('difficulty')
+        if scene['scene_id'] == 'flat-balance-walk-v1':
+            name = 'flat_balance'
+        elif role:
+            name = {'narrow': 'narrow_passage', 'forward_protected': 'protected_passage',
+                    'transition': 'transition_passage', 'open': 'open_passage'}.get(role, 'open_passage')
+        elif family in ('generic_clutter', 'furniture'):
+            stem = 'clutter' if family == 'generic_clutter' else 'furniture'
+            name = f'{stem}_{difficulty}' if difficulty in ('dense', 'pilot') else f'{stem}_legacy'
+        else:
+            name = family
+        ids.append(SCENE_BUCKETS.index(name))
+    return _np.asarray(ids, dtype=_np.int64)
+
+
+def _solve_experience_masses(shares, lengths):
+    """Reset mass per group from a target share of TRANSITIONS: share / mean episode length."""
+    resolved = [float(share) / max(float(length), 1.) for share, length in zip(shares, lengths)]
+    total = sum(resolved)
+    if not total > 0:
+        raise ValueError('Experience masses must sum to a positive value')
+    return [r / total for r in resolved]
+
+
+def _adapt_experience_masses(bank, step_count, length_sum, length_count, info, reactive=None):
+    """Fold this update's realized lengths into the bank's estimate and periodically re-solve
+    the reset masses, so each group's share of transitions tracks its target instead of
+    drifting with episode length. Groups with under 20 finished episodes since the last
+    re-solve keep their previous estimate. Always logs the realized share so the drift is
+    visible whether or not re-solving is enabled."""
+    targets = getattr(bank, 'experience_targets', None)
+    if not targets:
+        return
+    steps = step_count.cpu().tolist(); sums = length_sum.cpu().tolist(); counts = length_count.cpu().tolist()
+    r_target = getattr(bank, 'experience_reactive_target', None)
+    r_steps = 0.
+    if reactive is not None:
+        r_steps, r_sum, r_count, objects = reactive
+        bank.experience_reactive_sum += r_sum; bank.experience_reactive_count += r_count
+        info['metrics']['balance/reactive_experience_share'] = r_steps / ((sum(steps) + r_steps) or 1.)
+        if r_target is not None:
+            info['metrics']['balance/reactive_experience_target'] = r_target
+    total = (sum(steps) + r_steps) or 1.
+    for index, target in enumerate(targets):
+        bank.experience_length_sum[index] += sums[index]
+        bank.experience_length_count[index] += counts[index]
+        info['metrics'][f'balance/group{index}_experience_share'] = steps[index] / total
+        info['metrics'][f'balance/group{index}_experience_target'] = target
+    every = getattr(bank, 'experience_rebalance_every', 0)
+    bank.experience_updates += 1
+    if not every or bank.experience_updates % every:
+        return
+    for index in range(len(targets)):
+        if bank.experience_length_count[index] >= 20:
+            realized = bank.experience_length_sum[index] / bank.experience_length_count[index]
+            bank.experience_lengths[index] = .7 * bank.experience_lengths[index] + .3 * realized
+        bank.experience_length_sum[index] = bank.experience_length_count[index] = 0.
+    if reactive is not None and r_target is not None and bank.experience_reactive_count >= 20:
+        realized = bank.experience_reactive_sum / bank.experience_reactive_count
+        previous = bank.experience_reactive_length
+        bank.experience_reactive_length = realized if previous is None else .7 * previous + .3 * realized
+        bank.experience_reactive_sum = bank.experience_reactive_count = 0.
+    if reactive is not None and r_target is not None and bank.experience_reactive_length:
+        # One categorical over groups + reactive, then split: the reactive coin is flipped
+        # first, so group masses are conditional on the coin coming up "goal episode".
+        scale = 1. - float(r_target)
+        joint = _solve_experience_masses([t * scale for t in targets] + [float(r_target)],
+                                         bank.experience_lengths + [bank.experience_reactive_length])
+        fraction = joint[-1]
+        resolved = [m / max(1. - fraction, 1e-9) for m in joint[:-1]]
+        objects.reactive_fraction = fraction
+        info['metrics']['balance/reactive_reset_fraction'] = fraction
+        info['metrics']['balance/reactive_episode_length'] = bank.experience_reactive_length
+    else:
+        resolved = _solve_experience_masses(targets, bank.experience_lengths)
+    bank.sampling_masses = torch.as_tensor(resolved, dtype=bank.sampling_masses.dtype,
+                                           device=bank.sampling_masses.device)
+    for index, mass in enumerate(resolved):
+        info['metrics'][f'balance/group{index}_episode_length'] = bank.experience_lengths[index]
+        info['metrics'][f'balance/group{index}_reset_mass'] = mass
+
+
+def _rebalance_bank(bank, args):
+    """Apply sampling and episode-length overrides after the bank is built.
+
+    These are deliberately runtime overrides rather than edits to MASSES or to the scene
+    records: both are pinned by manifest hashes that checkpoints depend on. The defaults
+    they correct are severe. Group 5 is a SINGLE empty scene holding 0.225 of reset mass,
+    which measured out at 37.8% of all experience, while the 461 real clutter rooms shared
+    0.03375 between them. Separately, CAT scenes run 1000 steps against 4000 for rooms, so
+    CAT families received 22.7% of experience against 60% of declared mass.
+    """
+    import numpy as _np
+    masses = getattr(args, 'sampling_masses', None)
+    if masses:
+        if bank.sampling_masses is None:
+            raise ValueError('This bank has no grouped sampler to rebalance')
+        if len(masses) != len(bank.sampling_masses):
+            raise ValueError(f'Expected {len(bank.sampling_masses)} sampling masses, got {len(masses)}')
+        total = float(sum(masses))
+        if not total > 0:
+            raise ValueError('Sampling masses must sum to a positive value')
+        bank.sampling_masses = torch.as_tensor([m / total for m in masses],
+                                               dtype=bank.sampling_masses.dtype,
+                                               device=bank.sampling_masses.device)
+    if getattr(args, 'narrow_sampling_group', None) is not None and bank.sampling_ids is not None:
+        # The 50 continuously-sampled narrow scenes were emitted into generic_clutter and so
+        # drew from a 0.034 budget shared with 461 rooms, 11x less per scene than the 12
+        # fixed-width originals they were meant to supersede.
+        target = int(args.narrow_sampling_group)
+        narrow = torch.as_tensor([bool('-narrow-' in r['scene_id']) for r in bank.manifest['scenes']],
+                                 device=bank.sampling_ids.device)
+        bank.sampling_ids = torch.where(narrow, target, bank.sampling_ids)
+    experience = getattr(args, 'experience_masses', None)
+    if experience:
+        # Solve reset mass from a target share of EXPERIENCE. Sampling masses govern resets,
+        # but a group's share of transitions is mass * episode_length, so groups with short
+        # episodes are silently starved: CAT ran 1000 steps against 4000 for rooms and drew
+        # 22.7% of experience on 60% of declared mass. Lengthening CAT episodes would have
+        # "fixed" the ratio by paying CAT to idle past a goal that does not end the episode,
+        # so correct the mass instead and leave every task's horizon alone. Doing it here
+        # also makes the drift structural rather than a constant someone has to re-tune.
+        if bank.sampling_masses is None or bank.sampling_ids is None:
+            raise ValueError('This bank has no grouped sampler to rebalance')
+        if len(experience) != len(bank.sampling_masses):
+            raise ValueError(f'Expected {len(bank.sampling_masses)} experience masses, got {len(experience)}')
+        groups = bank.sampling_ids.detach().cpu().numpy()
+        lengths = bank.episode_lengths.detach().cpu().numpy().astype(float)
+        per_group = [float(lengths[groups == i].mean()) if (groups == i).any() else 1. for i in range(len(experience))]
+        bank.sampling_masses = torch.as_tensor(_solve_experience_masses(experience, per_group),
+                                               dtype=bank.sampling_masses.dtype,
+                                               device=bank.sampling_masses.device)
+        # The configured horizon is only a first guess at how long episodes really run. Real
+        # episodes end early on collisions and goals, and how early moves with the policy:
+        # on the 2026-09-24 run CAT slid from 66% to 37% of samples in 43 updates against a
+        # 59% target while rooms stopped falling and ran to their full 4000 steps. So keep
+        # the targets and a per-group length estimate on the bank and let collect_rollout
+        # re-solve from REALIZED lengths (see _adapt_experience_masses).
+        bank.experience_targets = [float(s) for s in experience]
+        bank.experience_lengths = per_group
+        bank.experience_rebalance_every = int(getattr(args, 'experience_rebalance_every', None) or 0)
+        bank.experience_updates = 0
+        bank.experience_length_sum = [0.] * len(experience)
+        bank.experience_length_count = [0.] * len(experience)
+        # Reactive standing episodes are drawn BEFORE the group sampler (a fixed .25 of resets
+        # in reactive.py) and outlive every goal episode, so they grew from 26% to 64% of all
+        # env-steps over 66 updates on the 2026-09-24 run. Solve their reset fraction too.
+        bank.experience_reactive_target = getattr(args, 'experience_reactive_share', None)
+        bank.experience_reactive_length = None
+        bank.experience_reactive_sum = bank.experience_reactive_count = 0.
+    length = getattr(args, 'cat_episode_length', None)
+    if length:
+        cat = torch.as_tensor([r.get('task_kind') == 'cat' for r in bank.manifest['scenes']],
+                              device=bank.episode_lengths.device)
+        bank.episode_lengths = torch.where(cat, int(length), bank.episode_lengths)
+
+
 def create_task(args, *, environment_config=None):
     from cat_ppo.furniture.contrast_preflight import contrast_preflight
     contrast_preflight(args.bank_manifest,
@@ -483,12 +754,17 @@ def create_task(args, *, environment_config=None):
     bank = SceneBank(args.bank_manifest, device=args.device, reset_manifest=args.body_collision_resets,
                      collision_manifest=args.body_collision_bank, passage_rewards=getattr(args, "passage_rewards", None))
     collision = CollisionChecker(sim.model, args.body_collision_bank, field_manifest=args.bank_manifest, device=args.device)
+    _rebalance_bank(bank, args)
     config = wholebody_config(environment_config, stabilization=True, hand_protection=True, hand_contrast=bank.has_contrast,
         hand_curriculum_success_threshold=getattr(args, 'hand_curriculum_success_threshold', None),
         disable_hand_contrast=getattr(args, 'disable_hand_contrast', None),
         hand_clearance_weight=getattr(args, 'hand_clearance_weight', None),
         arm_clearance_weight=getattr(args, 'arm_clearance_weight', None),
         tracking_root_field_weight=getattr(args, 'tracking_root_field_weight', None),
+        heading_align_weight=getattr(args, 'heading_align_weight', None),
+        standing_gf_bonus=getattr(args, 'standing_gf_bonus', None),
+        reactive_hand_guidance=getattr(args, 'reactive_hand_guidance', None),
+        handsdf_weight=getattr(args, 'handsdf_weight', None),
         hand_clearance_target=getattr(args, 'hand_clearance_target', None),
         hand_clearance_anticipation=getattr(args, 'hand_clearance_anticipation', None),
         hand_clearance_near_weight=getattr(args, 'hand_clearance_near_weight', None),
@@ -847,6 +1123,30 @@ def run(args):
                               for key, value in values.items()}
                     values = {('success/policy_' + key.removeprefix('success/') if key.startswith('success/') else key): value
                               for key, value in values.items()}
+                # Plain-language aliases. The canonical keys stay for continuity, but nothing
+                # in a name like success/policy_narrow_replay_clean_goal_success_rate tells you
+                # it is objective #2, so the panel below is ordered by the owner's priorities.
+                ALIASES = (
+                    ('success/policy_narrow_replay_clean_goal_success_rate', 'progress/p2_narrow_passage_success'),
+                    ('success/policy_ordinary_clutter_goal_success_rate', 'progress/clutter_room_success'),
+                    ('success/policy_cat_goal_success_rate', 'progress/p3_cat_navigation_success'),
+                    ('success/policy_goal_success_rate', 'progress/any_goal_success'),
+                    ('success/policy_forward_protected_success_rate', 'progress/protected_zone_success'),
+                    ('success/policy_narrow_passage_success_rate', 'progress/narrow_zone_success'),
+                    ('success/policy_posture_transition_success_rate', 'progress/posture_transition_success'),
+                    ('balance/policy_fall_rate_per_episode', 'progress/falls_per_episode'),
+                    ('reactive/object_initiated_contact_rate', 'progress/p1_object_touched_robot'),
+                    ('reactive/inside_anticipation_fraction', 'progress/p1_hand_near_object_fraction'),
+                    ('reactive/mean_hand_gap_m', 'progress/p1_mean_hand_gap_m'),
+                    ('reactive/avoidance_margin_mean_m', 'progress/p1_avoidance_margin_m'),
+                    ('reactive/avoidance_margin_min_m', 'progress/p1_avoidance_margin_worst_m'),
+                    ('reactive/active_fraction', 'health/reactive_experience_share'),
+                    ('training/timeout_rate', 'health/episodes_timed_out'),
+                    ('performance/update_seconds', 'health/seconds_per_update'),
+                )
+                for source, alias in ALIASES:
+                    if source in values:
+                        values[alias] = values[source]
                 if learner.device.type == "cuda":
                     free, total = torch.cuda.mem_get_info(learner.device)
                     values["performance/device_vram_used_gib"] = (total - free) / 2**30

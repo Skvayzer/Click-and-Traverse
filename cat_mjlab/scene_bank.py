@@ -38,21 +38,29 @@ class SceneBank:
         # decode here, so everything downstream still sees the same float32 fields and
         # no observation changes; the saving is on disk, not in device memory.
         from .packing.field_packing import unpack_direction, unpack_scalar
+        packed_names=set()
         for name,channels in (('sdf',1),('bf',3),('gf',3)):
-            values=np.empty((sum(sizes),channels),dtype=np.float32)
+            probe=np.load(directories[records[0]['scene_id']]/f'{name}.npy',allow_pickle=False,mmap_mode='r')
+            store=np.int16 if probe.dtype==np.int16 else np.float32
+            channels=2 if store==np.int16 else channels
+            values=np.empty((sum(sizes),channels),dtype=store)
             for scene,offset,size in zip(records,offsets,sizes):
                 directory=directories[scene['scene_id']]
                 source=np.load(directory/f'{name}.npy',allow_pickle=False,mmap_mode='r')
                 if channels==1:
                     field=unpack_scalar(source) if source.dtype==np.float16 else np.asarray(source)
                 elif source.dtype==np.int16:
-                    bits=np.load(directory/f'{name}_valid.npy',allow_pickle=False)
-                    field=unpack_direction(np.asarray(source),bits,tuple(scene['shape']))
+                    # Left packed on purpose: decoding here would triple device memory
+                    # and a full bank no longer fits. sample() decodes the gathered
+                    # corners instead.
+                    packed_names.add(name)
+                    field=np.asarray(source)
                 else:
                     field=np.asarray(source)
                 values[offset:offset+size]=field.reshape(-1,channels)
-            self.fields[name]=tensor(values)
+            self.fields[name]=torch.as_tensor(values,device=self.device)
             del values
+        self.packed_fields=packed_names
         self.offsets=tensor(offsets,torch.long)
         self.shapes=tensor([s['shape'] for s in records],torch.long)
         self.origins=tensor([s['origin'] for s in records],torch.float32)
@@ -147,7 +155,10 @@ class SceneBank:
             raise ValueError('Contrastive scenes require the certified full-body reset bank')
 
     def sample(self,name,positions,scene_ids):
-        return self.sample_kernel(self.fields[name],positions,origin=self.origins[scene_ids],
+        kernel=self.sample_kernel
+        if name in getattr(self,'packed_fields',()):
+            from .fields import sample_packed_direction_field as kernel
+        return kernel(self.fields[name],positions,origin=self.origins[scene_ids],
             dx=self.dxs[scene_ids],shape=self.shapes[scene_ids],offset=self.offsets[scene_ids])
 
     def enable_compilation(self,*,backend='inductor'):

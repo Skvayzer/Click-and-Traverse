@@ -184,10 +184,21 @@ def upper_stability_terms(target,previous,previous_previous,nominal,handsdf,elbo
     return costs,telemetry
 
 
-def gf_reward(guidance,velocity,sdf,crossed,*,tau):
+def gf_reward(guidance,velocity,sdf,crossed,*,tau,standing=None,standing_value=4.):
+    """Guidance-velocity alignment, with two constant cases kept distinct.
+
+    ``crossed`` is a genuine goal/plane event and keeps its 4.0 bonus. ``standing`` was
+    previously folded into the same constant, which meant any step with no movement
+    command earned a fixed 4.0 per group that no action could change. With headgf 1 +
+    handsgf 1 + feetgf 2 that is +16.0/step, and it was measured at ~54% of the mean
+    per-step reward once standing scenes reached half the batch: half the compute
+    produced no policy gradient. ``standing_value`` makes that price explicit.
+    """
     guidance=guidance/(torch.linalg.vector_norm(guidance,dim=-1,keepdim=True)+1e-6)
     velocity=velocity/(torch.linalg.vector_norm(velocity,dim=-1,keepdim=True)+1e-6)
     near=torch.sigmoid(40.*(tau-sdf.squeeze(-1)))*5.*(guidance*velocity).sum(-1)
+    if standing is not None:
+        near=torch.where(standing,torch.as_tensor(standing_value,dtype=near.dtype,device=near.device),near)
     return torch.where(crossed,4.,near).mean(-1)
 
 
@@ -200,11 +211,42 @@ def sdf_reward(sdf, knee=None):
     return torch.where(knee == .05, legacy, modified)
 
 
+def heading_probe_points(root_xy,direction,height,*,half_width=.16,lookahead=.30):
+    """Where the shoulders WOULD be if the body faced ``direction``: here and one stride ahead.
+
+    root_xy [N,2] pelvis xy, direction [N,2] unit command direction (zero when idle), height [N]
+    probe height (shoulder z). Returns [N,4,3] world points. The G1 shoulder pitch joints sit at
+    y=+-0.100 m in the MJCF and the upper-arm capsule adds ~0.06 m, hence 0.16.
+    """
+    normal=torch.stack((-direction[:,1],direction[:,0]),-1)
+    ahead=lookahead*direction
+    offsets=torch.stack((half_width*normal,-half_width*normal,ahead+half_width*normal,ahead-half_width*normal),1)
+    xy=root_xy[:,None]+offsets
+    return torch.cat((xy,height[:,None,None].expand(-1,offsets.shape[1],1)),-1)
+
+
+def heading_align_reward(direction,pelvis_yaw,move,probe_sdf,*,margin_low=.05,margin_high=.15):
+    """Bonus for facing the guidance direction, switched off where a forward-facing body would not fit.
+
+    align is 1 facing forward, .5 sideways, 0 backwards. gate ramps from 0 at ``margin_low`` of
+    shoulder clearance to 1 at ``margin_high`` using the WORST probe, so it is closed inside and
+    just before any gap too narrow to face forward through. Bonus form in [0,1]: it never pushes
+    the reward sum toward the floor, and sidling where the gate is closed costs nothing -- it
+    simply stops earning the forward bonus. This replaces the retired contrast heading cost,
+    which only ever fired inside authored contrastive passages.
+    """
+    facing=torch.stack((pelvis_yaw.cos(),pelvis_yaw.sin()),-1)
+    commanded=(direction.abs().sum(-1)>0).float()
+    align=.5*(1.+(facing*direction).sum(-1))*commanded
+    gate=((probe_sdf.amin(-1)-margin_low)/(margin_high-margin_low)).clamp(0.,1.)
+    return align*gate*move
+
+
 def native_rewards(*,action,last_action,last_last_action,joint_pos,joint_vel,last_joint_vel,
         lower,upper,actuator_force,command,pelvis_rpy,torso_rpy,head_z,torso_height,
         global_velocity,torso_angvel,navi,leg_rotations,feet_pos,feet_sensor_velocity,
         subtree_com,feet_contact,gait,foot_height,foot_height_stance,gf,positions,velocities,sdf,
-        crossed,dt=.02,max_yaw=.5,sdf_knee=None):
+        crossed,dt=.02,max_yaw=.5,sdf_knee=None,standing_gf=4.,heading_sdf=None,heading_margins=(.05,.15)):
     move=command[:,0];cmd=command[:,1:]
     pitch_negative=torso_rpy[:,1].clamp(-torch.pi,0).abs()
     orientation=pelvis_rpy[:,0].abs()+torso_rpy[:,0].abs()+pitch_negative+(head_z>torso_height+.1)*torso_rpy[:,1].abs()
@@ -234,11 +276,18 @@ def native_rewards(*,action,last_action,last_last_action,joint_pos,joint_vel,las
         smoothness_joint=(.01*joint_vel.square()+((last_joint_vel-joint_vel)/dt).square()).sum(-1),
         smoothness_action=smooth.sum(-1))
     for name,section,tau in (('head',slice(0,1),.5),('feet',slice(3,5),.3),('hands',slice(5,7),.5)):
-        mask=(move[:,None]<.5)|crossed[:,section]
-        if name=='feet':mask=mask|(gait==1)
-        rewards[name+'gf']=gf_reward(gf[:,section],velocities[:,section],sdf[:,section],mask,tau=tau)
+        crossing=crossed[:,section]
+        if name=='feet':crossing=crossing|(gait==1)
+        # Standing is no longer merged into the goal bonus; it is priced separately so a
+        # no-command step cannot collect the full goal reward for doing nothing.
+        idle=(move[:,None]<.5)&~crossing
+        rewards[name+'gf']=gf_reward(gf[:,section],velocities[:,section],sdf[:,section],crossing,
+            tau=tau,standing=idle,standing_value=standing_gf)
     for name,section in (('head',slice(0,1)),('feet',slice(3,5)),('hands',slice(5,7)),('knees',slice(7,9)),('shlds',slice(9,11))):
         rewards[name+'df']=sdf_reward(sdf[:,section],sdf_knee)
+    if heading_sdf is not None:
+        rewards['heading_align']=heading_align_reward(direction,pelvis_rpy[:,2],move,heading_sdf,
+            margin_low=heading_margins[0],margin_high=heading_margins[1])
     return {k:torch.where(torch.isnan(v),0.,v) for k,v in rewards.items()}
 
 

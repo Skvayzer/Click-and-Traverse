@@ -26,7 +26,8 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
                      hand_reward_soft_floor=None,disable_hand_contrast=None,
                      hand_clearance_weight=None,arm_clearance_weight=None,hand_clearance_target=None,
                      hand_clearance_anticipation=None,hand_clearance_near_weight=None,
-                     tracking_root_field_weight=None):
+                     tracking_root_field_weight=None,standing_gf_bonus=None,
+                     reactive_hand_guidance=None,handsdf_weight=None,heading_align_weight=None):
     from cat_ppo.furniture.generalist_config import released_config
     from .collision import PROPOSAL
     config=copy.deepcopy(released_config()['env_config'] if base_config is None else base_config)
@@ -76,7 +77,34 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
         if isinstance(value,bool) or not math.isfinite(value) or value <= 0:
             raise ValueError('tracking_root_field_weight must be finite and positive')
         scales['tracking_root_field']=float(value)
+    if heading_align_weight is not None:
+        value=heading_align_weight
+        if isinstance(value,bool) or not math.isfinite(value) or value<0:
+            raise ValueError('heading_align_weight must be finite and >= 0')
+        if value==0:
+            # Explicit off: drop the term entirely rather than computing a zero-weighted one.
+            scales.pop('heading_align',None);config.pop('heading_align',None)
+        else:
+            # Forward-facing bonus gated on counterfactual shoulder clearance; see
+            # task_math.heading_align_reward. half_width = G1 shoulder joint (0.100) + arm capsule.
+            # Gate closed at <=0.05 m of shoulder clearance (corridor <=0.42 m), open at >=0.15 m (>=0.62 m).
+            scales['heading_align']=float(value)
+            config['heading_align']=dict(weight=float(value),half_width=.16,lookahead=.30,margins=[.05,.15])
     scales.update(wholebody_hand_clearance=-.5 if hand_protection else -5.,wholebody_arm_clearance=-2.)
+    if standing_gf_bonus is not None:
+        if isinstance(standing_gf_bonus,bool) or not math.isfinite(standing_gf_bonus) or standing_gf_bonus<0:
+            raise ValueError('standing_gf_bonus must be finite and nonnegative')
+        config['standing_gf_bonus']=float(standing_gf_bonus)
+    if reactive_hand_guidance is not None:
+        config['reactive_hand_guidance']=bool(reactive_hand_guidance)
+    if handsdf_weight is not None:
+        # handsdf and wholebody_hand_clearance are both functions of sdf[:,5:7]; measured,
+        # the legacy +1 handsdf term carried 1.8x-5.4x more near-field gradient than the
+        # -20 clearance term, so tuning the clearance weight moved less than a third of
+        # the real signal. Zero one of them so the remaining weight means something.
+        if isinstance(handsdf_weight,bool) or not math.isfinite(handsdf_weight):
+            raise ValueError('handsdf_weight must be finite')
+        scales['handsdf']=float(handsdf_weight)
     arm_weight = config.get('arm_clearance_weight_override') if arm_clearance_weight is None else arm_clearance_weight
     if arm_weight is not None:
         if isinstance(arm_weight, bool) or not math.isfinite(arm_weight) or arm_weight > 0:

@@ -52,7 +52,7 @@ class CATTask:
         self.math=SimpleNamespace(**{name:getattr(tm,name) for name in (
             'quat_mul','delay_body_pos','navi_rotation','world_to_navi','matrix_rpy',
             'motor_targets','pd_torque','compute_cmd_from_rtf','update_phase','observations',
-            'upper_stability_terms','native_rewards')})
+            'upper_stability_terms','native_rewards','heading_probe_points')})
         self.route_context=route_context
         self.swept_root_clearance=swept_root_clearance
         self.hand_contrast_context=hand_contrast_context
@@ -281,6 +281,16 @@ class CATTask:
             radii=sdf.new_zeros((1,positions.shape[1],1));radii[:,5:7,0]=self.hand_radii
             gf,bf,sdf=self.analytic_objects.merge(self._poses(ids),ids,self.data.time[ids],
                 gf,bf,sdf,radii)
+        if self.reactive_objects is not None and bool(_get(self.config,'reactive_hand_guidance',False)):
+            # gf is zeroed above before the object is merged, and merge computes
+            # guidance = gf - inward*normal, which stays zero when gf is zero. That left
+            # handsgf -- the only reward term anywhere that depends on hand VELOCITY
+            # relative to an obstacle -- identically zero in exactly the scenes built to
+            # train hand retreat. Point the hand guidance along the outward normal so
+            # moving away from the object is what earns the alignment reward.
+            active=self.reactive_objects.state['active'][ids]
+            outward=bf[:,5:7]/(torch.linalg.vector_norm(bf[:,5:7],dim=-1,keepdim=True)+1e-6)
+            gf=gf.clone();gf[:,5:7]=torch.where(active[:,None,None],outward,gf[:,5:7])
         return gf,bf,sdf,cmd
 
     def _elbow_fields(self,ids,actor):
@@ -505,7 +515,18 @@ class CATTask:
         from .passage_rewards import blended_sdf_knee
         sdf_knee = (blended_sdf_knee(self.bank.contrast, self.scene_ids, self.contrast)
                     if getattr(self.bank, 'has_sdf_reward_overrides', False) else None)
-        rewards=self.math.native_rewards(sdf_knee=sdf_knee,action=action,last_action=i['last_act'],last_last_action=i['last_last_act'],
+        heading=self.config.get('heading_align');heading_sdf=None;heading_margins=(.05,.15)
+        if heading:
+            # Counterfactual shoulder probes at shoulder height, sampled from the static bank only:
+            # moving (analytic/reactive) objects live in standing scenes where move=0 zeroes the
+            # term anyway. Reward-only -- these never enter observations, so obs dims are unchanged.
+            cmd=i['command'][:,1:3];norm=torch.linalg.vector_norm(cmd,dim=-1,keepdim=True)
+            direction=torch.where(norm>0,cmd/norm.clamp_min(1e-30),torch.zeros_like(cmd))
+            probes=self.math.heading_probe_points(i['positions'][:,1,:2],direction,i['positions'][:,9:11,2].mean(-1),
+                half_width=float(heading['half_width']),lookahead=float(heading['lookahead']))
+            heading_sdf=self.bank.sample('sdf',probes,self.scene_ids).reshape(probes.shape[0],-1)
+            heading_margins=tuple(float(m) for m in heading['margins'])
+        rewards=self.math.native_rewards(heading_sdf=heading_sdf,heading_margins=heading_margins,standing_gf=float(_get(self.config,'standing_gf_bonus',4.)),sdf_knee=sdf_knee,action=action,last_action=i['last_act'],last_last_action=i['last_last_act'],
             joint_pos=d.qpos[:,7:],joint_vel=d.qvel[:,6:],last_joint_vel=i['last_joint_vel'],lower=self.lower,upper=self.upper,
             actuator_force=d.actuator_force,command=i['command'],pelvis_rpy=i['pelvis_rpy'],torso_rpy=i['torso_rpy'],
             head_z=i['positions'][:,0,2],torso_height=float(_get(self.config,'torso_height',[.5,1.])[1]),
@@ -779,9 +800,19 @@ class CATTask:
         metrics={'reward/'+k:v for k,v in components.items()}
         metrics.update(navigation_counts=self.navigation_counts.clone(),contrast_counts=self.contrast_counts.clone(),role_counts=self.role_counts.clone(),
             episode_return=self.episode_reward.clone(),episode_length=i['step'].clone(),resolved=resolved,successful=successful,
-            scene_ids=self.scene_ids.clone(),collision_regions=regions)
+            scene_ids=self.scene_ids.clone(),collision_regions=regions,
+            # True once this episode has reached a verdict. At `done`, still False means the
+            # episode ended having decided nothing -- the honest failure mode that
+            # successes/resolved silently drops from its denominator.
+            outcome_counted=self.outcome_counted.clone())
         if self.reactive_objects is not None:
             metrics.update({'reactive/active':self.reactive_objects.state['active'].clone(),
+                # The distance the scene AUTHORED the object to stop at. Achieved gap minus
+                # this is the only unambiguous read on priority #1: a policy that does nothing
+                # sits at 0, one that retreats goes positive, one that reaches in goes negative.
+                # The raw "hand within 0.20 m" fraction cannot distinguish successful avoidance
+                # from an object that never arrived, which is exactly how the inert-task bug hid.
+                'reactive/target_clearance':self.reactive_objects.state['clearance'].amin(-1).clone(),
                 'reactive/scene':self.reactive_objects.state['scene'].clone(),
                 'reactive/robot_initiated_contact':robot_initiated,
                 'reactive/object_initiated_contact':object_initiated})

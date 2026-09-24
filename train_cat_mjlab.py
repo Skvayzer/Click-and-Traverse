@@ -36,6 +36,9 @@ def parser():
         target.add_argument("--arm-clearance-weight", type=float, help="Signed elbow clearance weight <= 0; default -2")
         target.add_argument("--tracking-root-field-weight", type=float,
                             help="Positive velocity tracking weight across ALL tasks; default inherited (1.0)")
+        target.add_argument("--heading-align-weight", type=float,
+                            help="Bonus >= 0 for facing the guidance direction wherever a forward-facing body fits "
+                                 "(shoulder-clearance gated, so sidling through narrow gaps is never penalised); 0 disables")
         target.add_argument("--hand-clearance-target", type=float, help="Target clearance in metres; default .04")
         target.add_argument("--hand-clearance-anticipation", type=float, help="Anticipation distance in metres; default .20")
         target.add_argument("--hand-clearance-near-weight", type=float, help="Near-contact share in [0,1]; default .8")
@@ -68,6 +71,33 @@ def parser():
         target.add_argument("--require-hand-contrast", action="store_true",
                             help="Fail before GPU allocation unless hand and heading objectives have coverage")
         target.add_argument("--bank-manifest", type=Path, required=True)
+        target.add_argument("--standing-gf-bonus", type=float,
+                            help="Constant paid per guidance group when no movement is commanded. "
+                                 "Default 4.0 pays +16/step for standing still, measured at ~54%% of mean reward")
+        target.add_argument("--reactive-hand-guidance", action="store_true",
+                            help="Point hand guidance along the outward obstacle normal in reactive scenes, "
+                                 "making handsgf (the only hand-velocity term) live instead of identically zero")
+        target.add_argument("--handsdf-weight", type=float,
+                            help="Override the legacy handsdf scale; it out-gradients the hand-clearance term")
+        target.add_argument("--experience-reactive-share", type=float,
+                            help="Target share of ALL transitions for reactive standing episodes (their reset draw "
+                                 "is otherwise a fixed .25 outside the solver and grew to 64%% of experience); "
+                                 "group targets are scaled by (1 - share). Needs --experience-masses")
+        target.add_argument("--experience-rebalance-every", type=int, default=5,
+                            help="Re-solve reset masses from REALIZED episode lengths every N updates so each "
+                                 "group's share of transitions holds its --experience-masses target; 0 = solve once at startup")
+        target.add_argument("--experience-masses", type=float, nargs="+",
+                            help="Target share of TRANSITIONS per sampling group; reset mass is solved as "
+                                 "share/episode_length so short-horizon tasks are not starved. Prefer this "
+                                 "over --sampling-masses, which sets reset mass directly")
+        target.add_argument("--sampling-masses", type=float, nargs="+",
+                            help="Override the grouped sampler's masses, in group order; renormalised. "
+                                 "Default leaves one empty scene holding 0.225 while 461 rooms share 0.034")
+        target.add_argument("--narrow-sampling-group", type=int,
+                            help="Move every scene whose id contains -narrow- into this sampling group")
+        target.add_argument("--cat-episode-length", type=int,
+                            help="Override episode length for task_kind=cat scenes; default 1000 against 4000 "
+                                 "for rooms, which starves CAT retention of experience")
         target.add_argument("--reactive-bank", type=Path,
                             help="Opt-in cat-reactive-standing-v1 composite manifest; adds approaching-object "
                                  "standing scenes alongside the retained bank distribution")

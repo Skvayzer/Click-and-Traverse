@@ -8,12 +8,16 @@
 # Weights are unchanged from APPROVED_CLEARANCE_WEIGHTS_20260922. Only the scenes changed,
 # so any metric movement is attributable to the scenes and not to a reward edit.
 set -euo pipefail
+# The run died at update 108 with 6 GB of headroom: the per-sample direction decode
+# allocates transient tensors every call, and at 30720 envs that churn fragments the
+# pool until a graph launch cannot find contiguous memory.
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 cd /home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab
 .venv-mjlab/bin/python train_cat_mjlab.py run \
   --algorithm ppo --num-envs 30720 --batch-size 768 \
   --num-minibatches 40 --unroll-length 32 \
-  --checkpoint-native outputs/cat_reactive_standing_20260923/resume.pt \
-  --fresh-optimizer --max-action-std 0 \
+  --resume --checkpoint-native outputs/cat_reactive_standing_20260923/resume.pt \
+  --max-action-std 0 \
   --bank-manifest data/furniture/procedural_rooms_v2_20260923/manifest.json \
   --body-collision-bank data/furniture/full_collision_20260924b/manifest.json \
   --body-collision-resets data/furniture/full_resets_20260924b/manifest.json \

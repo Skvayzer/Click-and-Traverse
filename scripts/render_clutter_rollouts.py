@@ -119,6 +119,10 @@ def render(args):
     metadata = json.loads(inputs["metadata.json"].read_text())
     with np.load(inputs["trajectory.npz"], allow_pickle=False) as data:
         qpos, qvel, timestamps = (np.asarray(data[key], dtype=np.float64) for key in ("qpos", "qvel", "time"))
+        # Reactive recordings export the analytic approaching objects (no MuJoCo geom in training).
+        reactive_arrays = None
+        if "object_position" in data.files:
+            reactive_arrays = {key: np.asarray(data["object_" + key]) for key in ("position", "rotation", "sizes", "kinds", "valid")}
     if (qpos.ndim != 2 or not len(qpos) or qvel.ndim != 2 or len(qvel) != len(qpos)
             or timestamps.shape != (len(qpos),)):
         raise ValueError("Expected qpos[T,nq], qvel[T,nv], and time[T]")
@@ -147,7 +151,20 @@ def render(args):
         ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
 
     xml, asset_changes = resolve_xml_assets(inputs["model.xml"])
+    if reactive_arrays is not None:
+        # Draw each primitive as a mocap body driven by the exported trajectory (kinds: 0 sphere, 1 box, 2 cylinder).
+        bodies = []
+        for m in range(reactive_arrays["position"].shape[1]):
+            kind = int(reactive_arrays["kinds"][0, m]); size = reactive_arrays["sizes"][0, m]
+            geom = {0: f'type="sphere" size="{size[0]:.4f}"',
+                    1: f'type="box" size="{size[0]:.4f} {size[1]:.4f} {size[2]:.4f}"',
+                    2: f'type="cylinder" size="{size[0]:.4f} {size[1]:.4f}"'}[kind]
+            bodies.append(f'<body name="reactive_object_{m}" mocap="true" pos="0 0 -10">'
+                          f'<geom {geom} contype="0" conaffinity="0" rgba="0.95 0.35 0.1 0.95"/></body>')
+        xml = xml.replace("</worldbody>", "".join(bodies) + "</worldbody>", 1)
     model = mujoco.MjModel.from_xml_string(xml)
+    mocap_ids = ([int(model.body_mocapid[model.body(f"reactive_object_{m}").id]) for m in range(reactive_arrays["position"].shape[1])]
+                 if reactive_arrays is not None else [])
     if qpos.shape[1] != model.nq or qvel.shape[1] != model.nv:
         raise ValueError("Recorded qpos/qvel dimensions differ from the model")
     free = np.flatnonzero(model.jnt_type == mujoco.mjtJoint.mjJNT_FREE)
@@ -231,6 +248,13 @@ def render(args):
         else:
             data.qpos[:] = qpos[index]
             data.qvel[:] = qvel[index]
+            for m, mid in enumerate(mocap_ids):
+                if reactive_arrays["valid"][index, m]:
+                    data.mocap_pos[mid] = reactive_arrays["position"][index, m]
+                    quat = np.empty(4); mujoco.mju_mat2Quat(quat, reactive_arrays["rotation"][index, m].reshape(9))
+                    data.mocap_quat[mid] = quat
+                else:
+                    data.mocap_pos[mid] = (0., 0., -10.)
             data.time = timestamps[index]
             mujoco.mj_forward(model, data)
             camera.lookat[:] = [roots[index, 0], roots[index, 1], .72]

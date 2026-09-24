@@ -98,3 +98,24 @@ def packed_bytes(shape):
 def raw_bytes(shape):
     voxels = int(np.prod(shape))
     return voxels * (12 + 12 + 4 + 1)
+
+
+def torch_decode_directions(codes):
+    """Decode int16 octahedral codes to unit vectors, for GPU-resident fields.
+
+    Storing directions packed in device memory rather than decoding them at load
+    cuts the field footprint from 28 to 12 bytes per voxel, which is what makes a
+    large bank fit at all. The decode runs on the eight gathered corner values per
+    query, not on the whole field.
+    """
+    import torch
+    square = codes.to(torch.float32) / 32767.
+    u, v = square[..., 0], square[..., 1]
+    z = 1. - u.abs() - v.abs()
+    lower = z < 0.
+    sign = lambda t: torch.where(t >= 0., 1., -1.)
+    x = torch.where(lower, (1. - v.abs()) * sign(u), u)
+    y = torch.where(lower, (1. - u.abs()) * sign(v), v)
+    vectors = torch.stack((x, y, z), -1)
+    norm = torch.linalg.vector_norm(vectors, dim=-1, keepdim=True).clamp_min(1e-20)
+    return torch.where((codes != 0).any(-1, keepdim=True), vectors / norm, torch.zeros_like(vectors))

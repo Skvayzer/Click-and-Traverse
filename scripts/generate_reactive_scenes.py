@@ -84,6 +84,16 @@ def author_scene(geo, env, nominal, rng, bucket, device, attempts=120):
     hand = 0 if ray[1] > 0 else 1                      # always the near hand
     for attempt in range(attempts):
         q = nominal.copy()
+        # Root pose was identical in all 2000 scenes of the previous bank: one position,
+        # one orientation. Only the arms were randomised, so the policy met every object
+        # from a single standing pose and world heading. Yaw matters most -- it changes the
+        # relationship between the world-frame approach and the robot's own frame -- and it
+        # is free here because the object path below is derived from the resulting hand
+        # position, so the scene stays self-consistent.
+        yaw = rng.uniform(0., 2. * np.pi)
+        q[3], q[6] = np.cos(yaw / 2.), np.sin(yaw / 2.)
+        q[0] += rng.uniform(-.35, .35)
+        q[1] += rng.uniform(-.35, .35)
         # Randomise on every attempt, including the first: gating this behind
         # attempt>0 made the first try always succeed from the nominal pose, so
         # every scene shipped with an identical posture.

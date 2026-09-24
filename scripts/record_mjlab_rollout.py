@@ -29,6 +29,9 @@ def parser():
     p = argparse.ArgumentParser(description=__doc__)
     p.add_argument("--checkpoint", type=Path, required=True, help="Native mjlab best.pt or resume.pt")
     p.add_argument("--bank-manifest", type=Path, required=True)
+    p.add_argument("--allow-source-mismatch", action="store_true",
+                   help="Record even if cat_mjlab/*.py changed since the checkpoint (reward-only edits do not "
+                        "change actions; reactive.py edits DO change object behaviour -- say so with the video)")
     p.add_argument("--reactive-bank", type=Path,
                    help="Optional cat-reactive-standing-v1 manifest; adds approaching objects")
     p.add_argument("--body-collision-bank", type=Path, required=True)
@@ -37,6 +40,11 @@ def parser():
     p.add_argument("--frames", type=int, required=True, help="Maximum control transitions, 1..4000")
     p.add_argument("--policy-id", type=int, default=0)
     p.add_argument("--seed", type=int, default=0)
+    p.add_argument("--stochastic", action="store_true",
+                   help="Sample actions from the policy distribution as in training instead of the mean")
+    p.add_argument("--reactive-row", type=int,
+                   help="Force this reactive-bank row (an approaching object) instead of the .25 reset coin; "
+                        "needs --reactive-bank. The object trajectory is exported for the renderer.")
     p.add_argument("--device", default="cuda:0")
     p.add_argument("--output-dir", type=Path, required=True, help="New recording directory")
     return p
@@ -95,20 +103,30 @@ def verify_contract(contract, args):
         if contract.get(key) != sha256(path):
             raise ValueError(f"Recording {key} differs from the checkpoint")
     if contract.get("source_sha256") != _source_identity():
-        raise ValueError("Task/learner source differs from this native checkpoint")
+        if not args.allow_source_mismatch:
+            raise ValueError("Task/learner source differs from this native checkpoint")
+        print("WARNING: cat_mjlab source differs from the checkpoint; recording anyway (--allow-source-mismatch)", file=sys.stderr)
     if contract.get("versions") != _versions():
         raise ValueError("Simulator/learner package versions differ from this native checkpoint")
 
 
-def record_episode(task, learner, *, policy_id, frames):
+def record_episode(task, learner, *, policy_id, frames, stochastic=False):
     """Copy each final integrated pose before normal task autoreset can erase it."""
     import numpy as np
     import torch
     if task.num_envs != 1 or not 1 <= frames <= 4000:
         raise ValueError("Recording requires one world and 1..4000 control transitions")
     def pose():
-        return {key: getattr(task.sim.data, key)[0].detach().cpu().numpy().copy()
-                for key in ("qpos", "qvel", "time")}
+        frame = {key: getattr(task.sim.data, key)[0].detach().cpu().numpy().copy()
+                 for key in ("qpos", "qvel", "time")}
+        objects = getattr(task, "reactive_objects", None)
+        if objects is not None and bool(objects.state["active"][0]):
+            # Approaching objects are analytic (no MuJoCo geom), so export them or the video cannot show them.
+            s = objects.state
+            frame.update({"object_" + key: s[name][0].detach().cpu().numpy().copy() for key, name in
+                          (("position", "position"), ("rotation", "rotations"), ("sizes", "sizes"),
+                           ("kinds", "kinds"), ("valid", "valid"), ("retreating", "retreating"))})
+        return frame
     trace = [pose()]
     original_reset = task.reset
     captured = []
@@ -120,7 +138,7 @@ def record_episode(task, learner, *, policy_id, frames):
     try:
         for _ in range(frames):
             captured.clear()
-            action = learner.act(task.obs, policy_ids=policy_id, deterministic=True)["action"]
+            action = learner.act(task.obs, policy_ids=policy_id, deterministic=not stochastic)["action"]
             result = task.step(action)
             if len(captured) != 1:
                 raise RuntimeError("Task autoreset boundary changed; refusing an ambiguous trace")
@@ -218,8 +236,15 @@ def main(argv=None):
     task, sim, _ = create_task(factory_args, environment_config=contract["environment_config"])
     if saved["schema"] == "cat-mjlab-best-v1" and saved["observation_contract"] != task.contract:
         raise ValueError("Named observation/action features differ from the selected policy")
+    if args.reactive_row is not None:
+        objects = getattr(task, "reactive_objects", None)
+        if objects is None:
+            raise ValueError("--reactive-row needs --reactive-bank")
+        if not 0 <= args.reactive_row < len(objects.rows):
+            raise ValueError(f"--reactive-row must be in [0, {len(objects.rows)})")
+        objects.force_rows = torch.tensor([args.reactive_row], device=args.device)
     task.reset(scene_ids=torch.tensor(selected, device=args.device))
-    arrays, outcome = record_episode(task, learner, policy_id=args.policy_id, frames=args.frames)
+    arrays, outcome = record_episode(task, learner, policy_id=args.policy_id, frames=args.frames, stochastic=args.stochastic)
     record = manifest["scenes"][selected[0]]
     output.parent.mkdir(parents=True, exist_ok=True)
     with tempfile.TemporaryDirectory(prefix=".mjlab-recording-", dir=output.parent) as temporary:
@@ -227,6 +252,7 @@ def main(argv=None):
         scene, is_cat = write_geometry(directory, args.bank_manifest, record)
         np.savez_compressed(directory / "trajectory.npz", **arrays)
         metadata = dict(schema="cat-mjlab-recording-v1", backend="mjlab/MuJoCo Warp", label="mjlab-trained policy",
+                        reactive_row=args.reactive_row,
             scene_id=record["scene_id"], scene_name=record["scene_id"], scene_seed=scene.get("seed"),
             family=record["family"], seed=args.seed, checkpoint_steps=saved["step"], policy_id=args.policy_id,
             checkpoint_path=str(args.checkpoint.resolve()), checkpoint_sha256=source_hash,
