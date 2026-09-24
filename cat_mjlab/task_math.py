@@ -211,6 +211,21 @@ def sdf_reward(sdf, knee=None):
     return torch.where(knee == .05, legacy, modified)
 
 
+def stand_still_cost(global_velocity,torso_angvel,move,*,speed_scale=.10,yaw_scale=.5):
+    """Cost for moving the body while commanded to stand (move<.5), bounded in [0,1.2].
+
+    With a zero command nothing else prices root motion: body_motion is explicitly
+    zeroed at zero command, foot terms are gated by move, and the standing bonus is paid
+    on the COMMAND, not on stillness. So the cheapest way to raise hand-object clearance
+    in a standing scene was to walk away from the object (measured: 0.10-0.12 m root
+    displacement per approach event, only 3 cm of hand retreat relative to the root).
+    """
+    speed=torch.linalg.vector_norm(global_velocity[:,:2],dim=-1)
+    planar=1.-torch.exp(-(speed/speed_scale).square())
+    yaw=1.-torch.exp(-(torso_angvel[:,2]/yaw_scale).square())
+    return (planar+.2*yaw)*(move<.5).float()
+
+
 def posture_terms(torso_pitch,head_z,head_guidance,head_sdf,torso_angvel,*,head_target=1.20,head_scale=.08,
                   pitch_scale=torch.pi/18,crouch_field_z=-.3,crouch_sdf=.20):
     """Straight back and full height, unless the head field asks for a crouch.
@@ -289,7 +304,8 @@ def native_rewards(*,action,last_action,last_last_action,joint_pos,joint_vel,las
         lower,upper,actuator_force,command,pelvis_rpy,torso_rpy,head_z,torso_height,
         global_velocity,torso_angvel,navi,leg_rotations,feet_pos,feet_sensor_velocity,
         subtree_com,feet_contact,gait,foot_height,foot_height_stance,gf,positions,velocities,sdf,
-        crossed,dt=.02,max_yaw=.5,sdf_knee=None,standing_gf=4.,heading_sdf=None,heading_margins=(.05,.15)):
+        crossed,dt=.02,max_yaw=.5,sdf_knee=None,standing_gf=4.,heading_sdf=None,heading_margins=(.05,.15),
+        stand_still=False,stillness_speed=None):
     move=command[:,0];cmd=command[:,1:]
     pitch_negative=torso_rpy[:,1].clamp(-torch.pi,0).abs()
     orientation=pelvis_rpy[:,0].abs()+torso_rpy[:,0].abs()+pitch_negative+(head_z>torso_height+.1)*torso_rpy[:,1].abs()
@@ -324,10 +340,15 @@ def native_rewards(*,action,last_action,last_last_action,joint_pos,joint_vel,las
         # Standing is no longer merged into the goal bonus; it is priced separately so a
         # no-command step cannot collect the full goal reward for doing nothing.
         idle=(move[:,None]<.5)&~crossing
+        if stillness_speed is not None:
+            # Standing pays only when the body is actually still, not merely commanded to be.
+            idle=idle&(torch.linalg.vector_norm(global_velocity[:,:2],dim=-1)<stillness_speed)[:,None]
         rewards[name+'gf']=gf_reward(gf[:,section],velocities[:,section],sdf[:,section],crossing,
             tau=tau,standing=idle,standing_value=standing_gf)
     for name,section in (('head',slice(0,1)),('feet',slice(3,5)),('hands',slice(5,7)),('knees',slice(7,9)),('shlds',slice(9,11))):
         rewards[name+'df']=sdf_reward(sdf[:,section],sdf_knee)
+    if stand_still:
+        rewards['stand_still']=stand_still_cost(global_velocity,torso_angvel,move)
     if heading_sdf is not None:
         rewards['heading_align']=heading_align_reward(direction,pelvis_rpy[:,2],move,heading_sdf,
             margin_low=heading_margins[0],margin_high=heading_margins[1])

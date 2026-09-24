@@ -46,6 +46,10 @@ def parser():
                             help="Shoulder pitch of the posture-prior home pose (default 0.2 hangs hands at the thighs; -0.3 carries them in front)")
         target.add_argument("--terminate-on-hand-self-contact", action="store_true", default=None,
                             help="End the episode (after the 50-step grace) when a hand envelope contacts a leg capsule")
+        target.add_argument("--stand-still-weight", type=float,
+                            help="Cost <= 0 on body motion while commanded to stand (zero command); 0 disables")
+        target.add_argument("--standing-requires-stillness", action="store_true", default=None,
+                            help="Pay the standing bonus only when root speed < 0.15 m/s, not merely when the command is zero")
         target.add_argument("--heading-align-weight", type=float,
                             help="Bonus >= 0 for facing the guidance direction wherever a forward-facing body fits "
                                  "(shoulder-clearance gated, so sidling through narrow gaps is never penalised); 0 disables")

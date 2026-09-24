@@ -29,7 +29,8 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
                      tracking_root_field_weight=None,standing_gf_bonus=None,
                      reactive_hand_guidance=None,handsdf_weight=None,heading_align_weight=None,
                      upright_weight=None,stand_tall_weight=None,torso_rate_weight=None,self_clearance_weight=None,
-                     upper_posture_weight=None,upper_home_shoulder_pitch=None,terminate_on_hand_self_contact=None):
+                     upper_posture_weight=None,upper_home_shoulder_pitch=None,terminate_on_hand_self_contact=None,
+                     stand_still_weight=None,standing_requires_stillness=None):
     from cat_ppo.furniture.generalist_config import released_config
     from .collision import PROPOSAL
     config=copy.deepcopy(released_config()['env_config'] if base_config is None else base_config)
@@ -99,6 +100,13 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
         config['upper_home_shoulder_pitch']=float(upper_home_shoulder_pitch)
     if terminate_on_hand_self_contact is not None:
         config['terminate_on_hand_self_contact']=bool(terminate_on_hand_self_contact)
+    # Standing scenes: price body motion at zero command and pay the standing bonus only when still.
+    if stand_still_weight is not None:
+        weight=_signed('stand_still_weight',stand_still_weight,positive=False)
+        if weight==0:scales.pop('stand_still',None)
+        else:scales['stand_still']=weight
+    if standing_requires_stillness is not None:
+        config['standing_requires_stillness_speed']=.15 if standing_requires_stillness else None
     if heading_align_weight is not None:
         value=heading_align_weight
         if isinstance(value,bool) or not math.isfinite(value) or value<0:

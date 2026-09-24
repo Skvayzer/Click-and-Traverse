@@ -123,6 +123,8 @@ class CATTask:
         self.capsule_a_ids=torch.tensor([body('left_hip_pitch_link'),body('left_knee_link'),body('right_hip_pitch_link'),body('right_knee_link')],device=self.device)
         self.capsule_b_ids=torch.tensor([body('left_knee_link'),body('left_ankle_pitch_link'),body('right_knee_link'),body('right_ankle_pitch_link')],device=self.device)
         self.capsule_radii=torch.tensor([.06,.08,.06,.08],device=self.device)
+        # Where each standing (reactive) episode started; leaving it is not avoidance.
+        self.reactive_spot=torch.zeros((self.num_envs,2),device=self.device)
         self.leg_ids=torch.tensor([self.model.body(n).id for n in ('left_knee_link','left_ankle_roll_link','right_knee_link','right_ankle_roll_link')],device=self.device)
         self.hand_radii=tensor([hand_sphere(s)['radius'] for s in ('left','right')])
         sensor_names=[f'{prefix}_{frame}' for frame in ('pelvis','torso') for prefix in ('upvector','global_linvel','global_angvel','local_linvel','gyro')]
@@ -393,6 +395,7 @@ class CATTask:
             qpos=torch.where(seeded[:,None],self.raised_reset_pool[scenes,pick],qpos)
         if self.reactive_objects is not None:
             qpos=torch.where(reactive_active[:,None],reactive_qpos,qpos)
+            self.reactive_spot[ids]=qpos[:,:2]   # the standing spot; leaving it is measured, not rewarded
         self.sim.reset_data(ids)
         self.data.qpos[ids]=qpos;self.data.qvel[ids]=0.;self.data.qvel[ids,:6]=self._rand((n,6),-.5,.5)
         if self.raised_reset_fraction:
@@ -477,7 +480,7 @@ class CATTask:
                 self.info['stop_timestep'][ids],self.info['phase'][ids],self.info['gait'][ids],hold)
             for key,value in zip(('command','command_delay','stop_timestep','phase','gait'),values):
                 self.info[key][ids]=value
-        keys=('goal_reached','raw_goal','outside_bounds','fall','obstacle','self_contact','hand_self_contact','numerical','hand_violation','elbow_violation','body_collision','reset_replaced',
+        keys=('goal_reached','raw_goal','outside_bounds','fall','obstacle','self_contact','hand_self_contact','reactive_left_spot','numerical','hand_violation','elbow_violation','body_collision','reset_replaced',
               'body_collision_feet','body_collision_legs','body_collision_trunk','body_collision_head','body_collision_arms','body_collision_hands')
         for k in keys:self._put(self.episode,k,ids,replaced if k=='reset_replaced' else torch.zeros(n,dtype=torch.bool,device=self.device))
         self._put(self.info,'minimum_episode_hand_clearance',ids,sdf[:,5:7,0].amin(-1))
@@ -525,7 +528,10 @@ class CATTask:
         root=self.navigation['enabled']&self.navigation['violation'];body=regions.any(-1)
         obstacle=fields|elbows|root|body;done=fall|self_contact|numerical|obstacle
         if _get(self.config,'terminate_on_hand_self_contact',False):done=done|hand_self_contact
-        flags=dict(fall=fall,obstacle=obstacle,self_contact=self_contact,hand_self_contact=hand_self_contact,numerical=numerical,body_collision=body,
+        active=self.reactive_objects.state['active'] if self.reactive_objects is not None else torch.zeros_like(grace)
+        self.reactive_root_displacement=torch.linalg.vector_norm(i['positions'][:,1,:2]-self.reactive_spot,dim=-1)*active
+        reactive_left_spot=active&(self.reactive_root_displacement>float(_get(self.config,'reactive_spot_radius',.3)))
+        flags=dict(fall=fall,obstacle=obstacle,self_contact=self_contact,hand_self_contact=hand_self_contact,reactive_left_spot=reactive_left_spot,numerical=numerical,body_collision=body,
                    hand_violation=(i['sdf'][:,5:7]<threshold).flatten(1).any(-1)&grace,elbow_violation=elbows)
         for k,v in flags.items():self.episode[k]|=v
         for index,region in enumerate(('feet','legs','trunk','head','arms','hands')):
@@ -551,7 +557,8 @@ class CATTask:
                 half_width=float(heading['half_width']),lookahead=float(heading['lookahead']))
             heading_sdf=self.bank.sample('sdf',probes,self.scene_ids).reshape(probes.shape[0],-1)
             heading_margins=tuple(float(m) for m in heading['margins'])
-        rewards=self.math.native_rewards(heading_sdf=heading_sdf,heading_margins=heading_margins,standing_gf=float(_get(self.config,'standing_gf_bonus',4.)),sdf_knee=sdf_knee,action=action,last_action=i['last_act'],last_last_action=i['last_last_act'],
+        rewards=self.math.native_rewards(stand_still='stand_still' in _get(self.config,'reward_config.scales',{}),
+            stillness_speed=_get(self.config,'standing_requires_stillness_speed',None),heading_sdf=heading_sdf,heading_margins=heading_margins,standing_gf=float(_get(self.config,'standing_gf_bonus',4.)),sdf_knee=sdf_knee,action=action,last_action=i['last_act'],last_last_action=i['last_last_act'],
             joint_pos=d.qpos[:,7:],joint_vel=d.qvel[:,6:],last_joint_vel=i['last_joint_vel'],lower=self.lower,upper=self.upper,
             actuator_force=d.actuator_force,command=i['command'],pelvis_rpy=i['pelvis_rpy'],torso_rpy=i['torso_rpy'],
             head_z=i['positions'][:,0,2],torso_height=float(_get(self.config,'torso_height',[.5,1.])[1]),
@@ -851,7 +858,8 @@ class CATTask:
                 'reactive/target_clearance':self.reactive_objects.state['clearance'].amin(-1).clone(),
                 'reactive/scene':self.reactive_objects.state['scene'].clone(),
                 'reactive/robot_initiated_contact':robot_initiated,
-                'reactive/object_initiated_contact':object_initiated})
+                'reactive/object_initiated_contact':object_initiated,
+                'reactive/root_displacement_m':self.reactive_root_displacement.clone()})
         metrics['acceptance/hand_clearance']=i['sdf'][:,5:7,0].clone()
         metrics['acceptance/root_xy']=d.qpos[:,:2].clone()
         from .response_split import initial, advance, PREFIX

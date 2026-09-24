@@ -17,6 +17,11 @@
 #       Hand envelopes vs own thigh/shin capsules (fingers were within 2 cm of a leg in
 #       40-64% of walking frames, penetrating in 8 of 17 walks); posture prior raised
 #       from -0.05 and re-homed so the hands carry 24 cm in front of the hips.
+#   --stand-still-weight / --standing-requires-stillness
+#       Standing scenes: root motion at zero command was free and the standing bonus was
+#       paid on the command, so the policy answered approaching objects by walking away
+#       (0.10-0.12 m root motion per event, 3 cm hand retreat). reactive/left_spot_rate
+#       reports how often an episode leaves its 0.3 m spot.
 #   Physical hand-leg contact pairs are in the assembled model (cat_mjlab/model.py) and
 #   feed scene/*/hand_self_contact_rate; termination on contact is opt-in
 #   (--terminate-on-hand-self-contact) and deliberately off for this pilot.
@@ -40,6 +45,7 @@ CHECKPOINT=${CHECKPOINT:-outputs/cat_reactive_standing_20260923/resume.pt}   # p
   --heading-align-weight 0.4 \
   --upright-weight 1.0 --stand-tall-weight 1.0 --torso-rate-weight -0.5 \
   --self-clearance-weight -20 --upper-posture-weight -0.5 --upper-home-shoulder-pitch -0.3 \
+  --stand-still-weight -2 --standing-requires-stillness \
   --run-dir outputs/cat_bundle_20260924 \
   --disable-hand-contrast --hand-clearance-weight -60 --arm-clearance-weight -8 \
   --tracking-root-field-weight 1 \

@@ -54,3 +54,11 @@ def test_config_flags():
     import pytest
     with pytest.raises(ValueError):
         wholebody_config(self_clearance_weight=5.)
+
+
+def test_stand_still_cost_prices_motion_only_at_zero_command():
+    from cat_mjlab.task_math import stand_still_cost
+    v = torch.tensor([[0., 0., 0.], [.3, 0., 0.], [.3, 0., 0.]]); w = torch.zeros(3, 3); move = torch.tensor([0., 0., 1.])
+    c = stand_still_cost(v, w, move)
+    assert float(c[0]) == 0. and float(c[1]) > .99 and float(c[2]) == 0.
+    assert 0. < float(stand_still_cost(torch.tensor([[.05, 0., 0.]]), torch.zeros(1, 3), torch.zeros(1))) < .5
