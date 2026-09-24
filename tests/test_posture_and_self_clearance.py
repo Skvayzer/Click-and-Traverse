@@ -62,3 +62,18 @@ def test_stand_still_cost_prices_motion_only_at_zero_command():
     c = stand_still_cost(v, w, move)
     assert float(c[0]) == 0. and float(c[1]) > .99 and float(c[2]) == 0.
     assert 0. < float(stand_still_cost(torch.tensor([[.05, 0., 0.]]), torch.zeros(1, 3), torch.zeros(1))) < .5
+
+
+def test_sdf_rate_contract_and_function_preserving_widening():
+    from cat_mjlab.observation_contract import ACTOR_SIZE, actor_size
+    from cat_ppo.furniture.control import mjlab_observation_contract
+    from cat_mjlab.runner import _expand_actor_input
+    assert actor_size(False) == 222 and actor_size(True) == 226
+    assert len(mjlab_observation_contract(True)['actor_features']) == 226
+    assert mjlab_observation_contract(True)['actor_features'][:222] == mjlab_observation_contract(False)['actor_features']
+    w = {'actor.layers.0.weight': torch.randn(512, 222), 'actor.layers.0.bias': torch.randn(512)}
+    wide = _expand_actor_input(w, 226)
+    assert wide['actor.layers.0.weight'].shape == (512, 226)
+    x = torch.randn(3, 222); extra = torch.randn(3, 4)
+    assert torch.allclose(x @ w['actor.layers.0.weight'].T, torch.cat((x, extra), 1) @ wide['actor.layers.0.weight'].T, atol=1e-5)
+    assert _expand_actor_input(w, 222) is w

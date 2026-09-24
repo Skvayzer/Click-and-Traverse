@@ -135,7 +135,10 @@ ELBOW_SITES = ("left_elbow_probe", "right_elbow_probe")
 ELBOW_RADIUS_M = 0.05
 
 
-def wholebody_observation_contract():
+SDF_RATE_FEATURES = [f"pf.hands.dfrate.{i}" for i in range(2)] + [f"pf.elbows.dfrate.{i}" for i in range(2)]
+
+
+def wholebody_observation_contract(sdf_rate=False):
     """Shared native/JAX contract: hand sphere fields plus one sample/elbow.
     """
     actor, critic = _base_features(JOINT_NAMES, JOINT_NAMES)
@@ -145,7 +148,11 @@ def wholebody_observation_contract():
               for i in range(2) for axis in axes]
     return {"schema": "cat-wholebody-spheres-v2", "action_names": list(JOINT_NAMES),
             "observed_joint_names": list(JOINT_NAMES),
-            "actor_features": actor + elbows, "critic_features": critic + elbows,
+            # sdf_rate: optional rate of change of the hand/elbow distance samples (actor only), so
+            # the actor can tell an object closing in from one that sits still; the critic already
+            # sees keypoint velocities. Added as a function-preserving expansion (zero input weights).
+            "actor_features": actor + elbows + (list(SDF_RATE_FEATURES) if sdf_rate else []), "critic_features": critic + elbows,
+            "sdf_rate_features": bool(sdf_rate),
             "baseline_actor_size": len(actor), "baseline_critic_size": len(critic),
             "prediction_horizons_seconds": [], "field_sample_count": 13,
             "additional_field_samples": ["left_elbow", "right_elbow"],
@@ -166,6 +173,6 @@ def route_coordinate(position, route, xp=np):
     return offsets[segment] + t[segment] * lengths[segment], distance[segment]
 
 
-def mjlab_observation_contract():
-    """Native geometry/sensor contract: exactly actor 222 / critic 310."""
-    return wholebody_observation_contract()
+def mjlab_observation_contract(sdf_rate=False):
+    """Native geometry/sensor contract: actor 222 (226 with sdf_rate) / critic 310."""
+    return wholebody_observation_contract(sdf_rate)

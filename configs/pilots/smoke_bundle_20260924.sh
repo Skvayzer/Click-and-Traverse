@@ -30,8 +30,8 @@ cd /home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 CHECKPOINT=${CHECKPOINT:-outputs/cat_reactive_standing_20260923/resume.pt}   # pre-degradation warm start
 .venv-mjlab/bin/python train_cat_mjlab.py run \
-  --algorithm ppo --num-envs 40960 --batch-size 1024 \
-  --num-minibatches 40 --unroll-length 32 \
+  --algorithm ppo --num-envs 4096 --batch-size 1024 \
+  --num-minibatches 4 --unroll-length 32 \
   --checkpoint-native "$CHECKPOINT" \
   --fresh-optimizer --max-action-std 0 \
   --bank-manifest data/furniture/procedural_rooms_v2_20260923/manifest.json \
@@ -47,12 +47,12 @@ CHECKPOINT=${CHECKPOINT:-outputs/cat_reactive_standing_20260923/resume.pt}   # p
   --self-clearance-weight -20 --upper-posture-weight -0.5 --upper-home-shoulder-pitch -0.3 \
   --stand-still-weight -2 --standing-requires-stillness \
   --reactive-episode-length 800 --reactive-walking-fraction 0.3 --sdf-rate-obs \
-  --run-dir outputs/cat_bundle_20260924 \
+  --run-dir outputs/smoke_bundle_20260924 --max-updates 3 \
   --disable-hand-contrast --hand-clearance-weight -60 --arm-clearance-weight -8 \
   --tracking-root-field-weight 1 \
   --hand-clearance-target 0.09 --hand-clearance-anticipation 0.20 \
   --hand-clearance-near-weight 0.8 --hand-reward-soft-floor 0 \
   --hand-raised-reset-fraction 0 --upper-gravity-compensation \
   --compile-task --device cuda:0 --seed 0 \
-  --checkpoint-interval-updates 10 \
-  --wandb-mode online --wandb-project CAT-wholebody --wandb-entity skvayzer
+  --checkpoint-interval-updates 2 \
+  --wandb-mode offline --wandb-project CAT-wholebody --wandb-entity skvayzer

@@ -111,12 +111,28 @@ class StandingObjects(AnalyticObjects):
         self.table={key:tensor([r[key] for r in self.rows]) for key in ('qpos','start','end','sizes','rotations','speed','hold','clearance')}
         self.table['kinds']=torch.tensor([r['kinds'] for r in self.rows],device=device,dtype=torch.long)
         self.table['valid']=torch.tensor([r['valid'] for r in self.rows],device=device,dtype=torch.bool)
-        kwargs={k:v[:1].expand(b,*v.shape[1:]).clone() for k,v in self.table.items() if k not in ('qpos','clearance')}
+        codes={'danger':0,'anticipation':1,'negative':2}
+        self.table['bucket']=torch.tensor([codes.get(r.get('bucket'),0) for r in self.rows],device=device,dtype=torch.long)
+        self.pelvis=model.body('pelvis').id
+        kwargs={k:v[:1].expand(b,*v.shape[1:]).clone() for k,v in self.table.items() if k not in ('qpos','clearance','bucket')}
         super().__init__(**kwargs)
         self.state.update(position=self.state['start'].clone(),clock=torch.zeros(b,device=device),
             retreating=torch.zeros((b,m),dtype=torch.bool,device=device),
             active=torch.zeros(b,dtype=torch.bool,device=device),scene=torch.zeros(b,dtype=torch.long,device=device),
             clearance=torch.zeros((b,m),device=device),velocity=torch.zeros((b,m,3),device=device))
+        # Per-approach bookkeeping for event success (see advance) and the walking variant.
+        self.state.update(bucket=torch.zeros(b,dtype=torch.long,device=device),walking=torch.zeros(b,dtype=torch.bool,device=device),
+            spot=torch.zeros((b,2),device=device),hand_arm=torch.zeros((b,2,3),device=device),target_hand=torch.zeros(b,dtype=torch.long,device=device),
+            approach_ray=torch.zeros((b,3),device=device),approach_gap=torch.full((b,),torch.inf,device=device),
+            approach_retreat=torch.zeros(b,device=device),approach_disp=torch.zeros(b,device=device),
+            approach_contact=torch.zeros(b,dtype=torch.bool,device=device),event_finished=torch.zeros(b,dtype=torch.bool,device=device),
+            event_success=torch.zeros(b,dtype=torch.bool,device=device),event_retreat=torch.zeros(b,device=device),
+            event_bucket=torch.zeros(b,dtype=torch.long,device=device))
+        # Runtime design knobs (the runner sets them from CLI flags). nominal_reset: start from the
+        # ordinary reset pose and aim the first object at the live hand instead of applying the
+        # row's certified pose. mixed_buckets: every re-arm re-draws a row's object parameters.
+        self.nominal_reset=True;self.mixed_buckets=True;self.walking_fraction=0.;self.pause_range=(.5,2.);self.episode_length=800
+        self.hand_velocity=None
         self.sampling_generator=torch.Generator(device=device).manual_seed(seed)
         self.state['sampling_rng']=self.sampling_generator.get_state().to(device)
         self.state['valid'].zero_()
@@ -130,7 +146,7 @@ class StandingObjects(AnalyticObjects):
 
     def sample(self,ids,scene_ids):
         self.sampling_generator.set_state(self.state['sampling_rng'].cpu())
-        random=torch.rand((len(ids),2),generator=self.sampling_generator,device=self.device)
+        random=torch.rand((len(ids),3),generator=self.sampling_generator,device=self.device)
         self.state['sampling_rng']=self.sampling_generator.get_state().to(self.device)
         return self.choose(ids,random,scene_ids)
 
@@ -142,6 +158,9 @@ class StandingObjects(AnalyticObjects):
         if self.force_rows is not None:
             active=torch.ones_like(active);rows=self.force_rows[ids]
         self.state['active'][ids]=active;self.state['scene'][ids]=rows
+        self.state['bucket'][ids]=self.table['bucket'][rows]
+        walking=active&(random[:,2]<float(self.walking_fraction)) if random.shape[1]>2 else torch.zeros_like(active)
+        self.state['walking'][ids]=walking
         for k in ('start','end','sizes','rotations','kinds','valid','speed','hold','clearance'):
             self.state[k][ids]=self.table[k][rows]
         self.state['valid'][ids]&=active[:,None]
@@ -195,13 +214,29 @@ class StandingObjects(AnalyticObjects):
             size[...,0]*torch.linalg.vector_norm(r[...,2,:2],dim=-1)+size[...,1]*r[...,2,2].abs()))
         floor_budget=torch.where(direction[...,2]<0,(s['position'][ids,:,2]-support-.002)/(-direction[...,2]).clamp_min(1e-12),torch.inf)
         step=torch.minimum(step,floor_budget.clamp_min(0))*s['valid'][ids]
+        step=step*(s['clock'][ids]>=0.)[:,None]   # a re-armed object waits out its pause at its start
         motion=step[...,None]*direction
         s['position'][ids]+=motion;s['velocity'][ids]=motion/dt;s['clock'][ids]+=dt
+        # Approach bookkeeping: closest the object got, how far the targeted hand retreated along
+        # the approach axis RELATIVE TO THE ROOT, how far the root strayed, any robot contact.
+        root=data.xpos[ids,self.pelvis];rows_=torch.arange(len(ids),device=self.device)
+        s['approach_gap'][ids]=torch.minimum(s['approach_gap'][ids],hand.amin(-1))
+        rel=p[:,self.geometry.hand_mask][rows_,s['target_hand'][ids]]-root-s['hand_arm'][ids][rows_,s['target_hand'][ids]]
+        s['approach_retreat'][ids]=torch.maximum(s['approach_retreat'][ids],(rel*s['approach_ray'][ids]).sum(-1))
+        s['approach_disp'][ids]=torch.maximum(s['approach_disp'][ids],torch.linalg.vector_norm(root[:,:2]-s['spot'][ids],dim=-1))
+        s['approach_contact'][ids]|=self.last_robot_contacts[ids]
         if self.repeat_approaches:
             home=torch.linalg.vector_norm(s['position'][ids]-s['start'][ids],dim=-1).amin(-1)
             finished=s['retreating'][ids].all(-1)&(home<=.01)
             if bool(finished.any()):
-                self.rearm(data,ids[finished],self.sampling_generator)
+                f=ids[finished];bucket=s['bucket'][f];retreat=s['approach_retreat'][f]
+                # An approach is handled when the robot stayed on its spot (walking excepted), never
+                # touched the object, and moved the hand >= 5 cm away for a threatening object --
+                # or did NOT flinch for a 'negative' one that was going to pass by.
+                stayed=(s['approach_disp'][f]<=.3)|s['walking'][f];reacted=retreat>=.05
+                success=stayed&~s['approach_contact'][f]&torch.where(bucket==2,~reacted,reacted)
+                s['event_finished'][f]=True;s['event_success'][f]=success;s['event_retreat'][f]=retreat;s['event_bucket'][f]=bucket
+                self.rearm(data,f,self.sampling_generator)
         # Store start-of-robot-motion clearance after safe object movement.
         d,_=self.distances(p,ids)
         after_gap=d-self.geometry.radii[None,:,None]
@@ -226,16 +261,24 @@ class StandingObjects(AnalyticObjects):
         if not len(ids):
             return
         state = self.state
+        if self.mixed_buckets:
+            self.redraw(ids, generator)
         centers = self.geometry.spheres(data, ids)
         hands = centers[:, self.geometry.hand_mask]
         pick = torch.randint(hands.shape[1], (len(ids),), device=self.device, generator=generator)
         hand = hands[torch.arange(len(ids), device=self.device), pick]
+        actual = hand
         # Continuous ray, elevation bounded so a rising approach still starts above the floor.
         azimuth = torch.rand(len(ids), device=self.device, generator=generator) * 2 * torch.pi
         elevation = torch.deg2rad(torch.rand(len(ids), device=self.device, generator=generator) * 100. - 35.)
         ray = torch.stack((elevation.cos() * azimuth.cos(), elevation.cos() * azimuth.sin(), elevation.sin()), -1)
         gap = state['clearance'][ids, 0]
         radius = float(self.geometry.radii[self.geometry.hand_mask].max())
+        if self.hand_velocity is not None:
+            # Walking variant: aim at where the hand WILL be when the object arrives.
+            v = self.hand_velocity[ids][torch.arange(len(ids), device=self.device), pick]
+            lead = (.335 + gap + radius) / state['speed'][ids, 0].clamp_min(1e-3)
+            hand = hand + v * (lead * state['walking'][ids].float())[:, None]
         end = hand + ray * (gap + radius)[:, None]
         start = end + ray * (.22 + torch.rand(len(ids), device=self.device, generator=generator) * .23)[:, None]
         support = state['sizes'][ids, 0].max(-1).values
@@ -246,8 +289,30 @@ class StandingObjects(AnalyticObjects):
         state['end'][ids, 0] = end
         state['position'][ids, 0] = start
         state['velocity'][ids] = 0.
-        state['clock'][ids] = 0.
         state['retreating'][ids] = False
+        root = data.xpos[ids, self.pelvis]
+        state['spot'][ids] = root[:, :2]
+        state['hand_arm'][ids] = hands - root[:, None]
+        state['target_hand'][ids] = pick
+        state['approach_ray'][ids] = -ray
+        state['approach_gap'][ids] = torch.inf; state['approach_retreat'][ids] = 0.; state['approach_disp'][ids] = 0.
+        state['approach_contact'][ids] = False
+        low, high = self.pause_range
+        state['clock'][ids] = -(low + torch.rand(len(ids), device=self.device, generator=generator) * (high - low))
+
+    def redraw(self, ids, generator):
+        """Re-sample a bank row's object parameters (shape, size, speed, hold, clearance, bucket)."""
+        u = torch.rand(len(ids), device=self.device, generator=generator)
+        rows = torch.searchsorted(self.row_cdf, u).clamp_max(len(self.rows) - 1)
+        s = self.state; s['scene'][ids] = rows; s['bucket'][ids] = self.table['bucket'][rows]
+        for k in ('sizes', 'rotations', 'kinds', 'valid', 'speed', 'hold', 'clearance'):
+            s[k][ids] = self.table[k][rows]
+        s['valid'][ids] &= s['active'][ids, None]
+
+    def begin_step(self, hand_velocity=None):
+        """Clear per-step event flags and take the current hand velocities (for the walking lead)."""
+        self.state['event_finished'].zero_(); self.state['event_success'].zero_()
+        self.hand_velocity = hand_velocity
 
     def contacts(self,data,ids,before,before_gap):
         regions=torch.zeros((len(self.state['active']),6),dtype=torch.bool,device=self.device)

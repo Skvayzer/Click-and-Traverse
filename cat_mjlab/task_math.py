@@ -103,7 +103,7 @@ def pack_fields(gf,bf,sdf):
 def observations(*,joint_pos,joint_vel,nominal,gyro,gravity,linear_velocity,noise,last_action,
                  targets,command,command_delay,foot_height,phase,navi,gf,bf,sdf,
                  gf_delay,bf_delay,sdf_delay,positions,velocities,torso_rpy,gait,contacts,
-                 kp,kd,rfi,elbow_true,elbow_actor):
+                 kp,kd,rfi,elbow_true,elbow_actor,sdf_rate=None):
     gait_phase=torch.cat((phase.cos(),phase.sin()),-1)
     common=lambda gy,gr,q,v,cmd: torch.cat((gy,gr,q-nominal,v,last_action,targets,cmd,
                                           foot_height[:,None],gait_phase),-1)
@@ -120,7 +120,8 @@ def observations(*,joint_pos,joint_vel,nominal,gyro,gravity,linear_velocity,nois
                      positions[:,5:7].flatten(1),velocities[:,5:7].flatten(1),
                      positions[:,7:9].flatten(1),positions[:,9:11].flatten(1),
                      torso_rpy[:,:2],gait,contacts.float(),kp[:,None],kd[:,None],rfi),-1)
-    return {'state':torch.nan_to_num(torch.cat((noisy,actor_fields,elbow_actor),-1)),
+    state_parts=(noisy,actor_fields,elbow_actor)+((sdf_rate,) if sdf_rate is not None else ())
+    return {'state':torch.nan_to_num(torch.cat(state_parts,-1)),
             'privileged_state':torch.nan_to_num(torch.cat((true,linear_velocity,
                 pack_fields(gf,bf,sdf),hints,elbow_true),-1))}
 

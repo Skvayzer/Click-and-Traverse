@@ -46,6 +46,19 @@ def parser():
                             help="Shoulder pitch of the posture-prior home pose (default 0.2 hangs hands at the thighs; -0.3 carries them in front)")
         target.add_argument("--terminate-on-hand-self-contact", action="store_true", default=None,
                             help="End the episode (after the 50-step grace) when a hand envelope contacts a leg capsule")
+        target.add_argument("--reactive-episode-length", type=int, default=800,
+                            help="Horizon of standing/walking reactive episodes (default 800 = 16 s of repeated approaches)")
+        target.add_argument("--reactive-walking-fraction", type=float, default=0.,
+                            help="Share of reactive episodes that keep the walk command; objects aim at the predicted hand position")
+        target.add_argument("--reactive-pause-range", type=float, nargs=2, default=(.5, 2.),
+                            help="Seconds a re-armed object waits before its next approach")
+        target.add_argument("--reactive-certified-reset", action="store_true",
+                            help="Legacy: apply the bank row's certified pose at reset instead of the ordinary pose")
+        target.add_argument("--reactive-single-bucket", action="store_true",
+                            help="Legacy: keep the first row's object parameters for every re-arm instead of re-drawing")
+        target.add_argument("--sdf-rate-obs", action="store_true", default=None,
+                            help="Add the rate of change of the hand/elbow distance samples to the ACTOR observation (222 -> 226); "
+                                 "a warm start widens the first layer with zero weights, so the policy is unchanged at step 0")
         target.add_argument("--stand-still-weight", type=float,
                             help="Cost <= 0 on body motion while commanded to stand (zero command); 0 disables")
         target.add_argument("--standing-requires-stillness", action="store_true", default=None,

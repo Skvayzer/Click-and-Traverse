@@ -227,7 +227,8 @@ def main(argv=None):
     selected = [i for i, scene in enumerate(manifest["scenes"]) if str(scene["scene_id"]) == args.scene_id]
     if len(selected) != 1:
         raise ValueError("--scene-id must identify exactly one scene in the checkpoint bank")
-    from cat_mjlab.observation_contract import ACTOR_SIZE, CRITIC_SIZE
+    from cat_mjlab.observation_contract import ACTOR_SIZE, CRITIC_SIZE, actor_size
+    ACTOR_SIZE = actor_size(bool(contract['environment_config'].get('sdf_rate_obs', False)))
     if (learner.config.actor_obs, learner.config.critic_obs, learner.config.action_size) != (ACTOR_SIZE, CRITIC_SIZE, 29):
         raise ValueError("Checkpoint differs from native 222/310 observation contract; obsolete checkpoints are unsupported")
     source_hash = saved["checkpoint_sha256"]

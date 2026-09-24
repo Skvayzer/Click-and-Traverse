@@ -89,7 +89,11 @@ class CATTask:
         self.hand_protection=bool(_get(config,'wholebody_hand_protection',False))
         hand_curriculum_threshold(config, getattr(bank, 'manifest', None))
         self.stabilization=bool(_get(config,'wholebody_stabilization',False))
-        self.contract=mjlab_observation_contract()
+        self.sdf_rate=bool(config.get('sdf_rate_obs',False))
+        self.contract=mjlab_observation_contract(self.sdf_rate)
+        self.observation_size=len(self.contract['actor_features'])
+        elbow_block=[n for n in self.contract['actor_features'] if n.startswith('pf.elbows.') and '.dfrate.' not in n]
+        self.elbow_df_index=torch.tensor([i for i,n in enumerate(elbow_block) if n.startswith('pf.elbows.df.')],device=self.device)
         self.generator=torch.Generator(device=self.device).manual_seed(seed)
         self.all_ids=torch.arange(self.num_envs,device=self.device)
         tensor=lambda x:torch.as_tensor(np.asarray(x),dtype=torch.float32,device=self.device)
@@ -295,7 +299,9 @@ class CATTask:
         cmd=torch.where(nav['enabled'][:,None],room_command,cmd)
         if self.reactive_objects is not None:
             active=self.reactive_objects.state['active'][ids]
-            gf=torch.where(active[:,None,None],0.,gf)
+            # Standing episodes get a zero command; the walking variant keeps the route command.
+            hold=active&~self.reactive_objects.state['walking'][ids]
+            gf=torch.where(hold[:,None,None],0.,gf)
             bf=torch.where(active[:,None,None],0.,bf)
             sdf=torch.where(active[:,None,None],10.,sdf)
             cmd=torch.where(active[:,None],0.,cmd)
@@ -356,7 +362,15 @@ class CATTask:
                for key,size,scale in (('gyro',3,.2),('gravity',3,.05),('joint_pos',29,.03),('joint_vel',29,1.5))}
         site_rotation=self.data.site_xmat.reshape(self.num_envs,-1,3,3)[ids,self.pelvis_site]
         gravity=-site_rotation[:,2,:]
-        result=self.math.observations(joint_pos=self.data.qpos[ids,7:],joint_vel=self.data.qvel[ids,6:],nominal=self.nominal,
+        sdf_rate=None
+        if self.sdf_rate:
+            # Rate of change of what the actor already sees (delayed hand distances, elbow distances).
+            current=torch.cat((info['sdf_delay'][:,5:7].reshape(len(ids),2),torch.nan_to_num(elbow_actor)[:,self.elbow_df_index]),-1)
+            if 'sdf_rate_prev' not in self.info:self.info['sdf_rate_prev']=torch.zeros((self.num_envs,4),device=self.device)
+            fresh=(info['step']==0)[:,None]
+            sdf_rate=torch.where(fresh,0.,(current-self.info['sdf_rate_prev'][ids])/self.dt).clamp(-3.,3.)
+            self.info['sdf_rate_prev'][ids]=current
+        result=self.math.observations(sdf_rate=sdf_rate,joint_pos=self.data.qpos[ids,7:],joint_vel=self.data.qvel[ids,6:],nominal=self.nominal,
             gyro=self._sensor('gyro_pelvis',ids),gravity=gravity,linear_velocity=self._sensor('local_linvel_pelvis',ids),
             noise=noise,last_action=info['last_act'],targets=info['motor_targets'],command=info['command'],
             command_delay=info['command_delay'],foot_height=info['foot_height'],phase=info['phase'],navi=info['navi'],
@@ -393,8 +407,9 @@ class CATTask:
             seeded=self.raised_reset_eligible[scenes]&(self._rand((n,))<self.raised_reset_fraction)
             pick=torch.randint(self.raised_reset_pool.shape[1],(n,),generator=self.generator,device=self.device)
             qpos=torch.where(seeded[:,None],self.raised_reset_pool[scenes,pick],qpos)
-        if self.reactive_objects is not None:
+        if self.reactive_objects is not None and not self.reactive_objects.nominal_reset:
             qpos=torch.where(reactive_active[:,None],reactive_qpos,qpos)
+        if self.reactive_objects is not None:
             self.reactive_spot[ids]=qpos[:,:2]   # the standing spot; leaving it is measured, not rewarded
         self.sim.reset_data(ids)
         self.data.qpos[ids]=qpos;self.data.qvel[ids]=0.;self.data.qvel[ids,:6]=self._rand((n,6),-.5,.5)
@@ -403,6 +418,9 @@ class CATTask:
         if self.reactive_objects is not None:
             self.data.qvel[ids]=torch.where(reactive_active[:,None],0.,self.data.qvel[ids])
         self.data.ctrl[ids]=qpos[:,7:];self.sim.forward(ids)
+        if self.reactive_objects is not None and self.reactive_objects.nominal_reset and bool(reactive_active.any()):
+            # Aim the first object at where the hand IS in the ordinary reset pose.
+            self.reactive_objects.rearm(self.data,ids[reactive_active],self.reactive_objects.sampling_generator)
         replaced=torch.zeros(n,dtype=torch.bool,device=self.device)
         if self.collision is not None:
             reset_regions=self.collision(scenes,_selected_data(self.data,ids))
@@ -441,7 +459,7 @@ class CATTask:
             action.clamp_(-1.,1.)
             for key in ('last_act','last_last_act'):
                 defaults[key]=torch.where(seeded[:,None],action,defaults[key])
-        if self.reactive_objects is not None:
+        if self.reactive_objects is not None and not self.reactive_objects.nominal_reset:
             defaults['motor_targets']=torch.where(reactive_active[:,None],qpos[:,7:],defaults['motor_targets'])
             for key in ('previous_upper','previous_previous_upper'):
                 defaults[key]=torch.where(reactive_active[:,None],qpos[:,19:],defaults[key])
@@ -478,6 +496,12 @@ class CATTask:
             _,_,hold=speed_limit(self.speed_state,{k:v[ids] for k,v in self.contrast.items()},ids,self.dt)
             values=standing_phase(self.info['command'][ids],self.info['command_delay'][ids],
                 self.info['stop_timestep'][ids],self.info['phase'][ids],self.info['gait'][ids],hold)
+            for key,value in zip(('command','command_delay','stop_timestep','phase','gait'),values):
+                self.info[key][ids]=value
+        if self.reactive_objects is not None:
+            from .speed_curriculum import standing_phase as _stance
+            standing=self.reactive_objects.state['active'][ids]&~self.reactive_objects.state['walking'][ids]
+            values=_stance(self.info['command'][ids],self.info['command_delay'][ids],self.info['stop_timestep'][ids],self.info['phase'][ids],self.info['gait'][ids],standing)
             for key,value in zip(('command','command_delay','stop_timestep','phase','gait'),values):
                 self.info[key][ids]=value
         keys=('goal_reached','raw_goal','outside_bounds','fall','obstacle','self_contact','hand_self_contact','reactive_left_spot','numerical','hand_violation','elbow_violation','body_collision','reset_replaced',
@@ -530,7 +554,8 @@ class CATTask:
         if _get(self.config,'terminate_on_hand_self_contact',False):done=done|hand_self_contact
         active=self.reactive_objects.state['active'] if self.reactive_objects is not None else torch.zeros_like(grace)
         self.reactive_root_displacement=torch.linalg.vector_norm(i['positions'][:,1,:2]-self.reactive_spot,dim=-1)*active
-        reactive_left_spot=active&(self.reactive_root_displacement>float(_get(self.config,'reactive_spot_radius',.3)))
+        walking=self.reactive_objects.state['walking'] if self.reactive_objects is not None else torch.zeros_like(grace)
+        reactive_left_spot=active&~walking&(self.reactive_root_displacement>float(_get(self.config,'reactive_spot_radius',.3)))
         flags=dict(fall=fall,obstacle=obstacle,self_contact=self_contact,hand_self_contact=hand_self_contact,reactive_left_spot=reactive_left_spot,numerical=numerical,body_collision=body,
                    hand_violation=(i['sdf'][:,5:7]<threshold).flatten(1).any(-1)&grace,elbow_violation=elbows)
         for k,v in flags.items():self.episode[k]|=v
@@ -765,6 +790,8 @@ class CATTask:
         regions=torch.zeros((self.num_envs,6),dtype=torch.bool,device=self.device)
         robot_initiated=torch.zeros(self.num_envs,dtype=torch.bool,device=self.device) if self.reactive_objects is not None else None
         object_initiated=robot_initiated.clone() if robot_initiated is not None else None
+        if self.reactive_objects is not None:
+            self.reactive_objects.begin_step(self.info['velocities'][:,5:7])
         for _ in range(self.n_substeps):
             if self.reactive_objects is not None:
                 reactive_before=self.reactive_objects.advance(self.sim.final_collision_data(),self.dt/self.n_substeps)
@@ -813,6 +840,13 @@ class CATTask:
             from .speed_curriculum import speed_limit, standing_phase
             _,_,hold=speed_limit(self.speed_state,self.contrast,ids,self.dt)
             command,command_delay,stop,phase,gait=standing_phase(command,command_delay,stop,phase,gait,hold)
+        if self.reactive_objects is not None:
+            # update_phase rewrites move=1 at zero speed, so standing-object episodes were being
+            # commanded to walk at zero velocity (and the standing bonus never paid). Force a
+            # real stance for them; the walking variant keeps its route command.
+            from .speed_curriculum import standing_phase as _stance
+            standing=self.reactive_objects.state['active'][ids]&~self.reactive_objects.state['walking'][ids]
+            command,command_delay,stop,phase,gait=_stance(command,command_delay,stop,phase,gait,standing)
         move=(command[:,0]>.5)[:,None,None]
         normalize=lambda field:field/(torch.linalg.vector_norm(field,dim=-1,keepdim=True)+1e-6)
         normalized_gfd,normalized_bfd=normalize(gfd)*move,normalize(bfd)
@@ -833,6 +867,8 @@ class CATTask:
         if self.collision is not None:reward+=penalty;components['body_collision_event']=penalty
         i['wrapper_steps']+=1
         lengths=self.bank.episode_lengths[self.scene_ids]
+        if self.reactive_objects is not None:
+            lengths=torch.where(self.reactive_objects.state['active'],int(self.reactive_objects.episode_length),lengths)
         if self.reactive_objects is not None:
             lengths=torch.where(self.reactive_objects.state['active'],self.reactive_objects.episode_steps,lengths)
         timeout=i['wrapper_steps']>=lengths
@@ -859,7 +895,12 @@ class CATTask:
                 'reactive/scene':self.reactive_objects.state['scene'].clone(),
                 'reactive/robot_initiated_contact':robot_initiated,
                 'reactive/object_initiated_contact':object_initiated,
-                'reactive/root_displacement_m':self.reactive_root_displacement.clone()})
+                'reactive/root_displacement_m':self.reactive_root_displacement.clone(),
+                'reactive/walking':self.reactive_objects.state['walking'].clone(),
+                'reactive/event_finished':self.reactive_objects.state['event_finished'].clone(),
+                'reactive/event_success':self.reactive_objects.state['event_success'].clone(),
+                'reactive/event_bucket':self.reactive_objects.state['event_bucket'].clone(),
+                'reactive/event_retreat_m':self.reactive_objects.state['event_retreat'].clone()})
         metrics['acceptance/hand_clearance']=i['sdf'][:,5:7,0].clone()
         metrics['acceptance/root_xy']=d.qpos[:,:2].clone()
         from .response_split import initial, advance, PREFIX

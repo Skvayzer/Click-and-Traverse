@@ -281,6 +281,7 @@ def collect_rollout(task, learner, *, unroll_length, trajectories, policy_ids):
     bucket_of_scene = torch.as_tensor(_scene_buckets(task.bank.manifest), device=task.device)
     bucket_stats = torch.zeros((len(SCENE_BUCKETS), 7), dtype=torch.float64, device=task.device)
     reactive_bucket = SCENE_BUCKETS.index('reactive_standing')
+    walking_bucket = SCENE_BUCKETS.index('reactive_walking')
     # Realized experience per sampling group: steps every step, lengths at episode end.
     sampling_ids = getattr(task.bank, 'sampling_ids', None)
     n_groups = int(task.bank.sampling_masses.numel()) if sampling_ids is not None else 0
@@ -289,6 +290,7 @@ def collect_rollout(task, learner, *, unroll_length, trajectories, policy_ids):
     reactive_steps = torch.zeros((), dtype=torch.float64, device=task.device)
     objects_state = getattr(getattr(task, 'reactive_objects', None), 'state', None)
     last_active = objects_state['active'].clone() if objects_state is not None else None
+    last_walking = objects_state['walking'].clone() if objects_state is not None else None
     reactive_length_sum = torch.zeros_like(reactive_steps); reactive_length_count = torch.zeros_like(reactive_steps)
     from .balance import BalanceMetrics
     balance_metrics=BalanceMetrics()
@@ -332,7 +334,10 @@ def collect_rollout(task, learner, *, unroll_length, trajectories, policy_ids):
                 active_now = metrics['reactive/active'].bool()
                 was_active = torch.where(done, last_active, active_now) if last_active is not None else active_now
                 last_active = active_now
-                bucket = torch.where(was_active, reactive_bucket, bucket)
+                walking_now = metrics['reactive/walking'].bool()
+                was_walking = torch.where(done, last_walking, walking_now) if last_walking is not None else walking_now
+                last_walking = walking_now
+                bucket = torch.where(was_active, torch.where(was_walking, walking_bucket, reactive_bucket), bucket)
             # Counted on different events on purpose: a verdict can land hundreds of steps
             # before the episode ends, so terminations and resolutions are not the same
             # population and must not be divided by one another within an update.
@@ -359,6 +364,16 @@ def collect_rollout(task, learner, *, unroll_length, trajectories, policy_ids):
                 reactive_counts['ended'] = reactive_counts.get('ended', 0.) + float(ended_reactive.sum())
                 reactive_counts['left_spot'] = reactive_counts.get('left_spot', 0.) + float((ended_reactive & metrics.get('episode/reactive_left_spot', torch.zeros_like(done)).bool()).sum())
                 reactive_counts['displacement_sum'] = reactive_counts.get('displacement_sum', 0.) + float((metrics['reactive/root_displacement_m'] * active).sum())
+                finished = metrics['reactive/event_finished'].bool()
+                if bool(finished.any()):
+                    success = metrics['reactive/event_success'].bool(); bucket_id = metrics['reactive/event_bucket']
+                    reactive_counts['events'] = reactive_counts.get('events', 0.) + float(finished.sum())
+                    reactive_counts['event_success'] = reactive_counts.get('event_success', 0.) + float((finished & success).sum())
+                    reactive_counts['event_retreat_sum'] = reactive_counts.get('event_retreat_sum', 0.) + float((metrics['reactive/event_retreat_m'] * finished).sum())
+                    for code, name in enumerate(('danger', 'anticipation', 'negative')):
+                        member = finished & (bucket_id == code)
+                        reactive_counts[f'events_{name}'] = reactive_counts.get(f'events_{name}', 0.) + float(member.sum())
+                        reactive_counts[f'event_success_{name}'] = reactive_counts.get(f'event_success_{name}', 0.) + float((member & success).sum())
                 if active.any() and 'acceptance/hand_clearance' in metrics:
                     gap = metrics['acceptance/hand_clearance'].amin(-1)[active]
                     if 'reactive/target_clearance' in metrics:
@@ -490,6 +505,11 @@ def collect_rollout(task, learner, *, unroll_length, trajectories, policy_ids):
             'reactive/active_env_steps': active,
             'reactive/robot_initiated_contact_rate': reactive_counts['robot_hit'] / max(active, 1.),
             'reactive/left_spot_rate': reactive_counts.get('left_spot', 0.) / max(reactive_counts.get('ended', 0.), 1.),
+            'reactive/event_count': reactive_counts.get('events', 0.),
+            'reactive/event_success_rate': reactive_counts.get('event_success', 0.) / max(reactive_counts.get('events', 0.), 1.),
+            'reactive/event_retreat_mean_m': reactive_counts.get('event_retreat_sum', 0.) / max(reactive_counts.get('events', 0.), 1.),
+            **{f'reactive/event_success_rate_{name}': reactive_counts.get(f'event_success_{name}', 0.) / max(reactive_counts.get(f'events_{name}', 0.), 1.)
+               for name in ('danger', 'anticipation', 'negative')},
             'reactive/root_displacement_mean_m': reactive_counts.get('displacement_sum', 0.) / max(active, 1.),
             'reactive/object_initiated_contact_rate': reactive_counts['object_hit'] / max(active, 1.),
             'reactive/mean_hand_gap_m': reactive_counts['active_gap_sum'] / max(active, 1.),
@@ -582,12 +602,12 @@ def environment_config_from_archive(metadata):
     return dict(config, randomize_initial_episode_steps=randomize)
 
 
-GOALLESS_BUCKETS = ('reactive_standing', 'flat_balance')
+GOALLESS_BUCKETS = ('reactive_standing', 'reactive_walking', 'flat_balance')
 SCENE_BUCKETS = ('procedural_cat', 'original_cat', 'published_cat',
                  'clutter_dense', 'clutter_pilot', 'clutter_legacy',
                  'furniture_dense', 'furniture_pilot', 'furniture_legacy',
                  'narrow_passage', 'protected_passage', 'transition_passage',
-                 'open_passage', 'flat_balance', 'reactive_standing')
+                 'open_passage', 'flat_balance', 'reactive_standing', 'reactive_walking')
 
 
 def _scene_buckets(manifest):
@@ -684,6 +704,30 @@ def _adapt_experience_masses(bank, step_count, length_sum, length_count, info, r
     for index, mass in enumerate(resolved):
         info['metrics'][f'balance/group{index}_episode_length'] = bank.experience_lengths[index]
         info['metrics'][f'balance/group{index}_reset_mass'] = mass
+
+
+def _expand_actor_input(weights, actor_obs):
+    """Function-preserving widening of the actor input (new observation columns get zero weight)."""
+    first = weights.get('actor.layers.0.weight')
+    if first is None or first.shape[1] >= actor_obs:
+        return weights
+    widened = dict(weights)
+    widened['actor.layers.0.weight'] = torch.cat((first, torch.zeros((first.shape[0], actor_obs - first.shape[1]), dtype=first.dtype, device=first.device)), 1)
+    return widened
+
+
+def _configure_reactive(task, args):
+    """Runtime design of the standing/walking reactive episodes (see reactive.StandingObjects)."""
+    objects = getattr(task, 'reactive_objects', None)
+    if objects is None:
+        return
+    objects.nominal_reset = not getattr(args, 'reactive_certified_reset', False)
+    objects.mixed_buckets = not getattr(args, 'reactive_single_bucket', False)
+    objects.walking_fraction = float(getattr(args, 'reactive_walking_fraction', None) or 0.)
+    objects.episode_length = int(getattr(args, 'reactive_episode_length', None) or 800)
+    pause = getattr(args, 'reactive_pause_range', None)
+    if pause:
+        objects.pause_range = (float(pause[0]), float(pause[1]))
 
 
 def _rebalance_bank(bank, args):
@@ -787,6 +831,7 @@ def create_task(args, *, environment_config=None):
         upper_posture_weight=getattr(args, 'upper_posture_weight', None), upper_home_shoulder_pitch=getattr(args, 'upper_home_shoulder_pitch', None),
         terminate_on_hand_self_contact=getattr(args, 'terminate_on_hand_self_contact', None),
         stand_still_weight=getattr(args, 'stand_still_weight', None), standing_requires_stillness=getattr(args, 'standing_requires_stillness', None),
+        sdf_rate_obs=getattr(args, 'sdf_rate_obs', None),
         standing_gf_bonus=getattr(args, 'standing_gf_bonus', None),
         reactive_hand_guidance=getattr(args, 'reactive_hand_guidance', None),
         handsdf_weight=getattr(args, 'handsdf_weight', None),
@@ -870,7 +915,8 @@ def native_initialization(path):
     from .checkpoint_upgrade import validate_upgrade
     validate_upgrade(snapshot)
     from cat_ppo.furniture.control import mjlab_observation_contract
-    if snapshot.get('observation_contract', mjlab_observation_contract()) != mjlab_observation_contract():
+    expected_contract = mjlab_observation_contract(bool(snapshot['contract']['environment_config'].get('sdf_rate_obs', False)))
+    if snapshot.get('observation_contract', expected_contract) != expected_contract:
         raise ValueError('Native checkpoint observation contract differs; use --from-scratch, no conversion is performed')
     if snapshot.get("schema") == "cat-mjlab-runtime-v1":
         source = snapshot["learner"]
@@ -923,8 +969,12 @@ def run(args):
         config = learner_config_from_archive(metadata, algorithm=args.algorithm)
         source = metadata.get("contract", {})
         config_source = environment_config_from_archive(metadata)
-    from .observation_contract import ACTOR_SIZE, CRITIC_SIZE
-    if (config.actor_obs, config.critic_obs, config.action_size) != (ACTOR_SIZE, CRITIC_SIZE, 29):
+    from .observation_contract import ACTOR_SIZE, CRITIC_SIZE, actor_size
+    sdf_rate = bool(getattr(args, 'sdf_rate_obs', None) if getattr(args, 'sdf_rate_obs', None) is not None
+                    else (config_source or {}).get('sdf_rate_obs', False))
+    if config.actor_obs != actor_size(sdf_rate):
+        config = replace(config, actor_obs=actor_size(sdf_rate))
+    if (config.actor_obs, config.critic_obs, config.action_size) != (actor_size(sdf_rate), CRITIC_SIZE, 29):
         raise ValueError('Native training requires actor 222 / critic 310 and 29 actions. '
                          'Use --from-scratch; obsolete observation contracts are not converted.')
     overrides = {name: getattr(args, name) for name in ("max_action_std", "discounting", "num_minibatches")
@@ -951,6 +1001,7 @@ def run(args):
     if native_weights is not None:
         if any(not bool(torch.isfinite(value).all()) for value in native_weights.values()):
             raise ValueError("Native source has nonfinite model weights")
+        native_weights = _expand_actor_input(native_weights, config.actor_obs)
         learner.model.load_state_dict(native_weights, strict=True)
         migration = dict(kind="native_weights_only", optimizer="fresh", exact_runtime_resume=False,
                          sampling="fresh", counters="zero", environment="fresh")
@@ -967,6 +1018,7 @@ def run(args):
         learner.reset_action_std(initial_std)
         migration["initial_action_std"] = initial_std
     task, sim, environment_config = create_task(args, environment_config=config_source)
+    _configure_reactive(task, args)
     task_sizes = tuple(task.obs[key].shape[-1] for key in ('state', 'privileged_state'))
     if task_sizes != (config.actor_obs, config.critic_obs):
         raise ValueError(f'Policy observation sizes {(config.actor_obs, config.critic_obs)} '
@@ -1165,6 +1217,8 @@ def run(args):
                     ('reactive/mean_hand_gap_m', 'progress/p1_mean_hand_gap_m'),
                     ('reactive/avoidance_margin_mean_m', 'progress/p1_avoidance_margin_m'),
                     ('reactive/avoidance_margin_min_m', 'progress/p1_avoidance_margin_worst_m'),
+                    ('reactive/event_success_rate', 'progress/p1_event_success_rate'),
+                    ('reactive/left_spot_rate', 'progress/p1_left_spot_rate'),
                     ('reactive/active_fraction', 'health/reactive_experience_share'),
                     ('training/timeout_rate', 'health/episodes_timed_out'),
                     ('performance/update_seconds', 'health/seconds_per_update'),
