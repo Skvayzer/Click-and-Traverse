@@ -622,6 +622,13 @@ class CATTask:
                 self.capsule_radii,margin=float(_get(self.config,'self_clearance_margin',.04)))
             rewards['self_clearance']=penalty
             telemetry['self_clearance_min_m']=gap;telemetry['self_clearance_violation']=(gap<0).float()
+        if 'reactive_event' in scales and self.reactive_objects is not None:
+            # Sparse, paid once per finished approach: +1 handled, -1 unhandled for a threatening
+            # object (buckets 0/1), 0 for an unneeded flinch. Dense shaping (hand_clearance,
+            # handsgf) carries the gradient; this makes the OUTCOME of an approach itself count.
+            s=self.reactive_objects.state;finished=s['event_finished'].float()
+            threatening=(s['event_bucket']!=2).float()
+            rewards['reactive_event']=finished*(s['event_success'].float()-(1.-s['event_success'].float())*threatening)
         if any(k in scales for k in ('upright','stand_tall','torso_rate')):
             terms,crouch=tm.posture_terms(i['torso_rpy'][:,1],i['positions'][:,0,2],i['gf'][:,0],i['sdf'][:,0].reshape(-1),i['torso_angvel'],
                 head_target=float(_get(self.config,'posture_head_target',1.20)))

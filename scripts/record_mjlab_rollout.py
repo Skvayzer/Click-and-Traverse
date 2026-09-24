@@ -40,6 +40,8 @@ def parser():
     p.add_argument("--frames", type=int, required=True, help="Maximum control transitions, 1..4000")
     p.add_argument("--policy-id", type=int, default=0)
     p.add_argument("--seed", type=int, default=0)
+    p.add_argument("--allow-bank-mismatch", action="store_true",
+                   help="Preview the policy on a bank/collision/reset set other than the one in its checkpoint")
     p.add_argument("--stochastic", action="store_true",
                    help="Sample actions from the policy distribution as in training instead of the mean")
     p.add_argument("--reactive-row", type=int,
@@ -101,6 +103,9 @@ def verify_contract(contract, args):
     for key, path in (("bank_sha256", args.bank_manifest), ("collision_sha256", args.body_collision_bank),
                       ("resets_sha256", args.body_collision_resets)):
         if contract.get(key) != sha256(path):
+            if getattr(args, "allow_bank_mismatch", False):
+                print(f"WARNING: {key} differs from the checkpoint; previewing anyway (--allow-bank-mismatch)", file=sys.stderr)
+                continue
             raise ValueError(f"Recording {key} differs from the checkpoint")
     if contract.get("source_sha256") != _source_identity():
         if not args.allow_source_mismatch:

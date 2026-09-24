@@ -56,6 +56,8 @@ def parser():
                             help="Legacy: apply the bank row's certified pose at reset instead of the ordinary pose")
         target.add_argument("--reactive-single-bucket", action="store_true",
                             help="Legacy: keep the first row's object parameters for every re-arm instead of re-drawing")
+        target.add_argument("--reactive-event-weight", type=float,
+                            help="Sparse reward >= 0 per finished approach: +w handled, -w unhandled threatening object; 0 disables")
         target.add_argument("--sdf-rate-obs", action="store_true", default=None,
                             help="Add the rate of change of the hand/elbow distance samples to the ACTOR observation (222 -> 226); "
                                  "a warm start widens the first layer with zero weights, so the policy is unchanged at step 0")

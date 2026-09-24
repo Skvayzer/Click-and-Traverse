@@ -849,7 +849,7 @@ def create_task(args, *, environment_config=None):
         upper_posture_weight=getattr(args, 'upper_posture_weight', None), upper_home_shoulder_pitch=getattr(args, 'upper_home_shoulder_pitch', None),
         terminate_on_hand_self_contact=getattr(args, 'terminate_on_hand_self_contact', None),
         stand_still_weight=getattr(args, 'stand_still_weight', None), standing_requires_stillness=getattr(args, 'standing_requires_stillness', None),
-        sdf_rate_obs=getattr(args, 'sdf_rate_obs', None),
+        sdf_rate_obs=getattr(args, 'sdf_rate_obs', None), reactive_event_weight=getattr(args, 'reactive_event_weight', None),
         standing_gf_bonus=getattr(args, 'standing_gf_bonus', None),
         reactive_hand_guidance=getattr(args, 'reactive_hand_guidance', None),
         handsdf_weight=getattr(args, 'handsdf_weight', None),
