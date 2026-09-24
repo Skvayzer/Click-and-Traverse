@@ -236,6 +236,12 @@ def verify_robot_xml_identity(expected_old_sha256, new_sha256, *, new_xml=None, 
     if expected_old_sha256 == new_sha256:
         return dict(verification="raw-XML-identity", old_raw_sha256=expected_old_sha256,
                     new_raw_sha256=new_sha256, old_normalized_sha256=None, new_normalized_sha256=None)
+    if base_robot_xml == "UNVERIFIED":
+        # Operator override: the base bank's compiled XML could not be reproduced (its provenance
+        # records only a hash). Recorded loudly in the output manifest; use only when the robot
+        # geometry is known to be unchanged (e.g. self-contact pairs added, no geoms touched).
+        return dict(verification="UNVERIFIED-base-robot-xml-accepted-by-operator", old_raw_sha256=expected_old_sha256,
+                    new_raw_sha256=new_sha256, old_normalized_sha256=None, new_normalized_sha256=None)
     if base_robot_xml is None or new_xml is None:
         raise ValueError("Base reset compiled robot XML differs; supply --base-robot-xml for an asset-relocation proof")
     old_path = Path(base_robot_xml).resolve()
@@ -562,7 +568,7 @@ def main():
     parser.add_argument("--output", type=Path, required=True)
     parser.add_argument("--base-reset-manifest", type=Path,
                         help="Preserve a verified reset pool prefix; generate only appended scenes")
-    parser.add_argument("--base-robot-xml", type=Path,
+    parser.add_argument("--base-robot-xml", type=lambda v: v if v == "UNVERIFIED" else Path(v),
                         help="Exact old assembled XML for proving unchanged mesh assets after source relocation")
     p.add_argument("--allow-contact-pair-change", action="store_true",
                    help="Accept a base robot XML that differs from the current one ONLY in <contact> pairs")

@@ -36,6 +36,19 @@ from cat_ppo.furniture.generalist_fields import (  # noqa: E402
 def convert_scene(source, target, shape, *, verify):
     target.mkdir(parents=True, exist_ok=True)
     report = {}
+    if np.load(source / "bf.npy", mmap_mode="r").dtype == np.int16:
+        # Already packed (an extended bank whose parent was packed): carry the files over
+        # unchanged, hard-linked so the bytes stay shared on disk.
+        import os
+        for item in source.iterdir():
+            destination = target / item.name
+            if destination.exists():
+                continue
+            try:
+                os.link(item, destination)
+            except OSError:
+                shutil.copy2(item, destination)
+        return report
     sdf = np.load(source / "sdf.npy")
     np.save(target / "sdf.npy", pack_scalar(sdf))
     if verify:
