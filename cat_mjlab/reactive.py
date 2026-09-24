@@ -226,8 +226,12 @@ class StandingObjects(AnalyticObjects):
         s['approach_disp'][ids]=torch.maximum(s['approach_disp'][ids],torch.linalg.vector_norm(root[:,:2]-s['spot'][ids],dim=-1))
         s['approach_contact'][ids]|=self.last_robot_contacts[ids]
         if self.repeat_approaches:
-            home=torch.linalg.vector_norm(s['position'][ids]-s['start'][ids],dim=-1).amin(-1)
-            finished=s['retreating'][ids].all(-1)&(home<=.01)
+            # Home = every VALID primitive back at its start. The unused second primitive never
+            # moves, so an unmasked minimum declared the cycle over the instant retreat began and
+            # objects teleported to their next start without ever retreating.
+            away=torch.linalg.vector_norm(s['position'][ids]-s['start'][ids],dim=-1)
+            home=torch.where(s['valid'][ids],away,torch.zeros_like(away)).amax(-1)
+            finished=s['retreating'][ids].all(-1)&(home<=.01)&(s['clock'][ids]>0.)
             if bool(finished.any()):
                 f=ids[finished];bucket=s['bucket'][f];retreat=s['approach_retreat'][f]
                 # An approach is handled when the robot stayed on its spot (walking excepted), never
