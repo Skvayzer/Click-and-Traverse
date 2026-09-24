@@ -15,10 +15,13 @@ def _numbers(values):
 def assemble_training_xml(asset_root=None):
     """Original physics plus one field-query sphere/hand and one site/elbow.
 
-    No obstacle geoms or extra self-contact pairs are introduced.  Original
-    explicit hand/thigh pairs retain their Dex3 box solely for those physics
-    contacts. There are no box-corner query sites. Sphere geoms are noncontact
-    visualizations with zero added mass; their centers reuse CAT's palm sites.
+    No obstacle geoms are introduced. The approved hand sphere (grippers.hand_sphere,
+    the envelope that encloses the fixed fingers) is given explicit contact pairs with
+    both thigh and both shin capsules, so fingers can no longer pass through the legs
+    in simulation and hand/leg contact is reportable (task.hand_self_contact). Before
+    this, the only hand/thigh pairs referenced the original palm capsule and the finger
+    meshes penetrated the thighs in 8 of 17 recorded walks. Sphere geoms add no mass;
+    their centers reuse CAT's palm sites.
     """
     asset_root = Path(asset_root or consts.ROOT_PATH).resolve()
     root = ET.parse(asset_root / "g1_mjx_feetonly_torque.xml").getroot()
@@ -56,4 +59,11 @@ def assemble_training_xml(asset_root=None):
                       density="0", contype="0", conaffinity="0", group="4", rgba="0.25 0.6 0.85 0.2")
         ET.SubElement(bodies[f"{side}_elbow_link"], "site", name=f"{side}_elbow_probe",
                       pos="0 0 0", size="0.005", group="5")
+    contact = root.find("contact")
+    if contact is None:
+        contact = ET.SubElement(root, "contact")
+    for side in ("left", "right"):
+        for leg in ("left_thigh", "right_thigh", "left_shin", "right_shin"):
+            ET.SubElement(contact, "pair", name=f"{side}_hand_sphere_{leg}",
+                          geom1=f"furniture_{side}_hand_sphere", geom2=leg, condim="1")
     return ET.tostring(root, encoding="unicode")

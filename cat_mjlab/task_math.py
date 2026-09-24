@@ -211,6 +211,49 @@ def sdf_reward(sdf, knee=None):
     return torch.where(knee == .05, legacy, modified)
 
 
+def posture_terms(torso_pitch,head_z,head_guidance,head_sdf,torso_angvel,*,head_target=1.20,head_scale=.08,
+                  pitch_scale=torch.pi/18,crouch_field_z=-.3,crouch_sdf=.20):
+    """Straight back and full height, unless the head field asks for a crouch.
+
+    tracking_orientation ignores torso pitch whenever the head is below 1.1 m, so a policy
+    can drop its head just under that line and hunch for free (measured on 17 walks:
+    27-52 deg mean torso pitch, pelvis 10-14 cm low, head 0.92-1.13 m). These terms pay
+    for standing tall and upright and switch off only for a REASON: the head guidance
+    field points down (a hurdle/crouch module) or something is within ``crouch_sdf`` of
+    the head. CAT's crouch scenes keep working because their head field dips exactly there.
+    upright and stand_tall are bonuses in [0,1]; torso_rate is a cost that damps bobbing.
+    """
+    crouch=(head_guidance[:,2]<crouch_field_z)|(head_sdf<crouch_sdf)
+    free=(~crouch).float()
+    upright=torch.exp(-(torso_pitch/pitch_scale).square())*free
+    stand_tall=torch.exp(-((head_target-head_z).clamp_min(0)/head_scale).square())*free
+    torso_rate=torso_angvel[:,:2].square().sum(-1)
+    return dict(upright=upright,stand_tall=stand_tall,torso_rate=torso_rate),crouch
+
+
+def segment_distance(points,a,b):
+    """Distance from points [N,H,3] to segments a->b [N,K,3]; returns [N,H,K]."""
+    ab=b-a;ap=points[:,:,None]-a[:,None]
+    t=((ap*ab[:,None]).sum(-1)/(ab*ab).sum(-1).clamp_min(1e-9)[:,None]).clamp(0.,1.)
+    closest=a[:,None]+t[...,None]*ab[:,None]
+    return torch.linalg.vector_norm(points[:,:,None]-closest,dim=-1)
+
+
+def self_clearance_terms(hands,hand_radii,segment_a,segment_b,segment_radii,*,margin=.04):
+    """Hand envelope spheres against the robot's own leg capsules (thigh, shin per side).
+
+    Surface gap = centre distance - hand radius - capsule radius. Per hand/capsule pair the
+    cost is a quadratic ramp from 0 at ``margin`` of clearance to 1 at contact, held at 1
+    inside (the contact pairs stop penetration physically; the reward does not need to
+    grow without bound and drag the sum through the floor). Measured before this term
+    existed: fingers within 2 cm of a leg in 40-64% of walking frames and penetrating in
+    8 of 17 walks. Returns (cost [N], min gap [N]).
+    """
+    gap=segment_distance(hands,segment_a,segment_b)-hand_radii.reshape(1,-1,1)-segment_radii.reshape(1,1,-1)
+    cost=((margin-gap).clamp(0.,margin)/margin).square().sum((1,2))
+    return cost,gap.amin((1,2))
+
+
 def heading_probe_points(root_xy,direction,height,*,half_width=.16,lookahead=.30):
     """Where the shoulders WOULD be if the body faced ``direction``: here and one stride ahead.
 

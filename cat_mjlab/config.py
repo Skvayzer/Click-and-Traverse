@@ -27,7 +27,9 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
                      hand_clearance_weight=None,arm_clearance_weight=None,hand_clearance_target=None,
                      hand_clearance_anticipation=None,hand_clearance_near_weight=None,
                      tracking_root_field_weight=None,standing_gf_bonus=None,
-                     reactive_hand_guidance=None,handsdf_weight=None,heading_align_weight=None):
+                     reactive_hand_guidance=None,handsdf_weight=None,heading_align_weight=None,
+                     upright_weight=None,stand_tall_weight=None,torso_rate_weight=None,self_clearance_weight=None,
+                     upper_posture_weight=None,upper_home_shoulder_pitch=None,terminate_on_hand_self_contact=None):
     from cat_ppo.furniture.generalist_config import released_config
     from .collision import PROPOSAL
     config=copy.deepcopy(released_config()['env_config'] if base_config is None else base_config)
@@ -77,6 +79,26 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
         if isinstance(value,bool) or not math.isfinite(value) or value <= 0:
             raise ValueError('tracking_root_field_weight must be finite and positive')
         scales['tracking_root_field']=float(value)
+    def _signed(name,value,*,positive):
+        if isinstance(value,bool) or not math.isfinite(value) or (value<0 if positive else value>0):
+            raise ValueError(f'{name} must be finite and {">= 0" if positive else "<= 0"}')
+        return float(value)
+    # Posture (A): bonuses for a straight back and full height off-crouch, a cost on torso
+    # angular rate; see task_math.posture_terms. Weight 0 removes the term.
+    for name,value,positive in (('upright',upright_weight,True),('stand_tall',stand_tall_weight,True),('torso_rate',torso_rate_weight,False)):
+        if value is not None:
+            weight=_signed(name+'_weight',value,positive=positive)
+            if weight==0:scales.pop(name,None)
+            else:scales[name]=weight
+    # Fingers (B): hand envelope vs own leg capsules; home pose for the posture prior.
+    if self_clearance_weight is not None:
+        weight=_signed('self_clearance_weight',self_clearance_weight,positive=False)
+        if weight==0:scales.pop('self_clearance',None)
+        else:scales['self_clearance']=weight
+    if upper_home_shoulder_pitch is not None:
+        config['upper_home_shoulder_pitch']=float(upper_home_shoulder_pitch)
+    if terminate_on_hand_self_contact is not None:
+        config['terminate_on_hand_self_contact']=bool(terminate_on_hand_self_contact)
     if heading_align_weight is not None:
         value=heading_align_weight
         if isinstance(value,bool) or not math.isfinite(value) or value<0:
@@ -112,6 +134,8 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
         scales['wholebody_arm_clearance'] = float(arm_weight)
         config['arm_clearance_weight_override'] = float(arm_weight)
     if stabilization:scales.update(wholebody_upper_target_velocity=-.05,wholebody_upper_target_acceleration=-.02,wholebody_upper_clear_posture=-.05)
+    if upper_posture_weight is not None:
+        scales['wholebody_upper_clear_posture']=_signed('upper_posture_weight',upper_posture_weight,positive=False)
     # Retired objective: accept legacy override arguments as no-ops.
     scales.update(wholebody_hand_contrast_region=0., wholebody_hand_contrast_heading=0.)
     from .clearance_objective import configure

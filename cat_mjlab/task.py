@@ -94,6 +94,14 @@ class CATTask:
         self.all_ids=torch.arange(self.num_envs,device=self.device)
         tensor=lambda x:torch.as_tensor(np.asarray(x),dtype=torch.float32,device=self.device)
         self.init_q=tensor(const.DEFAULT_QPOS);self.nominal=self.init_q[7:]
+        # Home pose for the upper-body posture cost only (observations and the action
+        # nominal are untouched, so the warm start is unaffected). The default hangs the
+        # hands 3 cm from the thigh capsules; shoulder pitch -0.3 puts them 24 cm in
+        # front of the hips with 13 cm of thigh clearance (FK-checked).
+        self.upper_home=self.nominal[12:].clone()
+        home_pitch=config.get('upper_home_shoulder_pitch')
+        if home_pitch is not None:
+            self.upper_home[3]=float(home_pitch);self.upper_home[10]=float(home_pitch)
         self.kps,self.kds,self.torque_limit=map(tensor,(const.KPs,const.KDs,const.TORQUE_LIMIT))
         from .upper_control import action_scales, UpperGravity
         self.upper_action_scales=tensor(action_scales(config))
@@ -109,6 +117,12 @@ class CATTask:
         self.elbow_ids=torch.tensor([self.model.site(n).id for n in ('left_elbow_probe','right_elbow_probe')],device=self.device)
         self.pelvis_site,self.torso_site=self.model.site('imu_in_pelvis').id,self.model.site('imu_in_torso').id
         self.pelvis_body=self.model.body('pelvis').id
+        # Leg capsules for hand self-clearance: thigh hip->knee (MJCF thigh capsule r=.06),
+        # shin knee->ankle (MJCF shin capsule r=.08). Hands are the .103 m envelopes.
+        body=lambda n:self.model.body(n).id
+        self.capsule_a_ids=torch.tensor([body('left_hip_pitch_link'),body('left_knee_link'),body('right_hip_pitch_link'),body('right_knee_link')],device=self.device)
+        self.capsule_b_ids=torch.tensor([body('left_knee_link'),body('left_ankle_pitch_link'),body('right_knee_link'),body('right_ankle_pitch_link')],device=self.device)
+        self.capsule_radii=torch.tensor([.06,.08,.06,.08],device=self.device)
         self.leg_ids=torch.tensor([self.model.body(n).id for n in ('left_knee_link','left_ankle_roll_link','right_knee_link','right_ankle_roll_link')],device=self.device)
         self.hand_radii=tensor([hand_sphere(s)['radius'] for s in ('left','right')])
         sensor_names=[f'{prefix}_{frame}' for frame in ('pelvis','torso') for prefix in ('upvector','global_linvel','global_angvel','local_linvel','gyro')]
@@ -118,6 +132,15 @@ class CATTask:
             sensor=self.model.sensor(name);a=int(sensor.adr[0]);n=int(sensor.dim[0])
             self.sensor_indices[name]=slice(a,a+n)
         pairs=[('left_foot','floor'),('right_foot','floor'),('right_foot','left_foot'),('left_foot','right_shin'),('right_foot','left_shin')]
+        # Hand sphere x leg capsule pairs (added by model.assemble_training_xml); columns 5:
+        # feed the hand_self_contact flag. Guarded so older models without them still load.
+        hand_pairs=[(f'furniture_{h}_hand_sphere',leg) for h in ('left','right') for leg in ('left_thigh','right_thigh','left_shin','right_shin')]
+        try:
+            for a,b in hand_pairs:self.model.geom(a);self.model.geom(b)
+            pairs=pairs+hand_pairs
+        except KeyError:
+            pass
+        self.hand_pair_count=len(pairs)-5
         self.contact_pairs=torch.tensor([[self.model.geom(a).id,self.model.geom(b).id] for a,b in pairs],device=self.device)
         self.info={};self.navigation={};self.contrast={};self.episode={};self.telemetry={}
         self.obs={'state':torch.zeros((self.num_envs,self.observation_size),device=self.device),'privileged_state':torch.zeros((self.num_envs,self.privileged_observation_size),device=self.device)}
@@ -454,7 +477,7 @@ class CATTask:
                 self.info['stop_timestep'][ids],self.info['phase'][ids],self.info['gait'][ids],hold)
             for key,value in zip(('command','command_delay','stop_timestep','phase','gait'),values):
                 self.info[key][ids]=value
-        keys=('goal_reached','raw_goal','outside_bounds','fall','obstacle','self_contact','numerical','hand_violation','elbow_violation','body_collision','reset_replaced',
+        keys=('goal_reached','raw_goal','outside_bounds','fall','obstacle','self_contact','hand_self_contact','numerical','hand_violation','elbow_violation','body_collision','reset_replaced',
               'body_collision_feet','body_collision_legs','body_collision_trunk','body_collision_head','body_collision_arms','body_collision_hands')
         for k in keys:self._put(self.episode,k,ids,replaced if k=='reset_replaced' else torch.zeros(n,dtype=torch.bool,device=self.device))
         self._put(self.info,'minimum_episode_hand_clearance',ids,sdf[:,5:7,0].amin(-1))
@@ -495,12 +518,14 @@ class CATTask:
         i=self.info;threshold=-float(_get(self.config,'term_collision_threshold',.04));grace=i['step']>=50
         fields=(i['sdf']<threshold).flatten(1).any(-1)&grace
         elbows=(i['elbow_clearance']<threshold).any(-1)&grace&bool(_get(self.config,'terminate_on_elbow_collision',True))
-        self_contact=contacts[:,2:].any(-1)&grace
+        self_contact=contacts[:,2:5].any(-1)&grace
+        hand_self_contact=(contacts[:,5:].any(-1) if contacts.shape[1]>5 else torch.zeros_like(grace))&grace
         fall=(self._sensor('upvector_pelvis',self.all_ids)[:,2]<0)|(i['positions'][:,0,2]<.7)
         numerical=torch.isnan(self.data.qpos).any(-1)|torch.isnan(self.data.qvel).any(-1)
         root=self.navigation['enabled']&self.navigation['violation'];body=regions.any(-1)
         obstacle=fields|elbows|root|body;done=fall|self_contact|numerical|obstacle
-        flags=dict(fall=fall,obstacle=obstacle,self_contact=self_contact,numerical=numerical,body_collision=body,
+        if _get(self.config,'terminate_on_hand_self_contact',False):done=done|hand_self_contact
+        flags=dict(fall=fall,obstacle=obstacle,self_contact=self_contact,hand_self_contact=hand_self_contact,numerical=numerical,body_collision=body,
                    hand_violation=(i['sdf'][:,5:7]<threshold).flatten(1).any(-1)&grace,elbow_violation=elbows)
         for k,v in flags.items():self.episode[k]|=v
         for index,region in enumerate(('feet','legs','trunk','head','arms','hands')):
@@ -542,7 +567,7 @@ class CATTask:
         if balance:
             flat=self.bank.flat_balance[self.scene_ids]
             if self.reactive_objects is not None:flat=flat&~self.reactive_objects.state['active']
-        costs,telemetry=self.math.upper_stability_terms(i['motor_targets'][:,12:],i['previous_upper'],i['previous_previous_upper'],self.nominal[12:],
+        costs,telemetry=self.math.upper_stability_terms(i['motor_targets'][:,12:],i['previous_upper'],i['previous_previous_upper'],self.upper_home,
             i['sdf'][:,5:7],i['elbow_clearance'],dt=self.dt,velocity_scale=float(_get(self.config,'upper_velocity_cost_scale',2.)),
             acceleration_scale=float(_get(self.config,'upper_acceleration_cost_scale',20.)),posture_scale=float(_get(self.config,'upper_action_scale',.8)),
             hand_margin=float(_get(self.config,'hand_clearance_margin',.12)),elbow_margin=float(_get(self.config,'arm_clearance_margin',.08)),
@@ -559,6 +584,17 @@ class CATTask:
             (float(_get(self.config,'hand_clearance_margin',.12))-i['sdf'][:,5:7]).clamp_min(0).square().flatten(1).mean(-1))*enabled
         rewards['wholebody_arm_clearance']=(float(_get(self.config,'arm_clearance_margin',.08))-i['elbow_clearance']).clamp_min(0).square().mean(-1)*enabled
         if self.stabilization:rewards.update(costs)
+        scales=_get(self.config,'reward_config.scales',{})
+        if 'self_clearance' in scales:
+            penalty,gap=tm.self_clearance_terms(i['positions'][:,5:7],self.hand_radii,d.xpos[:,self.capsule_a_ids],d.xpos[:,self.capsule_b_ids],
+                self.capsule_radii,margin=float(_get(self.config,'self_clearance_margin',.04)))
+            rewards['self_clearance']=penalty
+            telemetry['self_clearance_min_m']=gap;telemetry['self_clearance_violation']=(gap<0).float()
+        if any(k in scales for k in ('upright','stand_tall','torso_rate')):
+            terms,crouch=tm.posture_terms(i['torso_rpy'][:,1],i['positions'][:,0,2],i['gf'][:,0],i['sdf'][:,0].reshape(-1),i['torso_angvel'],
+                head_target=float(_get(self.config,'posture_head_target',1.20)))
+            rewards.update({k:v for k,v in terms.items() if k in scales})
+            telemetry['crouch_required']=crouch.float();telemetry['torso_pitch_abs']=i['torso_rpy'][:,1].abs()
         if self.hand_contrast:
             rotations=d.site_xmat.reshape(self.num_envs,-1,3,3)
             contrast,report=self.contrast_reward_terms(self.contrast,i['positions'][:,5:7],d.qpos[:,:2],
@@ -843,6 +879,8 @@ class CATTask:
             metrics['reward_floor_clipped'] = self.telemetry['reward_floor_clipped'].clone()
             for key in ('reward_pre_floor_negative', 'reward_soft_floor_lift', 'reward_floor_slope'):
                 metrics[key] = self.telemetry[key].clone()
+            for key in ('self_clearance_min_m', 'self_clearance_violation', 'crouch_required', 'torso_pitch_abs'):
+                if key in self.telemetry: metrics[key] = self.telemetry[key].clone()
             metrics['contrast_role'] = self.contrast['role'].clone()
             metrics['contrast_unresolved'] = (~self.outcome_counted | resolved).clone()
             for key in ('heading_cost', 'region_cost', 'heading_good', 'hand_good'):

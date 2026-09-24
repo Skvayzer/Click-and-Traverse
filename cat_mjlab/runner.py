@@ -277,9 +277,9 @@ def collect_rollout(task, learner, *, unroll_length, trajectories, policy_ids):
     # below used to discard them, so a run could report 867 metrics and not one of them
     # said which term the policy was actually being paid by.
     reward_totals, reward_steps = {}, 0.
-    # [attempted, resolved, successful, timed_out] per scene type.
+    # [attempted, resolved, successful, timed_out, hand_self_contact, fell, length_sum] per scene type.
     bucket_of_scene = torch.as_tensor(_scene_buckets(task.bank.manifest), device=task.device)
-    bucket_stats = torch.zeros((len(SCENE_BUCKETS), 4), dtype=torch.float64, device=task.device)
+    bucket_stats = torch.zeros((len(SCENE_BUCKETS), 7), dtype=torch.float64, device=task.device)
     reactive_bucket = SCENE_BUCKETS.index('reactive_standing')
     # Realized experience per sampling group: steps every step, lengths at episode end.
     sampling_ids = getattr(task.bank, 'sampling_ids', None)
@@ -287,6 +287,8 @@ def collect_rollout(task, learner, *, unroll_length, trajectories, policy_ids):
     group_steps = torch.zeros(max(n_groups, 1), dtype=torch.float64, device=task.device)
     group_length_sum = torch.zeros_like(group_steps); group_length_count = torch.zeros_like(group_steps)
     reactive_steps = torch.zeros((), dtype=torch.float64, device=task.device)
+    objects_state = getattr(getattr(task, 'reactive_objects', None), 'state', None)
+    last_active = objects_state['active'].clone() if objects_state is not None else None
     reactive_length_sum = torch.zeros_like(reactive_steps); reactive_length_count = torch.zeros_like(reactive_steps)
     from .balance import BalanceMetrics
     balance_metrics=BalanceMetrics()
@@ -325,15 +327,23 @@ def collect_rollout(task, learner, *, unroll_length, trajectories, policy_ids):
             if 'reactive/active' in metrics:
                 # Reactive scenes borrow a flat background scene id, so they are
                 # indistinguishable by scene_id alone and would be miscounted as flat_balance.
-                bucket = torch.where(metrics['reactive/active'].bool(), reactive_bucket, bucket)
+                # Autoreset re-samples the flag before metrics are read, so an episode that
+                # just ENDED must be classified by last step's flag, not this step's.
+                active_now = metrics['reactive/active'].bool()
+                was_active = torch.where(done, last_active, active_now) if last_active is not None else active_now
+                last_active = active_now
+                bucket = torch.where(was_active, reactive_bucket, bucket)
             # Counted on different events on purpose: a verdict can land hundreds of steps
             # before the episode ends, so terminations and resolutions are not the same
             # population and must not be divided by one another within an update.
             ended = done.bool()
             verdict = metrics['resolved'].bool()
             undecided = ended & ~metrics['outcome_counted'].bool() & ~verdict
-            for column, flag in enumerate((ended, verdict, metrics['successful'].bool(), undecided)):
+            touched = ended & metrics.get('episode/hand_self_contact', torch.zeros_like(done)).bool()
+            fell = ended & metrics.get('episode/fall', torch.zeros_like(done)).bool()
+            for column, flag in enumerate((ended, verdict, metrics['successful'].bool(), undecided, touched, fell)):
                 bucket_stats[:, column].scatter_add_(0, bucket, flag.double())
+            bucket_stats[:, 6].scatter_add_(0, bucket, torch.where(done, metrics['episode_length'], 0.).double())
             for key, value in metrics.items():
                 if key.startswith('reward/'):
                     reward_totals[key] = reward_totals.get(key, 0.) + value.sum()
@@ -360,7 +370,7 @@ def collect_rollout(task, learner, *, unroll_length, trajectories, policy_ids):
             if n_groups:
                 # Reactive envs borrow the flat background scene id; count them on their own,
                 # not against the flat group.
-                goal = ~metrics['reactive/active'].bool() if 'reactive/active' in metrics else torch.ones_like(done, dtype=torch.bool)
+                goal = ~was_active if 'reactive/active' in metrics else torch.ones_like(done, dtype=torch.bool)
                 group = sampling_ids[metrics["scene_ids"]]
                 ended = torch.where(done, metrics["episode_length"], 0.).double()
                 group_steps.scatter_add_(0, group, goal.double())
@@ -434,7 +444,7 @@ def collect_rollout(task, learner, *, unroll_length, trajectories, policy_ids):
         summaries({k:float(v) for k,v in response_counts.items()}).items()})
     stats = bucket_stats.cpu().numpy()
     for index, name in enumerate(SCENE_BUCKETS):
-        ended, resolved, successful, undecided = (float(x) for x in stats[index])
+        ended, resolved, successful, undecided, touched, fell, length_sum = (float(x) for x in stats[index])
         decided = resolved + undecided
         if not (ended or resolved):
             continue
@@ -443,6 +453,9 @@ def collect_rollout(task, learner, *, unroll_length, trajectories, policy_ids):
         # silently dropped from the legacy denominator.
         info['metrics'][f'scene/{name}/episodes_ended'] = ended
         info['metrics'][f'scene/{name}/resolved'] = resolved
+        info['metrics'][f'scene/{name}/hand_self_contact_rate'] = touched / ended if ended else 0.
+        info['metrics'][f'scene/{name}/fall_rate'] = fell / ended if ended else 0.
+        info['metrics'][f'scene/{name}/mean_episode_length'] = length_sum / ended if ended else 0.
         if name in GOALLESS_BUCKETS:
             # Standing scenes have no goal, so a success rate would be a constant 0 that
             # reads as failure. Their outcomes live under reactive/ and balance/ instead.
@@ -762,6 +775,10 @@ def create_task(args, *, environment_config=None):
         arm_clearance_weight=getattr(args, 'arm_clearance_weight', None),
         tracking_root_field_weight=getattr(args, 'tracking_root_field_weight', None),
         heading_align_weight=getattr(args, 'heading_align_weight', None),
+        upright_weight=getattr(args, 'upright_weight', None), stand_tall_weight=getattr(args, 'stand_tall_weight', None),
+        torso_rate_weight=getattr(args, 'torso_rate_weight', None), self_clearance_weight=getattr(args, 'self_clearance_weight', None),
+        upper_posture_weight=getattr(args, 'upper_posture_weight', None), upper_home_shoulder_pitch=getattr(args, 'upper_home_shoulder_pitch', None),
+        terminate_on_hand_self_contact=getattr(args, 'terminate_on_hand_self_contact', None),
         standing_gf_bonus=getattr(args, 'standing_gf_bonus', None),
         reactive_hand_guidance=getattr(args, 'reactive_hand_guidance', None),
         handsdf_weight=getattr(args, 'handsdf_weight', None),

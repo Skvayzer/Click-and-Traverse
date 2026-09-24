@@ -36,6 +36,16 @@ def parser():
         target.add_argument("--arm-clearance-weight", type=float, help="Signed elbow clearance weight <= 0; default -2")
         target.add_argument("--tracking-root-field-weight", type=float,
                             help="Positive velocity tracking weight across ALL tasks; default inherited (1.0)")
+        target.add_argument("--upright-weight", type=float, help="Bonus >= 0 for torso pitch within ~10 deg when no crouch is required; 0 disables")
+        target.add_argument("--stand-tall-weight", type=float, help="Bonus >= 0 for head height near 1.20 m when no crouch is required; 0 disables")
+        target.add_argument("--torso-rate-weight", type=float, help="Cost <= 0 on torso roll/pitch angular rate (damps bobbing); 0 disables")
+        target.add_argument("--self-clearance-weight", type=float,
+                            help="Cost <= 0 on the hand envelopes coming within 4 cm of the robot's own thigh/shin capsules; 0 disables")
+        target.add_argument("--upper-posture-weight", type=float, help="Weight <= 0 of the upper-body home-pose prior (default -0.05, effectively off)")
+        target.add_argument("--upper-home-shoulder-pitch", type=float,
+                            help="Shoulder pitch of the posture-prior home pose (default 0.2 hangs hands at the thighs; -0.3 carries them in front)")
+        target.add_argument("--terminate-on-hand-self-contact", action="store_true", default=None,
+                            help="End the episode (after the 50-step grace) when a hand envelope contacts a leg capsule")
         target.add_argument("--heading-align-weight", type=float,
                             help="Bonus >= 0 for facing the guidance direction wherever a forward-facing body fits "
                                  "(shoulder-clearance gated, so sidling through narrow gaps is never penalised); 0 disables")

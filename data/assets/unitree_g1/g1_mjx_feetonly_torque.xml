@@ -472,6 +472,13 @@
         <pair name="left_foot_right_shin" geom1="left_foot" geom2="right_shin" condim="1"/>
         <pair name="right_foot_left_shin" geom1="right_foot" geom2="left_shin" condim="1"/>
         <pair name="left_shin_right_shin" geom1="left_shin" geom2="right_shin" condim="1"/>
+
+
+
+
+
+
+
     </contact>
 
 
