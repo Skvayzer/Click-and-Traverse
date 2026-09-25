@@ -33,7 +33,7 @@
 set -euo pipefail
 cd /home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
-CHECKPOINT=${CHECKPOINT:-outputs/cat_bundle_20260924/resume.pt}   # continue from the first bundle pilot
+CHECKPOINT=${CHECKPOINT:-outputs/cat_bundle2_20260925/resume.pt}   # continue from the second pilot
 .venv-mjlab/bin/python train_cat_mjlab.py run \
   --algorithm ppo --num-envs 40960 --batch-size 1024 \
   --num-minibatches 40 --unroll-length 32 \
@@ -48,11 +48,11 @@ CHECKPOINT=${CHECKPOINT:-outputs/cat_bundle_20260924/resume.pt}   # continue fro
   --narrow-sampling-group 4 \
   --standing-gf-bonus 0.5 --reactive-hand-guidance --handsdf-weight 1 \
   --heading-align-weight 0.4 \
-  --upright-weight 1.0 --stand-tall-weight 1.0 --torso-rate-weight -0.5 \
+  --upright-weight 3.0 --stand-tall-weight 3.0 --torso-rate-weight -0.5 \
   --self-clearance-weight -10 --upper-posture-weight -0.5 --upper-home-shoulder-pitch -0.3 \
   --stand-still-weight -4 --standing-requires-stillness --standing-stillness-speed 0.05 --spot-hold-weight -3 \
   --reactive-episode-length 800 --reactive-walking-fraction 0.3 --sdf-rate-obs \
-  --run-dir outputs/cat_bundle_20260924 \
+  --run-dir outputs/cat_bundle3_20260925 \
   --disable-hand-contrast --hand-clearance-weight -20 --arm-clearance-weight -8 \
   --tracking-root-field-weight 1 \
   --hand-clearance-target 0.09 --hand-clearance-anticipation 0.20 \
