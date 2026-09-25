@@ -21,11 +21,11 @@ def test_resolve_follows_realized_lengths_and_logs_share():
     bank = Bank([.6, .4], [1000., 4000.], every=2)
     before = bank.sampling_masses.clone()
     # CAT episodes really end at 300 steps: on the old masses CAT's share collapses.
-    steps = torch.tensor([300. * 60, 4000. * 40]); sums = torch.tensor([300. * 60, 4000. * 40]); counts = torch.tensor([60., 40.])
+    steps = torch.tensor([300. * 120, 4000. * 110]); sums = torch.tensor([300. * 120, 4000. * 110]); counts = torch.tensor([120., 110.])
     info = dict(metrics={})
     _adapt_experience_masses(bank, steps, sums, counts, info)      # update 1: accumulate only
     assert torch.equal(bank.sampling_masses, before)
-    assert abs(info['metrics']['balance/group0_experience_share'] - 18000 / 178000) < 1e-9
+    assert abs(info['metrics']['balance/group0_experience_share'] - 36000 / 476000) < 1e-9
     _adapt_experience_masses(bank, steps, sums, counts, info)      # update 2: re-solve
     assert bank.experience_lengths[0] < 1000. and bank.sampling_masses[0] > before[0]
     assert bank.experience_length_count == [0., 0.]
@@ -52,7 +52,7 @@ def test_reactive_fraction_is_solved_jointly_and_scaled_targets_hold():
     objects = Objects(); info = dict(metrics={})
     # Goal episodes really last 150 steps, reactive ones 500: on a .25 coin reactive would hold ~53% of steps.
     steps = torch.tensor([150. * 100, 150. * 100]); sums = steps.clone(); counts = torch.tensor([100., 100.])
-    _adapt_experience_masses(bank, steps, sums, counts, info, reactive=(500. * 60, 500. * 60, 60., objects))
+    _adapt_experience_masses(bank, steps, sums, counts, info, reactive=(500. * 120, 500. * 120, 120., objects))
     p = objects.reactive_fraction
     assert p < .25
     # Steady-state share check: reactive = p*L_r / (p*L_r + (1-p)*sum(m_g*L_g)).

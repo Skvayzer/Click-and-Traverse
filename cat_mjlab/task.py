@@ -622,6 +622,11 @@ class CATTask:
                 self.capsule_radii,margin=float(_get(self.config,'self_clearance_margin',.04)))
             rewards['self_clearance']=penalty
             telemetry['self_clearance_min_m']=gap;telemetry['self_clearance_violation']=(gap<0).float()
+        if 'spot_hold' in scales and self.reactive_objects is not None:
+            # Positional: the cost of being AWAY from the standing spot, saturating at the 0.3 m
+            # left-spot radius. stand_still prices speed; this prices the drift it accumulates.
+            radius=float(_get(self.config,'reactive_spot_radius',.3))
+            rewards['spot_hold']=(self.reactive_root_displacement/radius).clamp(0.,1.).square()
         if 'reactive_event' in scales and self.reactive_objects is not None:
             # Sparse, paid once per finished approach: +1 handled, -1 unhandled for a threatening
             # object (buckets 0/1), 0 for an unneeded flinch. Dense shaping (hand_clearance,
@@ -876,8 +881,6 @@ class CATTask:
         lengths=self.bank.episode_lengths[self.scene_ids]
         if self.reactive_objects is not None:
             lengths=torch.where(self.reactive_objects.state['active'],int(self.reactive_objects.episode_length),lengths)
-        if self.reactive_objects is not None:
-            lengths=torch.where(self.reactive_objects.state['active'],self.reactive_objects.episode_steps,lengths)
         timeout=i['wrapper_steps']>=lengths
         truncated=timeout&~terminated;done=terminated|timeout
         resolved,successful=self._outcomes(done,truncated)

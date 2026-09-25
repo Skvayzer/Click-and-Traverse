@@ -695,11 +695,11 @@ def _adapt_experience_masses(bank, step_count, length_sum, length_count, info, r
     if not every or bank.experience_updates % every:
         return
     for index in range(len(targets)):
-        if bank.experience_length_count[index] >= 20:
+        if bank.experience_length_count[index] >= 100:
             realized = bank.experience_length_sum[index] / bank.experience_length_count[index]
             bank.experience_lengths[index] = .7 * bank.experience_lengths[index] + .3 * realized
         bank.experience_length_sum[index] = bank.experience_length_count[index] = 0.
-    if reactive is not None and r_target is not None and bank.experience_reactive_count >= 20:
+    if reactive is not None and r_target is not None and bank.experience_reactive_count >= 100:
         realized = bank.experience_reactive_sum / bank.experience_reactive_count
         previous = bank.experience_reactive_length
         bank.experience_reactive_length = realized if previous is None else .7 * previous + .3 * realized
@@ -814,7 +814,10 @@ def _rebalance_bank(bank, args):
         # in reactive.py) and outlive every goal episode, so they grew from 26% to 64% of all
         # env-steps over 66 updates on the 2026-09-24 run. Solve their reset fraction too.
         bank.experience_reactive_target = getattr(args, 'experience_reactive_share', None)
-        bank.experience_reactive_length = None
+        # Prior for the reactive length is the configured horizon, not the first episodes to end
+        # (those are the short failures: on the first pilot that survivorship bias made the solver
+        # raise the reactive coin to .48 and flood the batch with long standing episodes).
+        bank.experience_reactive_length = float(getattr(args, 'reactive_episode_length', None) or 800)
         bank.experience_reactive_sum = bank.experience_reactive_count = 0.
     length = getattr(args, 'cat_episode_length', None)
     if length:
@@ -850,6 +853,7 @@ def create_task(args, *, environment_config=None):
         terminate_on_hand_self_contact=getattr(args, 'terminate_on_hand_self_contact', None),
         stand_still_weight=getattr(args, 'stand_still_weight', None), standing_requires_stillness=getattr(args, 'standing_requires_stillness', None),
         sdf_rate_obs=getattr(args, 'sdf_rate_obs', None), reactive_event_weight=getattr(args, 'reactive_event_weight', None),
+        spot_hold_weight=getattr(args, 'spot_hold_weight', None), standing_stillness_speed=getattr(args, 'standing_stillness_speed', None),
         standing_gf_bonus=getattr(args, 'standing_gf_bonus', None),
         reactive_hand_guidance=getattr(args, 'reactive_hand_guidance', None),
         handsdf_weight=getattr(args, 'handsdf_weight', None),

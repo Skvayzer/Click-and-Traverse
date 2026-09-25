@@ -63,6 +63,10 @@ def parser():
                                  "a warm start widens the first layer with zero weights, so the policy is unchanged at step 0")
         target.add_argument("--stand-still-weight", type=float,
                             help="Cost <= 0 on body motion while commanded to stand (zero command); 0 disables")
+        target.add_argument("--spot-hold-weight", type=float,
+                            help="Cost <= 0 on distance from the standing spot (saturates at 0.3 m); 0 disables")
+        target.add_argument("--standing-stillness-speed", type=float,
+                            help="Root speed under which the standing bonus is paid (default 0.05 m/s with --standing-requires-stillness)")
         target.add_argument("--standing-requires-stillness", action="store_true", default=None,
                             help="Pay the standing bonus only when root speed < 0.15 m/s, not merely when the command is zero")
         target.add_argument("--heading-align-weight", type=float,

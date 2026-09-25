@@ -45,7 +45,7 @@ CHECKPOINT=${CHECKPOINT:-outputs/cat_reactive_standing_20260923/resume.pt}   # p
   --heading-align-weight 0.4 \
   --upright-weight 1.0 --stand-tall-weight 1.0 --torso-rate-weight -0.5 \
   --self-clearance-weight -10 --upper-posture-weight -0.5 --upper-home-shoulder-pitch -0.3 \
-  --stand-still-weight -2 --standing-requires-stillness \
+  --stand-still-weight -4 --standing-requires-stillness --standing-stillness-speed 0.05 --spot-hold-weight -3 \
   --reactive-episode-length 800 --reactive-walking-fraction 0.3 --sdf-rate-obs \
   --run-dir outputs/cat_bundle_20260924 \
   --disable-hand-contrast --hand-clearance-weight -60 --arm-clearance-weight -8 \

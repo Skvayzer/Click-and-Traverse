@@ -212,7 +212,7 @@ def sdf_reward(sdf, knee=None):
     return torch.where(knee == .05, legacy, modified)
 
 
-def stand_still_cost(global_velocity,torso_angvel,move,*,speed_scale=.10,yaw_scale=.5):
+def stand_still_cost(global_velocity,torso_angvel,move,*,speed_scale=.05,yaw_scale=.5):
     """Cost for moving the body while commanded to stand (move<.5), bounded in [0,1.2].
 
     With a zero command nothing else prices root motion: body_motion is explicitly
@@ -221,6 +221,8 @@ def stand_still_cost(global_velocity,torso_angvel,move,*,speed_scale=.10,yaw_sca
     in a standing scene was to walk away from the object (measured: 0.10-0.12 m root
     displacement per approach event, only 3 cm of hand retreat relative to the root).
     """
+    # Measured on the first pilot: the policy crept at 0.11 m/s, just under a 0.15 m/s stillness
+    # gate, and left its spot in 80% of standing episodes. speed_scale .05 saturates the cost by 0.1 m/s.
     speed=torch.linalg.vector_norm(global_velocity[:,:2],dim=-1)
     planar=1.-torch.exp(-(speed/speed_scale).square())
     yaw=1.-torch.exp(-(torso_angvel[:,2]/yaw_scale).square())
