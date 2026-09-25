@@ -22,13 +22,18 @@
 #       paid on the command, so the policy answered approaching objects by walking away
 #       (0.10-0.12 m root motion per event, 3 cm hand retreat). reactive/left_spot_rate
 #       reports how often an episode leaves its 0.3 m spot.
+#   --hand-clearance-weight -20 --handsdf-weight 1
+#       Back to the hand objective the warm start was trained with. The -60/0 setting of the
+#       two later runs bought nothing on hand collisions (0.0% of passage outcomes in all
+#       three runs) and doubled narrow non-entry (0.9% -> 1.8%): tripling the far-field
+#       (0.09-0.20 m) pressure makes 0.40-0.74 m passages unenterable.
 #   Physical hand-leg contact pairs are in the assembled model (cat_mjlab/model.py) and
 #   feed scene/*/hand_self_contact_rate; termination on contact is opt-in
 #   (--terminate-on-hand-self-contact) and deliberately off for this pilot.
 set -euo pipefail
 cd /home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
-CHECKPOINT=${CHECKPOINT:-outputs/cat_reactive_standing_20260923/resume.pt}   # pre-degradation warm start
+CHECKPOINT=${CHECKPOINT:-outputs/cat_bundle_20260924/resume.pt}   # continue from the first bundle pilot
 .venv-mjlab/bin/python train_cat_mjlab.py run \
   --algorithm ppo --num-envs 40960 --batch-size 1024 \
   --num-minibatches 40 --unroll-length 32 \
@@ -41,14 +46,14 @@ CHECKPOINT=${CHECKPOINT:-outputs/cat_reactive_standing_20260923/resume.pt}   # p
   --experience-masses 0.17 0.34 0.08 0.20 0.10 0.02 0.06 0.03 \
   --experience-rebalance-every 5 --experience-reactive-share 0.08 \
   --narrow-sampling-group 4 \
-  --standing-gf-bonus 0.5 --reactive-hand-guidance --handsdf-weight 0 \
+  --standing-gf-bonus 0.5 --reactive-hand-guidance --handsdf-weight 1 \
   --heading-align-weight 0.4 \
   --upright-weight 1.0 --stand-tall-weight 1.0 --torso-rate-weight -0.5 \
   --self-clearance-weight -10 --upper-posture-weight -0.5 --upper-home-shoulder-pitch -0.3 \
   --stand-still-weight -4 --standing-requires-stillness --standing-stillness-speed 0.05 --spot-hold-weight -3 \
   --reactive-episode-length 800 --reactive-walking-fraction 0.3 --sdf-rate-obs \
   --run-dir outputs/cat_bundle_20260924 \
-  --disable-hand-contrast --hand-clearance-weight -60 --arm-clearance-weight -8 \
+  --disable-hand-contrast --hand-clearance-weight -20 --arm-clearance-weight -8 \
   --tracking-root-field-weight 1 \
   --hand-clearance-target 0.09 --hand-clearance-anticipation 0.20 \
   --hand-clearance-near-weight 0.8 --hand-reward-soft-floor 0 \
