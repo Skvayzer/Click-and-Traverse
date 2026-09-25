@@ -280,6 +280,8 @@ def collect_rollout(task, learner, *, unroll_length, trajectories, policy_ids):
     # [attempted, resolved, successful, timed_out, hand_self_contact, fell, length_sum] per scene type.
     bucket_of_scene = torch.as_tensor(_scene_buckets(task.bank.manifest), device=task.device)
     bucket_stats = torch.zeros((len(SCENE_BUCKETS), 7), dtype=torch.float64, device=task.device)
+    # Per-bucket posture: torso pitch summed over every step (not just episode ends).
+    bucket_pitch = torch.zeros((len(SCENE_BUCKETS), 2), dtype=torch.float64, device=task.device)
     reactive_bucket = SCENE_BUCKETS.index('reactive_standing')
     walking_bucket = SCENE_BUCKETS.index('reactive_walking')
     # Realized experience per sampling group: steps every step, lengths at episode end.
@@ -349,6 +351,9 @@ def collect_rollout(task, learner, *, unroll_length, trajectories, policy_ids):
             for column, flag in enumerate((ended, verdict, metrics['successful'].bool(), undecided, touched, fell)):
                 bucket_stats[:, column].scatter_add_(0, bucket, flag.double())
             bucket_stats[:, 6].scatter_add_(0, bucket, torch.where(done, metrics['episode_length'], 0.).double())
+            if 'torso_pitch_abs' in metrics:
+                bucket_pitch[:, 0].scatter_add_(0, bucket, metrics['torso_pitch_abs'].double())
+                bucket_pitch[:, 1].scatter_add_(0, bucket, torch.ones_like(done, dtype=torch.float64))
             for key, value in metrics.items():
                 if key.startswith('reward/'):
                     reward_totals[key] = reward_totals.get(key, 0.) + value.sum()
@@ -483,6 +488,9 @@ def collect_rollout(task, learner, *, unroll_length, trajectories, policy_ids):
         info['metrics'][f'scene/{name}/resolved'] = resolved
         info['metrics'][f'scene/{name}/hand_self_contact_rate'] = touched / ended if ended else 0.
         info['metrics'][f'scene/{name}/fall_rate'] = fell / ended if ended else 0.
+        steps_in_bucket = float(bucket_pitch[index, 1])
+        if steps_in_bucket:
+            info['metrics'][f'scene/{name}/torso_pitch_abs'] = float(bucket_pitch[index, 0]) / steps_in_bucket
         info['metrics'][f'scene/{name}/mean_episode_length'] = length_sum / ended if ended else 0.
         if name in GOALLESS_BUCKETS:
             # Standing scenes have no goal, so a success rate would be a constant 0 that
