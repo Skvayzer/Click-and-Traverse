@@ -171,6 +171,24 @@ The group length estimate was the mean length of episodes that *ended* in the wi
 | Teacher–student per skill | Only for skills a human must show (side-step, tuck); the RL objective stays the outer loop | optional |
 | Pure imitation instead of task RL | **Not adopted**: no reactive objects, no hand-safety objective, weaker than CAT on ducking/stepping | — |
 
+### 6.1 Motion-prior data — what is actually available (survey verified 2026-09-28)
+
+| dataset | what it is | usable for | access / licence |
+|---|---|---|---|
+| **MTC** (2609.21107) | 32 h VR clutter traversal, G1 refs | sidle, duck, crawl, step-over | **not released** (paper promises; no URL, no repo) |
+| **PASSAGE** (2609.18732) | 100 h VR + IMU suit, 1,500 corridors | same | **not released** ("code coming soon") |
+| **PHUMA** | ~70 h physics-corrected G1 locomotion (`root_trans/root_ori/dof_pos(29)`, 30 fps) | whole-body / arm style prior; crouch & step "vertical" class (pelvis > 0.6 m, no crawl) | HF `DAVIAN-Robotics/PHUMA`, Apache-2.0, 3.4 GB |
+| **OmniRetarget dataset** | 4.0 h G1 qpos (36/43-D): 623 unique box-carry clips ×aug (3.0 h), 29 climb clips, 22 chair-carry/climb | **carry posture** (arms in front) prior; terrain | HF, MIT |
+| Unitree **LAFAN1-G1** | 41 CSVs walk/run/dance/fight/fall (the LAFAN1 *obstacles* theme was not retargeted) | general style only | CC BY-NC-ND (research only) |
+| **AMASS** (curated clips) | CMU 107_11, 108_21–26 duck/stoop/crawl-under; 127_29–38 run-and-duck; 141_32/33, 143_40 walk sideways; KIT "walking around obstacle objects" (60) and "around a moving obstacle" (158); SFU vault/crawl; BMLmovi crawl; BABEL labels duck/crouch/crawl/sidestep | per-behaviour references (tens of short clips) | MPI non-commercial; retarget with GMR |
+| **CIRCLE** (Stanford) | 10 h, 7,228 clips of *reaching* in one furnished HSSD apartment, SMPL-X 120 fps + scene glb; median root path 0.3–0.6 m (not locomotion); ~1 h bend/crouch/kneel reaches, ~1 h reaching onto/under tables; physics off (8–11 cm cumulative interpenetration); no finger data | reach-low/high **posture library**, scene-aware retargeting possible | S3, no registration, CC BY-NC 4.0 |
+| **TRUMANS** | 15 h, 100 scenes (71 released), SMPL-X + scene/object meshes + occupancy grids; only 10 action labels; unlabelled walking between furniture (CHIP obtained G1 gap-sidestepping after RL post-training on it) | implicit furniture navigation | gated Google Form, non-commercial |
+| **Nymeria / NymeriaPlus** | 300 h egocentric daily life (XSens 17-IMU → SMPL-X in Plus); no room meshes | ~22 h furniture-heavy scenarios, must be keyword-mined | gated, CC BY-NC 4.0, ~80 TB total (filterable) |
+
+**Tools:** GMR (MIT; SMPL-X/BVH/FBX/PICO-live/video → G1 29-DoF, 35–70 fps CPU, no scene handling — 31 % collision-free on clutter per MTC), OmniRetarget code in `amazon-far/holosoma` (Apache-2.0; per-frame SQP with SDF collision-pair hard constraints, object URDFs, box terrains) and `project-instinct/omniretargeting` (MIT; arbitrary terrain meshes), PHUMA/PhySINK (Apache-2.0). **No public SAMR-style space-time capsule-vs-OBB retargeter exists.** Nothing public contains a protective hand retreat or a hand raised past a table edge.
+
+**How much data a prior needs (evidence):** AMP-style style rewards: 10–434 s (AMP), 42.6 s on a full-size humanoid (HumanMimic), 4.5 s (Escontrela); per-clip tracking teachers: one clip per behaviour (DeepMimic 1–3 s, BeyondMimic 25–40 clips of minutes, 2.5 h total); latent-skill priors: 15–40 min (PARC 14 min, T-GMP 30 min, ASE/CALM ~30 min); scene-conditioned generative planners: 25–100 h (PASSAGE: 6 h 48.1 % → 24 h 57.8 % → 48 h 64.3 % → 100 h 68.9 %). VR capture: PICO 4 Ultra full-body tracking (MTC v1: 348 trajectories, 2.3 h, ~24 s each, GMR), PASSAGE: Noitom PN Link suit + headset, colliding takes rejected via haptics, ~18.6 s per sequence.
+
 Sequencing: (1) posture-library term with authored targets + comfort costs (no data) → (2) replace targets with human references from released datasets (OmniRetarget carry motions, CIRCLE reaching in clutter, retargeted) → (3) own embodiment-scaled VR capture for protective retreat and gap tucking → (4) AMP upper-body style reward on the union.
 
 ---
