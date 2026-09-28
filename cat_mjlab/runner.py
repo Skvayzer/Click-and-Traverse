@@ -689,13 +689,17 @@ def _adapt_experience_masses(bank, step_count, length_sum, length_count, info, r
     if reactive is not None:
         r_steps, r_sum, r_count, objects = reactive
         bank.experience_reactive_sum += r_sum; bank.experience_reactive_count += r_count
+        bank.experience_reactive_steps = getattr(bank, 'experience_reactive_steps', 0.) + r_steps
         info['metrics']['balance/reactive_experience_share'] = r_steps / ((sum(steps) + r_steps) or 1.)
         if r_target is not None:
             info['metrics']['balance/reactive_experience_target'] = r_target
     total = (sum(steps) + r_steps) or 1.
+    if not hasattr(bank, 'experience_step_sum'):
+        bank.experience_step_sum = [0.] * len(targets)
     for index, target in enumerate(targets):
         bank.experience_length_sum[index] += sums[index]
         bank.experience_length_count[index] += counts[index]
+        bank.experience_step_sum[index] += steps[index]
         info['metrics'][f'balance/group{index}_experience_share'] = steps[index] / total
         info['metrics'][f'balance/group{index}_experience_target'] = target
     every = getattr(bank, 'experience_rebalance_every', 0)
@@ -704,14 +708,20 @@ def _adapt_experience_masses(bank, step_count, length_sum, length_count, info, r
         return
     for index in range(len(targets)):
         if bank.experience_length_count[index] >= 100:
-            realized = bank.experience_length_sum[index] / bank.experience_length_count[index]
-            bank.experience_lengths[index] = .7 * bank.experience_lengths[index] + .3 * realized
-        bank.experience_length_sum[index] = bank.experience_length_count[index] = 0.
+            # Little's law: mean length = env-steps spent in the group / episodes that ended. Unlike
+            # the mean length of the ENDED episodes it counts in-flight ones, so a group whose long
+            # episodes have not finished yet is not mistaken for a short-episode group (pilot 3:
+            # rooms estimated at ~430 steps while running 1,400-1,800, drawing 47% of samples
+            # against a 20% target). Clamped to a factor of 2 per re-solve to avoid oscillation.
+            realized = bank.experience_step_sum[index] / bank.experience_length_count[index]
+            previous = bank.experience_lengths[index]
+            bank.experience_lengths[index] = min(max(.7 * previous + .3 * realized, previous / 2.), previous * 2.)
+        bank.experience_length_sum[index] = bank.experience_length_count[index] = bank.experience_step_sum[index] = 0.
     if reactive is not None and r_target is not None and bank.experience_reactive_count >= 100:
-        realized = bank.experience_reactive_sum / bank.experience_reactive_count
+        realized = getattr(bank, 'experience_reactive_steps', 0.) / bank.experience_reactive_count   # Little's law, as above
         previous = bank.experience_reactive_length
-        bank.experience_reactive_length = realized if previous is None else .7 * previous + .3 * realized
-        bank.experience_reactive_sum = bank.experience_reactive_count = 0.
+        bank.experience_reactive_length = realized if previous is None else min(max(.7 * previous + .3 * realized, previous / 2.), previous * 2.)
+        bank.experience_reactive_sum = bank.experience_reactive_count = 0.; bank.experience_reactive_steps = 0.
     if reactive is not None and r_target is not None and bank.experience_reactive_length:
         # One categorical over groups + reactive, then split: the reactive coin is flipped
         # first, so group masses are conditional on the coin coming up "goal episode".
@@ -818,6 +828,7 @@ def _rebalance_bank(bank, args):
         bank.experience_updates = 0
         bank.experience_length_sum = [0.] * len(experience)
         bank.experience_length_count = [0.] * len(experience)
+        bank.experience_step_sum = [0.] * len(experience)
         # Reactive standing episodes are drawn BEFORE the group sampler (a fixed .25 of resets
         # in reactive.py) and outlive every goal episode, so they grew from 26% to 64% of all
         # env-steps over 66 updates on the 2026-09-24 run. Solve their reset fraction too.

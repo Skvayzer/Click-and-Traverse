@@ -8,6 +8,7 @@ class Bank:
         self.experience_targets = list(targets); self.experience_lengths = list(lengths)
         self.experience_rebalance_every = every; self.experience_updates = 0
         self.experience_length_sum = [0.] * len(targets); self.experience_length_count = [0.] * len(targets)
+        self.experience_step_sum = [0.] * len(targets)
         self.sampling_masses = torch.as_tensor(_solve_experience_masses(targets, lengths))
 
 
@@ -62,3 +63,13 @@ def test_reactive_fraction_is_solved_jointly_and_scaled_targets_hold():
     share0 = (1 - p) * m[0] * L[0] / (react + goal)
     assert abs(share0 - .6 * .9) < 1e-6
     assert info['metrics']['balance/reactive_reset_fraction'] == p
+
+
+def test_little_law_counts_in_flight_episodes_and_clamps():
+    # Rooms: 4000-step prior; in the window only 120 short failures (300 steps) ended, but the group
+    # spent 120*1500 env-steps -> the estimate must move toward 1500, not 300, and by at most x2/÷2.
+    bank = Bank([.5, .5], [4000., 500.], every=1)
+    steps = torch.tensor([120. * 1500, 100. * 500]); sums = torch.tensor([120. * 300, 100. * 500]); counts = torch.tensor([120., 100.])
+    _adapt_experience_masses(bank, steps, sums, counts, dict(metrics={}))
+    assert 2000. <= bank.experience_lengths[0] <= 3250.        # .7*4000+.3*1500 = 3250, clamp floor 2000
+    assert abs(bank.experience_lengths[1] - 500.) < 1e-6
