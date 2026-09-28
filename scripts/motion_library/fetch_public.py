@@ -60,9 +60,15 @@ class HttpRangeFile(io.RawIOBase):
 
     def __init__(self, url: str, block: int = 1 << 18):
         self.session = requests.Session()
-        head = self.session.head(url, allow_redirects=True, timeout=60)
+        self.origin = url
+        self._resolve()
+        self.pos, self.block, self.cache = 0, block, {}
+
+    def _resolve(self):
+        # The CDN hands out signed URLs that expire (~1 h); re-resolve from the stable origin URL.
+        head = self.session.head(self.origin, allow_redirects=True, timeout=60)
         head.raise_for_status()
-        self.url, self.size, self.pos, self.block, self.cache = head.url, int(head.headers["Content-Length"]), 0, block, {}
+        self.url, self.size = head.url, int(head.headers["Content-Length"])
 
     def seekable(self): return True
     def readable(self): return True
@@ -77,12 +83,14 @@ class HttpRangeFile(io.RawIOBase):
             if len(self.cache) > 64:
                 self.cache.clear()
             start = i * self.block; end = min(start + self.block, self.size) - 1
-            for attempt in range(5):
+            for attempt in range(6):
                 try:
                     r = self.session.get(self.url, headers={"Range": f"bytes={start}-{end}"}, timeout=120)
+                    if r.status_code in (401, 403):      # signed URL expired
+                        self._resolve(); continue
                     r.raise_for_status(); break
                 except requests.RequestException:
-                    if attempt == 4: raise
+                    if attempt == 5: raise
             self.cache[i] = r.content
         return self.cache[i]
 
@@ -180,6 +188,15 @@ def cmd_fetch(args):
                 category = n.split("/")[2] if source == "phuma" else "carry"
                 if source == "phuma" and per_category.get(category, 0) >= PHUMA_QUOTA[category]:
                     continue
+                early = out / source / f"{source}__{Path(n).stem}.npz"
+                if early.exists():                      # resume without re-downloading the member
+                    from motion_io import load_clip
+                    local = load_clip(early)
+                    seen.add(dedupe_key(local)); per_category[category] = per_category.get(category, 0) + 1
+                    manifest.append(dict(clip_id=early.stem, path=str(early.relative_to(out)), source=source,
+                                         category=category, **summarize_clip(local)))
+                    kept += 1
+                    continue
                 clip = parse_member(source, n, z.read(n))
                 if clip is None:
                     continue
@@ -192,6 +209,12 @@ def cmd_fetch(args):
                 seen.add(key)
                 per_category[category] = per_category.get(category, 0) + 1
                 clip_id = f"{source}__{Path(n).stem}"
+                target = out / source / f"{clip_id}.npz"
+                if target.exists():                     # resume: keep what an earlier run saved
+                    manifest.append(dict(clip_id=clip_id, path=str(target.relative_to(out)), source=source,
+                                         category=category, **summarize_clip(clip)))
+                    kept += 1
+                    continue
                 path = save_clip(out / source / f"{clip_id}.npz", clip, source=source, source_member=f"{f['path']}::{n}",
                                  licence="Apache-2.0" if source == "phuma" else "MIT")
                 manifest.append(dict(clip_id=clip_id, path=str(path.relative_to(out)), source=source,
