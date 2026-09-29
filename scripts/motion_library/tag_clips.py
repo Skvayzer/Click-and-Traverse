@@ -66,43 +66,95 @@ def runs(mask, min_len):
     return total
 
 
-def tag(clip, m, perm):
+SKILLS = ("walk", "sidle", "duck", "crawl", "step_high", "stand", "carry")
+G1_STAND_PELVIS = 0.78          # nominal G1 pelvis height (m)
+
+
+def kinematics(clip, m, perm):
+    """Per-frame FK quantities from THIS repository's G1 model."""
     import mujoco
     d = mujoco.MjData(m)
-    fps = float(clip["fps"]); T = len(clip["dof_pos"])
+    T = len(clip["dof_pos"])
     body = lambda n: mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_BODY, n)
     site = lambda n: mujoco.mj_name2id(m, mujoco.mjtObj.mjOBJ_SITE, n)
     feet = [body("left_ankle_roll_link"), body("right_ankle_roll_link")]
     palms = [site("left_palm"), site("right_palm")]
-    pelvis = body("pelvis")
-    foot_z = np.zeros((T, 2)); hand_local = np.zeros((T, 2, 3))
+    pelvis, torso = body("pelvis"), body("torso_link")
+    head = site("head")
+    out = dict(foot_z=np.zeros((T, 2)), hand_local=np.zeros((T, 2, 3)), hand_z=np.zeros((T, 2)), torso_tilt=np.zeros(T),
+               head_z=np.zeros(T))
     for t in range(T):
         d.qpos[:3] = clip["root_pos"][t]; d.qpos[3:7] = clip["root_quat_wxyz"][t]; d.qpos[7:36] = clip["dof_pos"][t][perm]
         mujoco.mj_kinematics(m, d)
-        foot_z[t] = d.xpos[feet, 2]
+        out["foot_z"][t] = d.xpos[feet, 2]
         R = d.xmat[pelvis].reshape(3, 3)
-        hand_local[t] = (d.site_xpos[palms] - d.xpos[pelvis]) @ R
+        out["hand_local"][t] = (d.site_xpos[palms] - d.xpos[pelvis]) @ R
+        out["hand_z"][t] = d.site_xpos[palms, 2]
+        out["head_z"][t] = d.site_xpos[head, 2]
+        out["torso_tilt"][t] = np.degrees(np.arccos(np.clip(d.xmat[torso].reshape(3, 3)[2, 2], -1, 1)))
+    return out
+
+
+def frame_masks(clip, kin):
+    """Per-frame skill masks (before minimum-duration filtering)."""
+    fps = float(clip["fps"])
     q = clip["root_quat_wxyz"]
     yaw = np.arctan2(2 * (q[:, 0] * q[:, 3] + q[:, 1] * q[:, 2]), 1 - 2 * (q[:, 2] ** 2 + q[:, 3] ** 2))
     v = np.gradient(clip["root_pos"][:, :2], axis=0) * fps
     fwd = v[:, 0] * np.cos(yaw) + v[:, 1] * np.sin(yaw); lat = -v[:, 0] * np.sin(yaw) + v[:, 1] * np.cos(yaw)
-    speed = np.hypot(fwd, lat); z = clip["root_pos"][:, 2]; stand_z = np.percentile(z, 90)
-    moving = speed > 0.15; sec = lambda s: int(s * fps)
-    masks = dict(
-        walk=(fwd > 0.3) & (fwd < 1.6) & (z > 0.9 * stand_z),
-        sidle=(np.abs(lat) > 0.2) & (np.abs(lat) > 1.5 * np.abs(fwd)),
-        duck=(z < 0.80 * stand_z) & moving,
-        step_high=(np.abs(foot_z[:, 0] - foot_z[:, 1]) > 0.22) & moving,
-        stand=(speed < 0.05) & (z > 0.9 * stand_z),
-        carry=(hand_local[:, :, 0] > 0.20).all(-1) & (hand_local[:, :, 2] > -0.15).all(-1),
+    speed = np.hypot(fwd, lat); z = clip["root_pos"][:, 2]
+    upright = (z > 0.85 * G1_STAND_PELVIS) & (kin["torso_tilt"] < 30)
+    moving = speed > 0.15
+    hands_down = (kin["hand_z"] < 0.25).any(-1)
+    return dict(
+        walk=(fwd > 0.3) & (fwd < 1.6) & upright,
+        sidle=(np.abs(lat) > 0.2) & (np.abs(lat) > 1.5 * np.abs(fwd)) & (z > 0.75 * G1_STAND_PELVIS),
+        # duck = travelling on the feet with the HEAD lowered (by bending and/or crouching), hands off the
+        # floor. People duck under beams mostly by pitching the trunk, so pelvis height alone misses it.
+        duck=(kin["head_z"] < 1.02) & (z > 0.40) & moving & ~hands_down,
+        # crawl = travelling low with a hand on/near the floor or the torso pitched over
+        crawl=(z < 0.60) & moving & (hands_down | (kin["torso_tilt"] > 50)),
+        step_high=(np.abs(kin["foot_z"][:, 0] - kin["foot_z"][:, 1]) > 0.22) & moving & (z > 0.75 * G1_STAND_PELVIS),
+        stand=(speed < 0.05) & upright,
+        # carry = both hands in front of the body at chest/waist height, upright (not reaching to the floor)
+        carry=(kin["hand_local"][:, :, 0] > 0.20).all(-1) & (kin["hand_local"][:, :, 2] > -0.15).all(-1)
+              & (kin["hand_z"] > 0.60).all(-1) & upright,
     )
-    min_len = dict(walk=sec(1), sidle=sec(1), duck=sec(.5), step_high=sec(.2), stand=sec(1), carry=sec(1))
-    seconds = {k: runs(mk, min_len[k]) / fps for k, mk in masks.items()}
-    lift = float(np.abs(foot_z[:, 0] - foot_z[:, 1]).max())
-    context = dict(overhead_clearance_m=round(float(z.min() * 1.55 + 0.1), 2) if seconds["duck"] > 0 else 2.0,
-                   lateral_gap_m=0.45 if seconds["sidle"] > 0 else 2.0,
-                   floor_obstacle_m=round(lift, 2) if seconds["step_high"] > 0 else 0.0, near_hand_object=0)
-    return {k: round(v, 2) for k, v in seconds.items()}, context
+
+
+MIN_SECONDS = dict(walk=1.0, sidle=1.0, duck=0.5, crawl=1.0, step_high=0.2, stand=1.0, carry=1.0)
+
+
+def filtered_masks(clip, kin):
+    """Masks with runs shorter than the skill's minimum duration removed."""
+    fps = float(clip["fps"]); out = {}
+    for k, mk in frame_masks(clip, kin).items():
+        keep = np.zeros_like(mk); n = max(1, int(MIN_SECONDS[k] * fps)); t = 0
+        while t < len(mk):
+            if mk[t]:
+                u = t
+                while u < len(mk) and mk[u]:
+                    u += 1
+                if u - t >= n:
+                    keep[t:u] = True
+                t = u
+            else:
+                t += 1
+        out[k] = keep
+    return out
+
+
+def tag(clip, m, perm):
+    kin = kinematics(clip, m, perm)
+    masks = filtered_masks(clip, kin)
+    fps = float(clip["fps"])
+    seconds = {k: round(float(mk.sum()) / fps, 2) for k, mk in masks.items()}
+    z = clip["root_pos"][:, 2]; lift = float(np.abs(kin["foot_z"][:, 0] - kin["foot_z"][:, 1]).max())
+    context = dict(overhead_clearance_m=round(float(z[masks["duck"] | masks["crawl"]].min() * 1.55 + 0.1), 2)
+                   if (masks["duck"] | masks["crawl"]).any() else 2.0,
+                   lateral_gap_m=0.45 if masks["sidle"].any() else 2.0,
+                   floor_obstacle_m=round(lift, 2) if masks["step_high"].any() else 0.0, near_hand_object=0)
+    return seconds, context
 
 
 def main(argv=None):
