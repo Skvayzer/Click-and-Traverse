@@ -7,9 +7,9 @@ CSV report. A clip is kept if ANY rule fires:
 
   1. whitelist   CMU subjects 107, 108, 127 (duck / stoop / crawl under), 141, 143 (walk sideways)
   2. keyword     file path contains a behaviour word (obstacle, side, duck, crouch, crawl, ...)
-  3. low body    pelvis below 0.65 m for >= 0.5 s  (ducking, crouching, crawling)
-  4. sidestep    lateral speed > 0.2 m/s and > 1.5x forward speed for >= 1 s
-  5. high step   pelvis vertical excursion suggests stepping over (> 0.12 m bounce while walking)
+  3. low body    pelvis 0.45-0.65 m for >= 0.5 s WHILE TRAVELLING (ducking, crouched walking);
+                 below 0.45 m travelling >= 1 s = crawl. Sitting/lying in place are excluded.
+  4. sidestep    upright, lateral speed > 0.25 m/s and > 2x forward speed for >= 1 s
 
 Usage (macOS/Linux, python3 + numpy):
   python3 filter_amass_local.py --inputs ~/Downloads/amass/*.tar.bz2 --out ~/Downloads/amass_filtered.tar
@@ -78,13 +78,31 @@ def analyse(data) -> dict | None:
     stand = np.percentile(z, 95)
     moving = np.hypot(vf, vl) > 0.25
     s = lambda sec: max(1, int(sec * fps))
+    # Low-body rules require TRAVELLING while low: sitting, lying and kneeling in place are not
+    # ducking or crawling (first pass kept 281/1,864 BMLmovi clips, mostly sit/lie actions).
+    travelling = np.hypot(vf, vl) > 0.2
     return dict(
         seconds=round(T / fps, 2), fps=fps, stand_z=round(float(stand), 3), min_z=round(float(z.min()), 3),
-        low_body=longest_run(z < 0.65) >= s(0.5),
-        crawl=longest_run(z < 0.45) >= s(0.5),
-        sidestep=longest_run((np.abs(vl) > 0.2) & (np.abs(vl) > 1.5 * np.abs(vf))) >= s(1.0),
-        high_step=bool(moving.mean() > 0.3 and (np.percentile(z[moving], 98) - np.percentile(z[moving], 2) > 0.12)) if moving.any() else False,
+        low_body=longest_run((z < 0.65) & (z > 0.45) & travelling) >= s(0.5),
+        crawl=longest_run((z < 0.45) & travelling) >= s(1.0),
+        sidestep=longest_run((np.abs(vl) > 0.25) & (np.abs(vl) > 2.0 * np.abs(vf)) & (z > 0.8 * stand)) >= s(1.0),
     )
+
+
+def slim_clip(raw: bytes, fps_out: float) -> bytes:
+    """Keep only what G1 retargeting needs, downsampled: ~20x smaller than the AMASS file.
+    (Drops markers, jaw/eye/hand pose, DMPLs; hands are fixed grippers on the G1.)"""
+    with np.load(io.BytesIO(raw), allow_pickle=False) as d:
+        fps = float(np.asarray(d["mocap_frame_rate"] if "mocap_frame_rate" in d.files else d["mocap_framerate"]))
+        step = max(1, int(round(fps / fps_out)))
+        root = d["root_orient"] if "root_orient" in d.files else d["poses"][:, :3]
+        body = d["pose_body"] if "pose_body" in d.files else d["poses"][:, 3:66]
+        out = dict(trans=d["trans"][::step].astype(np.float32), root_orient=root[::step].astype(np.float32),
+                   pose_body=body[::step].astype(np.float32), mocap_frame_rate=np.float32(fps / step),
+                   betas=d["betas"][:16].astype(np.float32) if "betas" in d.files else np.zeros(16, np.float32),
+                   gender=d["gender"] if "gender" in d.files else np.str_("neutral"),
+                   surface_model_type=d["surface_model_type"] if "surface_model_type" in d.files else np.str_("smplx"))
+    buf = io.BytesIO(); np.savez_compressed(buf, **out); return buf.getvalue()
 
 
 def iter_members(path: Path):
@@ -104,6 +122,7 @@ def main():
     p.add_argument("--inputs", nargs="+", required=True, help=".tar.bz2 archives or extracted folders")
     p.add_argument("--out", default="amass_filtered.tar")
     p.add_argument("--dry-run", action="store_true")
+    p.add_argument("--fps", type=float, default=30., help="output frame rate (retargeting and the prior use 30 fps)")
     args = p.parse_args()
     out_tar = None if args.dry_run else tarfile.open(args.out, "w")
     report = open(Path(args.out).with_suffix(".csv") if not args.dry_run else "amass_filter_report.csv", "w", newline="")
@@ -126,16 +145,17 @@ def main():
                 reasons.append("cmu_whitelist")
             if KEYWORDS.search(name):
                 reasons.append("keyword")
-            for key in ("crawl", "low_body", "sidestep", "high_step"):
+            for key in ("crawl", "low_body", "sidestep"):
                 if stats[key]:
                     reasons.append(key)
             keep = bool(reasons)
             writer.writerow([name, int(keep), "+".join(reasons), stats["seconds"], stats["stand_z"], stats["min_z"]])
             if keep:
-                kept += 1; kept_sec += stats["seconds"]; kept_bytes += len(raw)
+                slim = slim_clip(raw, args.fps)
+                kept += 1; kept_sec += stats["seconds"]; kept_bytes += len(slim)
                 if out_tar is not None:
-                    info = tarfile.TarInfo(name); info.size = len(raw)
-                    out_tar.addfile(info, io.BytesIO(raw))
+                    info = tarfile.TarInfo(name); info.size = len(slim)
+                    out_tar.addfile(info, io.BytesIO(slim))
             if total % 500 == 0:
                 print(f"{total} clips scanned, {kept} kept ({kept_sec / 60:.1f} min, {kept_bytes / 1e6:.0f} MB)  "
                       f"[{time.time() - t0:.0f}s]", flush=True)
