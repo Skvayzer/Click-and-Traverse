@@ -24,7 +24,8 @@ Approaching-object (reactive) episodes are **out of scope for now** (2026-09-29)
 | 2026-09-29 | c397cff | offline discriminator check; pilot config `configs/pilots/style_20260929.sh` |
 | 2026-09-29 | 34918b1 | gates from geometry probes instead of guidance-field z; config checks accept pre-style checkpoints |
 | 2026-09-29 | — | pilot `cat_style_20260929` launched (40,960 envs, warm start pilot 3, no reactive episodes); stopped at update 40 — discriminators trained (d_human +0.7…+0.9, d_robot −0.8…−0.9) |
-| 2026-09-29 | (this) | switch to **experts + distillation**; expert `expert_rooms_passages_20260929` launched |
+| 2026-09-29 | d3930cb | switch to **experts + distillation**; expert `expert_rooms_passages_20260929` launched |
+| 2026-09-29 | (next) | DAgger distillation implemented and CPU-smoke-tested |
 
 ---
 
@@ -130,9 +131,25 @@ weights and data, not gradients.
 Expert config: experience masses 0 for CAT groups; furniture .15, clutter+passages+tables .45,
 narrow .22, flat .02, protected .08, transition .08; same rewards and style prior as the pilot.
 
-Distillation (next): DAgger — the student (same observations as now) drives in all scenes, the
-expert for the scene type labels each state with its action, supervised regression; optional PPO
-fine-tune afterwards. The same DAgger machinery later distils into the LiDAR voxel student.
+### Distillation (implemented: `cat_mjlab/distill.py`, config `configs/pilots/distill_cat_rooms_20260929.sh`)
+
+- **Experts** (frozen): `cat` = released CAT generalist (`.npz`, uses the first 222 observation
+  features), `rooms` = rooms+passages expert (native checkpoint, all 226 features).
+- **Routing** by scene type: CAT procedural / original / published → `cat`; everything else → `rooms`
+  (`--distill-route NAME=BUCKET,...` to change).
+- **Student**: the ordinary native actor, warm-started from the rooms expert, full scene mix.
+- **Each step**: all experts compute their deterministic action means; the env's owner provides the
+  label. The executed action is the expert's with probability β (drawn per env at episode start),
+  else the student's mean + small noise. β decays 1 → 0 over `--distill-beta-decay` updates (60).
+- **Each update**: supervised MSE of the student's action mean onto the labels, over the newest
+  rollout + 2 previous (replay), 2 epochs; no reward is used for learning, but all task/success
+  metrics are still logged. Metrics: `distill/<expert>/action_mse`, `distill/<expert>/sample_share`,
+  `distill/beta_next`, `distill/expert_driving_share`.
+- **Checks**: unit tests (label bookkeeping, β = 1 executes the expert, regression reduces the gap);
+  CPU smoke test (64 envs, 3 updates): CAT action MSE 0.082 → 0.065, β schedule as configured.
+- **Not run yet on the GPU** (the rooms+passages expert is training there).
+
+The same DAgger machinery later distils into the LiDAR voxel student.
 
 ## 8. Not yet done / next
 

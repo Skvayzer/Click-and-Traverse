@@ -56,6 +56,14 @@ def parser():
                             help="Legacy: apply the bank row's certified pose at reset instead of the ordinary pose")
         target.add_argument("--reactive-single-bucket", action="store_true",
                             help="Legacy: keep the first row's object parameters for every re-arm instead of re-drawing")
+        target.add_argument("--distill-expert", action="append", metavar="NAME=PATH",
+                            help="DAgger distillation: frozen expert (.npz archive or native checkpoint); repeatable")
+        target.add_argument("--distill-route", action="append", metavar="NAME=BUCKET,BUCKET",
+                            help="Scene types (runner.SCENE_BUCKETS) labelled by an expert; NAME '_default' takes the rest. "
+                                 "Default for experts cat+rooms: CAT buckets -> cat, everything else -> rooms")
+        target.add_argument("--distill-beta-decay", type=int, default=60, help="Updates for the expert-driving probability to go 1 -> 0")
+        target.add_argument("--distill-epochs", type=int, default=2)
+        target.add_argument("--distill-lr", type=float, default=3e-4)
         target.add_argument("--style-library", help="Motion library (path without .npz) -> context-gated adversarial style reward")
         target.add_argument("--style-weight", type=float, default=.3, help="Target weight of the normalised style advantage")
         target.add_argument("--style-warmup", type=int, default=20, help="Updates with style weight 0 (discriminators warm up)")

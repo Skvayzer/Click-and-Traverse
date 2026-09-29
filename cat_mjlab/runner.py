@@ -1236,6 +1236,18 @@ def run(args):
         atomic_json(directory / "status.json", dict(phase=status, env_steps=learner.env_steps,
             updates=learner.updates, best_score=best_score, resume="resume.pt", walltime=snapshot["walltime"]))
 
+    distiller = None
+    if getattr(args, 'distill_expert', None):
+        from .distill import DistillController
+        experts = dict(item.split('=', 1) for item in args.distill_expert)
+        routing = {name: [] for name in experts}
+        for item in (getattr(args, 'distill_route', None) or []):
+            name, buckets = item.split('=', 1); routing[name] = [b for b in buckets.split(',') if b]
+        if not any(routing.values()) and set(experts) == {'cat', 'rooms'}:
+            routing = {'cat': ['procedural_cat', 'original_cat', 'published_cat'], '_default': ['rooms']}
+        distiller = DistillController(learner, task, experts, routing, beta_decay=int(args.distill_beta_decay),
+                                      epochs=int(args.distill_epochs), lr=float(args.distill_lr))
+        print(f"DAgger distillation: experts {experts}; routing {routing}; unowned buckets -> default: {distiller.unowned}", flush=True)
     try:
         if not args.resume:
             save_runtime()
@@ -1244,11 +1256,11 @@ def run(args):
                 began = time.monotonic()
                 if learner.device.type == 'cuda':
                     torch.cuda.reset_peak_memory_stats(learner.device)
-                rollout, collected = collect_rollout(task, learner, unroll_length=unroll,
+                rollout, collected = collect_rollout(task, distiller or learner, unroll_length=unroll,
                                                      trajectories=trajectories, policy_ids=policy_ids)
                 sim.capacity_report()  # Latched overflow must stop before any gradient update.
                 style_stats = task.style_prior.update() if style_schedule is not None else {}
-                metrics = learner.update(rollout)
+                metrics = distiller.update(rollout) if distiller is not None else learner.update(rollout)
                 del rollout
                 local_updates += 1
                 window.append(collected["navigation_counts"], collected["contrast_counts"], collected["role_counts"], collected["dense"])
@@ -1270,6 +1282,7 @@ def run(args):
                 values = {"learner/" + key: value for key, value in metrics.items()
                           if key in ("total_loss", "policy_loss", "v_loss", "entropy_loss", "style_v_loss") or key.startswith("diagnostics/")}
                 values.update(style_stats)
+                values.update({k: v for k, v in metrics.items() if k.startswith('distill/')})
                 legacy_score = window.legacy_flat_balance_score()
                 if legacy_score is not None:
                     values['training/legacy_flat_checkpoint_selection_score'] = legacy_score

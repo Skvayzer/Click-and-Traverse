@@ -152,7 +152,7 @@ def wholebody_observation_contract(sdf_rate=False):
             # the actor can tell an object closing in from one that sits still; the critic already
             # sees keypoint velocities. Added as a function-preserving expansion (zero input weights).
             "actor_features": actor + elbows + (list(SDF_RATE_FEATURES) if sdf_rate else []), "critic_features": critic + elbows,
-            "sdf_rate_features": bool(sdf_rate),
+            **({"sdf_rate_features": True} if sdf_rate else {}),   # key absent in the base contract (older archives)
             "baseline_actor_size": len(actor), "baseline_critic_size": len(critic),
             "prediction_horizons_seconds": [], "field_sample_count": 13,
             "additional_field_samples": ["left_elbow", "right_elbow"],

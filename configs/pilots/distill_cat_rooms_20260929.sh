@@ -1,0 +1,41 @@
+#!/usr/bin/env bash
+# DAgger distillation: experts -> one student (see docs/obsidian/Style-Prior-Pipeline.md, "Experts").
+#   cat   = released CAT generalist (CAT procedural / original / published scenes)
+#   rooms = rooms+passages expert (everything else)
+# Student: warm-started from the rooms expert (same observation contract). Experts drive with
+# probability beta, which decays 1 -> 0 over 60 updates; the experts label every visited state;
+# the student regresses its action mean onto the labels. Full scene mix (CAT groups included).
+set -euo pipefail
+cd /home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab
+export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
+CAT_EXPERT=${CAT_EXPERT:-outputs/mjlab_migration_20260919/original-cat-expanded.npz}
+ROOMS_EXPERT=${ROOMS_EXPERT:-outputs/expert_rooms_passages_20260929/resume.pt}
+RUN_DIR=${RUN_DIR:-outputs/distill_cat_rooms_20260929}
+.venv-mjlab/bin/python train_cat_mjlab.py run \
+  --algorithm ppo --num-envs ${NUM_ENVS:-40960} --batch-size ${BATCH_SIZE:-1024} \
+  --num-minibatches ${NUM_MINIBATCHES:-40} --unroll-length 32 \
+  --checkpoint-native "$ROOMS_EXPERT" \
+  --fresh-optimizer --max-action-std 0 \
+  --bank-manifest data/furniture/table_edges_v1_packed/manifest.json \
+  --body-collision-bank data/furniture/table_edges_v1_collision/manifest.json \
+  --body-collision-resets data/furniture/table_edges_v1_resets/manifest.json \
+  --experience-masses 0.17 0.34 0.08 0.20 0.10 0.02 0.06 0.03 \
+  --experience-rebalance-every 5 \
+  --narrow-sampling-group 4 \
+  --standing-gf-bonus 0.5 --handsdf-weight 1 \
+  --heading-align-weight 0.4 \
+  --upright-weight 3.0 --stand-tall-weight 3.0 --torso-rate-weight -0.5 \
+  --self-clearance-weight -10 --upper-posture-weight -0.5 --upper-home-shoulder-pitch -0.3 \
+  --stand-still-weight -4 --standing-requires-stillness --standing-stillness-speed 0.05 \
+  --sdf-rate-obs \
+  --distill-expert cat="$CAT_EXPERT" --distill-expert rooms="$ROOMS_EXPERT" \
+  --distill-beta-decay ${BETA_DECAY:-60} --distill-epochs 2 --distill-lr 3e-4 \
+  --run-dir "$RUN_DIR" \
+  --disable-hand-contrast --hand-clearance-weight -20 --arm-clearance-weight -8 \
+  --tracking-root-field-weight 1 \
+  --hand-clearance-target 0.09 --hand-clearance-anticipation 0.20 \
+  --hand-clearance-near-weight 0.8 --hand-reward-soft-floor 0 \
+  --hand-raised-reset-fraction 0 --upper-gravity-compensation \
+  ${COMPILE:---compile-task} --device ${DEVICE:-cuda:0} --seed 0 \
+  --checkpoint-interval-updates 10 ${EXTRA:-} \
+  --wandb-mode ${WANDB_MODE:-online} --wandb-project CAT-wholebody --wandb-entity skvayzer
