@@ -566,6 +566,16 @@ class CATTask:
         if self.collision is not None:self.episode['goal_reached']&=~done
         return done,flags
 
+    def _style_features(self):
+        """89-D motion features for the style discriminators (layout of the motion library)."""
+        from .style_prior import robot_features, KEY_SITES, KEY_BODIES
+        if not hasattr(self,'_style_ids'):
+            self._style_ids=(torch.tensor([self.model.site(n).id for n in KEY_SITES],device=self.device),
+                             torch.tensor([self.model.body(n).id for n in KEY_BODIES],device=self.device))
+        s,b=self._style_ids;d=self.data
+        xmat=d.xmat.reshape(self.num_envs,-1,3,3)[:,self.pelvis_body]
+        return robot_features(d.qpos[:,:36],d.qvel[:,:35],d.site_xpos[:,s],d.xpos[:,b],xmat)
+
     def _rewards(self,action,contacts):
         i=self.info;d=self.data
         from .passage_rewards import blended_sdf_knee
@@ -581,6 +591,7 @@ class CATTask:
             probes=self.math.heading_probe_points(i['positions'][:,1,:2],direction,i['positions'][:,9:11,2].mean(-1),
                 half_width=float(heading['half_width']),lookahead=float(heading['lookahead']))
             heading_sdf=self.bank.sample('sdf',probes,self.scene_ids).reshape(probes.shape[0],-1)
+            self._heading_sdf=heading_sdf     # reused by the style-prior gates
             heading_margins=tuple(float(m) for m in heading['margins'])
         rewards=self.math.native_rewards(stand_still='stand_still' in _get(self.config,'reward_config.scales',{}),
             stillness_speed=_get(self.config,'standing_requires_stillness_speed',None),heading_sdf=heading_sdf,heading_margins=heading_margins,standing_gf=float(_get(self.config,'standing_gf_bonus',4.)),sdf_knee=sdf_knee,action=action,last_action=i['last_act'],last_last_action=i['last_last_act'],
@@ -791,6 +802,7 @@ class CATTask:
     def step(self,action):
         if action.shape!=(self.num_envs,29):raise ValueError('Expected [num_envs,29] actions')
         ids=self.all_ids;i=self.info;d=self.data
+        style_now=self._style_features() if getattr(self,'style_prior',None) is not None else None
         theta=self._rand((self.num_envs,),0.,2*torch.pi)
         magnitude=self._rand((self.num_envs,),*_get(self.config,'push_config.magnitude_range',[.1,1.]))
         signal=((i['push_step']+1)%i['push_interval']==0)&bool(_get(self.config,'push_config.enable',True))
@@ -964,6 +976,14 @@ class CATTask:
         for k,v in self.episode.items():metrics['episode/'+k]=v.clone()
         i['last_joint_vel']=d.qvel[:,6:].clone()
         i['previous_previous_upper']=i['previous_upper'].clone();i['previous_upper']=targets[:,12:].clone()
+        if style_now is not None:
+            # Transition (s_t, s_t+1) is captured BEFORE autoreset, so terminal steps are real motion.
+            from .style_prior import gate_weights
+            hs=getattr(self,'_heading_sdf',None)
+            if hs is None:hs=torch.full((self.num_envs,4),2.,device=self.device)
+            weights,gap=gate_weights(hs,i['gf'][:,0,2],i['gf'][:,3:5,2].amax(-1))
+            self.style_transition=(style_now,self._style_features(),weights)
+            metrics['style/gap_m']=gap
         # Only physically completed worlds reset; cached terminal observations
         # and terminal rewards retain the transition before reset.
         self.reset(torch.nonzero(done,as_tuple=False).flatten())

@@ -259,6 +259,11 @@ def collect_rollout(task, learner, *, unroll_length, trajectories, policy_ids):
         ("raw_action", config.action_size))}
     rollout.update({key: torch.empty(shape, device=learner.device) for key in ("log_prob", "reward", "discount", "truncation")})
     rollout["policy_id"] = torch.empty(shape, dtype=torch.long, device=learner.device)
+    prior = getattr(task, 'style_prior', None)
+    if prior is not None:
+        rollout["style_reward"] = torch.empty(shape, device=learner.device)
+        style_acc = dict(sum=torch.zeros((), device=task.device), n=0, gate=torch.zeros(3, device=task.device),
+                         per=torch.zeros(3, device=task.device))
     if getattr(task,'balance_settings',None) is not None:
         rollout['task_bucket']=torch.empty(shape,dtype=torch.long,device=learner.device)
     before_nav = task.navigation_counts.clone()
@@ -319,6 +324,13 @@ def collect_rollout(task, learner, *, unroll_length, trajectories, policy_ids):
             for key in ("raw_action", "log_prob", "policy_id"):
                 rollout[key][section, t].copy_(acted[key])
             rollout["reward"][section, t].copy_(transition["reward"])
+            if prior is not None:
+                f_now, f_next, weights = task.style_transition
+                style_r, per = prior.reward(f_now, f_next, weights)
+                rollout["style_reward"][section, t].copy_(style_r)
+                prior.store(f_now, f_next, weights)
+                style_acc['sum'] += style_r.sum(); style_acc['n'] += len(style_r)
+                style_acc['gate'] += weights.sum(0); style_acc['per'] += (per * weights).sum(0)
             rollout["discount"][section, t].copy_((~transition["done"]).float())
             rollout["truncation"][section, t].copy_(transition["truncated"].float())
             done = transition["done"]
@@ -594,6 +606,12 @@ def collect_rollout(task, learner, *, unroll_length, trajectories, policy_ids):
     if hasattr(task, 'speed_state'):
         from .speed_curriculum import metrics
         info['metrics'].update(metrics(task.speed_state))
+    if prior is not None and style_acc['n']:
+        from .style_prior import GROUPS as STYLE_GROUPS
+        info['metrics']['style/reward_mean'] = float(style_acc['sum'] / style_acc['n'])
+        for g, name in enumerate(STYLE_GROUPS):
+            info['metrics'][f'style/{name}/gate_share'] = float(style_acc['gate'][g] / style_acc['n'])
+            info['metrics'][f'style/{name}/reward_when_gated'] = float(style_acc['per'][g] / style_acc['gate'][g].clamp_min(1e-6))
     if n_groups:
         objects = getattr(task, 'reactive_objects', None)
         reactive = None if objects is None else (float(reactive_steps), float(reactive_length_sum), float(reactive_length_count), objects)
@@ -1037,6 +1055,8 @@ def run(args):
                  if getattr(args, name, None) is not None}
     if overrides.get("max_action_std") == 0:
         overrides["max_action_std"] = None
+    if getattr(args, 'style_library', None):
+        overrides["style_critic"] = True
     config = replace(config, **overrides)
     batch_size = args.batch_size if args.batch_size is not None else source.get("batch_size", args.num_envs // config.num_minibatches)
     unroll = args.unroll_length if args.unroll_length is not None else source.get("unroll_length", 32)
@@ -1058,6 +1078,9 @@ def run(args):
         if any(not bool(torch.isfinite(value).all()) for value in native_weights.values()):
             raise ValueError("Native source has nonfinite model weights")
         native_weights = _expand_actor_input(native_weights, config.actor_obs)
+        fresh = learner.model.state_dict()
+        # New heads (the style critic) start from their fresh initialisation; everything else is loaded.
+        native_weights = dict(native_weights, **{k: v for k, v in fresh.items() if k.startswith('style_critic.') and k not in native_weights})
         learner.model.load_state_dict(native_weights, strict=True)
         migration = dict(kind="native_weights_only", optimizer="fresh", exact_runtime_resume=False,
                          sampling="fresh", counters="zero", environment="fresh")
@@ -1075,6 +1098,13 @@ def run(args):
         migration["initial_action_std"] = initial_std
     task, sim, environment_config = create_task(args, environment_config=config_source)
     _configure_reactive(task, args)
+    style_schedule = None
+    if getattr(args, 'style_library', None):
+        from .style_prior import StylePrior, StyleSchedule
+        task.style_prior = StylePrior(args.style_library, device=args.device)
+        style_schedule = StyleSchedule(target=float(args.style_weight), warmup=int(args.style_warmup),
+                                       ramp=int(args.style_ramp), tolerance=float(args.style_guard_tolerance))
+        print(f"Style prior: human minutes per group {task.style_prior.minutes}", flush=True)
     task_sizes = tuple(task.obs[key].shape[-1] for key in ('state', 'privileged_state'))
     if task_sizes != (config.actor_obs, config.critic_obs):
         raise ValueError(f'Policy observation sizes {(config.actor_obs, config.critic_obs)} '
@@ -1170,6 +1200,9 @@ def run(args):
         if snapshot["rng_cuda"]:
             torch.cuda.set_rng_state_all(snapshot["rng_cuda"])
         window.load_state_dict(snapshot["success_window"])
+        if style_schedule is not None and snapshot.get('style_prior') is not None:
+            task.style_prior.load_state_dict(_device_tree(snapshot['style_prior'], learner.device))
+            style_schedule.load_state_dict(snapshot['style_schedule']); learner.style_lambda = style_schedule.value
         best_score, previous_walltime = snapshot["best_score"], snapshot["walltime"]
         # Best-model publication can be newer than the less frequent full
         # runtime snapshot. Preserve its selection score across crash recovery.
@@ -1197,6 +1230,8 @@ def run(args):
         observer = getattr(task, 'acceptance_observer', None)
         snapshot['passage_acceptance'] = None if observer is None else observer.state_dict()
         snapshot['passage_acceptance_reset_regions'] = getattr(task, 'acceptance_reset_regions', None)
+        if style_schedule is not None:
+            snapshot['style_prior'] = task.style_prior.state_dict(); snapshot['style_schedule'] = style_schedule.state_dict()
         atomic_torch_save(directory / "resume.pt", snapshot)
         atomic_json(directory / "status.json", dict(phase=status, env_steps=learner.env_steps,
             updates=learner.updates, best_score=best_score, resume="resume.pt", walltime=snapshot["walltime"]))
@@ -1212,6 +1247,7 @@ def run(args):
                 rollout, collected = collect_rollout(task, learner, unroll_length=unroll,
                                                      trajectories=trajectories, policy_ids=policy_ids)
                 sim.capacity_report()  # Latched overflow must stop before any gradient update.
+                style_stats = task.style_prior.update() if style_schedule is not None else {}
                 metrics = learner.update(rollout)
                 del rollout
                 local_updates += 1
@@ -1232,7 +1268,8 @@ def run(args):
                         score_semantics=record["best_score_semantics"],
                         observation_contract=task.contract))
                 values = {"learner/" + key: value for key, value in metrics.items()
-                          if key in ("total_loss", "policy_loss", "v_loss", "entropy_loss") or key.startswith("diagnostics/")}
+                          if key in ("total_loss", "policy_loss", "v_loss", "entropy_loss", "style_v_loss") or key.startswith("diagnostics/")}
+                values.update(style_stats)
                 legacy_score = window.legacy_flat_balance_score()
                 if legacy_score is not None:
                     values['training/legacy_flat_checkpoint_selection_score'] = legacy_score
@@ -1244,6 +1281,11 @@ def run(args):
                 values.update({"training/rollout_reward_mean": metrics["rollout_reward_mean"],
                     "performance/control_steps_per_second": metrics["physical_transitions"] / elapsed,
                     "performance/update_seconds": elapsed})
+                if style_schedule is not None:
+                    values['style/lambda'] = learner.style_lambda
+                    lam, held = style_schedule.step(values)          # lambda for the NEXT update
+                    learner.style_lambda = lam
+                    values['style/guard_held_metrics'] = len(held)
                 if score is not None:
                     values["training/checkpoint_selection_score"] = score
                 if best_score is not None:

@@ -56,6 +56,12 @@ def parser():
                             help="Legacy: apply the bank row's certified pose at reset instead of the ordinary pose")
         target.add_argument("--reactive-single-bucket", action="store_true",
                             help="Legacy: keep the first row's object parameters for every re-arm instead of re-drawing")
+        target.add_argument("--style-library", help="Motion library (path without .npz) -> context-gated adversarial style reward")
+        target.add_argument("--style-weight", type=float, default=.3, help="Target weight of the normalised style advantage")
+        target.add_argument("--style-warmup", type=int, default=20, help="Updates with style weight 0 (discriminators warm up)")
+        target.add_argument("--style-ramp", type=int, default=50, help="Updates to ramp the style weight to its target")
+        target.add_argument("--style-guard-tolerance", type=float, default=.05,
+                            help="Hold/back off the ramp while a watched success metric is this far below its value at ramp start")
         target.add_argument("--reactive-event-weight", type=float,
                             help="Sparse reward >= 0 per finished approach: +w handled, -w unhandled threatening object; 0 disables")
         target.add_argument("--sdf-rate-obs", action="store_true", default=None,

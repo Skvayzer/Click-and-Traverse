@@ -51,6 +51,7 @@ class LearnerConfig:
     num_updates_per_batch: int = 4
     prepare_chunk_size: int = 64
     max_action_std: float | None = None
+    style_critic: bool = False     # second value head for the motion-prior style reward
 
     def __post_init__(self):
         if self.algorithm not in ("ppo", "sapg"):
@@ -90,6 +91,8 @@ class ActorCritic(nn.Module):
         width = config.embedding_dim if config.algorithm == "sapg" else 0
         self.actor = MLP((config.actor_obs + width, *config.actor_hidden, 2 * config.action_size))
         self.critic = MLP((config.critic_obs + width, *config.critic_hidden, 1))
+        if config.style_critic:
+            self.style_critic = MLP((config.critic_obs + width, *config.critic_hidden, 1))
         if width:
             self.policy_embeddings = nn.Parameter(torch.randn(config.num_policies, width) * .01)
             with torch.no_grad():
@@ -120,6 +123,9 @@ class ActorCritic(nn.Module):
 
     def value(self, privileged_state, policy_ids=0):
         return self.critic(self.condition(privileged_state, policy_ids)).squeeze(-1)
+
+    def style_value(self, privileged_state, policy_ids=0):
+        return self.style_critic(self.condition(privileged_state, policy_ids)).squeeze(-1)
 
 
 def gaussian_parameters(logits):
@@ -317,10 +323,12 @@ def ratio_diagnostics(log_prob, data, config):
     return result
 
 
-def compute_loss(model, data, config, *, entropy_noise=None):
+def compute_loss(model, data, config, *, entropy_noise=None, style_lambda=0.):
     ids = data["target_policy_id"] if config.algorithm == "sapg" else data["policy_id"]
     logits = model.logits(data["state"], ids)
     baseline = model.value(data["privileged_state"], ids)
+    style = config.style_critic and "style_reward" in data
+    style_baseline = model.style_value(data["privileged_state"], ids) if style else None
     log_prob = log_probability(logits, data["raw_action"])
     if config.algorithm == "sapg":
         advantage = data["advantage"].detach()
@@ -338,13 +346,26 @@ def compute_loss(model, data, config, *, entropy_noise=None):
                 lambda_=config.gae_lambda, discount=config.discounting)
             if config.normalize_advantage:
                 advantage = _normalize(advantage)
+            if style:
+                # Separate critic and advantage for the style reward, normalised on its own, so a large
+                # smooth style signal cannot drown small but critical task/safety terms (multi-critic).
+                style_bootstrap = model.style_value(data["next_privileged_state"][:, -1], ids[:, -1])
+                style_targets, style_advantage = compute_gae(data["truncation"], termination,
+                    data["style_reward"] * config.reward_scaling, style_baseline.detach(), style_bootstrap,
+                    lambda_=config.gae_lambda, discount=config.discounting)
+                advantage = advantage + style_lambda * _normalize(style_advantage)
         ratio = (log_prob - data["log_prob"].detach()).exp()
         policy_loss = -torch.minimum(ratio * advantage, ratio.clamp(1 - config.clipping_epsilon,
                                                                  1 + config.clipping_epsilon) * advantage).mean()
     value_loss = .25 * (targets - baseline).square().mean()
+    extra = {}
+    if style:
+        style_value_loss = .25 * (style_targets - style_baseline).square().mean()
+        value_loss = value_loss + style_value_loss
+        extra = dict(style_v_loss=style_value_loss.detach())
     entropy_loss = -config.entropy_cost * transformed_entropy(logits, entropy_noise).mean()
     total = policy_loss + value_loss + entropy_loss
-    return total, dict(total_loss=total, policy_loss=policy_loss, v_loss=value_loss, entropy_loss=entropy_loss) | ratio_diagnostics(log_prob, data, config)
+    return total, dict(total_loss=total, policy_loss=policy_loss, v_loss=value_loss, entropy_loss=entropy_loss) | extra | ratio_diagnostics(log_prob, data, config)
 
 
 @torch.no_grad()
@@ -382,6 +403,7 @@ class Learner:
                                            betas=(.9, .999), eps=1e-8, foreach=False)
         self.updates = 0
         self.env_steps = 0
+        self.style_lambda = 0.       # set by the runner's StyleSchedule each update
 
     @torch.no_grad()
     def reset_action_std(self, sigma):
@@ -428,7 +450,7 @@ class Learner:
             for indices in permutation.reshape(self.config.num_minibatches, -1):
                 mini = {key: value[indices] for key, value in data.items()}
                 self.optimizer.zero_grad(set_to_none=True)
-                loss, metrics = compute_loss(self.model, mini, self.config)
+                loss, metrics = compute_loss(self.model, mini, self.config, style_lambda=self.style_lambda)
                 if not bool(torch.isfinite(loss)):
                     raise FloatingPointError("Nonfinite learner loss; refusing optimizer step")
                 loss.backward()
