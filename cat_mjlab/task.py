@@ -264,6 +264,10 @@ class CATTask:
         values=self.route_context(root,previous,segment,violation,meta['route'],meta['route_count'],
             meta['obstacles'],meta['obstacle_count'],radius=meta['navigation_radius'])
         values['enabled']=meta['enabled'];values['violation']&=meta['enabled']
+        if self.config.get('route_recovery'):
+            # Consecutive steps without a visible route point; drives the lost-route termination.
+            previous_run=torch.zeros(len(ids),dtype=torch.long,device=self.device) if reset else self.navigation['blocked_run'][ids]
+            values['blocked_run']=torch.where(values['blocked']&meta['enabled'],previous_run+1,torch.zeros_like(previous_run))
         for key in ('root_clearance','swept_clearance'):values[key]=torch.where(meta['enabled'],values[key],0.)
         for k,v in values.items():self._put(self.navigation,k,ids,v)
         metadata={k:v[self.scene_ids[ids]] for k,v in self.bank.contrast.items()}
@@ -281,6 +285,18 @@ class CATTask:
         visible=self.swept_root_clearance(root_xy,nav['target'],meta['obstacles'],meta['obstacle_count'],radius=meta['navigation_radius'])>0
         active=visible&~nav['blocked']&~nav['violation']
         speed=torch.linalg.vector_norm(nav['guidance'][:,:2],dim=-1)
+        recovery=self.config.get('route_recovery')
+        if recovery:
+            # Lost the route (neither the carrot nor the route projection is in straight-line view):
+            # the command used to drop to zero and the guidance to vanish, so the robot was told to
+            # stand with no direction until the 80 s timeout. Follow the scene's stored geodesic
+            # (FMM) goal field instead -- it routes around the obstacles -- until the route is visible.
+            lost=nav['enabled']&nav['blocked']&~nav['violation']
+            horizontal=gf[:,1,:2];magnitude=torch.linalg.vector_norm(horizontal,dim=-1)
+            lost=lost&(magnitude>1e-3)
+            direction=torch.where(lost[:,None],horizontal/magnitude.clamp_min(1e-6)[:,None],direction)
+            speed=torch.where(lost,torch.full_like(speed,float(recovery['speed'])),speed)
+            active=active|lost
         if hasattr(self, 'speed_state'):
             from .speed_curriculum import speed_limit
             scoped, cap, hold=speed_limit(self.speed_state,{k:v[ids] for k,v in self.contrast.items()},ids,self.dt)
@@ -437,6 +453,7 @@ class CATTask:
         self.acceptance_reset_regions[ids]=(self.collision(scenes,_selected_data(self.data,ids))
             if self.collision is not None else False)
         defaults={'step':torch.zeros(n,dtype=torch.long,device=self.device),
+            **({'goal_steps':torch.zeros(n,dtype=torch.long,device=self.device)} if self.config.get('goal_hold_seconds') else {}),
             'wrapper_steps':torch.zeros(n,dtype=torch.long,device=self.device),'push_step':torch.zeros(n,dtype=torch.long,device=self.device),
             'motor_targets':self.nominal.expand(n,-1).clone(),'last_act':torch.zeros((n,29),device=self.device),
             'last_last_act':torch.zeros((n,29),device=self.device),'last_joint_vel':torch.zeros((n,29),device=self.device),
@@ -506,6 +523,7 @@ class CATTask:
                 self.info[key][ids]=value
         keys=('goal_reached','raw_goal','outside_bounds','fall','obstacle','self_contact','hand_self_contact','reactive_left_spot','numerical','hand_violation','elbow_violation','body_collision','reset_replaced',
               'body_collision_feet','body_collision_legs','body_collision_trunk','body_collision_head','body_collision_arms','body_collision_hands')
+        if self.config.get('route_recovery'):keys+=('route_lost',)
         for k in keys:self._put(self.episode,k,ids,replaced if k=='reset_replaced' else torch.zeros(n,dtype=torch.bool,device=self.device))
         self._put(self.info,'minimum_episode_hand_clearance',ids,sdf[:,5:7,0].amin(-1))
         from .response_split import initial, advance, PREFIX
@@ -552,12 +570,18 @@ class CATTask:
         root=self.navigation['enabled']&self.navigation['violation'];body=regions.any(-1)
         obstacle=fields|elbows|root|body;done=fall|self_contact|numerical|obstacle
         if _get(self.config,'terminate_on_hand_self_contact',False):done=done|hand_self_contact
+        recovery=self.config.get('route_recovery')
+        route_lost=None
+        if recovery:
+            route_lost=self.navigation['enabled']&(self.navigation['blocked_run']*self.dt>float(recovery['lost_seconds']))
+            done=done|route_lost
         active=self.reactive_objects.state['active'] if self.reactive_objects is not None else torch.zeros_like(grace)
         self.reactive_root_displacement=torch.linalg.vector_norm(i['positions'][:,1,:2]-self.reactive_spot,dim=-1)*active
         walking=self.reactive_objects.state['walking'] if self.reactive_objects is not None else torch.zeros_like(grace)
         reactive_left_spot=active&~walking&(self.reactive_root_displacement>float(_get(self.config,'reactive_spot_radius',.3)))
         flags=dict(fall=fall,obstacle=obstacle,self_contact=self_contact,hand_self_contact=hand_self_contact,reactive_left_spot=reactive_left_spot,numerical=numerical,body_collision=body,
                    hand_violation=(i['sdf'][:,5:7]<threshold).flatten(1).any(-1)&grace,elbow_violation=elbows)
+        if route_lost is not None:flags['route_lost']=route_lost
         for k,v in flags.items():self.episode[k]|=v
         for index,region in enumerate(('feet','legs','trunk','head','arms','hands')):
             self.episode['body_collision_'+region]|=regions[:,index]
@@ -699,8 +723,8 @@ class CATTask:
     def _outcomes(self,done,truncation):
         self.info['minimum_episode_hand_clearance']=torch.minimum(self.info['minimum_episode_hand_clearance'],self.info['sdf'][:,5:7,0].amin(-1))
         failure=done&~truncation
-        for key in ('fall','obstacle','self_contact','numerical','body_collision','hand_violation','elbow_violation','outside_bounds'):
-            failure|=self.episode[key]
+        for key in ('fall','obstacle','self_contact','numerical','body_collision','hand_violation','elbow_violation','outside_bounds','route_lost'):
+            if key in self.episode:failure|=self.episode[key]
         successful=self.episode['goal_reached']&~failure
         resolved=~self.outcome_counted&(successful|failure|done)
         successful&=resolved
@@ -894,6 +918,15 @@ class CATTask:
         if self.reactive_objects is not None:
             lengths=torch.where(self.reactive_objects.state['active'],int(self.reactive_objects.episode_length),lengths)
         timeout=i['wrapper_steps']>=lengths
+        hold=self.config.get('goal_hold_seconds')
+        if hold:
+            # Reaching the goal never ended a room episode: a robot that arrived at step 500 stood
+            # parked there until the 4000-step horizon, so ~2/3 of room experience was standing at
+            # goals and fresh navigation attempts starved. End it after a short stand instead. This is
+            # a TRUNCATION (value bootstrapped), not a terminal state, so arriving early is not taxed
+            # by losing the future standing reward.
+            i['goal_steps']=torch.where(self.episode['goal_reached']&self.navigation['enabled'],i['goal_steps']+1,0)
+            timeout=timeout|(i['goal_steps']*self.dt>=float(hold))
         truncated=timeout&~terminated;done=terminated|timeout
         resolved,successful=self._outcomes(done,truncated)
         self.episode_reward+=reward

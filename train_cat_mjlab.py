@@ -78,6 +78,14 @@ def parser():
         target.add_argument("--sdf-rate-obs", action="store_true", default=None,
                             help="Add the rate of change of the hand/elbow distance samples to the ACTOR observation (222 -> 226); "
                                  "a warm start widens the first layer with zero weights, so the policy is unchanged at step 0")
+        target.add_argument("--goal-hold-seconds", type=float,
+                            help="Rooms: end the episode (as a truncation) after standing this long at the reached goal "
+                                 "instead of parking there until the horizon; 0 disables")
+        target.add_argument("--route-recovery-speed", type=float,
+                            help="Rooms: when the route is out of sight, walk along the stored geodesic goal field at this speed "
+                                 "(m/s) instead of being commanded to stand; 0 disables")
+        target.add_argument("--route-lost-seconds", type=float,
+                            help="With --route-recovery-speed: end the episode as a failure after this long without a visible route (default 5)")
         target.add_argument("--stand-still-weight", type=float,
                             help="Cost <= 0 on body motion while commanded to stand (zero command); 0 disables")
         target.add_argument("--spot-hold-weight", type=float,

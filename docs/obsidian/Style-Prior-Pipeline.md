@@ -26,7 +26,8 @@ Approaching-object (reactive) episodes are **out of scope for now** (2026-09-29)
 | 2026-09-29 | — | pilot `cat_style_20260929` launched (40,960 envs, warm start pilot 3, no reactive episodes); stopped at update 40 — discriminators trained (d_human +0.7…+0.9, d_robot −0.8…−0.9) |
 | 2026-09-29 | d3930cb | switch to **experts + distillation**; expert `expert_rooms_passages_20260929` launched |
 | 2026-09-29 | 4b5d12b | DAgger distillation implemented and CPU-smoke-tested |
-| 2026-09-29 | (this) | rooms+passages expert split; `--scene-group-override`; rooms+tables expert launched |
+| 2026-09-29 | c28fb5b | rooms+passages expert split; `--scene-group-override`; rooms+tables expert launched |
+| 2026-09-30 | (this) | **goal hold**: room episodes now end 1 s after the goal (see §7a); rooms+tables expert v2 launched |
 
 ---
 
@@ -153,6 +154,26 @@ narrow .22, flat .02, protected .08, transition .08; same rewards and style prio
 - **Not run yet on the GPU** (the rooms+passages expert is training there).
 
 The same DAgger machinery later distils into the LiDAR voxel student.
+
+## 7a. Room episodes never ended at the goal (found 2026-09-30)
+
+Rooms+tables expert v1 (`outputs/expert_rooms_tables_20260929`): clutter success looked like 81% and then
+"fell" to ~50%. Cause: reaching the goal did not end a room episode, so a robot that arrived at step ~500
+stood parked at its goal (route complete -> zero guidance, stand command) until the 4000-step horizon.
+- `reward_term/stand_still` grew to -3.1 per step = at least 64% of all robot-steps were robots parked on a stand command;
+- fresh clutter_dense attempts fell from 91 to ~5 per update (navigation learning starved);
+- check: clutter_pilot 77% success x 4000 steps + 23% x ~500 = 3195 predicted vs 3198 logged mean length;
+- the start offsets are randomized over 0-1000 steps, so the first parked cohort timed out together at
+  update ~95 (timeouts 40 -> 830 per update) and the success metric dropped while new attempts restarted.
+- ruled out: robots losing the route ("blocked") -- 0 blocked robots in a CPU diagnostic
+  (`scripts/diagnose_route_blocking.py`); the opt-in `--route-recovery-speed` stays off.
+
+Fix: `--goal-hold-seconds 1` ends the episode 1 s after the goal as a truncation (value bootstrapped, so
+arriving early loses nothing). Smoke test (4096 envs, 20 updates): room episodes end ~1 s after the goal,
+stand_still -0.003 vs -0.64 at the same point in v1. New metrics per scene: `route_lost_rate`,
+`route_blocked_share`, `episode_over_1000_steps_share`. Run: `configs/pilots/expert_rooms_tables_v2_20260930.sh`
+(identical to v1 otherwise), `scripts/keep_snapshots.sh` keeps resume.pt every 20 updates.
+Still open: table edges -- heading gate and style gates probe only shoulder/head/shin height, blind to 0.71 m tabletops.
 
 ## 8. Not yet done / next
 

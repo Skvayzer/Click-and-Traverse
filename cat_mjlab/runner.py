@@ -282,9 +282,11 @@ def collect_rollout(task, learner, *, unroll_length, trajectories, policy_ids):
     # below used to discard them, so a run could report 867 metrics and not one of them
     # said which term the policy was actually being paid by.
     reward_totals, reward_steps = {}, 0.
-    # [attempted, resolved, successful, timed_out, hand_self_contact, fell, length_sum] per scene type.
+    # [attempted, resolved, successful, timed_out, hand_self_contact, fell, length_sum, route_lost] per scene type.
     bucket_of_scene = torch.as_tensor(_scene_buckets(task.bank.manifest), device=task.device)
-    bucket_stats = torch.zeros((len(SCENE_BUCKETS), 7), dtype=torch.float64, device=task.device)
+    bucket_stats = torch.zeros((len(SCENE_BUCKETS), 8), dtype=torch.float64, device=task.device)
+    # Per-step navigation health: [steps, steps with the route out of sight, steps in episodes older than 1000 steps].
+    bucket_nav = torch.zeros((len(SCENE_BUCKETS), 3), dtype=torch.float64, device=task.device)
     # Per-bucket posture: torso pitch summed over every step (not just episode ends).
     bucket_pitch = torch.zeros((len(SCENE_BUCKETS), 2), dtype=torch.float64, device=task.device)
     reactive_bucket = SCENE_BUCKETS.index('reactive_standing')
@@ -363,6 +365,13 @@ def collect_rollout(task, learner, *, unroll_length, trajectories, policy_ids):
             for column, flag in enumerate((ended, verdict, metrics['successful'].bool(), undecided, touched, fell)):
                 bucket_stats[:, column].scatter_add_(0, bucket, flag.double())
             bucket_stats[:, 6].scatter_add_(0, bucket, torch.where(done, metrics['episode_length'], 0.).double())
+            lost = ended & metrics.get('episode/route_lost', torch.zeros_like(done)).bool()
+            bucket_stats[:, 7].scatter_add_(0, bucket, lost.double())
+            if 'blocked' in task.navigation:
+                blocked = task.navigation['blocked'] & task.navigation['enabled']
+                old = task.info['step'] > 1000
+                for column, flag in enumerate((torch.ones_like(blocked), blocked, old)):
+                    bucket_nav[:, column].scatter_add_(0, bucket, flag.double())
             if 'torso_pitch_abs' in metrics:
                 bucket_pitch[:, 0].scatter_add_(0, bucket, metrics['torso_pitch_abs'].double())
                 bucket_pitch[:, 1].scatter_add_(0, bucket, torch.ones_like(done, dtype=torch.float64))
@@ -487,9 +496,9 @@ def collect_rollout(task, learner, *, unroll_length, trajectories, policy_ids):
     from .response_split import summaries
     info['metrics'].update({'training/response_split/'+k:v for k,v in
         summaries({k:float(v) for k,v in response_counts.items()}).items()})
-    stats = bucket_stats.cpu().numpy()
+    stats = bucket_stats.cpu().numpy(); nav_stats = bucket_nav.cpu().numpy()
     for index, name in enumerate(SCENE_BUCKETS):
-        ended, resolved, successful, undecided, touched, fell, length_sum = (float(x) for x in stats[index])
+        ended, resolved, successful, undecided, touched, fell, length_sum, lost = (float(x) for x in stats[index])
         decided = resolved + undecided
         if not (ended or resolved):
             continue
@@ -504,6 +513,12 @@ def collect_rollout(task, learner, *, unroll_length, trajectories, policy_ids):
         if steps_in_bucket:
             info['metrics'][f'scene/{name}/torso_pitch_abs'] = float(bucket_pitch[index, 0]) / steps_in_bucket
         info['metrics'][f'scene/{name}/mean_episode_length'] = length_sum / ended if ended else 0.
+        info['metrics'][f'scene/{name}/route_lost_rate'] = lost / ended if ended else 0.
+        nav_steps, blocked_steps, old_steps = (float(x) for x in nav_stats[index])
+        if nav_steps:
+            # Success rates only see episodes that ENDED; these see the robots still out there.
+            info['metrics'][f'scene/{name}/route_blocked_share'] = blocked_steps / nav_steps
+            info['metrics'][f'scene/{name}/episode_over_1000_steps_share'] = old_steps / nav_steps
         if name in GOALLESS_BUCKETS:
             # Standing scenes have no goal, so a success rate would be a constant 0 that
             # reads as failure. Their outcomes live under reactive/ and balance/ instead.
@@ -901,6 +916,8 @@ def create_task(args, *, environment_config=None):
         stand_still_weight=getattr(args, 'stand_still_weight', None), standing_requires_stillness=getattr(args, 'standing_requires_stillness', None),
         sdf_rate_obs=getattr(args, 'sdf_rate_obs', None), reactive_event_weight=getattr(args, 'reactive_event_weight', None),
         spot_hold_weight=getattr(args, 'spot_hold_weight', None), standing_stillness_speed=getattr(args, 'standing_stillness_speed', None),
+        route_recovery_speed=getattr(args, 'route_recovery_speed', None), route_lost_seconds=getattr(args, 'route_lost_seconds', None),
+        goal_hold_seconds=getattr(args, 'goal_hold_seconds', None),
         standing_gf_bonus=getattr(args, 'standing_gf_bonus', None),
         reactive_hand_guidance=getattr(args, 'reactive_hand_guidance', None),
         handsdf_weight=getattr(args, 'handsdf_weight', None),

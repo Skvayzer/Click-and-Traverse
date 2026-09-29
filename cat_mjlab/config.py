@@ -31,7 +31,7 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
                      upright_weight=None,stand_tall_weight=None,torso_rate_weight=None,self_clearance_weight=None,
                      upper_posture_weight=None,upper_home_shoulder_pitch=None,terminate_on_hand_self_contact=None,
                      stand_still_weight=None,standing_requires_stillness=None,sdf_rate_obs=None,reactive_event_weight=None,
-                     spot_hold_weight=None,standing_stillness_speed=None):
+                     spot_hold_weight=None,standing_stillness_speed=None,route_recovery_speed=None,route_lost_seconds=None,goal_hold_seconds=None):
     from cat_ppo.furniture.generalist_config import released_config
     from .collision import PROPOSAL
     config=copy.deepcopy(released_config()['env_config'] if base_config is None else base_config)
@@ -114,6 +114,21 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
         else:scales['stand_still']=weight
     if standing_requires_stillness is not None:
         config['standing_requires_stillness_speed']=(float(standing_stillness_speed) if standing_stillness_speed else .05) if standing_requires_stillness else None
+    # Rooms: when the route is out of sight, follow the stored geodesic goal field instead of
+    # standing still, and end the episode as a failure if the route stays lost.
+    if goal_hold_seconds is not None:
+        hold=float(goal_hold_seconds)
+        if not math.isfinite(hold) or hold<0:raise ValueError('goal_hold_seconds must be finite and >= 0')
+        if hold==0:config.pop('goal_hold_seconds',None)
+        else:config['goal_hold_seconds']=hold
+    if route_recovery_speed is not None:
+        speed=float(route_recovery_speed);lost=float(route_lost_seconds if route_lost_seconds is not None else 5.)
+        if not (math.isfinite(speed) and math.isfinite(lost)) or speed<0 or lost<=0:
+            raise ValueError('route_recovery_speed must be >= 0 and route_lost_seconds > 0')
+        if speed==0:config.pop('route_recovery',None)
+        else:config['route_recovery']=dict(speed=speed,lost_seconds=lost)
+    elif route_lost_seconds is not None:
+        raise ValueError('route_lost_seconds requires route_recovery_speed')
     if spot_hold_weight is not None:
         weight=_signed('spot_hold_weight',spot_hold_weight,positive=False)
         if weight==0:scales.pop('spot_hold',None)
