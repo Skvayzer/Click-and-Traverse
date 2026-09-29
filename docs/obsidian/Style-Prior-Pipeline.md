@@ -23,7 +23,8 @@ Approaching-object (reactive) episodes are **out of scope for now** (2026-09-29)
 | 2026-09-29 | ee03436 | Stage 2 code: style prior, style critic, gates, schedule, tests |
 | 2026-09-29 | c397cff | offline discriminator check; pilot config `configs/pilots/style_20260929.sh` |
 | 2026-09-29 | 34918b1 | gates from geometry probes instead of guidance-field z; config checks accept pre-style checkpoints |
-| 2026-09-29 | — | pilot `cat_style_20260929` launched (40,960 envs, warm start pilot 3, no reactive episodes) |
+| 2026-09-29 | — | pilot `cat_style_20260929` launched (40,960 envs, warm start pilot 3, no reactive episodes); stopped at update 40 — discriminators trained (d_human +0.7…+0.9, d_robot −0.8…−0.9) |
+| 2026-09-29 | (this) | switch to **experts + distillation**; expert `expert_rooms_passages_20260929` launched |
 
 ---
 
@@ -111,7 +112,29 @@ discriminator's expert source.
 `style/<g>/gate_share`, `style/<g>/reward_when_gated`, `style/<g>/d_human`, `style/<g>/d_robot`,
 `style/<g>/d_loss`, `style/<g>/replay`, `learner/style_v_loss`, plus all existing task metrics.
 
-## 7. Not yet done / next
+## 7. Experts + distillation (decided 2026-09-29)
+
+Joint training of all tasks shares one reward-weight set and one experience budget. Measured cost:
+hand-clearance −60 protected hands but cut narrow-passage success 53% → ~30%; starved groups
+eroded (CAT 18% → 7%, narrow 63% → 45%); CAT success flat at ~12–14% for all pilots, while the
+released CAT generalist (itself experts + distillation) beats ours on CAT scenes (0.235 vs 0.193,
+3,200 paired episodes). Gradient cosines between tasks are positive, so the conflict is in shared
+weights and data, not gradients.
+
+| expert | scenes | start | status |
+|---|---|---|---|
+| CAT navigation | CAT procedural / original / published | released CAT generalist | not retrained |
+| rooms + passages | clutter, furniture, table edges, narrow / protected / transition / open passages | style pilot, update 40 | **training** (`configs/pilots/expert_rooms_passages_20260929.sh`) |
+| standing / reactive | later (after VR capture) | — | — |
+
+Expert config: experience masses 0 for CAT groups; furniture .15, clutter+passages+tables .45,
+narrow .22, flat .02, protected .08, transition .08; same rewards and style prior as the pilot.
+
+Distillation (next): DAgger — the student (same observations as now) drives in all scenes, the
+expert for the scene type labels each state with its action, supervised regression; optional PPO
+fine-tune afterwards. The same DAgger machinery later distils into the LiDAR voxel student.
+
+## 8. Not yet done / next
 
 - Reference-state initialisation from sidle / duck clips (planned; not in the first pilot).
 - Protect group and approaching-object episodes (after own VR capture; out of scope now).
