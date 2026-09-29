@@ -204,3 +204,4 @@ cython_debug/
 # motion library (downloaded/retargeted data)
 data/motion_library/
 data/body_models/
+data/raw_downloads/
