@@ -815,6 +815,16 @@ def _rebalance_bank(bank, args):
         narrow = torch.as_tensor([bool('-narrow-' in r['scene_id']) for r in bank.manifest['scenes']],
                                  device=bank.sampling_ids.device)
         bank.sampling_ids = torch.where(narrow, target, bank.sampling_ids)
+    overrides = getattr(args, 'scene_group_override', None) or []
+    if overrides:
+        # Move whole scene types (reporting buckets) into a chosen sampling group, e.g. to give an
+        # expert's scene types their own mass or to switch a type off by putting it in a 0-mass group.
+        buckets = torch.as_tensor(_scene_buckets(bank.manifest), device=bank.sampling_ids.device)
+        for item in overrides:
+            name, group = item.split('=', 1)
+            if name not in SCENE_BUCKETS:
+                raise ValueError(f'Unknown scene type {name}; choose from {SCENE_BUCKETS}')
+            bank.sampling_ids = torch.where(buckets == SCENE_BUCKETS.index(name), int(group), bank.sampling_ids)
     experience = getattr(args, 'experience_masses', None)
     if experience:
         # Solve reset mass from a target share of EXPERIENCE. Sampling masses govern resets,

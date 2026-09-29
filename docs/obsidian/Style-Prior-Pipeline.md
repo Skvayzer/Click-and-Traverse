@@ -26,6 +26,7 @@ Approaching-object (reactive) episodes are **out of scope for now** (2026-09-29)
 | 2026-09-29 | — | pilot `cat_style_20260929` launched (40,960 envs, warm start pilot 3, no reactive episodes); stopped at update 40 — discriminators trained (d_human +0.7…+0.9, d_robot −0.8…−0.9) |
 | 2026-09-29 | d3930cb | switch to **experts + distillation**; expert `expert_rooms_passages_20260929` launched |
 | 2026-09-29 | 4b5d12b | DAgger distillation implemented and CPU-smoke-tested |
+| 2026-09-29 | (this) | rooms+passages expert split; `--scene-group-override`; rooms+tables expert launched |
 
 ---
 
@@ -125,7 +126,9 @@ weights and data, not gradients.
 | expert | scenes | start | status |
 |---|---|---|---|
 | CAT navigation | CAT procedural / original / published | released CAT generalist | not retrained |
-| rooms + passages | clutter, furniture, table edges, narrow / protected / transition / open passages | style pilot, update 40 | **training** (`configs/pilots/expert_rooms_passages_20260929.sh`) |
+| ~~rooms + passages~~ | (combined; stopped at update 36) | style pilot, update 40 | split: one weight set was a compromise between tucked hands (passages) and raised/kept-away hands (tables) — weakest skills table edges 30%, narrow 41% at update 30 |
+| **rooms + tables** | clutter, furniture, table edges | combined expert, update 30 | **training** (`configs/pilots/expert_rooms_tables_20260929.sh`): hand clearance −40; furniture .25, clutter .43, table edges .30 (own group), flat .02 |
+| passages | narrow / protected / transition / open | combined expert, update 30 | next: mild hand clearance, sidle style |
 | standing / reactive | later (after VR capture) | — | — |
 
 Expert config: experience masses 0 for CAT groups; furniture .15, clutter+passages+tables .45,

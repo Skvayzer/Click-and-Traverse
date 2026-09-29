@@ -56,6 +56,9 @@ def parser():
                             help="Legacy: apply the bank row's certified pose at reset instead of the ordinary pose")
         target.add_argument("--reactive-single-bucket", action="store_true",
                             help="Legacy: keep the first row's object parameters for every re-arm instead of re-drawing")
+        target.add_argument("--scene-group-override", action="append", metavar="SCENE_TYPE=GROUP",
+                            help="Move a scene type (runner.SCENE_BUCKETS) into sampling group GROUP; repeatable. "
+                                 "Combine with --experience-masses to give it its own share, or 0 to switch it off")
         target.add_argument("--distill-expert", action="append", metavar="NAME=PATH",
                             help="DAgger distillation: frozen expert (.npz archive or native checkpoint); repeatable")
         target.add_argument("--distill-route", action="append", metavar="NAME=BUCKET,BUCKET",
