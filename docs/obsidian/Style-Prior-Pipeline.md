@@ -21,8 +21,9 @@ Approaching-object (reactive) episodes are **out of scope for now** (2026-09-29)
 | 2026-09-29 | 6bc331a | library v1: per-frame tags, 50 Hz, 89-D features, preview renderer |
 | 2026-09-29 | 6ea4ffa | obstacle groups only from obstacle-selected clips; kick-proof step-over |
 | 2026-09-29 | ee03436 | Stage 2 code: style prior, style critic, gates, schedule, tests |
-| 2026-09-29 | 2d1f6b0 | offline discriminator check; pilot config `configs/pilots/style_20260929.sh` |
-| 2026-09-29 | (next) | gates from geometry probes instead of guidance-field z; config checks accept pre-style checkpoints |
+| 2026-09-29 | c397cff | offline discriminator check; pilot config `configs/pilots/style_20260929.sh` |
+| 2026-09-29 | 34918b1 | gates from geometry probes instead of guidance-field z; config checks accept pre-style checkpoints |
+| 2026-09-29 | — | pilot `cat_style_20260929` launched (40,960 envs, warm start pilot 3, no reactive episodes) |
 
 ---
 
