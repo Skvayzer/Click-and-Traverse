@@ -94,8 +94,18 @@ def compute_features(m, qpos, dt=CONTROL_DT):
     return np.concatenate([root[:, 2:3], gravity, lin_vel, ang_vel, dof, grad(dof), rel.reshape(T, -1)], 1).astype(np.float32)
 
 
-def group_of(masks):
+# Obstacle groups (sidle, duck/step, crawl) take frames ONLY from clips selected for obstacle
+# skills (the AMASS filter), never from the everyday-style sources: there a fighting crouch or a
+# kick trips the same detectors (measured: ~1/3 of the first duck/step group was fighting,
+# kicks, jumps and box pick-ups).
+OBSTACLE_LIBRARIES = {"amass_g1"}
+EXCLUDE_FROM_OBSTACLE = __import__("re").compile(r"fight|combo|kick|punch|box(?!_)|martial|dance|jump|karate|boxing", __import__("re").I)
+
+
+def group_of(masks, obstacle_eligible=True):
     g = np.zeros(len(masks["walk"]), np.int8)
+    if not obstacle_eligible:
+        return g
     g[masks["sidle"]] = 1
     g[masks["duck"] | masks["step_high"]] = 2
     g[masks["crawl"]] = 3
@@ -140,7 +150,9 @@ def main(argv=None):
             parts["qpos"].append(qpos); parts["features"].append(compute_features(m, qpos).astype(np.float16))
             nx = np.ones(T, bool); nx[-1] = False; parts["next_ok"].append(nx)
             parts["clip"].append(np.full(T, ci, np.int32)); parts["skills"].append(np.stack([masks[k] for k in SKILLS], 1))
-            parts["group"].append(group_of(masks)); parts["context"].append(context)
+            eligible = lib.name in OBSTACLE_LIBRARIES and not EXCLUDE_FROM_OBSTACLE.search(entry["clip_id"] + " " + entry.get("source_member", ""))
+            table[-1]["obstacle_eligible"] = bool(eligible)
+            parts["group"].append(group_of(masks, eligible)); parts["context"].append(context)
             if len(table) % 250 == 0:
                 print(f"{len(table)} clips", flush=True)
     arrays = {k: np.concatenate(v) for k, v in parts.items()}

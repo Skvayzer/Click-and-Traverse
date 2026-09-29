@@ -114,7 +114,9 @@ def frame_masks(clip, kin):
         duck=(kin["head_z"] < 1.02) & (z > 0.40) & moving & ~hands_down,
         # crawl = travelling low with a hand on/near the floor or the torso pitched over
         crawl=(z < 0.60) & moving & (hands_down | (kin["torso_tilt"] > 50)),
-        step_high=(np.abs(kin["foot_z"][:, 0] - kin["foot_z"][:, 1]) > 0.22) & moving & (z > 0.75 * G1_STAND_PELVIS),
+        # step over = a foot lifted 0.22-0.55 m (a kick goes higher) while the BODY keeps travelling forward
+        step_high=(np.abs(kin["foot_z"][:, 0] - kin["foot_z"][:, 1]) > 0.22) & (np.abs(kin["foot_z"][:, 0] - kin["foot_z"][:, 1]) < 0.55)
+                  & (fwd > 0.2) & (z > 0.75 * G1_STAND_PELVIS),
         stand=(speed < 0.05) & upright,
         # carry = both hands in front of the body at chest/waist height, upright (not reaching to the floor)
         carry=(kin["hand_local"][:, :, 0] > 0.20).all(-1) & (kin["hand_local"][:, :, 2] > -0.15).all(-1)
