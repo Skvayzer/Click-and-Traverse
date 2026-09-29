@@ -25,7 +25,7 @@ Approaching-object (reactive) episodes are **out of scope for now** (2026-09-29)
 | 2026-09-29 | 34918b1 | gates from geometry probes instead of guidance-field z; config checks accept pre-style checkpoints |
 | 2026-09-29 | — | pilot `cat_style_20260929` launched (40,960 envs, warm start pilot 3, no reactive episodes); stopped at update 40 — discriminators trained (d_human +0.7…+0.9, d_robot −0.8…−0.9) |
 | 2026-09-29 | d3930cb | switch to **experts + distillation**; expert `expert_rooms_passages_20260929` launched |
-| 2026-09-29 | (next) | DAgger distillation implemented and CPU-smoke-tested |
+| 2026-09-29 | 4b5d12b | DAgger distillation implemented and CPU-smoke-tested |
 
 ---
 
