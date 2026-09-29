@@ -981,7 +981,13 @@ class CATTask:
             from .style_prior import gate_weights
             hs=getattr(self,'_heading_sdf',None)
             if hs is None:hs=torch.full((self.num_envs,4),2.,device=self.device)
-            weights,gap=gate_weights(hs,i['gf'][:,0,2],i['gf'][:,3:5,2].amax(-1))
+            from .style_prior import context_probe_points
+            cmd=i['command'][:,1:3];norm=torch.linalg.vector_norm(cmd,dim=-1,keepdim=True)
+            yaw=i['pelvis_rpy'][:,2];facing=torch.stack((yaw.cos(),yaw.sin()),-1)
+            direction=torch.where(norm>1e-3,cmd/norm.clamp_min(1e-6),facing)   # standing: probe where it faces
+            probes=context_probe_points(i['positions'][:,1,:2],direction)
+            psdf=self.bank.sample('sdf',probes,self.scene_ids).reshape(self.num_envs,-1)
+            weights,gap=gate_weights(hs,psdf[:,:2].amin(-1),psdf[:,2:].amin(-1))
             self.style_transition=(style_now,self._style_features(),weights)
             metrics['style/gap_m']=gap
         # Only physically completed worlds reset; cached terminal observations

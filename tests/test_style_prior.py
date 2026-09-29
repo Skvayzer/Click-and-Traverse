@@ -15,12 +15,13 @@ def test_gate_weights_sum_to_one_and_open_in_context():
     from cat_mjlab.style_prior import gate_weights
     open_space = torch.full((1, 4), 1.0)
     narrow = torch.full((1, 4), .04)                  # 0.40 m corridor: 0.32 + 0.04 + 0.04
-    w, gap = gate_weights(torch.cat((open_space, narrow)), torch.tensor([0., 0.]), torch.tensor([0., 0.]))
+    far = torch.tensor([1., 1.])
+    w, gap = gate_weights(torch.cat((open_space, narrow)), far, far)
     assert torch.allclose(w.sum(-1), torch.ones(2))
     assert w[0, 0] == 1 and w[1, 1] == 1 and abs(float(gap[1]) - .40) < 1e-6
-    w, _ = gate_weights(open_space.repeat(2, 1), torch.tensor([-.6, 0.]), torch.tensor([0., .6]))   # duck / step
+    w, _ = gate_weights(open_space.repeat(2, 1), torch.tensor([.02, 1.]), torch.tensor([1., .02]))   # beam overhead / box ahead
     assert w[0, 2] == 1 and w[1, 2] == 1
-    w, _ = gate_weights(narrow, torch.tensor([-.6]), torch.tensor([0.]))                           # both: capped at 1
+    w, _ = gate_weights(narrow, torch.tensor([.02]), torch.tensor([1.]))                               # both: capped at 1
     assert torch.allclose(w.sum(-1), torch.ones(1)) and w[0, 0] == 0
 
 

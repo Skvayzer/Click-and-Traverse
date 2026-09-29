@@ -486,7 +486,9 @@ class Learner:
                     optimizer=self.optimizer.state_dict(), updates=self.updates, env_steps=self.env_steps)
 
     def load_state_dict(self, state):
-        if state.get("schema") != "cat-mjlab-learner-v1" or dict(state.get("config", {}), max_action_std=state.get("config", {}).get("max_action_std")) != asdict(self.config):
+        saved = dict(state.get("config", {}), max_action_std=state.get("config", {}).get("max_action_std"))
+        saved.setdefault("style_critic", False)                   # field added 2026-09-29
+        if state.get("schema") != "cat-mjlab-learner-v1" or saved != asdict(self.config):
             raise ValueError("Learner schema or configuration differs")
         self.model.load_state_dict(state["model"], strict=True)
         self.optimizer.load_state_dict(state["optimizer"])

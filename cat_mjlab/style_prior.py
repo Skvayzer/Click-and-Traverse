@@ -46,17 +46,34 @@ def robot_features(qpos, qvel, site_xpos, body_xpos, pelvis_xmat):
                       heading(keys).reshape(len(qpos), -1)), -1)
 
 
-def gate_weights(heading_sdf, head_gf_z, feet_gf_z_max, *, gap_open=.75, gap_tight=.55, half_width=.16):
+def context_probe_points(root_xy, direction, *, head_z=1.30, shin_z=.25, ahead=(0., .30), shin_ahead=(.25, .45)):
+    """[N,4,3] geometry probes: 2 at standing-head height (here, ahead), 2 at shin height ahead.
+
+    The guidance fields cannot be used for this: their vertical components are non-zero almost
+    everywhere (measured: head field z < -0.1 in 90-100% of CAT/passage steps, feet field z > 0.1
+    in 100%), so they do not indicate an obstacle. Distances to geometry do.
+    """
+    pts = []
+    for a in ahead:
+        pts.append(torch.cat((root_xy + a * direction, torch.full_like(root_xy[:, :1], head_z)), -1))
+    for a in shin_ahead:
+        pts.append(torch.cat((root_xy + a * direction, torch.full_like(root_xy[:, :1], shin_z)), -1))
+    return torch.stack(pts, 1)
+
+
+def gate_weights(heading_sdf, overhead_sdf, shin_sdf, *, gap_open=.75, gap_tight=.55, half_width=.16):
     """[N,3] weights for (locomotion, sidle, duck_step), summing to 1.
 
     heading_sdf [N,4]: distance-field samples at the counterfactual shoulder probes
     (+normal, -normal, ahead+normal, ahead-normal) used by the heading reward.
+    overhead_sdf [N]: min distance at standing-head height (here / 0.3 m ahead).
+    shin_sdf [N]: min distance at shin height 0.25-0.45 m ahead.
     """
     left = torch.minimum(heading_sdf[:, 0], heading_sdf[:, 2]); right = torch.minimum(heading_sdf[:, 1], heading_sdf[:, 3])
     gap = 2 * half_width + left.clamp_min(0) + right.clamp_min(0)
     w_sidle = ((gap_open - gap) / (gap_open - gap_tight)).clamp(0, 1)
-    w_duck = ((-head_gf_z - .1) / .3).clamp(0, 1)
-    w_step = ((feet_gf_z_max - .1) / .3).clamp(0, 1)
+    w_duck = ((.25 - overhead_sdf) / .20).clamp(0, 1)     # obstacle within 25 cm of where an upright head goes
+    w_step = ((.15 - shin_sdf) / .10).clamp(0, 1)          # obstacle at shin height just ahead
     w_ds = torch.maximum(w_duck, w_step)
     total = (w_sidle + w_ds).clamp_min(1.)                            # obstacle groups never exceed 1 together
     w_sidle, w_ds = w_sidle / total, w_ds / total

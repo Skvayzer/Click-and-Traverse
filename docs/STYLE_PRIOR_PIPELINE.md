@@ -1,0 +1,119 @@
+---
+title: Style-prior pipeline (task RL + context-gated human motion prior)
+tags: [robotics, humanoid, unitree-g1, amp, t-gmp, motion-prior, pipeline]
+status: living document — update with every change
+related: [[CAT-WholeBody-Project-State]], [[Motion-Prior-Pipeline]]
+---
+
+# Style-prior pipeline
+
+Goal: the reward-trained CAT whole-body policy keeps deciding **what** to do (navigation,
+collision avoidance, hand protection, posture); a learned motion prior decides **how** it moves,
+so motion looks human. Approach: **AMP discriminators, gated by scene context (the T-GMP idea)**.
+Approaching-object (reactive) episodes are **out of scope for now** (2026-09-29).
+
+## Change log
+| date | commit | change |
+|---|---|---|
+| 2026-09-28 | 2474ce0, 6dc89ac | PHUMA / OmniRetarget streamed fetch (range reads), skill tagging |
+| 2026-09-29 | e73aad7, d44c6d9 | AMASS filter (run on the laptop; only filtered 62 MB transferred) |
+| 2026-09-29 | 1cfc154 | AMASS (SMPL-X) → G1 retargeting with GMR, 938 clips, 0 errors |
+| 2026-09-29 | 6bc331a | library v1: per-frame tags, 50 Hz, 89-D features, preview renderer |
+| 2026-09-29 | 6ea4ffa | obstacle groups only from obstacle-selected clips; kick-proof step-over |
+| 2026-09-29 | ee03436 | Stage 2 code: style prior, style critic, gates, schedule, tests |
+| 2026-09-29 | 2d1f6b0 | offline discriminator check; pilot config `configs/pilots/style_20260929.sh` |
+| 2026-09-29 | (next) | gates from geometry probes instead of guidance-field z; config checks accept pre-style checkpoints |
+
+---
+
+## 1. Motion library (`data/motion_library/library_v1.{npz,json}`)
+
+**Sources**
+| source | how obtained | licence |
+|---|---|---|
+| PHUMA (G1-native) | streamed subset, everyday categories (humanml, idea400, EgoBody, game_motion, custom, humman, GRAB) | Apache-2.0 |
+| OmniRetarget (G1-native) | 200 unique box-carry clips (augmented copies removed) | MIT |
+| AMASS CMU / KIT / BMLmovi / SFU | filtered on the laptop (`filter_amass_local.py`), retargeted with GMR (`retarget_amass.py`) | non-commercial |
+
+**Processing**: joint order verified identical to our G1 model; per-frame skill tags from our
+G1 kinematics (`tag_clips.py`): walk, sidle, duck (head < 1.02 m while travelling, hands off the
+floor), crawl, step-over (0.22–0.55 m lift with forward travel), stand, carry; resampled to the
+50 Hz control rate; 89-D features (`build_library.py`).
+
+**Style groups** (after cleaning): locomotion 270 min, sidle 7.0 min, duck/step 3.0 min,
+crawl 7.7 min (disabled), protect 0 (reserved for own VR capture). Obstacle groups take frames only
+from obstacle-selected AMASS clips, never from fighting/kick/dance/jump or box-pickup clips.
+
+**Features** (heading frame, yaw removed): pelvis height; gravity in the pelvis frame; root linear
+velocity; root angular velocity (pelvis frame); 29 joint angles; 29 joint velocities; positions of
+head, 2 palms, 2 ankles, 2 elbows relative to the pelvis. The simulator computes the same vector
+(`style_prior.robot_features`); parity is unit-tested.
+
+## 2. What is trained
+
+| component | trained | how |
+|---|---|---|
+| policy (actor, 226 inputs → 29 joint targets) | yes, warm start from pilot 3 | PPO |
+| task critic | yes, warm start | value loss on task reward |
+| style critic (new value head) | yes, fresh | value loss on style reward |
+| 3 discriminators (locomotion, sidle, duck/step) | yes, fresh, online | LSGAN + gradient penalty (5), 8 steps × 4096 per update |
+| library, gates, task rewards, scenes | fixed | — |
+
+## 3. Context gating (the T-GMP idea)
+
+Every control step, per environment:
+- **gap width** from the heading probes (free space at ±0.16 m beside the shoulders, here and one stride ahead);
+- **duck** when geometry is within 25 cm of where an upright head goes (distance field sampled at
+  1.30 m height, here and 0.3 m ahead); **step** when geometry is at shin height (0.25 m) 0.25–0.45 m
+  ahead. (First version used the guidance fields' vertical components; measured non-zero almost
+  everywhere → duck/step gate open in 57–69% of steps. Geometry probes: 0% in rooms/tables,
+  13–38% in CAT hurdle/beam scenes, sidle gate 43% in narrow passages.)
+
+Gate weights (sum to 1): `w_sidle` ramps 0 → 1 as the gap narrows 0.75 → 0.55 m;
+`w_duck_step` = max(duck, step) ramps (overhead distance 0.25 → 0.05 m, shin distance 0.15 → 0.05 m); `w_locomotion` = the rest, so a
+discriminator is always active (fallback = everyday human motion; never "task only").
+
+Style reward: `r_style = Σ_g w_g · max(0, 1 − ¼ (D_g(f_t, f_t+1) − 1)²)` ∈ [0, 1].
+Each D_g trains on human transitions of its group vs robot transitions from steps where
+`w_g ≥ 0.3` (replay buffer, 10% of steps stored).
+
+T-GMP's generative part (a terrain-conditioned CVAE that *generates expert samples for the robot's
+current terrain*) is planned for when paired (motion, geometry) data exists, i.e. after our own VR
+capture in the procedural scenes. It does not change the action space; it only replaces the
+discriminator's expert source.
+
+## 4. Combining with the task
+
+- Two critics; total advantage `A = norm(A_task) + λ · norm(A_style)`.
+- λ schedule: 0 for 20 updates (discriminators and style critic warm up), linear ramp to 0.3 over
+  50 updates. **Guard**: while CAT navigation, narrow-zone, protected-zone or clutter-room success
+  is > 5 points below its value at ramp start, λ backs off by 10% per update instead of rising.
+- λ = 0 leaves the PPO loss exactly unchanged (unit-tested).
+
+## 5. Checks before training (done)
+
+- Feature parity simulator ↔ library: < 5e-3 on 25 sampled frames.
+- **Offline discriminator check** (`offline_discriminator_check.py`), locomotion group vs 11
+  recordings of the current policy (held-out data):
+
+  | discriminator input | human reward | robot reward |
+  |---|---|---|
+  | all features | 0.999 | 0.158 |
+  | positions only (no velocities) | 0.979 | 0.203 |
+
+  Largest differences robot vs human: lateral velocity (sideways walking), waist pitch (hunch),
+  elbow / palm positions (arm posture), ankle roll — the defects seen in the videos.
+
+## 6. Metrics (wandb)
+
+`style/reward_mean`, `style/lambda`, `style/guard_held_metrics`, per group
+`style/<g>/gate_share`, `style/<g>/reward_when_gated`, `style/<g>/d_human`, `style/<g>/d_robot`,
+`style/<g>/d_loss`, `style/<g>/replay`, `learner/style_v_loss`, plus all existing task metrics.
+
+## 7. Not yet done / next
+
+- Reference-state initialisation from sidle / duck clips (planned; not in the first pilot).
+- Protect group and approaching-object episodes (after own VR capture; out of scope now).
+- Full T-GMP CVAE (after paired capture).
+- Crawl group (simulation only).
+- LiDAR voxel student (Gallant-style) via DAgger for hardware.

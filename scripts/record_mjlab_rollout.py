@@ -83,7 +83,9 @@ def load_policy(path, *, device, policy_id):
         raise ValueError("Expected native mjlab best.pt or resume.pt")
     config = LearnerConfig(**config)
     expected_config = json.loads(json.dumps(asdict(config)))
-    if snapshot.get("contract", {}).get("learner_config") != expected_config:
+    saved_config = dict(snapshot.get("contract", {}).get("learner_config") or {})
+    saved_config.setdefault("style_critic", False)          # field added 2026-09-29; older contracts lack it
+    if saved_config != expected_config:
         raise ValueError("Saved learner configuration differs from its training contract")
     policies = config.num_policies if config.algorithm == "sapg" else 1
     if not 0 <= policy_id < policies:
