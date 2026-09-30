@@ -192,6 +192,18 @@ hand vs other arm's wrist ~1%, hand vs pelvis 0.3%; 3 of 12 episodes, the other 
 - metrics: `self_clearance/hand_contact_{trunk,head,arm,hand}` (share of steps), episode flag
   `hand_body_contact`. Cost: +1% simulation step time (CPU benchmark).
 
+## 7c. Style vs task, smoothness, table gates (v3-v5, 2026-09-30)
+
+- v2 analysis: robot joint accelerations 3-14x human; the discriminator scored vibration (style reward
+  flat ~0.3 at every speed). v3: action std cap 0.25, action-rate -0.02, joint-acc -5e-6, discriminator
+  on pose features with 0.1 s stride, gradient penalty 10, 4 steps. Jitter only -17%; style reward held.
+- v4 (warm start v2 update 200, + hand-body contact -2): success fell during the style ramp again
+  (rooms 81 -> 70%, tables 76 -> 42%); third run with the same pattern; the guard never fired.
+- v5 (warm start v4 update 20): style weight 0.1; guard on table_edges/clutter_dense/furniture_dense
+  success averaged over 10 updates (`--style-guard-watch/--style-guard-window`), warmup 30;
+  hand-body contact -10; `--heading-hand-probes` (0.44 m table gaps: shoulder clearance +0.42 m kept the
+  forward gate open, hand clearance -0.08 m now closes it; 1.5 m gaps unchanged).
+
 ## 8. Not yet done / next
 
 - Reference-state initialisation from sidle / duck clips (planned; not in the first pilot).
