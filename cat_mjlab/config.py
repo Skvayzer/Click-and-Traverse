@@ -31,7 +31,8 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
                      upright_weight=None,stand_tall_weight=None,torso_rate_weight=None,self_clearance_weight=None,
                      upper_posture_weight=None,upper_home_shoulder_pitch=None,terminate_on_hand_self_contact=None,
                      stand_still_weight=None,standing_requires_stillness=None,sdf_rate_obs=None,reactive_event_weight=None,
-                     spot_hold_weight=None,standing_stillness_speed=None,route_recovery_speed=None,route_lost_seconds=None,goal_hold_seconds=None):
+                     spot_hold_weight=None,standing_stillness_speed=None,route_recovery_speed=None,route_lost_seconds=None,goal_hold_seconds=None,
+                     action_rate_weight=None,joint_acc_weight=None):
     from cat_ppo.furniture.generalist_config import released_config
     from .collision import PROPOSAL
     config=copy.deepcopy(released_config()['env_config'] if base_config is None else base_config)
@@ -116,6 +117,15 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
         config['standing_requires_stillness_speed']=(float(standing_stillness_speed) if standing_stillness_speed else .05) if standing_requires_stillness else None
     # Rooms: when the route is out of sight, follow the stored geodesic goal field instead of
     # standing still, and end the episode as a failure if the route stays lost.
+    # Smoothness. action_rate: first+second differences of the policy action (a correct rate term;
+    # the legacy smoothness_action only sees the first difference). joint_acc_weight overrides the
+    # legacy smoothness_joint scale (0.01 qd^2 + qdd^2).
+    if action_rate_weight is not None:
+        weight=_signed('action_rate_weight',action_rate_weight,positive=False)
+        if weight==0:scales.pop('action_rate',None)
+        else:scales['action_rate']=weight
+    if joint_acc_weight is not None:
+        scales['smoothness_joint']=_signed('joint_acc_weight',joint_acc_weight,positive=False)
     if goal_hold_seconds is not None:
         hold=float(goal_hold_seconds)
         if not math.isfinite(hold) or hold<0:raise ValueError('goal_hold_seconds must be finite and >= 0')

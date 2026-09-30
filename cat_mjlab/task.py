@@ -402,6 +402,7 @@ class CATTask:
     def reset(self,env_ids=None,scene_ids=None):
         ids=self.all_ids if env_ids is None else env_ids.long();n=len(ids)
         if n==0:return self.obs
+        if getattr(self,'_style_age',None) is not None:self._style_age[ids]=0     # strided style pairs restart
         if scene_ids is None:
             cdf=self.probabilities.cumsum(0);cdf=cdf/cdf[-1]
             scene_ids=torch.searchsorted(cdf,self._rand((n,))).clamp_max(self.bank.count-1)
@@ -652,6 +653,7 @@ class CATTask:
         rewards['wholebody_arm_clearance']=(float(_get(self.config,'arm_clearance_margin',.08))-i['elbow_clearance']).clamp_min(0).square().mean(-1)*enabled
         if self.stabilization:rewards.update(costs)
         scales=_get(self.config,'reward_config.scales',{})
+        if 'action_rate' in scales:rewards['action_rate']=self._action_rate
         if 'self_clearance' in scales:
             penalty,gap=tm.self_clearance_terms(i['positions'][:,5:7],self.hand_radii,d.xpos[:,self.capsule_a_ids],d.xpos[:,self.capsule_b_ids],
                 self.capsule_radii,margin=float(_get(self.config,'self_clearance_margin',.04)))
@@ -907,6 +909,10 @@ class CATTask:
                  command=command,command_delay=command_delay,odom_delay=odom,stop_timestep=stop,phase=phase,gait=gait,
                  positions=positions,velocities=velocities)
         i['push_step']+=1;i['step']+=1
+        if 'action_rate' in _get(self.config,'reward_config.scales',{}):
+            # First and second differences of the policy action. The legacy smoothness_action term
+            # reads last_act AFTER it is overwritten below, so its rate parts are (0, first difference).
+            self._action_rate=((action-i['last_act']).square()+(action-2*i['last_act']+i['last_last_act']).square()).sum(-1)
         i['last_last_act']=i['last_act'].clone();i['last_act']=action.clone()
         self._observe(ids,contacts[:,:2])
         terminated,faults=self._termination(regions,contacts)
@@ -1021,7 +1027,20 @@ class CATTask:
             probes=context_probe_points(i['positions'][:,1,:2],direction)
             psdf=self.bank.sample('sdf',probes,self.scene_ids).reshape(self.num_envs,-1)
             weights,gap=gate_weights(hs,psdf[:,:2].amin(-1),psdf[:,2:].amin(-1))
-            self.style_transition=(style_now,self._style_features(),weights)
+            first=style_now
+            stride=int(getattr(self.style_prior,'stride',1))
+            if stride>1:
+                # Pairs (s_t+1-k, s_t+1): a 0.1 s stride judges motion, not 50 Hz vibration.
+                # Ring of the last k step-start features; worlds younger than k steps get zero weight.
+                if getattr(self,'_style_hist',None) is None or self._style_hist.shape[0]!=stride:
+                    self._style_hist=torch.zeros((stride,*style_now.shape),device=self.device)
+                    self._style_ptr=0;self._style_age=torch.zeros(self.num_envs,dtype=torch.long,device=self.device)
+                self._style_hist[self._style_ptr]=style_now;self._style_age+=1
+                self._style_ptr=(self._style_ptr+1)%stride
+                valid=self._style_age>=stride
+                first=torch.where(valid[:,None],self._style_hist[self._style_ptr],style_now)
+                weights=weights*valid[:,None]
+            self.style_transition=(first,self._style_features(),weights)
             metrics['style/gap_m']=gap
         # Only physically completed worlds reset; cached terminal observations
         # and terminal rewards retain the transition before reset.

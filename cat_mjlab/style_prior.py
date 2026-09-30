@@ -92,36 +92,71 @@ class Discriminator(nn.Module):
         return self.head(self.body(x)).squeeze(-1)
 
 
+FEATURE_SETS = ("all", "pose")
+
+
+def feature_mask(names, feature_set):
+    """Boolean mask over the 89 library features.
+
+    all:  every feature (original).
+    pose: no joint velocities and no wrist angles. Measured on update-380 rollouts: robot joint
+          accelerations are 3-14x human (wrists, ankle roll, waist worst), joint velocities alone
+          separated robot from human almost as well as all features, so the discriminator scored
+          vibration, not posture or gait. Motion is still seen through the stride between the two
+          frames of a pair. The Dex3 hands are fixed, so wrist angles carry no style.
+    """
+    if feature_set not in FEATURE_SETS:
+        raise ValueError(f"style feature set must be one of {FEATURE_SETS}")
+    if feature_set == "all":
+        return torch.ones(len(names), dtype=torch.bool)
+    return torch.tensor([not (n.startswith("qd_") or (n.startswith("q_") and "wrist" in n)) for n in names])
+
+
+def strided_pairs(next_ok, stride):
+    """Frames i whose i+1..i+stride stay in the same clip (next_ok chains), for (f_i, f_i+stride) pairs."""
+    ok = next_ok.clone()
+    for k in range(1, stride):
+        shifted = torch.zeros_like(next_ok); shifted[:-k] = next_ok[k:]
+        ok &= shifted
+    return ok
+
+
 class StylePrior:
     def __init__(self, library, *, device, lr=5e-5, grad_penalty=5., replay_size=500_000, batch=4096, steps=8,
-                 store_fraction=.1, min_gate=.3):
+                 store_fraction=.1, min_gate=.3, stride=1, feature_set="all"):
         library = Path(library)
         data = __import__("numpy").load(str(library) + ".npz")
         meta = json.loads(Path(str(library) + ".json").read_text())
         names = meta["summary"]["groups"]
         self.device = torch.device(device)
+        if int(stride) < 1:
+            raise ValueError("style stride must be >= 1")
+        self.stride, self.feature_set = int(stride), feature_set
+        self.mask = feature_mask(meta["summary"]["feature_names"], feature_set).to(self.device)
         feats = torch.as_tensor(data["features"].astype("float32"), device=self.device)
         next_ok = torch.as_tensor(data["next_ok"], device=self.device)
         group = torch.as_tensor(data["group"].astype("int64"), device=self.device)
         # Fixed normalisation from the library, applied identically to robot and human features.
         self.mean = feats.mean(0); self.std = feats.std(0).clamp_min(1e-3)
-        self.features = (feats - self.mean) / self.std
+        self.features = ((feats - self.mean) / self.std)[:, self.mask]
+        pair_ok = strided_pairs(next_ok, self.stride)
         self.human_index = []
         for g in GROUPS:
-            idx = torch.nonzero(next_ok & (group == names.index(g))).flatten()
+            idx = torch.nonzero(pair_ok & (group == names.index(g))).flatten()
             if not len(idx):
                 raise ValueError(f"motion library has no transitions for style group {g}")
             self.human_index.append(idx)
         self.minutes = {g: round(len(i) * .02 / 60, 1) for g, i in zip(GROUPS, self.human_index)}
-        self.nets = nn.ModuleList([Discriminator() for _ in GROUPS]).to(self.device)
+        dim = 2 * int(self.mask.sum())
+        self.nets = nn.ModuleList([Discriminator(dim=dim) for _ in GROUPS]).to(self.device)
         self.opt = torch.optim.Adam(self.nets.parameters(), lr=lr, betas=(.9, .999))
         self.gp, self.batch, self.steps = grad_penalty, batch, steps
         self.store_fraction, self.min_gate = store_fraction, min_gate
-        self.replay = [torch.zeros((replay_size, 2 * FEATURE_DIM), device=self.device) for _ in GROUPS]
+        self.replay = [torch.zeros((replay_size, dim), device=self.device) for _ in GROUPS]
         self.filled = [0] * len(GROUPS); self.cursor = [0] * len(GROUPS)
 
     def normalize(self, f):
-        return (f - self.mean) / self.std
+        return ((f - self.mean) / self.std)[:, self.mask]
 
     @torch.no_grad()
     def reward(self, f_now, f_next, weights):
@@ -150,7 +185,7 @@ class StylePrior:
             losses = []
             for _ in range(self.steps):
                 hi = self.human_index[g][torch.randint(len(self.human_index[g]), (self.batch,), device=self.device)]
-                human = torch.cat((self.features[hi], self.features[hi + 1]), -1).requires_grad_(True)
+                human = torch.cat((self.features[hi], self.features[hi + self.stride]), -1).requires_grad_(True)
                 robot = self.replay[g][torch.randint(self.filled[g], (self.batch,), device=self.device)]
                 d_h, d_r = net(human), net(robot)
                 grad = torch.autograd.grad(d_h.sum(), human, create_graph=True)[0]

@@ -20,3 +20,13 @@ def test_defaults_leave_existing_runs_unchanged():
     from cat_mjlab.config import wholebody_config
     c = wholebody_config()
     assert 'goal_hold_seconds' not in c and 'route_recovery' not in c
+
+
+def test_smoothness_flags():
+    from cat_mjlab.config import wholebody_config
+    c = wholebody_config(action_rate_weight=-.02, joint_acc_weight=-5e-6)
+    s = c['reward_config']['scales']
+    assert s['action_rate'] == -.02 and s['smoothness_joint'] == -5e-6
+    assert 'action_rate' not in wholebody_config(c, action_rate_weight=0)['reward_config']['scales']
+    with pytest.raises(ValueError):
+        wholebody_config(action_rate_weight=.1)

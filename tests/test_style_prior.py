@@ -63,3 +63,14 @@ def test_style_lambda_zero_leaves_the_loss_unchanged():
     assert "style_v_loss" in m1 and float(m1["style_v_loss"]) > 0
     _, m2 = compute_loss(model, data, cfg, style_lambda=.5)
     assert not torch.allclose(m2["policy_loss"], m0["policy_loss"])
+
+
+def test_pose_feature_set_and_strided_pairs():
+    from cat_mjlab.style_prior import feature_mask, strided_pairs
+    names = ["root_z", "qd_left_knee", "q_left_knee", "q_left_wrist_roll", "head_x"]
+    assert feature_mask(names, "all").all()
+    assert feature_mask(names, "pose").tolist() == [True, False, True, False, True]
+    next_ok = torch.tensor([True, True, True, False, True, True, True, True, False])   # clips end at 3 and 8
+    assert strided_pairs(next_ok, 1).tolist() == next_ok.tolist()
+    # a stride-3 pair starting at i needs next_ok[i], [i+1], [i+2]
+    assert strided_pairs(next_ok, 3).tolist() == [True, False, False, False, True, True, False, False, False]

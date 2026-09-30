@@ -69,6 +69,11 @@ def parser():
         target.add_argument("--distill-lr", type=float, default=3e-4)
         target.add_argument("--style-library", help="Motion library (path without .npz) -> context-gated adversarial style reward")
         target.add_argument("--style-weight", type=float, default=.3, help="Target weight of the normalised style advantage")
+        target.add_argument("--style-stride", type=int, help="Discriminator pairs (s_t, s_t+k); default 1 (original). 5 = 0.1 s")
+        target.add_argument("--style-features", choices=("all", "pose"),
+                            help="all (original) or pose: no joint velocities, no wrist angles")
+        target.add_argument("--style-grad-penalty", type=float, help="Discriminator gradient penalty (default 5)")
+        target.add_argument("--style-disc-steps", type=int, help="Discriminator steps per update (default 8)")
         target.add_argument("--style-warmup", type=int, default=20, help="Updates with style weight 0 (discriminators warm up)")
         target.add_argument("--style-ramp", type=int, default=50, help="Updates to ramp the style weight to its target")
         target.add_argument("--style-guard-tolerance", type=float, default=.05,
@@ -78,6 +83,10 @@ def parser():
         target.add_argument("--sdf-rate-obs", action="store_true", default=None,
                             help="Add the rate of change of the hand/elbow distance samples to the ACTOR observation (222 -> 226); "
                                  "a warm start widens the first layer with zero weights, so the policy is unchanged at step 0")
+        target.add_argument("--action-rate-weight", type=float,
+                            help="Cost <= 0 on squared first+second differences of the policy action; 0 disables")
+        target.add_argument("--joint-acc-weight", type=float,
+                            help="Override the smoothness_joint scale (cost <= 0 on 0.01 qd^2 + qdd^2)")
         target.add_argument("--goal-hold-seconds", type=float,
                             help="Rooms: end the episode (as a truncation) after standing this long at the reached goal "
                                  "instead of parking there until the horizon; 0 disables")

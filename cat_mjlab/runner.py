@@ -918,6 +918,7 @@ def create_task(args, *, environment_config=None):
         spot_hold_weight=getattr(args, 'spot_hold_weight', None), standing_stillness_speed=getattr(args, 'standing_stillness_speed', None),
         route_recovery_speed=getattr(args, 'route_recovery_speed', None), route_lost_seconds=getattr(args, 'route_lost_seconds', None),
         goal_hold_seconds=getattr(args, 'goal_hold_seconds', None),
+        action_rate_weight=getattr(args, 'action_rate_weight', None), joint_acc_weight=getattr(args, 'joint_acc_weight', None),
         standing_gf_bonus=getattr(args, 'standing_gf_bonus', None),
         reactive_hand_guidance=getattr(args, 'reactive_hand_guidance', None),
         handsdf_weight=getattr(args, 'handsdf_weight', None),
@@ -1128,7 +1129,11 @@ def run(args):
     style_schedule = None
     if getattr(args, 'style_library', None):
         from .style_prior import StylePrior, StyleSchedule
-        task.style_prior = StylePrior(args.style_library, device=args.device)
+        task.style_prior = StylePrior(args.style_library, device=args.device,
+                                      stride=int(getattr(args, 'style_stride', None) or 1),
+                                      feature_set=getattr(args, 'style_features', None) or 'all',
+                                      grad_penalty=float(getattr(args, 'style_grad_penalty', None) or 5.),
+                                      steps=int(getattr(args, 'style_disc_steps', None) or 8))
         style_schedule = StyleSchedule(target=float(args.style_weight), warmup=int(args.style_warmup),
                                        ramp=int(args.style_ramp), tolerance=float(args.style_guard_tolerance))
         print(f"Style prior: human minutes per group {task.style_prior.minutes}", flush=True)
