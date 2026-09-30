@@ -30,3 +30,23 @@ def test_smoothness_flags():
     assert 'action_rate' not in wholebody_config(c, action_rate_weight=0)['reward_config']['scales']
     with pytest.raises(ValueError):
         wholebody_config(action_rate_weight=.1)
+
+
+def test_hand_body_contact_model_and_flag():
+    import mujoco
+    from cat_mjlab.config import wholebody_config
+    from cat_mjlab.model import assemble_training_xml, hand_body_pairs
+    pairs = hand_body_pairs()
+    regions = [r for _, _, r in pairs]
+    assert regions.count('hand') == 1 and regions.count('trunk') == 8 and regions.count('head') == 2 and regions.count('arm') == 14
+    # a hand is never paired with its own arm chain
+    assert not any(a.startswith('furniture_left') and 'arm_left_' in b for a, b, _ in pairs)
+    base = mujoco.MjModel.from_xml_string(assemble_training_xml())
+    m = mujoco.MjModel.from_xml_string(assemble_training_xml(hand_body_collision=True))
+    assert m.npair == base.npair + len(pairs) and abs(m.body_mass.sum() - base.body_mass.sum()) < 1e-9
+    d = mujoco.MjData(m); d.qpos[2] = .79; mujoco.mj_forward(m, d)
+    names = {mujoco.mj_id2name(m, mujoco.mjtObj.mjOBJ_GEOM, g) for i in range(d.ncon) for g in (d.contact[i].geom1, d.contact[i].geom2)}
+    assert not any('envelope' in (n or '') for n in names)          # nominal pose: no hand-body contact
+    c = wholebody_config(hand_body_contact_weight=-2.)
+    assert c['hand_body_contact'] and c['reward_config']['scales']['hand_body_contact'] == -2.
+    assert 'hand_body_contact' not in wholebody_config(hand_body_contact_weight=0.)['reward_config']['scales']

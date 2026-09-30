@@ -175,6 +175,23 @@ stand_still -0.003 vs -0.64 at the same point in v1. New metrics per scene: `rou
 (identical to v1 otherwise), `scripts/keep_snapshots.sh` keeps resume.pt every 20 updates.
 Still open: table edges -- heading gate and style gates probe only shoulder/head/shin height, blind to 0.71 m tabletops.
 
+## 7b. Hands vs the rest of the robot (2026-09-30)
+
+Before: a hand could only physically hit the thighs/shins (10 explicit pairs); the other hand, torso,
+pelvis, head and other arm had no collision, so hands passed through them and nothing priced it.
+Measured on the v2 update-380 recordings with the new pairs: hand-hand contact in 3.5% of frames,
+hand vs other arm's wrist ~1%, hand vs pelvis 0.3%; 3 of 12 episodes, the other 9 none.
+
+`--hand-body-contact-weight W` (opt-in):
+- physics: the collision-proxy shapes of the trunk (4 boxes), head (1 box) and arms (capsules) become
+  massless non-colliding geoms, with explicit contact pairs against each hand's envelope box (every Dex3
+  mesh triangle + 5 mm): trunk, head, the OTHER arm, and hand vs hand (25 pairs; own arm excluded);
+- reward: W per touching pair, CONTACT ONLY (penetration, no distance margin) -- tucking a hand close
+  to the body or near the other hand stays free; the 4 cm anticipation margin stays for the legs only
+  (they swing into the hands while walking);
+- metrics: `self_clearance/hand_contact_{trunk,head,arm,hand}` (share of steps), episode flag
+  `hand_body_contact`. Cost: +1% simulation step time (CPU benchmark).
+
 ## 8. Not yet done / next
 
 - Reference-state initialisation from sidle / duck clips (planned; not in the first pilot).

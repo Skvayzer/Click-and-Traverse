@@ -658,7 +658,8 @@ def environment_config_from_archive(metadata):
 
 GOALLESS_BUCKETS = ('reactive_standing', 'reactive_walking', 'flat_balance')
 # Per-step task telemetry averaged over the update: posture/* and self_clearance/*.
-TELEMETRY_MEANS = ('self_clearance_min_m', 'self_clearance_violation', 'crouch_required', 'torso_pitch_abs')
+TELEMETRY_MEANS = ('self_clearance_min_m', 'self_clearance_violation', 'crouch_required', 'torso_pitch_abs',
+                   'hand_contact_trunk', 'hand_contact_head', 'hand_contact_arm', 'hand_contact_hand')
 SCENE_BUCKETS = ('procedural_cat', 'original_cat', 'published_cat',
                  'clutter_dense', 'clutter_pilot', 'clutter_legacy',
                  'furniture_dense', 'furniture_pilot', 'furniture_legacy',
@@ -897,7 +898,13 @@ def create_task(args, *, environment_config=None):
     from .collision import CollisionChecker
     from .config import wholebody_config
     from .task import CATTask
-    sim = CATSimulation(args.num_envs, device=args.device, nconmax=args.nconmax, njmax=args.njmax)
+    hand_body = bool(getattr(args, 'hand_body_contact_weight', None)) or bool((environment_config or {}).get('hand_body_contact'))
+    model = None
+    if hand_body:
+        import mujoco
+        from .model import assemble_training_xml
+        model = mujoco.MjModel.from_xml_string(assemble_training_xml(hand_body_collision=True))
+    sim = CATSimulation(args.num_envs, device=args.device, nconmax=args.nconmax, njmax=args.njmax, model=model)
     bank = SceneBank(args.bank_manifest, device=args.device, reset_manifest=args.body_collision_resets,
                      collision_manifest=args.body_collision_bank, passage_rewards=getattr(args, "passage_rewards", None))
     collision = CollisionChecker(sim.model, args.body_collision_bank, field_manifest=args.bank_manifest, device=args.device)
@@ -919,6 +926,7 @@ def create_task(args, *, environment_config=None):
         route_recovery_speed=getattr(args, 'route_recovery_speed', None), route_lost_seconds=getattr(args, 'route_lost_seconds', None),
         goal_hold_seconds=getattr(args, 'goal_hold_seconds', None),
         action_rate_weight=getattr(args, 'action_rate_weight', None), joint_acc_weight=getattr(args, 'joint_acc_weight', None),
+        hand_body_contact_weight=getattr(args, 'hand_body_contact_weight', None),
         standing_gf_bonus=getattr(args, 'standing_gf_bonus', None),
         reactive_hand_guidance=getattr(args, 'reactive_hand_guidance', None),
         handsdf_weight=getattr(args, 'handsdf_weight', None),

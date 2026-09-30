@@ -83,6 +83,9 @@ def parser():
         target.add_argument("--sdf-rate-obs", action="store_true", default=None,
                             help="Add the rate of change of the hand/elbow distance samples to the ACTOR observation (222 -> 226); "
                                  "a warm start widens the first layer with zero weights, so the policy is unchanged at step 0")
+        target.add_argument("--hand-body-contact-weight", type=float,
+                            help="Enable hand vs torso/head/other-arm/other-hand contact pairs (physics) and a cost <= 0 per "
+                                 "touching pair (contact only, no distance margin); 0 = physics pairs without the cost")
         target.add_argument("--action-rate-weight", type=float,
                             help="Cost <= 0 on squared first+second differences of the policy action; 0 disables")
         target.add_argument("--joint-acc-weight", type=float,

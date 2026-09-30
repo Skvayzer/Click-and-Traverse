@@ -16,6 +16,8 @@ from .config import hand_curriculum_threshold
 from .observation_contract import ACTOR_SIZE, CRITIC_SIZE
 from .navigation import route_context,swept_root_clearance,hand_contrast_context,contrast_reward_terms
 
+HAND_BODY_REGIONS=("trunk","head","arm","hand")
+
 
 def _get(config,path,default=None):
     value=config
@@ -147,6 +149,12 @@ class CATTask:
         except KeyError:
             pass
         self.hand_pair_count=len(pairs)-5
+        # Opt-in hand vs torso/head/other arm/other hand pairs (model.hand_body_pairs), after the leg pairs.
+        self.hand_body_start=len(pairs);self.hand_body_region=None
+        if self.config.get('hand_body_contact'):
+            from .model import hand_body_pairs
+            extra=hand_body_pairs();pairs=pairs+[(a,b) for a,b,_ in extra]
+            self.hand_body_region=torch.tensor([HAND_BODY_REGIONS.index(r) for _,_,r in extra],device=self.device)
         self.contact_pairs=torch.tensor([[self.model.geom(a).id,self.model.geom(b).id] for a,b in pairs],device=self.device)
         self.info={};self.navigation={};self.contrast={};self.episode={};self.telemetry={}
         self.obs={'state':torch.zeros((self.num_envs,self.observation_size),device=self.device),'privileged_state':torch.zeros((self.num_envs,self.privileged_observation_size),device=self.device)}
@@ -525,6 +533,7 @@ class CATTask:
         keys=('goal_reached','raw_goal','outside_bounds','fall','obstacle','self_contact','hand_self_contact','reactive_left_spot','numerical','hand_violation','elbow_violation','body_collision','reset_replaced',
               'body_collision_feet','body_collision_legs','body_collision_trunk','body_collision_head','body_collision_arms','body_collision_hands')
         if self.config.get('route_recovery'):keys+=('route_lost',)
+        if self.config.get('hand_body_contact'):keys+=('hand_body_contact',)
         for k in keys:self._put(self.episode,k,ids,replaced if k=='reset_replaced' else torch.zeros(n,dtype=torch.bool,device=self.device))
         self._put(self.info,'minimum_episode_hand_clearance',ids,sdf[:,5:7,0].amin(-1))
         from .response_split import initial, advance, PREFIX
@@ -565,7 +574,7 @@ class CATTask:
         fields=(i['sdf']<threshold).flatten(1).any(-1)&grace
         elbows=(i['elbow_clearance']<threshold).any(-1)&grace&bool(_get(self.config,'terminate_on_elbow_collision',True))
         self_contact=contacts[:,2:5].any(-1)&grace
-        hand_self_contact=(contacts[:,5:].any(-1) if contacts.shape[1]>5 else torch.zeros_like(grace))&grace
+        hand_self_contact=(contacts[:,5:5+self.hand_pair_count].any(-1) if self.hand_pair_count else torch.zeros_like(grace))&grace
         fall=(self._sensor('upvector_pelvis',self.all_ids)[:,2]<0)|(i['positions'][:,0,2]<.7)
         numerical=torch.isnan(self.data.qpos).any(-1)|torch.isnan(self.data.qvel).any(-1)
         root=self.navigation['enabled']&self.navigation['violation'];body=regions.any(-1)
@@ -583,6 +592,7 @@ class CATTask:
         flags=dict(fall=fall,obstacle=obstacle,self_contact=self_contact,hand_self_contact=hand_self_contact,reactive_left_spot=reactive_left_spot,numerical=numerical,body_collision=body,
                    hand_violation=(i['sdf'][:,5:7]<threshold).flatten(1).any(-1)&grace,elbow_violation=elbows)
         if route_lost is not None:flags['route_lost']=route_lost
+        if self.hand_body_region is not None:flags['hand_body_contact']=contacts[:,self.hand_body_start:].any(-1)&grace
         for k,v in flags.items():self.episode[k]|=v
         for index,region in enumerate(('feet','legs','trunk','head','arms','hands')):
             self.episode['body_collision_'+region]|=regions[:,index]
@@ -654,6 +664,12 @@ class CATTask:
         if self.stabilization:rewards.update(costs)
         scales=_get(self.config,'reward_config.scales',{})
         if 'action_rate' in scales:rewards['action_rate']=self._action_rate
+        if self.hand_body_region is not None:
+            # Contact-only (penetration, no distance margin): tucking a hand close to the body is free.
+            touching=contacts[:,self.hand_body_start:]
+            if 'hand_body_contact' in scales:rewards['hand_body_contact']=touching.float().sum(-1)
+            for k,region in enumerate(HAND_BODY_REGIONS):
+                telemetry['hand_contact_'+region]=touching[:,self.hand_body_region==k].any(-1).float()
         if 'self_clearance' in scales:
             penalty,gap=tm.self_clearance_terms(i['positions'][:,5:7],self.hand_radii,d.xpos[:,self.capsule_a_ids],d.xpos[:,self.capsule_b_ids],
                 self.capsule_radii,margin=float(_get(self.config,'self_clearance_margin',.04)))
@@ -991,7 +1007,8 @@ class CATTask:
             metrics['reward_floor_clipped'] = self.telemetry['reward_floor_clipped'].clone()
             for key in ('reward_pre_floor_negative', 'reward_soft_floor_lift', 'reward_floor_slope'):
                 metrics[key] = self.telemetry[key].clone()
-            for key in ('self_clearance_min_m', 'self_clearance_violation', 'crouch_required', 'torso_pitch_abs'):
+            for key in ('self_clearance_min_m', 'self_clearance_violation', 'crouch_required', 'torso_pitch_abs',
+                        'hand_contact_trunk', 'hand_contact_head', 'hand_contact_arm', 'hand_contact_hand'):
                 if key in self.telemetry: metrics[key] = self.telemetry[key].clone()
             metrics['contrast_role'] = self.contrast['role'].clone()
             metrics['contrast_unresolved'] = (~self.outcome_counted | resolved).clone()
