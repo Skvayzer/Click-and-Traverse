@@ -50,3 +50,12 @@ def test_hand_body_contact_model_and_flag():
     c = wholebody_config(hand_body_contact_weight=-2.)
     assert c['hand_body_contact'] and c['reward_config']['scales']['hand_body_contact'] == -2.
     assert 'hand_body_contact' not in wholebody_config(hand_body_contact_weight=0.)['reward_config']['scales']
+
+
+def test_heading_hand_probe_flag():
+    from cat_mjlab.config import wholebody_config
+    c = wholebody_config(heading_align_weight=.4, heading_hand_probes=True)
+    assert c['heading_align']['hand_probe'] == dict(half_width=.22, radius=.10)
+    assert 'hand_probe' not in wholebody_config(c, heading_hand_probes=False)['heading_align']
+    with pytest.raises(ValueError):
+        wholebody_config(heading_hand_probes=True)

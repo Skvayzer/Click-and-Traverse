@@ -204,22 +204,39 @@ class StylePrior:
         self.nets.load_state_dict(state["nets"]); self.opt.load_state_dict(state["opt"])
 
 
+DEFAULT_WATCH = ("progress/p3_cat_navigation_success", "progress/narrow_zone_success",
+                 "progress/protected_zone_success", "progress/clutter_room_success")
+
+
 class StyleSchedule:
     """lambda = 0 for `warmup` updates, then linear ramp to `target` over `ramp` updates. The guard
-    freezes the ramp (and backs off 10%) while any watched success metric is more than `tolerance`
-    below its value when the ramp started."""
+    freezes the ramp (and backs off 10%) while any watched success metric, averaged over the last
+    `window` updates, is more than `tolerance` below its average over the `window` updates before
+    the ramp started.
 
-    def __init__(self, target=.3, warmup=20, ramp=50, tolerance=.05,
-                 watch=("progress/p3_cat_navigation_success", "progress/narrow_zone_success",
-                        "progress/protected_zone_success", "progress/clutter_room_success")):
-        self.target, self.warmup, self.ramp, self.tolerance, self.watch = target, warmup, ramp, tolerance, watch
-        self.value, self.update, self.baseline = 0., 0, {}
+    window=1 with the default watch list is the original guard. It never fired in three runs while
+    room success fell 81 -> 70% and table edges 76 -> 42% during the ramp: it watched none of the
+    per-scene rates, and single-update values of these rates swing +-10%.
+    """
+
+    def __init__(self, target=.3, warmup=20, ramp=50, tolerance=.05, watch=DEFAULT_WATCH, window=1):
+        self.target, self.warmup, self.ramp, self.tolerance = target, warmup, ramp, tolerance
+        self.watch, self.window = tuple(watch), max(1, int(window))
+        self.value, self.update, self.baseline, self.history = 0., 0, {}, {}
+
+    def _mean(self, key):
+        h = self.history.get(key, [])
+        return sum(h) / len(h) if h else None
 
     def step(self, metrics):
         self.update += 1
+        for k in self.watch:
+            v = metrics.get(k)
+            if isinstance(v, (int, float)) and v == v:
+                self.history[k] = (self.history.get(k, []) + [float(v)])[-self.window:]
         if self.update == self.warmup:
-            self.baseline = {k: metrics[k] for k in self.watch if k in metrics}
-        held = [k for k, v in self.baseline.items() if k in metrics and metrics[k] < v - self.tolerance]
+            self.baseline = {k: self._mean(k) for k in self.watch if self._mean(k) is not None}
+        held = [k for k, v in self.baseline.items() if self._mean(k) is not None and self._mean(k) < v - self.tolerance]
         if self.update > self.warmup:
             if held:
                 self.value = max(0., self.value * .9)
@@ -228,7 +245,8 @@ class StyleSchedule:
         return self.value, held
 
     def state_dict(self):
-        return dict(value=self.value, update=self.update, baseline=self.baseline)
+        return dict(value=self.value, update=self.update, baseline=self.baseline, history=self.history)
 
     def load_state_dict(self, s):
         self.value, self.update, self.baseline = s["value"], s["update"], s["baseline"]
+        self.history = s.get("history", {})

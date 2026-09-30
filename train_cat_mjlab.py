@@ -69,6 +69,10 @@ def parser():
         target.add_argument("--distill-lr", type=float, default=3e-4)
         target.add_argument("--style-library", help="Motion library (path without .npz) -> context-gated adversarial style reward")
         target.add_argument("--style-weight", type=float, default=.3, help="Target weight of the normalised style advantage")
+        target.add_argument("--style-guard-watch", nargs="+",
+                            help="Metrics the style guard protects (default: CAT/narrow/protected/clutter progress)")
+        target.add_argument("--style-guard-window", type=int,
+                            help="Updates averaged by the style guard, for its baseline and its check (default 1)")
         target.add_argument("--style-stride", type=int, help="Discriminator pairs (s_t, s_t+k); default 1 (original). 5 = 0.1 s")
         target.add_argument("--style-features", choices=("all", "pose"),
                             help="all (original) or pose: no joint velocities, no wrist angles")
@@ -83,6 +87,8 @@ def parser():
         target.add_argument("--sdf-rate-obs", action="store_true", default=None,
                             help="Add the rate of change of the hand/elbow distance samples to the ACTOR observation (222 -> 226); "
                                  "a warm start widens the first layer with zero weights, so the policy is unchanged at step 0")
+        target.add_argument("--heading-hand-probes", action="store_true", default=None,
+                            help="Heading/style gates also probe where the hands would hang facing forward (tabletop height)")
         target.add_argument("--hand-body-contact-weight", type=float,
                             help="Enable hand vs torso/head/other-arm/other-hand contact pairs (physics) and a cost <= 0 per "
                                  "touching pair (contact only, no distance margin); 0 = physics pairs without the cost")

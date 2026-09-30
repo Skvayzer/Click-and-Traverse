@@ -74,3 +74,18 @@ def test_pose_feature_set_and_strided_pairs():
     assert strided_pairs(next_ok, 1).tolist() == next_ok.tolist()
     # a stride-3 pair starting at i needs next_ok[i], [i+1], [i+2]
     assert strided_pairs(next_ok, 3).tolist() == [True, False, False, False, True, True, False, False, False]
+
+
+def test_style_guard_window_and_watch():
+    from cat_mjlab.style_prior import StyleSchedule
+    s = StyleSchedule(target=.1, warmup=4, ramp=2, tolerance=.05, watch=("scene/table_edges/success_rate",), window=3)
+    for v in (.5, .5, .5, .5):                        # baseline = mean of the last 3 before the ramp
+        lam, held = s.step({"scene/table_edges/success_rate": v})
+    assert lam == 0 and abs(s.baseline["scene/table_edges/success_rate"] - .5) < 1e-9
+    lam, held = s.step({"scene/table_edges/success_rate": .3})   # one bad update: mean .433 < .45 -> hold
+    assert held and lam == 0
+    for v in (.6, .6, .6):
+        lam, held = s.step({"scene/table_edges/success_rate": v})
+    assert not held and abs(lam - .1) < 1e-9          # ramped to target once the average recovered
+    s2 = StyleSchedule(); s2.load_state_dict({k: v for k, v in s.state_dict().items() if k != "history"})   # old snapshots
+    assert s2.history == {}

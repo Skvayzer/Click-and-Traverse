@@ -927,6 +927,7 @@ def create_task(args, *, environment_config=None):
         goal_hold_seconds=getattr(args, 'goal_hold_seconds', None),
         action_rate_weight=getattr(args, 'action_rate_weight', None), joint_acc_weight=getattr(args, 'joint_acc_weight', None),
         hand_body_contact_weight=getattr(args, 'hand_body_contact_weight', None),
+        heading_hand_probes=getattr(args, 'heading_hand_probes', None),
         standing_gf_bonus=getattr(args, 'standing_gf_bonus', None),
         reactive_hand_guidance=getattr(args, 'reactive_hand_guidance', None),
         handsdf_weight=getattr(args, 'handsdf_weight', None),
@@ -1142,8 +1143,11 @@ def run(args):
                                       feature_set=getattr(args, 'style_features', None) or 'all',
                                       grad_penalty=float(getattr(args, 'style_grad_penalty', None) or 5.),
                                       steps=int(getattr(args, 'style_disc_steps', None) or 8))
+        from .style_prior import DEFAULT_WATCH
         style_schedule = StyleSchedule(target=float(args.style_weight), warmup=int(args.style_warmup),
-                                       ramp=int(args.style_ramp), tolerance=float(args.style_guard_tolerance))
+                                       ramp=int(args.style_ramp), tolerance=float(args.style_guard_tolerance),
+                                       watch=tuple(getattr(args, 'style_guard_watch', None) or DEFAULT_WATCH),
+                                       window=int(getattr(args, 'style_guard_window', None) or 1))
         print(f"Style prior: human minutes per group {task.style_prior.minutes}", flush=True)
     task_sizes = tuple(task.obs[key].shape[-1] for key in ('state', 'privileged_state'))
     if task_sizes != (config.actor_obs, config.critic_obs):

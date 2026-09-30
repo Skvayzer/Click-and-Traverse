@@ -32,7 +32,8 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
                      upper_posture_weight=None,upper_home_shoulder_pitch=None,terminate_on_hand_self_contact=None,
                      stand_still_weight=None,standing_requires_stillness=None,sdf_rate_obs=None,reactive_event_weight=None,
                      spot_hold_weight=None,standing_stillness_speed=None,route_recovery_speed=None,route_lost_seconds=None,goal_hold_seconds=None,
-                     action_rate_weight=None,joint_acc_weight=None,hand_body_contact_weight=None):
+                     action_rate_weight=None,joint_acc_weight=None,hand_body_contact_weight=None,
+                     heading_hand_probes=None):
     from cat_ppo.furniture.generalist_config import released_config
     from .collision import PROPOSAL
     config=copy.deepcopy(released_config()['env_config'] if base_config is None else base_config)
@@ -115,8 +116,6 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
         else:scales['stand_still']=weight
     if standing_requires_stillness is not None:
         config['standing_requires_stillness_speed']=(float(standing_stillness_speed) if standing_stillness_speed else .05) if standing_requires_stillness else None
-    # Rooms: when the route is out of sight, follow the stored geodesic goal field instead of
-    # standing still, and end the episode as a failure if the route stays lost.
     # Smoothness. action_rate: first+second differences of the policy action (a correct rate term;
     # the legacy smoothness_action only sees the first difference). joint_acc_weight overrides the
     # legacy smoothness_joint scale (0.01 qd^2 + qdd^2).
@@ -138,6 +137,8 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
         if not math.isfinite(hold) or hold<0:raise ValueError('goal_hold_seconds must be finite and >= 0')
         if hold==0:config.pop('goal_hold_seconds',None)
         else:config['goal_hold_seconds']=hold
+    # Rooms: when the route is out of sight, follow the stored geodesic goal field instead of
+    # standing still, and end the episode as a failure if the route stays lost.
     if route_recovery_speed is not None:
         speed=float(route_recovery_speed);lost=float(route_lost_seconds if route_lost_seconds is not None else 5.)
         if not (math.isfinite(speed) and math.isfinite(lost)) or speed<0 or lost<=0:
@@ -163,6 +164,16 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
             # Gate closed at <=0.05 m of shoulder clearance (corridor <=0.42 m), open at >=0.15 m (>=0.62 m).
             scales['heading_align']=float(value)
             config['heading_align']=dict(weight=float(value),half_width=.16,lookahead=.30,margins=[.05,.15])
+    # Hand-height probes for the heading gate (and the style gates that reuse it): the shoulder probes
+    # sit ~0.4 m above a 0.71 m tabletop and saw a 0.43 m table gap as open, so the robot was paid to
+    # face forward into a gap its hands could not pass. Probes where the hands would hang facing
+    # forward (0.22 m lateral, current palm height), minus the hand radius; gate = min of both.
+    if heading_hand_probes is not None:
+        if heading_hand_probes and 'heading_align' not in config:
+            raise ValueError('heading_hand_probes requires heading_align_weight')
+        if 'heading_align' in config:
+            if heading_hand_probes:config['heading_align']['hand_probe']=dict(half_width=.22,radius=.10)
+            else:config['heading_align'].pop('hand_probe',None)
     scales.update(wholebody_hand_clearance=-.5 if hand_protection else -5.,wholebody_arm_clearance=-2.)
     if standing_gf_bonus is not None:
         if isinstance(standing_gf_bonus,bool) or not math.isfinite(standing_gf_bonus) or standing_gf_bonus<0:

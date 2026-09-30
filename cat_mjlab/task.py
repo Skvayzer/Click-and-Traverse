@@ -626,6 +626,12 @@ class CATTask:
             probes=self.math.heading_probe_points(i['positions'][:,1,:2],direction,i['positions'][:,9:11,2].mean(-1),
                 half_width=float(heading['half_width']),lookahead=float(heading['lookahead']))
             heading_sdf=self.bank.sample('sdf',probes,self.scene_ids).reshape(probes.shape[0],-1)
+            hand=heading.get('hand_probe')
+            if hand:
+                hands=self.math.heading_probe_points(i['positions'][:,1,:2],direction,i['positions'][:,5:7,2].mean(-1),
+                    half_width=float(hand['half_width']),lookahead=float(heading['lookahead']))
+                hand_sdf=self.bank.sample('sdf',hands,self.scene_ids).reshape(hands.shape[0],-1)-float(hand['radius'])
+                heading_sdf=torch.minimum(heading_sdf,hand_sdf)
             self._heading_sdf=heading_sdf     # reused by the style-prior gates
             heading_margins=tuple(float(m) for m in heading['margins'])
         rewards=self.math.native_rewards(stand_still='stand_still' in _get(self.config,'reward_config.scales',{}),
