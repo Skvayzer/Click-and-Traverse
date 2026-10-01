@@ -16,6 +16,12 @@ Run on dep-1 (it needs the scene bank, ~18 GB RAM), then on the laptop:
     ssh -L 8080:localhost:8080 konstantinsmirnov@dep-1      # browser: http://localhost:8080
 Keys (terminal): Up/W go, Down/S stop, Left/A and Right/D turn the commanded direction 20 deg
 (hold to keep turning), +/- speed, T drive at the nearest table, R reset, N next scene, Q quit.
+
+Browser keyboard (viser has no key events): open http://localhost:8081 instead of 8080 -- a page that
+shows the viser view full-screen and captures the keys itself (forward both ports:
+ssh -L 8080:localhost:8080 -L 8081:localhost:8081 konstantinsmirnov@dep-1). There the keys are
+hold-to-drive like a joystick: hold Up/W to walk, release to stop; hold Left/Right (A/D) to turn
+(90 deg/s); Space stop, +/- speed, T nearest table, R reset, N next room.
 """
 from __future__ import annotations
 
@@ -118,6 +124,8 @@ class Session:
         self.heading, self.speed, self.speed_setting = 0., 0., args.speed
         self.contacts, self.contact_parts, self.falls = 0, {}, 0
         self.lock = threading.Lock()
+        self.held, self.hold_mode = set(), False          # browser keys: hold-to-drive
+        self.status = {}
 
     def boxes(self):
         record = self.manifest["scenes"][self.index[self.scene]]
@@ -146,6 +154,11 @@ class Session:
     def step(self):
         torch = self.torch
         with self.lock:
+            if self.hold_mode:
+                turn = math.radians(90) * .02
+                if "left" in self.held: self.heading += turn
+                if "right" in self.held: self.heading -= turn
+                self.speed = self.speed_setting if "up" in self.held else 0.
             self.task.joystick[0, 0] = self.speed * math.cos(self.heading)
             self.task.joystick[0, 1] = self.speed * math.sin(self.heading)
             action = self.learner.act(self.task.obs, policy_ids=0, deterministic=True)["action"]
@@ -218,6 +231,68 @@ def handle_key(session, key, stop):
         stop.set()
 
 
+KEY_PAGE = """<!doctype html><html><head><meta charset="utf-8"><title>Robot teleop</title>
+<style>body{margin:0;overflow:hidden;background:#111}iframe{border:0;width:100vw;height:100vh}
+#hud{position:fixed;left:12px;bottom:12px;background:rgba(0,0,0,.65);color:#fff;font:14px/1.4 system-ui,sans-serif;
+padding:8px 12px;border-radius:8px;max-width:46vw;pointer-events:none}#hud b.c{color:#ff6b6b}#hud b.ok{color:#7ee787}</style></head>
+<body><iframe id="v"></iframe><div id="hud">connecting ...</div><script>
+document.getElementById('v').src=location.protocol+'//'+location.hostname+':__VISER_PORT__/';
+const drive={ArrowUp:'up',KeyW:'up',ArrowLeft:'left',KeyA:'left',ArrowRight:'right',KeyD:'right'};
+const act={Space:'stop',ArrowDown:'stop',KeyS:'stop',KeyT:'table',KeyR:'reset',KeyN:'next',Equal:'faster',NumpadAdd:'faster',Minus:'slower',NumpadSubtract:'slower'};
+const held=new Set();
+const send=o=>fetch('/key',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(o)});
+addEventListener('keydown',e=>{const k=drive[e.code];if(k){e.preventDefault();if(!held.has(k)){held.add(k);send({key:k,down:true});}}
+  else if(act[e.code]){e.preventDefault();if(!e.repeat)send({action:act[e.code]});}});
+addEventListener('keyup',e=>{const k=drive[e.code];if(k){e.preventDefault();held.delete(k);send({key:k,down:false});}});
+// Clicking the 3D view moves keyboard focus into the iframe; release keys and take focus back.
+addEventListener('blur',()=>{for(const k of held)send({key:k,down:false});held.clear();setTimeout(()=>window.focus(),60);});
+setInterval(()=>{if(document.activeElement&&document.activeElement.tagName==='IFRAME')window.focus();},300);
+setInterval(async()=>{try{const s=await (await fetch('/status')).json();
+ document.getElementById('hud').innerHTML=(s.touching&&s.touching.length?'<b class=c>CONTACT: '+s.touching.join(', ')+'</b>':'<b class=ok>no contact</b>')+
+ '<br>speed setting '+s.setting.toFixed(1)+' m/s, actual '+s.speed.toFixed(2)+' m/s<br>closest: body '+s.body.toFixed(2)+' m, hands '+s.hands.toFixed(2)+
+ ' m<br>contact steps '+s.contacts+', falls '+s.falls+'<br><span style="opacity:.7">hold W/Up walk, A/D turn, Space stop, +/- speed, T table, R reset, N next room</span>';}catch(e){}},250);
+</script></body></html>"""
+
+
+def serve_keys(session, port, viser_port, stop):
+    import http.server
+    page = KEY_PAGE.replace("__VISER_PORT__", str(viser_port)).encode()
+
+    class Handler(http.server.BaseHTTPRequestHandler):
+        def log_message(self, *args):
+            pass
+
+        def _reply(self, body, kind):
+            self.send_response(200); self.send_header("Content-Type", kind); self.send_header("Content-Length", str(len(body)))
+            self.send_header("Cache-Control", "no-store"); self.end_headers(); self.wfile.write(body)
+
+        def do_GET(self):
+            if self.path.startswith("/status"):
+                self._reply(json.dumps(session.status).encode(), "application/json")
+            else:
+                self._reply(page, "text/html; charset=utf-8")
+
+        def do_POST(self):
+            msg = json.loads(self.rfile.read(int(self.headers.get("Content-Length", 0))) or b"{}")
+            session.hold_mode = True
+            if "key" in msg:
+                (session.held.add if msg.get("down") else session.held.discard)(msg["key"])
+            action = msg.get("action")
+            if action == "stop":
+                session.held.clear(); session.speed = 0.
+            elif action in ("faster", "slower"):
+                session.speed_setting = min(1., session.speed_setting + .1) if action == "faster" else max(.1, session.speed_setting - .1)
+            elif action:
+                handle_key(session, {"table": "t", "reset": "r", "next": "n"}[action], stop)
+                if action == "table":
+                    session.hold_mode = False            # T keeps driving at the table until a key is pressed
+            self._reply(b"{}", "application/json")
+
+    server = http.server.ThreadingHTTPServer(("127.0.0.1", port), Handler)
+    threading.Thread(target=server.serve_forever, daemon=True).start()
+    return server
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--checkpoint", default="outputs/expert_rooms_tables_v5_20260930/snapshots/update_0357_final.pt")
@@ -226,6 +301,7 @@ def main(argv=None):
     p.add_argument("--speed", type=float, default=.5, help="Initial speed setting (m/s)")
     p.add_argument("--port", type=int, default=8080)
     p.add_argument("--no-keyboard", action="store_true", help="Browser buttons only (no terminal key capture)")
+    p.add_argument("--keys-port", type=int, help="Port of the browser keyboard page (default: --port + 1)")
     p.add_argument("--steps", type=int, default=0, help="Headless self-test: run this many steps, print timing, exit")
     args = p.parse_args(argv)
     os.chdir(ROOT)
@@ -287,7 +363,10 @@ def main(argv=None):
     stop = threading.Event()
     if not args.no_keyboard and sys.stdin.isatty():
         threading.Thread(target=keyboard_loop, args=(session, stop), daemon=True).start()
-    print(f"\nviser: http://localhost:{args.port}  (from the laptop: ssh -L {args.port}:localhost:{args.port} konstantinsmirnov@dep-1)")
+    keys_port = args.keys_port or args.port + 1
+    serve_keys(session, keys_port, args.port, stop)
+    print(f"\nBrowser with keyboard: http://localhost:{keys_port}   (3D view only: http://localhost:{args.port})")
+    print(f"From the laptop: ssh -L {args.port}:localhost:{args.port} -L {keys_port}:localhost:{keys_port} konstantinsmirnov@dep-1")
     print("Keys: Up/W go, Down/S stop, Left/A Right/D turn 20 deg, +/- speed, T at nearest table, R reset, N next scene, Q quit\n", flush=True)
     shown_scene, frame, t_report, n_report = session.scene, 0, time.time(), 0
     try:
@@ -310,6 +389,8 @@ def main(argv=None):
                             with client.atomic():
                                 client.camera.position = np.asarray(client.camera.position, dtype=float) + shift
                                 client.camera.look_at = look + shift
+            session.status = dict(touching=info["touching"], setting=session.speed_setting, speed=info["speed"],
+                                  body=info["body_clearance"], hands=info["hand_clearance"], contacts=session.contacts, falls=session.falls)
             if frame % 10 == 0:
                 rate = n_report * .02 / max(time.time() - t_report, 1e-6); t_report, n_report = time.time(), 0
                 touching = info["touching"]
