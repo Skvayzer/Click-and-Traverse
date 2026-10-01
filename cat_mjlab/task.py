@@ -283,6 +283,17 @@ class CATTask:
             approach_distance=float(_get(self.config,'hand_contrast_approach_distance',0.)))
         for k,v in values.items():self._put(self.contrast,k,ids,v)
 
+    def _commanded(self,ids):
+        """Worlds whose command is room-style (route or joystick velocity) rather than CAT's field command.
+
+        Rooms always; with a joystick, also any other scene it drives (e.g. the flat scene for
+        command-following tests) -- all worlds when no per-world mask exists (recorder / demo).
+        """
+        enabled=self.navigation['enabled'][ids]
+        if getattr(self,'joystick',None) is None:return enabled
+        mask=getattr(self,'joystick_mask',None)
+        return enabled|(torch.ones_like(enabled) if mask is None else mask[ids])
+
     def _teleop_resample(self):
         """Joystick-style commands for teleoperated room episodes (config 'teleop').
 
@@ -363,9 +374,10 @@ class CATTask:
         inward=(replacement*normal).sum(-1,keepdim=True).clamp_max(0)
         replacement-=inward*normal*(sdf<.5);replacement*=active[:,None,None]
         replacement[:,1]=torch.cat((velocity,torch.zeros_like(velocity[:,:1])),-1)
-        gf=torch.where(nav['enabled'][:,None,None],replacement,gf)
+        commanded=self._commanded(ids)
+        gf=torch.where(commanded[:,None,None],replacement,gf)
         cmd=self.math.compute_cmd_from_rtf(gf[:,1],gf[:,[0,3,4,5,6]],bf[:,[0,3,4,5,6]])
-        cmd=torch.where(nav['enabled'][:,None],room_command,cmd)
+        cmd=torch.where(commanded[:,None],room_command,cmd)
         if self.reactive_objects is not None:
             active=self.reactive_objects.state['active'][ids]
             # Standing episodes get a zero command; the walking variant keeps the route command.
@@ -962,13 +974,17 @@ class CATTask:
         odom=torch.where(update[:,None],d.qpos[:,:7],i['odom_delay'])
         delayed=self.math.delay_body_pos(d.qpos,odom,positions)
         gfd,bfd,sdfd,command_delay=self._fields(delayed,odom[:,:2],ids)
-        phase_input=i['phase']
+        # Standing sets both foot phases to 0; walking resumed from there commanded a synchronized
+        # hop (gait [1,1]/[-1,-1]) and the policy stayed in place: measured on the flat scene, a
+        # 0.5 m/s command after a 2 s stand gave ~0.01 m/s. Restore anti-phase stepping on every
+        # route/joystick restart, not only inside the old speed curriculum.
+        from .speed_curriculum import restart_phase
+        eligible=self._commanded(ids)
         if hasattr(self, 'speed_state'):
-            from .speed_curriculum import restart_phase
-            phase_input=restart_phase(phase_input,i['last_command'],command,
-                (self.contrast['role']==1)|(self.contrast['role']==3))
+            eligible=eligible|(self.contrast['role']==1)|(self.contrast['role']==3)
+        phase_input=restart_phase(i['phase'],i['last_command'],command,eligible)
         command,stop,phase,gait=self.math.update_phase(command,i['last_command'],i['stop_timestep'],phase_input,i['phase_dt'],
-            float(_get(self.config,'gait_config.gait_bound',.6)),self.navigation['enabled'])
+            float(_get(self.config,'gait_config.gait_bound',.6)),self._commanded(ids))
         if hasattr(self, 'speed_state'):
             from .speed_curriculum import speed_limit, standing_phase
             _,_,hold=speed_limit(self.speed_state,self.contrast,ids,self.dt)
@@ -987,7 +1003,7 @@ class CATTask:
         # the delayed command AFTER normalization and the current move gate.
         # Room guidance is an explicit override independent of this projection.
         native_delayed=self.math.compute_cmd_from_rtf(normalized_gfd[:,1],normalized_gfd[:,[0,3,4,5,6]],normalized_bfd[:,[0,3,4,5,6]])
-        command_delay=torch.where(self.navigation['enabled'][:,None],command_delay,native_delayed)
+        command_delay=torch.where(self._commanded(ids)[:,None],command_delay,native_delayed)
         i.update(gf=normalize(gf)*move,bf=normalize(bf),sdf=sdf,gf_delay=normalized_gfd,bf_delay=normalized_bfd,sdf_delay=sdfd,
                  command=command,command_delay=command_delay,odom_delay=odom,stop_timestep=stop,phase=phase,gait=gait,
                  positions=positions,velocities=velocities)
