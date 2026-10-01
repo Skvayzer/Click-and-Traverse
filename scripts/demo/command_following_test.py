@@ -33,9 +33,35 @@ def wrap(a):
     return math.degrees(math.remainder(a, 2 * math.pi))
 
 
-def run(checkpoint, scene):
+def body_segments(s):
+    """Joystick commands in the body frame (forward, sideways, turn rate): v7+ checkpoints."""
+    plan = [("stand", (0., 0., 0.), 2.), ("turn in place left 0.8 rad/s", (0., 0., .8), 4.), ("stand", (0., 0., 0.), 2.),
+            ("turn in place right 0.8 rad/s", (0., 0., -.8), 4.), ("forward 0.5", (.5, 0., 0.), 4.),
+            ("forward 0.5 + turn left 0.5", (.5, 0., .5), 4.), ("backward 0.3", (-.3, 0., 0.), 4.),
+            ("sideways left 0.3", (0., .3, 0.), 4.), ("sideways right 0.3", (0., -.3, 0.), 4.), ("stop", (0., 0., 0.), 3.)]
+    rows = []
+    for name, command, seconds in plan:
+        s.body_command = list(command)
+        start_xy = s.sim.raw.qpos[:2].copy(); start_yaw = s.yaw(); falls0 = s.falls
+        fwd, side, rates = [], [], []
+        steps = int(seconds / DT); previous = s.yaw()
+        for _ in range(steps):
+            s.step()
+            yaw = s.yaw(); v = np.asarray(s.sim.raw.qvel[:2], dtype=float)
+            fwd.append(float(v @ [math.cos(yaw), math.sin(yaw)])); side.append(float(v @ [-math.sin(yaw), math.cos(yaw)]))
+            rates.append(math.remainder(yaw - previous, 2 * math.pi) / DT); previous = yaw
+        half = slice(steps // 2, steps)
+        rows.append(dict(segment=name, command=command, forward=round(float(np.mean(fwd[half])), 3),
+                         sideways=round(float(np.mean(side[half])), 3), turn_rate=round(float(np.mean(rates[half])), 3),
+                         turned_deg=round(wrap(s.yaw() - start_yaw), 1),
+                         displacement_m=round(float(np.linalg.norm(s.sim.raw.qpos[:2] - start_xy)), 2), falls=s.falls - falls0))
+    return rows
+
+
+def run(checkpoint, scene, body_mode=False):
     demo = load_demo()
-    s = demo.Session(argparse.Namespace(checkpoint=checkpoint, bank="data/furniture/table_edges_v1", scenes=[scene], speed=.5))
+    s = demo.Session(argparse.Namespace(checkpoint=checkpoint, bank="data/furniture/table_edges_v1", scenes=[scene], speed=.5,
+                                        body_mode=body_mode))
     s.load(s.scenes[0])
     for _ in range(50):
         s.step()
@@ -45,6 +71,9 @@ def run(checkpoint, scene):
             ("diagonal 45 deg 0.5", 45., .5, 4.), ("forward 0.5 (before turn)", 0., .5, 3.),
             ("turn to +90 deg at 0.5", 90., .5, 4.), ("stop", 0., 0., 3.)]
     rows = []
+    if s.body_mode:
+        rows += body_segments(s)
+        s.body_mode = False                     # then the world-velocity segments below, for comparison
     for name, angle, speed, seconds in plan:
         heading = yaw0 + math.radians(angle)
         s.heading, s.speed = heading, speed
@@ -83,8 +112,9 @@ def main():
     p.add_argument("--checkpoint", required=True)
     p.add_argument("--scene", default="flat-balance-walk-v1")
     p.add_argument("--output")
+    p.add_argument("--body-mode", action="store_true", help="Force body-frame joystick segments (automatic for v7+)")
     args = p.parse_args()
-    rows = run(args.checkpoint, args.scene)
+    rows = run(args.checkpoint, args.scene, args.body_mode)
     for r in rows:
         print(json.dumps(r), flush=True)
     if args.output:

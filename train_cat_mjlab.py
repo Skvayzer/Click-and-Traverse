@@ -90,6 +90,10 @@ def parser():
         target.add_argument("--teleop-fraction", type=float,
                             help="Joystick training: this fraction of room episodes follows random commands (half aimed at the "
                                  "nearest obstacle, 15%% stops) for 20 s instead of the route; contact ends them; 0 disables")
+        target.add_argument("--teleop-body-commands", action="store_true", default=None,
+                            help="With --teleop-fraction: joystick commands in the body frame (forward -0.5..0.8, sideways +-0.3 m/s, "
+                                 "turn rate +-1 rad/s, 20%% turn in place), turn rate given to the policy, turn-rate tracking reward")
+        target.add_argument("--tracking-yaw-weight", type=float, help="Turn-rate tracking reward weight (default 1)")
         target.add_argument("--head-guidance-near-sdf", type=float,
                             help="Head guidance pulls down / opens the crouch gate only with geometry within this distance "
                                  "of the head (m); fixes the dive toward room goals at z=0.75; 0 = original")

@@ -940,6 +940,7 @@ def create_task(args, *, environment_config=None, sim_class=None):
         heading_hand_probes=getattr(args, 'heading_hand_probes', None),
         head_guidance_near_sdf=getattr(args, 'head_guidance_near_sdf', None),
         teleop_fraction=getattr(args, 'teleop_fraction', None),
+        teleop_body_commands=getattr(args, 'teleop_body_commands', None), tracking_yaw_weight=getattr(args, 'tracking_yaw_weight', None),
         standing_gf_bonus=getattr(args, 'standing_gf_bonus', None),
         reactive_hand_guidance=getattr(args, 'reactive_hand_guidance', None),
         handsdf_weight=getattr(args, 'handsdf_weight', None),

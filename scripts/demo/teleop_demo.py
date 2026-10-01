@@ -20,9 +20,10 @@ Keys (terminal): Up/W go, Down/S stop, Left/A and Right/D turn the commanded dir
 Browser keyboard (viser has no key events): open http://localhost:8081 instead of 8080 -- a page that
 shows the viser view full-screen and captures the keys itself (forward both ports:
 ssh -L 8080:localhost:8080 -L 8081:localhost:8081 konstantinsmirnov@dep-1). There the keys are
-hold-to-drive like a joystick: hold Up/W to walk forward, release to stop; hold Left/Right (A/D)
-to turn the robot (also in place, by small steps); Space stop, +/- speed, T nearest table, R reset,
-N next room.
+hold-to-drive like a joystick. Checkpoints trained with joystick commands (v7+): W/Up forward,
+S/Down backward, A/D or Left/Right turn (also in place), Q/E sideways. Older checkpoints have no turn
+input: A/D steer the walking direction (turning in place is emulated by small steps).
+Space stop, +/- speed, T nearest table, R reset, N next room.
 """
 from __future__ import annotations
 
@@ -48,6 +49,7 @@ PRESETS = {
              "random-generic_clutter-dense-train-005001-1eaef5f4115f", "random-furniture-dense-train-20261205-c5b0ae199c87",
              "table-contrast-train-20260924-forward_protected-5faeda4369c6"],
 }
+BODY_TURN_RATE = .8           # rad/s for A/D with body-frame (v7+) checkpoints
 TURN_IN_PLACE_SPEED = .15     # m/s step toward the target facing while only A/D are held
 REGIONS = ("feet", "legs", "trunk", "head", "arms", "hands")
 PALETTE = {"wall": (158, 168, 178), "chair": (52, 120, 135), "table": (214, 140, 70), "top": (214, 140, 70)}
@@ -77,6 +79,11 @@ class Session:
         env["dm_rand_config"].update(enable_pd=False, enable_rfi=False)
         env.pop("goal_hold_seconds", None)
         env.pop("teleop", None)                     # the keyboard is the joystick here
+        # Checkpoints trained with body-frame joystick commands (v7+) take (forward, sideways, turn
+        # rate) directly; older ones only take a walking direction (emulated turning below).
+        self.body_mode = bool(env.get("yaw_command")) or bool(getattr(args, "body_mode", False))
+        if self.body_mode:
+            env["yaw_command"] = True
         bank = args.bank
         ns = SimpleNamespace(bank_manifest=Path(bank + "_packed/manifest.json"), body_collision_bank=Path(bank + "_collision/manifest.json"),
                              body_collision_resets=Path(bank + "_resets/manifest.json"), device="cpu", seed=0, num_envs=1,
@@ -113,6 +120,9 @@ class Session:
             return flags["fall"] | flags["numerical"], flags
         task._termination = shown_not_terminal
         task.joystick = torch.zeros((1, 2))
+        if self.body_mode:
+            task.joystick_body = torch.zeros((1, 3))
+        self.body_command = [0., 0., 0.]             # forward, sideways (m/s), turn rate (rad/s)
         self.manifest = json.loads(ns.bank_manifest.read_text())
         self.index = {s["scene_id"]: i for i, s in enumerate(self.manifest["scenes"])}
         from cat_ppo.furniture.generalist_fields import load_generalist_manifest, scene_directory
@@ -156,7 +166,14 @@ class Session:
     def step(self):
         torch = self.torch
         with self.lock:
-            if self.hold_mode:
+            if self.body_mode:
+                if self.hold_mode:
+                    forward = ("up" in self.held) - ("down" in self.held)
+                    self.body_command = [self.speed_setting if forward > 0 else (-min(.4, self.speed_setting) if forward < 0 else 0.),
+                                         .3 * (("strafe_left" in self.held) - ("strafe_right" in self.held)),
+                                         BODY_TURN_RATE * (("left" in self.held) - ("right" in self.held))]
+                self.task.joystick_body[0] = torch.tensor(self.body_command)
+            elif self.hold_mode:
                 # Joystick-like. The policy has no yaw-rate input: it walks along the commanded
                 # velocity and turns to face it. A/D rotate a target facing (90 deg/s) kept within
                 # 60 deg of where the body points; W walks along it; A/D alone command a slow step
@@ -169,8 +186,9 @@ class Session:
                 lag = math.remainder(self.heading - yaw, 2 * math.pi)
                 self.heading = yaw + max(-math.radians(60), min(math.radians(60), lag))
                 self.speed = self.speed_setting if "up" in self.held else (TURN_IN_PLACE_SPEED if turning else 0.)
-            self.task.joystick[0, 0] = self.speed * math.cos(self.heading)
-            self.task.joystick[0, 1] = self.speed * math.sin(self.heading)
+            if not self.body_mode:
+                self.task.joystick[0, 0] = self.speed * math.cos(self.heading)
+                self.task.joystick[0, 1] = self.speed * math.sin(self.heading)
             action = self.learner.act(self.task.obs, policy_ids=0, deterministic=True)["action"]
             before_falls = self.falls
             result = self.task.step(action)
@@ -247,8 +265,8 @@ KEY_PAGE = """<!doctype html><html><head><meta charset="utf-8"><title>Robot tele
 padding:8px 12px;border-radius:8px;max-width:46vw;pointer-events:none}#hud b.c{color:#ff6b6b}#hud b.ok{color:#7ee787}</style></head>
 <body><iframe id="v"></iframe><div id="hud">connecting ...</div><script>
 document.getElementById('v').src=location.protocol+'//'+location.hostname+':__VISER_PORT__/';
-const drive={ArrowUp:'up',KeyW:'up',ArrowLeft:'left',KeyA:'left',ArrowRight:'right',KeyD:'right'};
-const act={Space:'stop',ArrowDown:'stop',KeyS:'stop',KeyT:'table',KeyR:'reset',KeyN:'next',Equal:'faster',NumpadAdd:'faster',Minus:'slower',NumpadSubtract:'slower'};
+const drive={ArrowUp:'up',KeyW:'up',ArrowDown:'down',KeyS:'down',ArrowLeft:'left',KeyA:'left',ArrowRight:'right',KeyD:'right',KeyQ:'strafe_left',KeyE:'strafe_right'};
+const act={Space:'stop',KeyT:'table',KeyR:'reset',KeyN:'next',Equal:'faster',NumpadAdd:'faster',Minus:'slower',NumpadSubtract:'slower'};
 const held=new Set();
 const send=o=>fetch('/key',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(o)});
 addEventListener('keydown',e=>{const k=drive[e.code];if(k){e.preventDefault();if(!held.has(k)){held.add(k);send({key:k,down:true});}}
@@ -260,7 +278,7 @@ setInterval(()=>{if(document.activeElement&&document.activeElement.tagName==='IF
 setInterval(async()=>{try{const s=await (await fetch('/status')).json();
  document.getElementById('hud').innerHTML=(s.touching&&s.touching.length?'<b class=c>CONTACT: '+s.touching.join(', ')+'</b>':'<b class=ok>no contact</b>')+
  '<br>speed setting '+s.setting.toFixed(1)+' m/s, actual '+s.speed.toFixed(2)+' m/s<br>closest: body '+s.body.toFixed(2)+' m, hands '+s.hands.toFixed(2)+
- ' m<br>contact steps '+s.contacts+', falls '+s.falls+'<br><span style="opacity:.7">hold W/Up walk forward, A/D turn (also in place), Space stop, +/- speed, T table, R reset, N next room</span>';}catch(e){}},250);
+ ' m<br>contact steps '+s.contacts+', falls '+s.falls+'<br><span style="opacity:.7">hold W/Up forward, S/Down back, A/D turn, Q/E sideways, Space stop, +/- speed, T table, R reset, N next room</span>';}catch(e){}},250);
 </script></body></html>"""
 
 
@@ -309,6 +327,7 @@ def main(argv=None):
     p.add_argument("--bank", default="data/furniture/table_edges_v1", help="Bank prefix (_packed/_collision/_resets)")
     p.add_argument("--scenes", nargs="+", default=PRESETS["demo"])
     p.add_argument("--speed", type=float, default=.5, help="Initial speed setting (m/s)")
+    p.add_argument("--body-mode", action="store_true", help="Force body-frame joystick commands (automatic for v7+ checkpoints)")
     p.add_argument("--port", type=int, default=8080)
     p.add_argument("--no-keyboard", action="store_true", help="Browser buttons only (no terminal key capture)")
     p.add_argument("--keys-port", type=int, help="Port of the browser keyboard page (default: --port + 1)")

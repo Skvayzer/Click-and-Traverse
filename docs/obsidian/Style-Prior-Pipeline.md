@@ -234,6 +234,27 @@ gate its field condition, only with geometry within 0.3 m of the head (gate open
   Own `teleop` bucket: `scene/teleop/obstacle_contact_rate`, `mean_episode_length`, `fall_rate`.
   Current policy under random commands: 5 of 8 episodes contact within ~4 s.
 
+## 7f. Joystick interface (v7, 2026-10-01)
+
+How the robot was told where to go: CAT computes a world-frame walking velocity from the goal field
+(or our room route); the command is [move, vx, vy, yaw_rate] but CAT always zeroed yaw_rate in the
+actor observation, so the policy never had a turn input and chose its facing itself.
+Fixes found on the way:
+- gait restart: standing sets both foot phases to 0; resuming walking commanded a synchronized hop and
+  the robot stayed in place (0.5 m/s after a 2 s stand -> 0.01 m/s). restart_phase now applies to every
+  route/joystick world. After the fix (v6 upd 60): 0.3-0.5 m/s followed at 0.96-1.23x, top ~0.6 m/s.
+- forward-facing reward used pelvis_rpy yaw, which is relative to the heading frame (~0 by
+  construction): it compared the command with the world x axis and never depended on the body's facing.
+  Now uses the world yaw from the heading frame.
+v7 = v6 final (update 98) + `--teleop-fraction 0.25 --teleop-body-commands --tracking-yaw-weight 1`:
+body-frame commands (forward -0.5..0.8, sideways +-0.3, turn +-1 rad/s; 20% turn in place, 15% stop,
+30% toward the nearest obstacle), turn rate kept in the actor observation (`yaw_command`), turn-rate
+tracking reward, no forward-facing bonus in joystick episodes, contact ends them.
+Baseline (v6 final, body-frame commands, flat scene): turn-in-place 0.8 rad/s -> 0.32 rad/s and 0.37 m
+drift; turn right -> turned left; backward -> turned around 140 deg; sideways -> turned 37-158 deg.
+Test: `scripts/demo/command_following_test.py` (body segments automatic for v7+). Demo keys for v7+:
+W/S forward/back, A/D turn, Q/E sideways.
+
 ## 8. Not yet done / next
 
 - Reference-state initialisation from sidle / duck clips (planned; not in the first pilot).

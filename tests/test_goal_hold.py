@@ -68,3 +68,21 @@ def test_teleop_flag():
     assert 'teleop' not in wholebody_config(c, teleop_fraction=0)
     with pytest.raises(ValueError):
         wholebody_config(teleop_fraction=1.5)
+
+
+def test_body_joystick_flags_and_yaw_tracking():
+    import math
+    import torch
+    from cat_mjlab.config import wholebody_config
+    from cat_mjlab import task_math as tm
+    c = wholebody_config(teleop_fraction=.25, teleop_body_commands=True)
+    assert c['teleop']['mode'] == 'body' and c['yaw_command'] and c['reward_config']['scales']['tracking_yaw'] == 1.
+    with pytest.raises(ValueError):
+        wholebody_config(teleop_body_commands=True)
+    assert float(tm.yaw_tracking(torch.tensor([.5]), torch.tensor([.5]))) == 1.
+    assert float(tm.yaw_tracking(torch.tensor([.5]), torch.tensor([-.5]))) < .02
+    # The heading frame removes the body's yaw: the body's world yaw must come from navi itself.
+    R = torch.tensor([[[math.cos(1.), -math.sin(1.), 0.], [math.sin(1.), math.cos(1.), 0.], [0., 0., 1.]]])
+    navi = tm.navi_rotation(R)
+    assert abs(float(tm.matrix_rpy(navi.transpose(-1, -2) @ R)[0, 2])) < 1e-6
+    assert abs(float(torch.atan2(navi[0, 1, 0], navi[0, 0, 0])) - 1.) < 1e-6

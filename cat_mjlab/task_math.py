@@ -103,14 +103,15 @@ def pack_fields(gf,bf,sdf):
 def observations(*,joint_pos,joint_vel,nominal,gyro,gravity,linear_velocity,noise,last_action,
                  targets,command,command_delay,foot_height,phase,navi,gf,bf,sdf,
                  gf_delay,bf_delay,sdf_delay,positions,velocities,torso_rpy,gait,contacts,
-                 kp,kd,rfi,elbow_true,elbow_actor,sdf_rate=None):
+                 kp,kd,rfi,elbow_true,elbow_actor,sdf_rate=None,keep_yaw=False):
     gait_phase=torch.cat((phase.cos(),phase.sin()),-1)
     common=lambda gy,gr,q,v,cmd: torch.cat((gy,gr,q-nominal,v,last_action,targets,cmd,
                                           foot_height[:,None],gait_phase),-1)
     true=common(gyro,gravity,joint_pos,joint_vel,command)
     delayed_command=command.clone()
     delayed_command[:,1:]=world_to_navi(navi,command_delay[:,1:])
-    delayed_command[:,-1]=0.
+    if not keep_yaw:
+        delayed_command[:,-1]=0.      # CAT never commands a yaw rate; joystick training (yaw_command) does
     noisy=common(gyro+noise['gyro'],gravity+noise['gravity'],joint_pos+noise['joint_pos'],
                  joint_vel+noise['joint_vel'],delayed_command)
     actor_fields=pack_fields(world_to_navi(navi,gf_delay),
@@ -291,6 +292,11 @@ def heading_probe_points(root_xy,direction,height,*,half_width=.16,lookahead=.30
     return torch.cat((xy,height[:,None,None].expand(-1,offsets.shape[1],1)),-1)
 
 
+def yaw_tracking(command_yaw_rate,yaw_rate,*,sigma=.25):
+    """exp(-error^2/sigma): following a commanded turn rate (rad/s), joystick training only."""
+    return torch.exp(-(command_yaw_rate-yaw_rate).square()/sigma)
+
+
 def heading_align_reward(direction,pelvis_yaw,move,probe_sdf,*,margin_low=.05,margin_high=.15):
     """Bonus for facing the guidance direction, switched off where a forward-facing body would not fit.
 
@@ -313,7 +319,7 @@ def native_rewards(*,action,last_action,last_last_action,joint_pos,joint_vel,las
         global_velocity,torso_angvel,navi,leg_rotations,feet_pos,feet_sensor_velocity,
         subtree_com,feet_contact,gait,foot_height,foot_height_stance,gf,positions,velocities,sdf,
         crossed,dt=.02,max_yaw=.5,sdf_knee=None,standing_gf=4.,heading_sdf=None,heading_margins=(.05,.15),
-        stand_still=False,stillness_speed=None):
+        stand_still=False,stillness_speed=None,facing_yaw=None):
     move=command[:,0];cmd=command[:,1:]
     pitch_negative=torso_rpy[:,1].clamp(-torch.pi,0).abs()
     orientation=pelvis_rpy[:,0].abs()+torso_rpy[:,0].abs()+pitch_negative+(head_z>torso_height+.1)*torso_rpy[:,1].abs()
@@ -358,7 +364,9 @@ def native_rewards(*,action,last_action,last_last_action,joint_pos,joint_vel,las
     if stand_still:
         rewards['stand_still']=stand_still_cost(global_velocity,torso_angvel,move)
     if heading_sdf is not None:
-        rewards['heading_align']=heading_align_reward(direction,pelvis_rpy[:,2],move,heading_sdf,
+        # facing_yaw: world yaw of the body. pelvis_rpy is relative to the heading (navi) frame, so its
+        # yaw is ~0 by construction; using it compared the command with the world x axis instead.
+        rewards['heading_align']=heading_align_reward(direction,pelvis_rpy[:,2] if facing_yaw is None else facing_yaw,move,heading_sdf,
             margin_low=heading_margins[0],margin_high=heading_margins[1])
     return {k:torch.where(torch.isnan(v),0.,v) for k,v in rewards.items()}
 

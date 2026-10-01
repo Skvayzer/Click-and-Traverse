@@ -33,7 +33,8 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
                      stand_still_weight=None,standing_requires_stillness=None,sdf_rate_obs=None,reactive_event_weight=None,
                      spot_hold_weight=None,standing_stillness_speed=None,route_recovery_speed=None,route_lost_seconds=None,goal_hold_seconds=None,
                      action_rate_weight=None,joint_acc_weight=None,hand_body_contact_weight=None,
-                     heading_hand_probes=None,head_guidance_near_sdf=None,teleop_fraction=None):
+                     heading_hand_probes=None,head_guidance_near_sdf=None,teleop_fraction=None,
+                     teleop_body_commands=None,tracking_yaw_weight=None):
     from cat_ppo.furniture.generalist_config import released_config
     from .collision import PROPOSAL
     config=copy.deepcopy(released_config()['env_config'] if base_config is None else base_config)
@@ -147,6 +148,16 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
         if f==0:config.pop('teleop',None)
         else:config['teleop']=dict(fraction=f,speed_min=.3,speed_max=.8,p_stop=.15,p_toward=.5,
                                    hold_min=1.5,hold_max=4.,episode_seconds=20.)
+    # Joystick interface: body-frame (forward, sideways, turn rate) commands in the teleop episodes,
+    # the turn rate kept in the actor observation, a turn-rate tracking reward, no forward-facing
+    # bonus in those episodes.
+    if teleop_body_commands:
+        if 'teleop' not in config:raise ValueError('teleop_body_commands requires teleop_fraction')
+        config['teleop'].update(mode='body',vx_min=-.5,vx_max=.8,vy_max=.3,yaw_max=1.,p_turn=.2,p_toward=.3)
+        config['yaw_command']=True
+        scales['tracking_yaw']=float(tracking_yaw_weight if tracking_yaw_weight is not None else 1.)
+    elif tracking_yaw_weight is not None:
+        raise ValueError('tracking_yaw_weight requires teleop_body_commands')
     if goal_hold_seconds is not None:
         hold=float(goal_hold_seconds)
         if not math.isfinite(hold) or hold<0:raise ValueError('goal_hold_seconds must be finite and >= 0')
