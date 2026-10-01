@@ -33,7 +33,7 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
                      stand_still_weight=None,standing_requires_stillness=None,sdf_rate_obs=None,reactive_event_weight=None,
                      spot_hold_weight=None,standing_stillness_speed=None,route_recovery_speed=None,route_lost_seconds=None,goal_hold_seconds=None,
                      action_rate_weight=None,joint_acc_weight=None,hand_body_contact_weight=None,
-                     heading_hand_probes=None,head_guidance_near_sdf=None):
+                     heading_hand_probes=None,head_guidance_near_sdf=None,teleop_fraction=None):
     from cat_ppo.furniture.generalist_config import released_config
     from .collision import PROPOSAL
     config=copy.deepcopy(released_config()['env_config'] if base_config is None else base_config)
@@ -139,6 +139,14 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
         if not math.isfinite(near) or near<0:raise ValueError('head_guidance_near_sdf must be finite and >= 0')
         if near==0:config.pop('head_guidance_near_sdf',None)
         else:config['head_guidance_near_sdf']=near
+    # Joystick training: a fraction of room episodes follow random commands (see
+    # CATTask._teleop_resample) instead of the route; 0 disables.
+    if teleop_fraction is not None:
+        f=float(teleop_fraction)
+        if not 0<=f<=1:raise ValueError('teleop_fraction must lie in [0, 1]')
+        if f==0:config.pop('teleop',None)
+        else:config['teleop']=dict(fraction=f,speed_min=.3,speed_max=.8,p_stop=.15,p_toward=.5,
+                                   hold_min=1.5,hold_max=4.,episode_seconds=20.)
     if goal_hold_seconds is not None:
         hold=float(goal_hold_seconds)
         if not math.isfinite(hold) or hold<0:raise ValueError('goal_hold_seconds must be finite and >= 0')

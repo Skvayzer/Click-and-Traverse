@@ -283,6 +283,26 @@ class CATTask:
             approach_distance=float(_get(self.config,'hand_contrast_approach_distance',0.)))
         for k,v in values.items():self._put(self.contrast,k,ids,v)
 
+    def _teleop_resample(self):
+        """Joystick-style commands for teleoperated room episodes (config 'teleop').
+
+        Every hold period a new command: a stop with probability p_stop, otherwise a speed in
+        [speed_min, speed_max] toward the nearest obstacle (minus the root's distance-field gradient)
+        with probability p_toward, else in a uniformly random direction. Nothing steers the command
+        away from obstacles: contact ends the episode, so refusing a colliding command is learned.
+        """
+        t=self.config['teleop'];n=self.num_envs
+        self._teleop_timer-=self.dt
+        due=self.joystick_mask&(self._teleop_timer<=0)
+        if not bool(due.any()):return
+        angle=self._rand((n,),-torch.pi,torch.pi);random_dir=torch.stack((angle.cos(),angle.sin()),-1)
+        away=self.info['bf'][:,1,:2];norm=torch.linalg.vector_norm(away,dim=-1,keepdim=True)
+        toward=torch.where(norm>1e-6,-away/norm.clamp_min(1e-6),random_dir)
+        direction=torch.where((self._rand((n,))<float(t['p_toward']))[:,None],toward,random_dir)
+        speed=self._rand((n,),float(t['speed_min']),float(t['speed_max']))*(self._rand((n,))>=float(t['p_stop']))
+        self.joystick=torch.where(due[:,None],direction*speed[:,None],self.joystick)
+        self._teleop_timer=torch.where(due,self._rand((n,),float(t['hold_min']),float(t['hold_max'])),self._teleop_timer)
+
     def _gate_head_pull(self,replacement,sdf):
         """Rooms: keep the head field's vertical component only with geometry near the head.
 
@@ -325,8 +345,10 @@ class CATTask:
             # command, other body points get the usual obstacle-projected guidance, and the policy
             # sees the same fields -- nothing here steers the command away from obstacles.
             joy=joystick[ids];joy_speed=torch.linalg.vector_norm(joy,dim=-1)
-            direction=torch.where((joy_speed>1e-3)[:,None],joy/joy_speed.clamp_min(1e-6)[:,None],direction)
-            speed=joy_speed;active=joy_speed>1e-3
+            mask=getattr(self,'joystick_mask',None)
+            teleop=torch.ones_like(joy_speed,dtype=torch.bool) if mask is None else mask[ids]
+            direction=torch.where((teleop&(joy_speed>1e-3))[:,None],joy/joy_speed.clamp_min(1e-6)[:,None],direction)
+            speed=torch.where(teleop,joy_speed,speed);active=torch.where(teleop,joy_speed>1e-3,active)
         if hasattr(self, 'speed_state'):
             from .speed_curriculum import speed_limit
             scoped, cap, hold=speed_limit(self.speed_state,{k:v[ids] for k,v in self.contrast.items()},ids,self.dt)
@@ -528,6 +550,14 @@ class CATTask:
         if not _get(self.config,'dm_rand_config.enable_rfi',True):defaults['rfi'].zero_()
         for k,v in defaults.items():self._put(self.info,k,ids,v)
         self._navigation(ids,reset=True)
+        teleop=self.config.get('teleop')
+        if teleop:
+            if getattr(self,'joystick_mask',None) is None:
+                self.joystick=torch.zeros((self.num_envs,2),device=self.device)
+                self.joystick_mask=torch.zeros(self.num_envs,dtype=torch.bool,device=self.device)
+                self._teleop_timer=torch.zeros(self.num_envs,device=self.device)
+            self.joystick_mask[ids]=(self._rand((n,))<float(teleop['fraction']))&self.navigation['enabled'][ids]
+            self.joystick[ids]=0.;self._teleop_timer[ids]=0.
         if hasattr(self, 'speed_state'):
             from .speed_curriculum import reset as reset_speed
             reset_speed(self.speed_state,ids,self.navigation['progress_m'][ids])
@@ -601,7 +631,9 @@ class CATTask:
         fall=(self._sensor('upvector_pelvis',self.all_ids)[:,2]<0)|(i['positions'][:,0,2]<.7)
         numerical=torch.isnan(self.data.qpos).any(-1)|torch.isnan(self.data.qvel).any(-1)
         root=self.navigation['enabled']&self.navigation['violation'];body=regions.any(-1)
-        if getattr(self,'joystick',None) is not None:root=torch.zeros_like(root)   # teleop leaves the route on purpose
+        if getattr(self,'joystick',None) is not None:   # teleop leaves the route on purpose
+            mask=getattr(self,'joystick_mask',None)
+            root=torch.zeros_like(root) if mask is None else root&~mask
         obstacle=fields|elbows|root|body;done=fall|self_contact|numerical|obstacle
         if _get(self.config,'terminate_on_hand_self_contact',False):done=done|hand_self_contact
         recovery=self.config.get('route_recovery')
@@ -876,6 +908,8 @@ class CATTask:
         if action.shape!=(self.num_envs,29):raise ValueError('Expected [num_envs,29] actions')
         ids=self.all_ids;i=self.info;d=self.data
         style_now=self._style_features() if getattr(self,'style_prior',None) is not None else None
+        if self.config.get('teleop') and getattr(self,'joystick_mask',None) is not None:
+            self._teleop_resample()
         theta=self._rand((self.num_envs,),0.,2*torch.pi)
         magnitude=self._rand((self.num_envs,),*_get(self.config,'push_config.magnitude_range',[.1,1.]))
         signal=((i['push_step']+1)%i['push_interval']==0)&bool(_get(self.config,'push_config.enable',True))
@@ -906,7 +940,9 @@ class CATTask:
                 dynamic_regions,robot_hit=self.reactive_objects.contacts(self.sim.final_collision_data(),*reactive_before)
                 regions|=dynamic_regions;robot_initiated|=robot_hit
                 object_initiated|=self.reactive_objects.last_object_contacts
-            if self.collision is not None:regions|=self.collision(self.scene_ids,d)
+            # Interactive demo (sim_cpu) checks obstacle contact once per control step: per substep it
+            # is 80% of a single-world CPU step. Training keeps the per-substep check.
+            if self.collision is not None and getattr(self,'collision_every_substep',True):regions|=self.collision(self.scene_ids,d)
         if self.collision is not None:regions|=self.collision(self.scene_ids,self.sim.final_collision_data())
         contacts=self.sim.contact_flags(self.contact_pairs)
         i['motor_targets']=targets
@@ -970,6 +1006,8 @@ class CATTask:
         lengths=self.bank.episode_lengths[self.scene_ids]
         if self.reactive_objects is not None:
             lengths=torch.where(self.reactive_objects.state['active'],int(self.reactive_objects.episode_length),lengths)
+        if self.config.get('teleop') and getattr(self,'joystick_mask',None) is not None:
+            lengths=torch.where(self.joystick_mask,int(round(float(self.config['teleop']['episode_seconds'])/self.dt)),lengths)
         timeout=i['wrapper_steps']>=lengths
         hold=self.config.get('goal_hold_seconds')
         if hold:
@@ -992,6 +1030,7 @@ class CATTask:
             # episode ended having decided nothing -- the honest failure mode that
             # successes/resolved silently drops from its denominator.
             outcome_counted=self.outcome_counted.clone())
+        if getattr(self,'joystick_mask',None) is not None:metrics['teleop/active']=self.joystick_mask.clone()
         if self.reactive_objects is not None:
             metrics.update({'reactive/active':self.reactive_objects.state['active'].clone(),
                 # The distance the scene AUTHORED the object to stop at. Achieved gap minus

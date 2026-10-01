@@ -246,7 +246,10 @@ def main(argv=None):
     source_hash = saved["checkpoint_sha256"]
     factory_args = SimpleNamespace(**vars(args), num_envs=1, compile_task=False,
                                   nconmax=contract["nconmax"], njmax=contract["njmax"])
-    task, sim, _ = create_task(factory_args, environment_config=contract["environment_config"])
+    environment = dict(contract["environment_config"])
+    if args.joystick or args.joystick_toward:
+        environment.pop("teleop", None)             # the recorder drives the joystick itself
+    task, sim, _ = create_task(factory_args, environment_config=environment)
     if saved["schema"] == "cat-mjlab-best-v1" and saved["observation_contract"] != task.contract:
         raise ValueError("Named observation/action features differ from the selected policy")
     if args.reactive_row is not None:

@@ -87,6 +87,9 @@ def parser():
         target.add_argument("--sdf-rate-obs", action="store_true", default=None,
                             help="Add the rate of change of the hand/elbow distance samples to the ACTOR observation (222 -> 226); "
                                  "a warm start widens the first layer with zero weights, so the policy is unchanged at step 0")
+        target.add_argument("--teleop-fraction", type=float,
+                            help="Joystick training: this fraction of room episodes follows random commands (half aimed at the "
+                                 "nearest obstacle, 15%% stops) for 20 s instead of the route; contact ends them; 0 disables")
         target.add_argument("--head-guidance-near-sdf", type=float,
                             help="Head guidance pulls down / opens the crouch gate only with geometry within this distance "
                                  "of the head (m); fixes the dive toward room goals at z=0.75; 0 = original")

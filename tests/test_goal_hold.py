@@ -59,3 +59,12 @@ def test_heading_hand_probe_flag():
     assert 'hand_probe' not in wholebody_config(c, heading_hand_probes=False)['heading_align']
     with pytest.raises(ValueError):
         wholebody_config(heading_hand_probes=True)
+
+
+def test_teleop_flag():
+    from cat_mjlab.config import wholebody_config
+    c = wholebody_config(teleop_fraction=.3)
+    assert c['teleop']['fraction'] == .3 and c['teleop']['episode_seconds'] == 20.
+    assert 'teleop' not in wholebody_config(c, teleop_fraction=0)
+    with pytest.raises(ValueError):
+        wholebody_config(teleop_fraction=1.5)

@@ -216,6 +216,24 @@ Fix `--head-guidance-near-sdf 0.3`: in rooms the head field keeps its vertical c
 gate its field condition, only with geometry within 0.3 m of the head (gate open near goals 100% -> 9%,
 40 random rooms). Ducking under real geometry is unchanged. v6 = v5 + this, warm start v5 update 340.
 
+## 7e. Teleoperation: recordings, live demo, joystick training (2026-10-01)
+
+- `task.joystick` [N,2] (world-frame velocity) replaces the room route; recorder `--joystick`,
+  `--joystick-toward top`, `--joystick-speed`, `--joystick-seconds` (then release).
+  v5 final, 4.5 s straight at a table: 0.5 m/s no contact in 2/5 scenes (closest 0.14-0.18 m, deflects
+  sideways), 0.8 m/s 0/5. Not a trained skill yet.
+- `cat_mjlab/sim_cpu.py`: one world on plain MuJoCo with the CATSimulation interface (float32 mirrors);
+  the unchanged training task runs on it. Parity vs MuJoCo Warp from the same state: observations
+  agree to 6e-8, root paths 3 mm apart after 1 s, 4 cm after 2 s; both reach the same contact.
+- `scripts/demo/teleop_demo.py`: keyboard in the terminal (ssh), robot + furniture in viser
+  (`ssh -L 8080:localhost:8080 dep-1`, http://localhost:8080), on-screen buttons/slider/scene list,
+  live clearance and contact readout. 18 ms per control step = 1.1x real time (obstacle check every
+  other step, rewards skipped, no pushes/noise/PD randomization, contact shown not terminal).
+- `--teleop-fraction F`: F of room episodes follow random joystick commands for 20 s (0.3-0.8 m/s,
+  15% stops, half aimed at the nearest obstacle, new command every 1.5-4 s); contact ends them.
+  Own `teleop` bucket: `scene/teleop/obstacle_contact_rate`, `mean_episode_length`, `fall_rate`.
+  Current policy under random commands: 5 of 8 episodes contact within ~4 s.
+
 ## 8. Not yet done / next
 
 - Reference-state initialisation from sidle / duck clips (planned; not in the first pilot).

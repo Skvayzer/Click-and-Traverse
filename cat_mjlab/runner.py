@@ -282,15 +282,16 @@ def collect_rollout(task, learner, *, unroll_length, trajectories, policy_ids):
     # below used to discard them, so a run could report 867 metrics and not one of them
     # said which term the policy was actually being paid by.
     reward_totals, reward_steps = {}, 0.
-    # [attempted, resolved, successful, timed_out, hand_self_contact, fell, length_sum, route_lost] per scene type.
+    # [attempted, resolved, successful, timed_out, hand_self_contact, fell, length_sum, route_lost, obstacle] per scene type.
     bucket_of_scene = torch.as_tensor(_scene_buckets(task.bank.manifest), device=task.device)
-    bucket_stats = torch.zeros((len(SCENE_BUCKETS), 8), dtype=torch.float64, device=task.device)
+    bucket_stats = torch.zeros((len(SCENE_BUCKETS), 9), dtype=torch.float64, device=task.device)
     # Per-step navigation health: [steps, steps with the route out of sight, steps in episodes older than 1000 steps].
     bucket_nav = torch.zeros((len(SCENE_BUCKETS), 3), dtype=torch.float64, device=task.device)
     # Per-bucket posture: torso pitch summed over every step (not just episode ends).
     bucket_pitch = torch.zeros((len(SCENE_BUCKETS), 2), dtype=torch.float64, device=task.device)
     reactive_bucket = SCENE_BUCKETS.index('reactive_standing')
     walking_bucket = SCENE_BUCKETS.index('reactive_walking')
+    teleop_bucket = SCENE_BUCKETS.index('teleop'); last_teleop = None
     # Realized experience per sampling group: steps every step, lengths at episode end.
     sampling_ids = getattr(task.bank, 'sampling_ids', None)
     n_groups = int(task.bank.sampling_masses.numel()) if sampling_ids is not None else 0
@@ -354,6 +355,12 @@ def collect_rollout(task, learner, *, unroll_length, trajectories, policy_ids):
                 was_walking = torch.where(done, last_walking, walking_now) if last_walking is not None else walking_now
                 last_walking = walking_now
                 bucket = torch.where(was_active, torch.where(was_walking, walking_bucket, reactive_bucket), bucket)
+            if 'teleop/active' in metrics:
+                # Joystick episodes have no goal; classify an episode that just ended by last step's flag.
+                teleop_now = metrics['teleop/active'].bool()
+                was_teleop = torch.where(done, last_teleop, teleop_now) if last_teleop is not None else teleop_now
+                last_teleop = teleop_now
+                bucket = torch.where(was_teleop, teleop_bucket, bucket)
             # Counted on different events on purpose: a verdict can land hundreds of steps
             # before the episode ends, so terminations and resolutions are not the same
             # population and must not be divided by one another within an update.
@@ -367,6 +374,8 @@ def collect_rollout(task, learner, *, unroll_length, trajectories, policy_ids):
             bucket_stats[:, 6].scatter_add_(0, bucket, torch.where(done, metrics['episode_length'], 0.).double())
             lost = ended & metrics.get('episode/route_lost', torch.zeros_like(done)).bool()
             bucket_stats[:, 7].scatter_add_(0, bucket, lost.double())
+            obstacle = ended & metrics.get('episode/obstacle', torch.zeros_like(done)).bool()
+            bucket_stats[:, 8].scatter_add_(0, bucket, obstacle.double())
             if 'blocked' in task.navigation:
                 blocked = task.navigation['blocked'] & task.navigation['enabled']
                 old = task.info['step'] > 1000
@@ -498,7 +507,7 @@ def collect_rollout(task, learner, *, unroll_length, trajectories, policy_ids):
         summaries({k:float(v) for k,v in response_counts.items()}).items()})
     stats = bucket_stats.cpu().numpy(); nav_stats = bucket_nav.cpu().numpy()
     for index, name in enumerate(SCENE_BUCKETS):
-        ended, resolved, successful, undecided, touched, fell, length_sum, lost = (float(x) for x in stats[index])
+        ended, resolved, successful, undecided, touched, fell, length_sum, lost, obstacle = (float(x) for x in stats[index])
         decided = resolved + undecided
         if not (ended or resolved):
             continue
@@ -514,6 +523,7 @@ def collect_rollout(task, learner, *, unroll_length, trajectories, policy_ids):
             info['metrics'][f'scene/{name}/torso_pitch_abs'] = float(bucket_pitch[index, 0]) / steps_in_bucket
         info['metrics'][f'scene/{name}/mean_episode_length'] = length_sum / ended if ended else 0.
         info['metrics'][f'scene/{name}/route_lost_rate'] = lost / ended if ended else 0.
+        info['metrics'][f'scene/{name}/obstacle_contact_rate'] = obstacle / ended if ended else 0.
         nav_steps, blocked_steps, old_steps = (float(x) for x in nav_stats[index])
         if nav_steps:
             # Success rates only see episodes that ENDED; these see the robots still out there.
@@ -656,7 +666,7 @@ def environment_config_from_archive(metadata):
     return dict(config, randomize_initial_episode_steps=randomize)
 
 
-GOALLESS_BUCKETS = ('reactive_standing', 'reactive_walking', 'flat_balance')
+GOALLESS_BUCKETS = ('reactive_standing', 'reactive_walking', 'flat_balance', 'teleop')
 # Per-step task telemetry averaged over the update: posture/* and self_clearance/*.
 TELEMETRY_MEANS = ('self_clearance_min_m', 'self_clearance_violation', 'crouch_required', 'torso_pitch_abs',
                    'hand_contact_trunk', 'hand_contact_head', 'hand_contact_arm', 'hand_contact_hand')
@@ -665,7 +675,7 @@ SCENE_BUCKETS = ('procedural_cat', 'original_cat', 'published_cat',
                  'furniture_dense', 'furniture_pilot', 'furniture_legacy',
                  'narrow_passage', 'protected_passage', 'transition_passage',
                  'table_edges',
-                 'open_passage', 'flat_balance', 'reactive_standing', 'reactive_walking')
+                 'open_passage', 'flat_balance', 'reactive_standing', 'reactive_walking', 'teleop')
 
 
 def _scene_buckets(manifest):
@@ -889,7 +899,7 @@ def _rebalance_bank(bank, args):
         bank.episode_lengths = torch.where(cat, int(length), bank.episode_lengths)
 
 
-def create_task(args, *, environment_config=None):
+def create_task(args, *, environment_config=None, sim_class=None):
     from cat_ppo.furniture.contrast_preflight import contrast_preflight
     contrast_preflight(args.bank_manifest,
         require_hand_contrast=True if getattr(args, "require_hand_contrast", False) else None)
@@ -904,7 +914,7 @@ def create_task(args, *, environment_config=None):
         import mujoco
         from .model import assemble_training_xml
         model = mujoco.MjModel.from_xml_string(assemble_training_xml(hand_body_collision=True))
-    sim = CATSimulation(args.num_envs, device=args.device, nconmax=args.nconmax, njmax=args.njmax, model=model)
+    sim = (sim_class or CATSimulation)(args.num_envs, device=args.device, nconmax=args.nconmax, njmax=args.njmax, model=model)
     bank = SceneBank(args.bank_manifest, device=args.device, reset_manifest=args.body_collision_resets,
                      collision_manifest=args.body_collision_bank, passage_rewards=getattr(args, "passage_rewards", None))
     collision = CollisionChecker(sim.model, args.body_collision_bank, field_manifest=args.bank_manifest, device=args.device)
@@ -929,6 +939,7 @@ def create_task(args, *, environment_config=None):
         hand_body_contact_weight=getattr(args, 'hand_body_contact_weight', None),
         heading_hand_probes=getattr(args, 'heading_hand_probes', None),
         head_guidance_near_sdf=getattr(args, 'head_guidance_near_sdf', None),
+        teleop_fraction=getattr(args, 'teleop_fraction', None),
         standing_gf_bonus=getattr(args, 'standing_gf_bonus', None),
         reactive_hand_guidance=getattr(args, 'reactive_hand_guidance', None),
         handsdf_weight=getattr(args, 'handsdf_weight', None),
