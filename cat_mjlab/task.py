@@ -952,6 +952,12 @@ class CATTask:
         navigation_leader=leader
         if getattr(self,'balance_settings',None) is not None:
             navigation_leader=leader&~self.bank.flat_balance[self.scene_ids]
+        # Joystick episodes have no goal: they end by contact or by the clock, never by success. Counting
+        # them halved every success rate (v8, 50% joystick: clutter 0.80 -> 0.41) and the per-scene
+        # rates that drive adaptive scene sampling. They keep their own 'teleop' bucket metrics.
+        teleop=getattr(self,'joystick_mask',None)
+        if teleop is not None and self.config.get('teleop'):
+            navigation_leader=navigation_leader&~teleop
         groups=self.bank.navigation_groups[self.scene_ids]
         for column,mask in enumerate((resolved,successful)):
             increments=torch.zeros(3,dtype=torch.long,device=self.device).scatter_add_(0,groups,(mask&navigation_leader).long())
@@ -1005,6 +1011,8 @@ class CATTask:
         # require minimum hand clearance; box compliance is diagnostic only.
         contrast_scene=(self.bank.roles[self.scene_ids]>=0) if self.bank.roles is not None else torch.zeros_like(done)
         adapted_done=torch.where(contrast_scene,resolved,done)
+        if teleop is not None and self.config.get('teleop'):
+            adapted_done=adapted_done&~teleop       # sampling statistics: route episodes only
         adapted_success=torch.where(contrast_scene,curriculum_success,truncation)
         width=getattr(self.bank,'width_curriculum',None)
         if width is not None:
