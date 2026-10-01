@@ -20,8 +20,9 @@ Keys (terminal): Up/W go, Down/S stop, Left/A and Right/D turn the commanded dir
 Browser keyboard (viser has no key events): open http://localhost:8081 instead of 8080 -- a page that
 shows the viser view full-screen and captures the keys itself (forward both ports:
 ssh -L 8080:localhost:8080 -L 8081:localhost:8081 konstantinsmirnov@dep-1). There the keys are
-hold-to-drive like a joystick: hold Up/W to walk, release to stop; hold Left/Right (A/D) to turn
-(90 deg/s); Space stop, +/- speed, T nearest table, R reset, N next room.
+hold-to-drive like a joystick: hold Up/W to walk forward, release to stop; hold Left/Right (A/D)
+to turn the robot (also in place, by small steps); Space stop, +/- speed, T nearest table, R reset,
+N next room.
 """
 from __future__ import annotations
 
@@ -47,6 +48,7 @@ PRESETS = {
              "random-generic_clutter-dense-train-005001-1eaef5f4115f", "random-furniture-dense-train-20261205-c5b0ae199c87",
              "table-contrast-train-20260924-forward_protected-5faeda4369c6"],
 }
+TURN_IN_PLACE_SPEED = .15     # m/s step toward the target facing while only A/D are held
 REGIONS = ("feet", "legs", "trunk", "head", "arms", "hands")
 PALETTE = {"wall": (158, 168, 178), "chair": (52, 120, 135), "table": (214, 140, 70), "top": (214, 140, 70)}
 
@@ -155,10 +157,18 @@ class Session:
         torch = self.torch
         with self.lock:
             if self.hold_mode:
-                turn = math.radians(90) * .02
-                if "left" in self.held: self.heading += turn
-                if "right" in self.held: self.heading -= turn
-                self.speed = self.speed_setting if "up" in self.held else 0.
+                # Joystick-like. The policy has no yaw-rate input: it walks along the commanded
+                # velocity and turns to face it. A/D rotate a target facing (90 deg/s) kept within
+                # 60 deg of where the body points; W walks along it; A/D alone command a slow step
+                # toward it, which turns the robot almost in place; nothing held = stand.
+                yaw = self.yaw()
+                turning = ("left" in self.held) - ("right" in self.held)
+                if not ("up" in self.held or turning):
+                    self.heading = yaw
+                self.heading += turning * math.radians(90) * .02
+                lag = math.remainder(self.heading - yaw, 2 * math.pi)
+                self.heading = yaw + max(-math.radians(60), min(math.radians(60), lag))
+                self.speed = self.speed_setting if "up" in self.held else (TURN_IN_PLACE_SPEED if turning else 0.)
             self.task.joystick[0, 0] = self.speed * math.cos(self.heading)
             self.task.joystick[0, 1] = self.speed * math.sin(self.heading)
             action = self.learner.act(self.task.obs, policy_ids=0, deterministic=True)["action"]
@@ -250,7 +260,7 @@ setInterval(()=>{if(document.activeElement&&document.activeElement.tagName==='IF
 setInterval(async()=>{try{const s=await (await fetch('/status')).json();
  document.getElementById('hud').innerHTML=(s.touching&&s.touching.length?'<b class=c>CONTACT: '+s.touching.join(', ')+'</b>':'<b class=ok>no contact</b>')+
  '<br>speed setting '+s.setting.toFixed(1)+' m/s, actual '+s.speed.toFixed(2)+' m/s<br>closest: body '+s.body.toFixed(2)+' m, hands '+s.hands.toFixed(2)+
- ' m<br>contact steps '+s.contacts+', falls '+s.falls+'<br><span style="opacity:.7">hold W/Up walk, A/D turn, Space stop, +/- speed, T table, R reset, N next room</span>';}catch(e){}},250);
+ ' m<br>contact steps '+s.contacts+', falls '+s.falls+'<br><span style="opacity:.7">hold W/Up walk forward, A/D turn (also in place), Space stop, +/- speed, T table, R reset, N next room</span>';}catch(e){}},250);
 </script></body></html>"""
 
 
@@ -390,7 +400,8 @@ def main(argv=None):
                                 client.camera.position = np.asarray(client.camera.position, dtype=float) + shift
                                 client.camera.look_at = look + shift
             session.status = dict(touching=info["touching"], setting=session.speed_setting, speed=info["speed"],
-                                  body=info["body_clearance"], hands=info["hand_clearance"], contacts=session.contacts, falls=session.falls)
+                                  body=info["body_clearance"], hands=info["hand_clearance"], contacts=session.contacts, falls=session.falls,
+                                  yaw_deg=math.degrees(session.yaw()), xy=[float(v) for v in session.sim.raw.qpos[:2]])
             if frame % 10 == 0:
                 rate = n_report * .02 / max(time.time() - t_report, 1e-6); t_report, n_report = time.time(), 0
                 touching = info["touching"]
