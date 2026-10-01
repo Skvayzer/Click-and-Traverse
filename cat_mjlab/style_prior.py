@@ -152,6 +152,7 @@ class StylePrior:
         self.opt = torch.optim.Adam(self.nets.parameters(), lr=lr, betas=(.9, .999))
         self.gp, self.batch, self.steps = grad_penalty, batch, steps
         self.store_fraction, self.min_gate = store_fraction, min_gate
+        self.neutral = .5            # running mean style reward: the value given where style is not judged
         self.replay = [torch.zeros((replay_size, dim), device=self.device) for _ in GROUPS]
         self.filled = [0] * len(GROUPS); self.cursor = [0] * len(GROUPS)
 
@@ -162,7 +163,9 @@ class StylePrior:
     def reward(self, f_now, f_next, weights):
         x = torch.cat((self.normalize(f_now), self.normalize(f_next)), -1)
         per = torch.stack([((1 - .25 * (net(x) - 1).square()).clamp_min(0)) for net in self.nets], -1)
-        return (weights * per).sum(-1), per
+        reward = (weights * per).sum(-1)
+        self.neutral = .99 * self.neutral + .01 * float(reward.mean())
+        return reward, per
 
     @torch.no_grad()
     def store(self, f_now, f_next, weights, generator=None):

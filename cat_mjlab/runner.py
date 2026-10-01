@@ -328,8 +328,11 @@ def collect_rollout(task, learner, *, unroll_length, trajectories, policy_ids):
                 rollout[key][section, t].copy_(acted[key])
             rollout["reward"][section, t].copy_(transition["reward"])
             if prior is not None:
-                f_now, f_next, weights = task.style_transition
+                f_now, f_next, weights, near = task.style_transition
                 style_r, per = prior.reward(f_now, f_next, weights)
+                if near is not None:
+                    style_r = (1 - near) * style_r + near * prior.neutral
+                    weights = weights * (1 - near)[:, None]       # near-obstacle steps are not shown to D
                 rollout["style_reward"][section, t].copy_(style_r)
                 prior.store(f_now, f_next, weights)
                 style_acc['sum'] += style_r.sum(); style_acc['n'] += len(style_r)
@@ -944,6 +947,8 @@ def create_task(args, *, environment_config=None, sim_class=None):
         teleop_fraction=getattr(args, 'teleop_fraction', None),
         teleop_body_commands=getattr(args, 'teleop_body_commands', None), tracking_yaw_weight=getattr(args, 'tracking_yaw_weight', None),
         teleop_heading_commands=getattr(args, 'teleop_heading_commands', None), heading_track_weight=getattr(args, 'heading_track_weight', None),
+        upright_roll=getattr(args, 'upright_roll', None), body_motion_weight=getattr(args, 'body_motion_weight', None),
+        style_free_near_obstacles=getattr(args, 'style_free_near_obstacles', None),
         standing_gf_bonus=getattr(args, 'standing_gf_bonus', None),
         reactive_hand_guidance=getattr(args, 'reactive_hand_guidance', None),
         handsdf_weight=getattr(args, 'handsdf_weight', None),

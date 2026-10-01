@@ -230,7 +230,7 @@ def stand_still_cost(global_velocity,torso_angvel,move,*,speed_scale=.05,yaw_sca
     return (planar+.2*yaw)*(move<.5).float()
 
 
-def posture_terms(torso_pitch,head_z,head_guidance,head_sdf,torso_angvel,*,head_target=1.20,head_scale=.08,
+def posture_terms(torso_pitch,head_z,head_guidance,head_sdf,torso_angvel,*,torso_roll=None,head_target=1.20,head_scale=.08,
                   pitch_scale=torch.pi/18,crouch_field_z=-.3,crouch_sdf=.20,crouch_near=None):
     """Straight back and full height, unless the head field asks for a crouch.
 
@@ -249,7 +249,10 @@ def posture_terms(torso_pitch,head_z,head_guidance,head_sdf,torso_angvel,*,head_
         field_down=field_down&(head_sdf<crouch_near)
     crouch=field_down|(head_sdf<crouch_sdf)
     free=(~crouch).float()
-    upright=torch.exp(-(torso_pitch/pitch_scale).square())*free
+    # torso_roll given: total tilt. Pitch only made sideways lean nearly free (an 8 deg lean cost ~0.14 of
+    # tracking_orientation's +2), the cheapest way to shift both hands away from an obstacle.
+    tilt=torso_pitch.square() if torso_roll is None else torso_pitch.square()+torso_roll.square()
+    upright=torch.exp(-tilt/pitch_scale**2)*free
     stand_tall=torch.exp(-((head_target-head_z).clamp_min(0)/head_scale).square())*free
     torso_rate=torso_angvel[:,:2].square().sum(-1)
     return dict(upright=upright,stand_tall=stand_tall,torso_rate=torso_rate),crouch

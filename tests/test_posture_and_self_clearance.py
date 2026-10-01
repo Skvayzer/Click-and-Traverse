@@ -91,3 +91,14 @@ def test_crouch_gate_needs_geometry_near_the_head_when_configured():
     from cat_mjlab.config import wholebody_config
     assert wholebody_config(head_guidance_near_sdf=.3)['head_guidance_near_sdf'] == .3
     assert 'head_guidance_near_sdf' not in wholebody_config(head_guidance_near_sdf=0)
+
+
+def test_upright_includes_roll_when_given():
+    from cat_mjlab.task_math import posture_terms
+    args = (torch.tensor([0.]), torch.tensor([1.2]), torch.tensor([[0., 0., 0.]]), torch.tensor([1.]), torch.zeros(1, 3))
+    terms, _ = posture_terms(*args)
+    leaned, _ = posture_terms(*args, torso_roll=torch.tensor([math.radians(10)]))
+    assert float(terms['upright']) == 1. and float(leaned['upright']) < .4
+    from cat_mjlab.config import wholebody_config
+    c = wholebody_config(upright_roll=True, body_motion_weight=-1.5, style_free_near_obstacles=True)
+    assert c['upright_roll'] and c['style_free_near_obstacles'] and c['reward_config']['scales']['body_motion'] == -1.5

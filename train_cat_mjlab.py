@@ -98,6 +98,10 @@ def parser():
                             help="v8 joystick interface (with --teleop-fraction): reference heading + world-fixed walking "
                                  "velocity; gated heading error reaches the policy; obstacle-safe velocity reward; also route worlds")
         target.add_argument("--heading-track-weight", type=float, help="Weight of the gated heading reward (replaces heading_align)")
+        target.add_argument("--upright-roll", action="store_true", default=None, help="Upright reward on total torso tilt (pitch and roll)")
+        target.add_argument("--body-motion-weight", type=float, help="Cost on velocity off the command line and torso rocking (default -0.5)")
+        target.add_argument("--style-free-near-obstacles", action="store_true", default=None,
+                            help="Style prior neutral (and no discriminator samples) while a hand is within 0.2-0.3 m of an obstacle")
         target.add_argument("--head-guidance-near-sdf", type=float,
                             help="Head guidance pulls down / opens the crouch gate only with geometry within this distance "
                                  "of the head (m); fixes the dive toward room goals at z=0.75; 0 = original")

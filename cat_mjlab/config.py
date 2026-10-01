@@ -35,7 +35,7 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
                      action_rate_weight=None,joint_acc_weight=None,hand_body_contact_weight=None,
                      heading_hand_probes=None,head_guidance_near_sdf=None,teleop_fraction=None,
                      teleop_body_commands=None,tracking_yaw_weight=None,teleop_heading_commands=None,
-                     heading_track_weight=None):
+                     heading_track_weight=None,upright_roll=None,body_motion_weight=None,style_free_near_obstacles=None):
     from cat_ppo.furniture.generalist_config import released_config
     from .collision import PROPOSAL
     config=copy.deepcopy(released_config()['env_config'] if base_config is None else base_config)
@@ -159,6 +159,16 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
         scales['tracking_yaw']=float(tracking_yaw_weight if tracking_yaw_weight is not None else 1.)
     elif tracking_yaw_weight is not None:
         raise ValueError('tracking_yaw_weight requires teleop_body_commands')
+    # Hands first, body second: sideways lean counts in upright, moving off the (obstacle-safe) command
+    # line costs more, and the style prior does not judge the arms while a hand is near an obstacle.
+    if upright_roll is not None:
+        if upright_roll:config['upright_roll']=True
+        else:config.pop('upright_roll',None)
+    if body_motion_weight is not None:
+        scales['body_motion']=_signed('body_motion_weight',body_motion_weight,positive=False)
+    if style_free_near_obstacles is not None:
+        if style_free_near_obstacles:config['style_free_near_obstacles']=True
+        else:config.pop('style_free_near_obstacles',None)
     if goal_hold_seconds is not None:
         hold=float(goal_hold_seconds)
         if not math.isfinite(hold) or hold<0:raise ValueError('goal_hold_seconds must be finite and >= 0')

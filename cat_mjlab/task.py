@@ -891,7 +891,8 @@ class CATTask:
         if any(k in scales for k in ('upright','stand_tall','torso_rate')):
             near=self.config.get('head_guidance_near_sdf')
             terms,crouch=tm.posture_terms(i['torso_rpy'][:,1],i['positions'][:,0,2],i['gf'][:,0],i['sdf'][:,0].reshape(-1),i['torso_angvel'],
-                head_target=float(_get(self.config,'posture_head_target',1.20)),crouch_near=float(near) if near else None)
+                head_target=float(_get(self.config,'posture_head_target',1.20)),crouch_near=float(near) if near else None,
+                torso_roll=i['torso_rpy'][:,0] if self.config.get('upright_roll') else None)
             rewards.update({k:v for k,v in terms.items() if k in scales})
             telemetry['crouch_required']=crouch.float();telemetry['torso_pitch_abs']=i['torso_rpy'][:,1].abs()
         if self.hand_contrast:
@@ -1281,7 +1282,14 @@ class CATTask:
                 valid=self._style_age>=stride
                 first=torch.where(valid[:,None],self._style_hist[self._style_ptr],style_now)
                 weights=weights*valid[:,None]
-            self.style_transition=(first,self._style_features(),weights)
+            near=None
+            if self.config.get('style_free_near_obstacles'):
+                # Hands within 0.2-0.3 m of an obstacle: tucking or raising the arms there is the job, not
+                # bad style. The style reward is blended to neutral and these steps are not shown to the
+                # discriminator (human walking has the arms down; moving the body away was cheaper).
+                clearance=i['sdf'][:,5:7,0].amin(-1)
+                blend=((clearance-.20)/.10).clamp(0.,1.);near=1.-blend.square()*(3-2*blend)
+            self.style_transition=(first,self._style_features(),weights,near)
             metrics['style/gap_m']=gap
         # Only physically completed worlds reset; cached terminal observations
         # and terminal rewards retain the transition before reset.
