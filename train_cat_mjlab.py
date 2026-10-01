@@ -94,6 +94,10 @@ def parser():
                             help="With --teleop-fraction: joystick commands in the body frame (forward -0.5..0.8, sideways +-0.3 m/s, "
                                  "turn rate +-1 rad/s, 20%% turn in place), turn rate given to the policy, turn-rate tracking reward")
         target.add_argument("--tracking-yaw-weight", type=float, help="Turn-rate tracking reward weight (default 1)")
+        target.add_argument("--teleop-heading-commands", action="store_true", default=None,
+                            help="v8 joystick interface (with --teleop-fraction): reference heading + world-fixed walking "
+                                 "velocity; gated heading error reaches the policy; obstacle-safe velocity reward; also route worlds")
+        target.add_argument("--heading-track-weight", type=float, help="Weight of the gated heading reward (replaces heading_align)")
         target.add_argument("--head-guidance-near-sdf", type=float,
                             help="Head guidance pulls down / opens the crouch gate only with geometry within this distance "
                                  "of the head (m); fixes the dive toward room goals at z=0.75; 0 = original")

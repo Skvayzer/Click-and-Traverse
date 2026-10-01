@@ -34,7 +34,8 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
                      spot_hold_weight=None,standing_stillness_speed=None,route_recovery_speed=None,route_lost_seconds=None,goal_hold_seconds=None,
                      action_rate_weight=None,joint_acc_weight=None,hand_body_contact_weight=None,
                      heading_hand_probes=None,head_guidance_near_sdf=None,teleop_fraction=None,
-                     teleop_body_commands=None,tracking_yaw_weight=None):
+                     teleop_body_commands=None,tracking_yaw_weight=None,teleop_heading_commands=None,
+                     heading_track_weight=None):
     from cat_ppo.furniture.generalist_config import released_config
     from .collision import PROPOSAL
     config=copy.deepcopy(released_config()['env_config'] if base_config is None else base_config)
@@ -200,6 +201,17 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
         if 'heading_align' in config:
             if heading_hand_probes:config['heading_align']['hand_probe']=dict(half_width=.22,radius=.10)
             else:config['heading_align'].pop('hand_probe',None)
+    # Joystick interface v8: one command for route and joystick worlds -- a world-fixed walking velocity
+    # and a reference heading whose error reaches the policy gated by clearance (see
+    # CATTask._heading_command); velocity reward toward the obstacle-safe target; heading reward gated.
+    if teleop_heading_commands:
+        if 'teleop' not in config:raise ValueError('teleop_heading_commands requires teleop_fraction')
+        if 'heading_align' not in config:raise ValueError('teleop_heading_commands requires heading_align_weight')
+        config['teleop'].update(mode='heading',vx_min=-.5,vx_max=.8,vy_max=.3,yaw_max=1.,p_turn=.2,p_toward=.3)
+        config['heading_command']=True;config['safe_tracking']=True
+        if heading_track_weight is not None:scales['heading_align']=float(heading_track_weight)
+    elif heading_track_weight is not None:
+        raise ValueError('heading_track_weight requires teleop_heading_commands')
     scales.update(wholebody_hand_clearance=-.5 if hand_protection else -5.,wholebody_arm_clearance=-2.)
     if standing_gf_bonus is not None:
         if isinstance(standing_gf_bonus,bool) or not math.isfinite(standing_gf_bonus) or standing_gf_bonus<0:

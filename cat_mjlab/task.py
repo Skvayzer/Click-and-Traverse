@@ -54,7 +54,8 @@ class CATTask:
         self.math=SimpleNamespace(**{name:getattr(tm,name) for name in (
             'quat_mul','delay_body_pos','navi_rotation','world_to_navi','matrix_rpy',
             'motor_targets','pd_torque','compute_cmd_from_rtf','update_phase','observations',
-            'upper_stability_terms','native_rewards','heading_probe_points','yaw_tracking')})
+            'upper_stability_terms','native_rewards','heading_probe_points','yaw_tracking',
+            'facing_probe_points','clearance_gate','safe_velocity_target')})
         self.route_context=route_context
         self.swept_root_clearance=swept_root_clearance
         self.hand_contrast_context=hand_contrast_context
@@ -283,6 +284,38 @@ class CATTask:
             approach_distance=float(_get(self.config,'hand_contrast_approach_distance',0.)))
         for k,v in values.items():self._put(self.contrast,k,ids,v)
 
+    def _heading_command(self,ids,positions,root_xy,direction,velocity,active,teleop,store=False):
+        """Gated heading error for command[:,3] (config 'heading_command').
+
+        Reference heading psi_ref: the joystick's (integrated from its turn rate) in teleop worlds, the
+        direction of travel in route worlds (CAT-style point navigation), the current facing when
+        standing. Gate: would a body facing psi_ref fit here? Shoulder probes (+-0.16 m) and hand
+        probes (+-0.22 m, minus the hand radius) beside the root and 0.3 m ahead along the travel
+        direction; 0 at <= 5 cm clearance, 1 at >= 15 cm. Command = gate * wrap(psi_ref - facing): in
+        the open the orientation is demanded (strafe, walk backward, turn in place); in a gap too
+        narrow to face psi_ref it is not, and the policy may turn sideways to pass.
+        """
+        q=self.data.qpos[ids,3:7]
+        facing_yaw=torch.atan2(2*(q[:,0]*q[:,3]+q[:,1]*q[:,2]),1-2*(q[:,2]**2+q[:,3]**2))
+        psi=torch.where(active,torch.atan2(direction[:,1],direction[:,0]),facing_yaw)
+        reference=getattr(self,'psi_ref',None)
+        if teleop is not None and reference is not None:
+            psi=torch.where(teleop,reference[ids],psi)
+        facing=torch.stack((psi.cos(),psi.sin()),-1)
+        speed=torch.linalg.vector_norm(velocity,dim=-1)
+        travel=torch.where((speed>.01)[:,None],velocity/speed.clamp_min(1e-6)[:,None],torch.zeros_like(velocity))
+        scenes=self.scene_ids[ids]
+        shoulders=self.math.facing_probe_points(root_xy,facing,travel,positions[:,9:11,2].mean(-1),half_width=.16)
+        hands=self.math.facing_probe_points(root_xy,facing,travel,positions[:,5:7,2].mean(-1),half_width=.22)
+        clearance=torch.cat((self.bank.sample('sdf',shoulders,scenes).reshape(len(ids),-1),
+                             self.bank.sample('sdf',hands,scenes).reshape(len(ids),-1)-.10),-1)
+        gate=self.math.clearance_gate(clearance)
+        error=torch.remainder(psi-facing_yaw+torch.pi,2*torch.pi)-torch.pi
+        commanded=self._commanded(ids)
+        if store:
+            self._heading_gate,self._heading_error,self._heading_commanded=gate,error,commanded
+        return torch.where(commanded,gate*error,torch.zeros_like(error))
+
     def _teleop_resample_body(self,due):
         """Joystick commands in the body frame: (forward, sideways, turn rate).
 
@@ -300,7 +333,11 @@ class CATTask:
         away=i['bf'][:,1,:2];norm=torch.linalg.vector_norm(away,dim=-1,keepdim=True)
         world=torch.where(norm>1e-6,-away/norm.clamp_min(1e-6),torch.zeros_like(away))
         toward=toward&(norm[:,0]>1e-6)          # no obstacle in range (open floor): keep the random command
-        bx=(world*i['navi'][:,:2,0]).sum(-1);by=(world*i['navi'][:,:2,1]).sum(-1)
+        if t.get('mode')=='heading':            # commands are relative to the reference heading
+            axis=torch.stack((self.psi_ref.cos(),self.psi_ref.sin()),-1)
+            bx=(world*axis).sum(-1);by=(world*torch.stack((-axis[:,1],axis[:,0]),-1)).sum(-1)
+        else:
+            bx=(world*i['navi'][:,:2,0]).sum(-1);by=(world*i['navi'][:,:2,1]).sum(-1)
         speed=self._rand((n,),float(t['speed_min']),float(t['speed_max']))
         vx=torch.where(toward,speed*bx,vx);vy=torch.where(toward,speed*by,vy);wz=torch.where(toward,0.,wz)
         vx=torch.where(turn,0.,vx);vy=torch.where(turn,0.,vy);wz=torch.where(turn,spin,wz)
@@ -311,7 +348,16 @@ class CATTask:
     def _joystick_body_to_world(self):
         """Body-frame (forward, sideways, turn rate) -> world-frame velocity + turn rate, every step."""
         body=self.joystick_body;navi=self.info['navi']
-        world=body[:,:1]*navi[:,:2,0]+body[:,1:2]*navi[:,:2,1]
+        if self.config.get('heading_command') and getattr(self,'psi_ref',None) is not None:
+            # (forward, sideways) relative to the reference heading, which the turn rate rotates; the
+            # walking direction stays fixed in the world while the body turns sideways in a gap.
+            mask=getattr(self,'joystick_mask',None)
+            spin=body[:,2]*self.dt if mask is None else torch.where(mask,body[:,2]*self.dt,torch.zeros_like(body[:,2]))
+            self.psi_ref=torch.remainder(self.psi_ref+spin+torch.pi,2*torch.pi)-torch.pi
+            axis=torch.stack((self.psi_ref.cos(),self.psi_ref.sin()),-1)
+            world=body[:,:1]*axis+body[:,1:2]*torch.stack((-axis[:,1],axis[:,0]),-1)
+        else:
+            world=body[:,:1]*navi[:,:2,0]+body[:,1:2]*navi[:,:2,1]
         if getattr(self,'joystick',None) is None or self.joystick.shape!=world.shape:
             self.joystick=world.clone()
         else:
@@ -342,7 +388,7 @@ class CATTask:
         self._teleop_timer-=self.dt
         due=self.joystick_mask&(self._teleop_timer<=0)
         if not bool(due.any()):return
-        if t.get('mode')=='body':
+        if t.get('mode') in ('body','heading'):
             self._teleop_resample_body(due);return
         angle=self._rand((n,),-torch.pi,torch.pi);random_dir=torch.stack((angle.cos(),angle.sin()),-1)
         away=self.info['bf'][:,1,:2];norm=torch.linalg.vector_norm(away,dim=-1,keepdim=True)
@@ -365,7 +411,7 @@ class CATTask:
             replacement[:,0,2]=torch.where(sdf[:,0,0]<float(near),replacement[:,0,2],torch.zeros_like(replacement[:,0,2]))
         return replacement
 
-    def _fields(self,positions,root_xy,ids):
+    def _fields(self,positions,root_xy,ids,store=False):
         scenes=self.scene_ids[ids]
         gf,bf,sdf=(self.bank.sample(k,positions,scenes) for k in ('gf','bf','sdf'))
         sdf=sdf.clone();sdf[:,5:7,0]-=self.hand_radii
@@ -407,6 +453,8 @@ class CATTask:
         joystick_yaw=getattr(self,'joystick_yaw',None)
         if teleop is not None and joystick_yaw is not None:
             yaw_command=torch.where(teleop,joystick_yaw[ids],yaw_command)
+        if self.config.get('heading_command'):
+            yaw_command=self._heading_command(ids,positions,root_xy,direction,velocity,active,teleop,store=store)
         moving=(torch.linalg.vector_norm(velocity,dim=-1)>.01)|(yaw_command.abs()>.05)   # turning in place moves the feet
         room_command=torch.cat((torch.where(moving,.75,0.)[:,None],velocity,yaw_command[:,None]),-1)
         replacement=gf.clone();replacement[:,:,:2]=direction[:,None]*.6
@@ -494,7 +542,7 @@ class CATTask:
             fresh=(info['step']==0)[:,None]
             sdf_rate=torch.where(fresh,0.,(current-self.info['sdf_rate_prev'][ids])/self.dt).clamp(-3.,3.)
             self.info['sdf_rate_prev'][ids]=current
-        result=self.math.observations(keep_yaw=bool(self.config.get('yaw_command')),sdf_rate=sdf_rate,joint_pos=self.data.qpos[ids,7:],joint_vel=self.data.qvel[ids,6:],nominal=self.nominal,
+        result=self.math.observations(keep_yaw=bool(self.config.get('yaw_command') or self.config.get('heading_command')),sdf_rate=sdf_rate,joint_pos=self.data.qpos[ids,7:],joint_vel=self.data.qvel[ids,6:],nominal=self.nominal,
             gyro=self._sensor('gyro_pelvis',ids),gravity=gravity,linear_velocity=self._sensor('local_linvel_pelvis',ids),
             noise=noise,last_action=info['last_act'],targets=info['motor_targets'],command=info['command'],
             command_delay=info['command_delay'],foot_height=info['foot_height'],phase=info['phase'],navi=info['navi'],
@@ -605,6 +653,11 @@ class CATTask:
         if not _get(self.config,'dm_rand_config.enable_rfi',True):defaults['rfi'].zero_()
         for k,v in defaults.items():self._put(self.info,k,ids,v)
         self._navigation(ids,reset=True)
+        if self.config.get('heading_command'):
+            if getattr(self,'psi_ref',None) is None:
+                self.psi_ref=torch.zeros(self.num_envs,device=self.device)
+            q=self.data.qpos[ids,3:7]
+            self.psi_ref[ids]=torch.atan2(2*(q[:,0]*q[:,3]+q[:,1]*q[:,2]),1-2*(q[:,2]**2+q[:,3]**2))
         teleop=self.config.get('teleop')
         if teleop:
             if getattr(self,'joystick_mask',None) is None:
@@ -613,7 +666,7 @@ class CATTask:
                 self._teleop_timer=torch.zeros(self.num_envs,device=self.device)
             self.joystick_mask[ids]=(self._rand((n,))<float(teleop['fraction']))&self.navigation['enabled'][ids]
             self.joystick[ids]=0.;self._teleop_timer[ids]=0.
-            if teleop.get('mode')=='body':
+            if teleop.get('mode') in ('body','heading'):
                 if getattr(self,'joystick_body',None) is None:
                     self.joystick_body=torch.zeros((self.num_envs,3),device=self.device)
                     self.joystick_yaw=torch.zeros(self.num_envs,device=self.device)
@@ -751,10 +804,19 @@ class CATTask:
             self._heading_sdf=heading_sdf     # reused by the style-prior gates
             heading_margins=tuple(float(m) for m in heading['margins'])
         facing_yaw=torch.atan2(i['navi'][:,1,0],i['navi'][:,0,0])
+        reward_command=i['command']
+        if self.config.get('safe_tracking'):
+            # Reward the command minus its component into nearby obstacles (pelvis, hands, knees,
+            # shoulders): driven at a table, stopping or sliding along it is what earns the reward.
+            points=[1,5,6,7,8,9,10]
+            away=i['bf'][:,points,:2];away=away/(torch.linalg.vector_norm(away,dim=-1,keepdim=True)+1e-9)
+            target=self.math.safe_velocity_target(reward_command[:,1:3],away,i['sdf'][:,points,0])
+            reward_command=reward_command.clone()
+            reward_command[:,1:3]=torch.where(self._commanded(self.all_ids)[:,None],target,reward_command[:,1:3])
         rewards=self.math.native_rewards(facing_yaw=facing_yaw,stand_still='stand_still' in _get(self.config,'reward_config.scales',{}),
             stillness_speed=_get(self.config,'standing_requires_stillness_speed',None),heading_sdf=heading_sdf,heading_margins=heading_margins,standing_gf=float(_get(self.config,'standing_gf_bonus',4.)),sdf_knee=sdf_knee,action=action,last_action=i['last_act'],last_last_action=i['last_last_act'],
             joint_pos=d.qpos[:,7:],joint_vel=d.qvel[:,6:],last_joint_vel=i['last_joint_vel'],lower=self.lower,upper=self.upper,
-            actuator_force=d.actuator_force,command=i['command'],pelvis_rpy=i['pelvis_rpy'],torso_rpy=i['torso_rpy'],
+            actuator_force=d.actuator_force,command=reward_command,pelvis_rpy=i['pelvis_rpy'],torso_rpy=i['torso_rpy'],
             head_z=i['positions'][:,0,2],torso_height=float(_get(self.config,'torso_height',[.5,1.])[1]),
             global_velocity=self._sensor('global_linvel_pelvis',self.all_ids),torso_angvel=i['torso_angvel'],navi=i['navi'],
             leg_rotations=d.xmat.reshape(self.num_envs,-1,3,3)[:,self.leg_ids],feet_pos=i['positions'][:,3:5],
@@ -787,6 +849,14 @@ class CATTask:
         if self.stabilization:rewards.update(costs)
         scales=_get(self.config,'reward_config.scales',{})
         if 'action_rate' in scales:rewards['action_rate']=self._action_rate
+        if self.config.get('heading_command') and getattr(self,'_heading_gate',None) is not None:
+            # Face the reference heading where a body facing it fits; no demand (and no reward) in a
+            # gap too narrow for it. Replaces the forward-facing bonus for route/joystick worlds.
+            track=self._heading_gate*.5*(1.+torch.cos(self._heading_error))
+            if 'heading_align' in rewards:
+                rewards['heading_align']=torch.where(self._heading_commanded,track,rewards['heading_align'])
+            telemetry['heading_gate']=torch.where(self._heading_commanded,self._heading_gate,torch.ones_like(track))
+            telemetry['heading_error_abs']=(self._heading_error.abs()*self._heading_gate)*self._heading_commanded
         if self.config.get('yaw_command') and getattr(self,'joystick_yaw',None) is not None:
             mask=getattr(self,'joystick_mask',None)
             commanded=torch.ones(self.num_envs,dtype=torch.bool,device=self.device) if mask is None else mask
@@ -1028,7 +1098,7 @@ class CATTask:
         # The original stores finite-difference velocities only for head/feet/hands.
         velocities[:,[1,2,7,8,9,10]]=0.
         self._navigation(ids)
-        gf,bf,sdf,command=self._fields(positions,d.qpos[:,:2],ids)
+        gf,bf,sdf,command=self._fields(positions,d.qpos[:,:2],ids,store=True)
         update=i['step']%5==0
         odom=torch.where(update[:,None],d.qpos[:,:7],i['odom_delay'])
         delayed=self.math.delay_body_pos(d.qpos,odom,positions)
@@ -1153,7 +1223,8 @@ class CATTask:
             for key in ('reward_pre_floor_negative', 'reward_soft_floor_lift', 'reward_floor_slope'):
                 metrics[key] = self.telemetry[key].clone()
             for key in ('self_clearance_min_m', 'self_clearance_violation', 'crouch_required', 'torso_pitch_abs',
-                        'hand_contact_trunk', 'hand_contact_head', 'hand_contact_arm', 'hand_contact_hand'):
+                        'hand_contact_trunk', 'hand_contact_head', 'hand_contact_arm', 'hand_contact_hand',
+                        'heading_gate', 'heading_error_abs'):
                 if key in self.telemetry: metrics[key] = self.telemetry[key].clone()
             metrics['contrast_role'] = self.contrast['role'].clone()
             metrics['contrast_unresolved'] = (~self.outcome_counted | resolved).clone()

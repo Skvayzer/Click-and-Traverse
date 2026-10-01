@@ -547,7 +547,8 @@ def collect_rollout(task, learner, *, unroll_length, trajectories, policy_ids):
         for key, value in sorted(per_step.items()):
             term = key.split('/', 1)[1]
             if key.startswith('telemetry/'):
-                info['metrics']['posture/' + term if term in ('crouch_required', 'torso_pitch_abs') else 'self_clearance/' + term.removeprefix('self_clearance_')] = value
+                info['metrics']['posture/' + term if term in ('crouch_required', 'torso_pitch_abs') else
+                                ('heading/' + term if term.startswith('heading_') else 'self_clearance/' + term.removeprefix('self_clearance_'))] = value
                 continue
             info['metrics']['reward_term/' + term] = value
             info['metrics']['reward_share/' + term] = value / (positive if value > 0 else negative)
@@ -669,7 +670,8 @@ def environment_config_from_archive(metadata):
 GOALLESS_BUCKETS = ('reactive_standing', 'reactive_walking', 'flat_balance', 'teleop')
 # Per-step task telemetry averaged over the update: posture/* and self_clearance/*.
 TELEMETRY_MEANS = ('self_clearance_min_m', 'self_clearance_violation', 'crouch_required', 'torso_pitch_abs',
-                   'hand_contact_trunk', 'hand_contact_head', 'hand_contact_arm', 'hand_contact_hand')
+                   'hand_contact_trunk', 'hand_contact_head', 'hand_contact_arm', 'hand_contact_hand',
+                   'heading_gate', 'heading_error_abs')
 SCENE_BUCKETS = ('procedural_cat', 'original_cat', 'published_cat',
                  'clutter_dense', 'clutter_pilot', 'clutter_legacy',
                  'furniture_dense', 'furniture_pilot', 'furniture_legacy',
@@ -941,6 +943,7 @@ def create_task(args, *, environment_config=None, sim_class=None):
         head_guidance_near_sdf=getattr(args, 'head_guidance_near_sdf', None),
         teleop_fraction=getattr(args, 'teleop_fraction', None),
         teleop_body_commands=getattr(args, 'teleop_body_commands', None), tracking_yaw_weight=getattr(args, 'tracking_yaw_weight', None),
+        teleop_heading_commands=getattr(args, 'teleop_heading_commands', None), heading_track_weight=getattr(args, 'heading_track_weight', None),
         standing_gf_bonus=getattr(args, 'standing_gf_bonus', None),
         reactive_hand_guidance=getattr(args, 'reactive_hand_guidance', None),
         handsdf_weight=getattr(args, 'handsdf_weight', None),

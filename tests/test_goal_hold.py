@@ -86,3 +86,27 @@ def test_body_joystick_flags_and_yaw_tracking():
     navi = tm.navi_rotation(R)
     assert abs(float(tm.matrix_rpy(navi.transpose(-1, -2) @ R)[0, 2])) < 1e-6
     assert abs(float(torch.atan2(navi[0, 1, 0], navi[0, 0, 0])) - 1.) < 1e-6
+
+
+def test_v8_heading_interface_math_and_flags():
+    import math
+    import torch
+    from cat_mjlab import task_math as tm
+    from cat_mjlab.config import wholebody_config
+    away = torch.tensor([[[-1., 0.]]])                       # obstacle ahead (+x): away points -x
+    near = torch.tensor([[.2]])
+    stop = tm.safe_velocity_target(torch.tensor([[.5, 0.]]), away, near)
+    assert torch.allclose(stop, torch.zeros(1, 2), atol=1e-6)                  # straight at it: stop
+    slide = tm.safe_velocity_target(torch.tensor([[.4, .3]]), away, near)
+    assert torch.allclose(slide, torch.tensor([[0., .3]]), atol=1e-6)          # at an angle: slide along
+    free = tm.safe_velocity_target(torch.tensor([[.5, 0.]]), away, torch.tensor([[.8]]))
+    assert torch.allclose(free, torch.tensor([[.5, 0.]]))                      # far away: unchanged
+    back = tm.safe_velocity_target(torch.tensor([[-.5, 0.]]), away, near)
+    assert torch.allclose(back, torch.tensor([[-.5, 0.]]))                     # moving away: unchanged
+    assert float(tm.clearance_gate(torch.tensor([[.3, .2, .04]]))) == 0.
+    assert float(tm.clearance_gate(torch.tensor([[.3, .2, .15]]))) == 1.
+    pts = tm.facing_probe_points(torch.zeros(1, 2), torch.tensor([[0., 1.]]), torch.tensor([[1., 0.]]), torch.tensor([1.2]), half_width=.16)
+    assert torch.allclose(pts[0, :, :2], torch.tensor([[-.16, 0.], [.16, 0.], [.14, 0.], [.46, 0.]]), atol=1e-6)   # facing +y, travelling +x
+    c = wholebody_config(heading_align_weight=.4, teleop_fraction=.5, teleop_heading_commands=True, heading_track_weight=1.)
+    assert c['teleop']['mode'] == 'heading' and c['heading_command'] and c['safe_tracking']
+    assert c['reward_config']['scales']['heading_align'] == 1.

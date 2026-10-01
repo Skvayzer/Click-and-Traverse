@@ -255,6 +255,29 @@ drift; turn right -> turned left; backward -> turned around 140 deg; sideways ->
 Test: `scripts/demo/command_following_test.py` (body segments automatic for v7+). Demo keys for v7+:
 W/S forward/back, A/D turn, Q/E sideways.
 
+## 7g. Joystick interface v8: reference heading + clearance gate + obstacle-safe tracking (2026-10-01)
+
+v7 (turn-rate command, stopped at update 12) had an ambiguity: turn rate 0 meant "choose your facing"
+in route episodes and "do not rotate" in joystick episodes. v8 uses one command for both:
+- walking velocity fixed in the world; reference heading psi_ref (route: direction of travel, i.e.
+  CAT-style point navigation; joystick: integrated from the operator's turn rate);
+- the policy's turn slot (command[3], always zeroed by CAT) carries gate * wrap(psi_ref - facing);
+  gate = would a body facing psi_ref fit (shoulder probes +-0.16 m, hand probes +-0.22 m minus the
+  hand radius, beside the root and 0.3 m ahead along the travel direction; 0 at <= 5 cm, 1 at >= 15 cm).
+  Open space: orientation held (strafe, walk backward, turn in place). Narrow gap: orientation free,
+  the policy may turn sideways to pass, then returns to psi_ref;
+- velocity reward target = command minus its component into obstacles within 0.25-0.6 m of the pelvis,
+  hands, knees or shoulders (CAT's command projection used as the reward target): driven at a table,
+  stopping or sliding along it earns the reward; along a gap the command survives;
+- heading reward = gate x 0.5(1 + cos(psi_ref - facing)), weight 1.0 (replaces the forward-facing bonus
+  for route/joystick worlds);
+- joystick episodes 50% (forward -0.5..0.8, sideways +-0.3 m/s relative to psi_ref, turn +-1 rad/s,
+  20% turn in place, 15% stops, 30% toward the nearest obstacle), contact ends them.
+CPU check (v6 policy, 8 worlds): gate mean 1.00 flat, 0.92 open tables, 0.82 furniture, 0.68 narrow
+tables (closed 32% there). Metrics: heading/heading_gate, heading/heading_error_abs.
+Demo (v8+ automatically): W/S forward/back, A/D turn the reference heading (also in place), Q/E
+sideways; yellow arrow = reference heading; status shows whether orientation is held or free.
+
 ## 8. Not yet done / next
 
 - Reference-state initialisation from sidle / duck clips (planned; not in the first pilot).

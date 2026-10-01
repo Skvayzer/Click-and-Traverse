@@ -81,8 +81,11 @@ class Session:
         env.pop("teleop", None)                     # the keyboard is the joystick here
         # Checkpoints trained with body-frame joystick commands (v7+) take (forward, sideways, turn
         # rate) directly; older ones only take a walking direction (emulated turning below).
-        self.body_mode = bool(env.get("yaw_command")) or bool(getattr(args, "body_mode", False))
-        if self.body_mode:
+        # v8+: heading_command (A/D turn a reference heading, W/S/Q/E walk relative to it; the robot
+        # may turn sideways in a gap too narrow to face it). v7: yaw_command (turn rate).
+        self.heading_mode = bool(env.get("heading_command"))
+        self.body_mode = self.heading_mode or bool(env.get("yaw_command")) or bool(getattr(args, "body_mode", False))
+        if self.body_mode and not self.heading_mode:
             env["yaw_command"] = True
         bank = args.bank
         ns = SimpleNamespace(bank_manifest=Path(bank + "_packed/manifest.json"), body_collision_bank=Path(bank + "_collision/manifest.json"),
@@ -204,6 +207,8 @@ class Session:
             if bool(result["done"][0]):
                 self.falls += 1; self.speed = 0.; self.heading = self.yaw()
             sdf = self.task.info["sdf"][0, :, 0]
+            gate = getattr(self.task, "_heading_gate", None)
+            self.gate = None if gate is None else float(gate[0])
             return dict(touching=touching, body_clearance=float(sdf.min()), hand_clearance=float(sdf[5:7].min()),
                         speed=float(torch.linalg.vector_norm(self.sim.data.qvel[0, :2])), fell=self.falls > before_falls)
 
@@ -278,7 +283,7 @@ setInterval(()=>{if(document.activeElement&&document.activeElement.tagName==='IF
 setInterval(async()=>{try{const s=await (await fetch('/status')).json();
  document.getElementById('hud').innerHTML=(s.touching&&s.touching.length?'<b class=c>CONTACT: '+s.touching.join(', ')+'</b>':'<b class=ok>no contact</b>')+
  '<br>speed setting '+s.setting.toFixed(1)+' m/s, actual '+s.speed.toFixed(2)+' m/s<br>closest: body '+s.body.toFixed(2)+' m, hands '+s.hands.toFixed(2)+
- ' m<br>contact steps '+s.contacts+', falls '+s.falls+'<br><span style="opacity:.7">hold W/Up forward, S/Down back, A/D turn, Q/E sideways, Space stop, +/- speed, T table, R reset, N next room</span>';}catch(e){}},250);
+ ' m<br>'+(s.gate===null||s.gate===undefined?'':('orientation '+(s.gate>.5?'held (room)':'free (narrow: may turn sideways)')+'<br>'))+'contact steps '+s.contacts+', falls '+s.falls+'<br><span style="opacity:.7">hold W/Up forward, S/Down back, A/D turn, Q/E sideways, Space stop, +/- speed, T table, R reset, N next room</span>';}catch(e){}},250);
 </script></body></html>"""
 
 
@@ -407,6 +412,14 @@ def main(argv=None):
             if frame % 2 == 0:
                 vis_data.qpos[:] = session.sim.raw.qpos; mujoco.mj_kinematics(session.sim.model, vis_data)
                 robot.update_from_mjdata(vis_data)
+                psi = getattr(session.task, "psi_ref", None)
+                if session.heading_mode and psi is not None:
+                    # Reference heading the keyboard steers: arrow on the floor at the robot.
+                    x, y = float(vis_data.qpos[0]), float(vis_data.qpos[1]); h = float(psi[0])
+                    tip = (x + .6 * math.cos(h), y + .6 * math.sin(h))
+                    wings = [(tip[0] - .15 * math.cos(h + s_), tip[1] - .15 * math.sin(h + s_)) for s_ in (.5, -.5)]
+                    segments = np.array([[[x, y, .03], [tip[0], tip[1], .03]]] + [[[tip[0], tip[1], .03], [w[0], w[1], .03]] for w in wings])
+                    server.scene.add_line_segments("/heading_ref", segments, (255, 200, 0), thickness=.03)
                 if follow.value and frame % 6 == 0:
                     # ~8 Hz, smoothed, look_at and position moved together in one message: separate
                     # updates every frame made the view jump between half-applied camera states.
@@ -420,7 +433,8 @@ def main(argv=None):
                                 client.camera.look_at = look + shift
             session.status = dict(touching=info["touching"], setting=session.speed_setting, speed=info["speed"],
                                   body=info["body_clearance"], hands=info["hand_clearance"], contacts=session.contacts, falls=session.falls,
-                                  yaw_deg=math.degrees(session.yaw()), xy=[float(v) for v in session.sim.raw.qpos[:2]])
+                                  yaw_deg=math.degrees(session.yaw()), xy=[float(v) for v in session.sim.raw.qpos[:2]],
+                                  gate=getattr(session, "gate", None))
             if frame % 10 == 0:
                 rate = n_report * .02 / max(time.time() - t_report, 1e-6); t_report, n_report = time.time(), 0
                 touching = info["touching"]

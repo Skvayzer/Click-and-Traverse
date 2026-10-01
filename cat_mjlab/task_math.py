@@ -292,6 +292,38 @@ def heading_probe_points(root_xy,direction,height,*,half_width=.16,lookahead=.30
     return torch.cat((xy,height[:,None,None].expand(-1,offsets.shape[1],1)),-1)
 
 
+def facing_probe_points(root_xy,facing,travel,height,*,half_width,lookahead=.30):
+    """Probes where a body facing ``facing`` would put its shoulders/hands: beside the root and
+    ``lookahead`` ahead along the TRAVEL direction (zero when not travelling). [N,4,3]."""
+    normal=torch.stack((-facing[:,1],facing[:,0]),-1)
+    ahead=lookahead*travel
+    offsets=torch.stack((half_width*normal,-half_width*normal,ahead+half_width*normal,ahead-half_width*normal),1)
+    xy=root_xy[:,None]+offsets
+    return torch.cat((xy,height[:,None,None].expand(-1,offsets.shape[1],1)),-1)
+
+
+def clearance_gate(probe_clearance,*,low=.05,high=.15):
+    """0 at <= low of clearance (a body facing that way does not fit), 1 at >= high, linear between."""
+    return ((probe_clearance.amin(-1)-low)/(high-low)).clamp(0.,1.)
+
+
+def safe_velocity_target(command_xy,normals,distances,*,near=.25,far=.60):
+    """The commanded velocity minus its component into nearby obstacles.
+
+    normals [N,P,2] unit horizontal directions AWAY from the nearest obstacle at body points,
+    distances [N,P] their clearances. Each point removes the inward component of the running
+    target, weighted 0 at ``far`` and 1 at ``near`` -- the projection CAT applies to its command,
+    used here as the reward target: driven straight at a table the target becomes stop, at an angle
+    it slides along the edge, along a gap it keeps going.
+    """
+    target=command_xy.clone()
+    weight=((far-distances)/(far-near)).clamp(0.,1.)
+    for p in range(normals.shape[1]):
+        inward=(-(target*normals[:,p]).sum(-1)).clamp_min(0.)
+        target=target+(weight[:,p]*inward)[:,None]*normals[:,p]
+    return target
+
+
 def yaw_tracking(command_yaw_rate,yaw_rate,*,sigma=.25):
     """exp(-error^2/sigma): following a commanded turn rate (rad/s), joystick training only."""
     return torch.exp(-(command_yaw_rate-yaw_rate).square()/sigma)
