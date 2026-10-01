@@ -242,11 +242,16 @@ def main(argv=None):
         return
 
     import mujoco
+    import numpy as np
     import viser
     server = viser.ViserServer(port=args.port)
     server.gui.configure_theme(control_layout="fixed", control_width="large")
     from mjviser import ViserMujocoScene
     robot = ViserMujocoScene(server, session.sim.model, 1)
+    # mjviser's own tracking draws the robot shifted to the origin (keeps it centred by moving the
+    # scene); the furniture boxes are drawn in world coordinates, so the robot appeared inside the
+    # west wall (x = 0). Draw everything in world coordinates and move the camera instead.
+    robot.camera_tracking_enabled = False
     vis_data = mujoco.MjData(session.sim.model)
     box_handles = []
 
@@ -294,11 +299,17 @@ def main(argv=None):
             if frame % 2 == 0:
                 vis_data.qpos[:] = session.sim.raw.qpos; mujoco.mj_kinematics(session.sim.model, vis_data)
                 robot.update_from_mjdata(vis_data)
-                if follow.value:
+                if follow.value and frame % 6 == 0:
+                    # ~8 Hz, smoothed, look_at and position moved together in one message: separate
+                    # updates every frame made the view jump between half-applied camera states.
                     target = vis_data.qpos[:3].copy(); target[2] = .8
                     for client in server.get_clients().values():
-                        offset = client.camera.position - client.camera.look_at
-                        client.camera.look_at = target; client.camera.position = target + offset
+                        look = np.asarray(client.camera.look_at, dtype=float)
+                        shift = .35 * (target - look)
+                        if np.linalg.norm(shift) > .005:
+                            with client.atomic():
+                                client.camera.position = np.asarray(client.camera.position, dtype=float) + shift
+                                client.camera.look_at = look + shift
             if frame % 10 == 0:
                 rate = n_report * .02 / max(time.time() - t_report, 1e-6); t_report, n_report = time.time(), 0
                 touching = info["touching"]
