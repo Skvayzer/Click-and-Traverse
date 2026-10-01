@@ -47,6 +47,11 @@ def parser():
     p.add_argument("--reactive-row", type=int,
                    help="Force this reactive-bank row (an approaching object) instead of the .25 reset coin; "
                         "needs --reactive-bank. The object trajectory is exported for the renderer.")
+    p.add_argument("--joystick", help="Teleoperation: constant world-frame velocity 'vx,vy' (m/s) replaces the route")
+    p.add_argument("--joystick-toward", help="Teleoperation: drive straight at the nearest scene box whose category "
+                                             "contains this text (e.g. 'top' = tabletops), from the reset position")
+    p.add_argument("--joystick-speed", type=float, default=.5, help="Speed for --joystick-toward (m/s)")
+    p.add_argument("--joystick-seconds", type=float, help="Release the joystick (zero command: stand) after this long")
     p.add_argument("--device", default="cuda:0")
     p.add_argument("--output-dir", type=Path, required=True, help="New recording directory")
     return p
@@ -252,6 +257,36 @@ def main(argv=None):
             raise ValueError(f"--reactive-row must be in [0, {len(objects.rows)})")
         objects.force_rows = torch.tensor([args.reactive_row], device=args.device)
     task.reset(scene_ids=torch.tensor(selected, device=args.device))
+    joystick_info = None
+    if args.joystick or args.joystick_toward:
+        if args.joystick:
+            joy = [float(x) for x in args.joystick.split(",")]
+            joystick_info = dict(mode="constant", velocity=joy)
+        else:
+            from cat_ppo.furniture.generalist_fields import load_generalist_manifest, scene_directory
+            mp = args.bank_manifest.resolve()
+            boxes = json.loads((scene_directory(load_generalist_manifest(mp, verify_files=False), mp,
+                                                manifest["scenes"][selected[0]]) / "scene.json").read_text())["boxes"]
+            boxes = [b for b in boxes if args.joystick_toward in b["category"]]
+            if not boxes:
+                raise ValueError(f"no scene box category contains {args.joystick_toward!r}")
+            start = task.data.qpos[0, :2].detach().cpu().numpy()
+            target = min(boxes, key=lambda b: float(np.linalg.norm(np.asarray(b["center"][:2]) - start)))
+            heading = np.asarray(target["center"][:2]) - start
+            joy = (args.joystick_speed * heading / np.linalg.norm(heading)).tolist()
+            joystick_info = dict(mode="toward", category=target["category"], box=target.get("name"),
+                                 box_center=target["center"], start=start.tolist(), velocity=joy)
+        task.joystick = torch.tensor([joy], dtype=torch.float32, device=args.device)
+        if args.joystick_seconds:
+            joystick_info["release_after_s"] = args.joystick_seconds
+            step, count = task.step, [0]
+            def released_step(action):
+                count[0] += 1
+                if count[0] * task.dt > args.joystick_seconds:
+                    task.joystick.zero_()
+                return step(action)
+            task.step = released_step
+        print(f"Teleoperation: {joystick_info}", flush=True)
     arrays, outcome = record_episode(task, learner, policy_id=args.policy_id, frames=args.frames, stochastic=args.stochastic)
     record = manifest["scenes"][selected[0]]
     output.parent.mkdir(parents=True, exist_ok=True)
@@ -268,7 +303,7 @@ def main(argv=None):
             collision_sha256=contract["collision_sha256"], resets_sha256=contract["resets_sha256"],
             source_sha256=contract["source_sha256"], dt=task.dt, inference="deterministic tanh(mean)",
             compile_task=False,
-            outcome=outcome, requested_control_frames=args.frames, recorded_control_frames=len(arrays["time"])-1,
+            outcome=outcome, teleoperation=joystick_info, requested_control_frames=args.frames, recorded_control_frames=len(arrays["time"])-1,
             reset="Explicit scene; fresh full episode horizon; seeded native noise/PD/push randomization retained",
             stopping="First clean goal, first fault/native horizon, or explicit recording frame bound",
             final_frame="Integrated pose copied before normal autoreset", capacity=sim.capacity_report(),

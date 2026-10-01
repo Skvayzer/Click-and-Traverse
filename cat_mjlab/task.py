@@ -318,6 +318,15 @@ class CATTask:
             direction=torch.where(lost[:,None],horizontal/magnitude.clamp_min(1e-6)[:,None],direction)
             speed=torch.where(lost,torch.full_like(speed,float(recovery['speed'])),speed)
             active=active|lost
+        joystick=getattr(self,'joystick',None)
+        if joystick is not None:
+            # Teleoperation (recordings / keyboard demo): a commanded world-frame velocity [N,2]
+            # replaces the route. Everything downstream is unchanged: the root guidance is the raw
+            # command, other body points get the usual obstacle-projected guidance, and the policy
+            # sees the same fields -- nothing here steers the command away from obstacles.
+            joy=joystick[ids];joy_speed=torch.linalg.vector_norm(joy,dim=-1)
+            direction=torch.where((joy_speed>1e-3)[:,None],joy/joy_speed.clamp_min(1e-6)[:,None],direction)
+            speed=joy_speed;active=joy_speed>1e-3
         if hasattr(self, 'speed_state'):
             from .speed_curriculum import speed_limit
             scoped, cap, hold=speed_limit(self.speed_state,{k:v[ids] for k,v in self.contrast.items()},ids,self.dt)
@@ -592,6 +601,7 @@ class CATTask:
         fall=(self._sensor('upvector_pelvis',self.all_ids)[:,2]<0)|(i['positions'][:,0,2]<.7)
         numerical=torch.isnan(self.data.qpos).any(-1)|torch.isnan(self.data.qvel).any(-1)
         root=self.navigation['enabled']&self.navigation['violation'];body=regions.any(-1)
+        if getattr(self,'joystick',None) is not None:root=torch.zeros_like(root)   # teleop leaves the route on purpose
         obstacle=fields|elbows|root|body;done=fall|self_contact|numerical|obstacle
         if _get(self.config,'terminate_on_hand_self_contact',False):done=done|hand_self_contact
         recovery=self.config.get('route_recovery')
