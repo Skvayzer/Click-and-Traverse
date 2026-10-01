@@ -283,6 +283,19 @@ class CATTask:
             approach_distance=float(_get(self.config,'hand_contrast_approach_distance',0.)))
         for k,v in values.items():self._put(self.contrast,k,ids,v)
 
+    def _gate_head_pull(self,replacement,sdf):
+        """Rooms: keep the head field's vertical component only with geometry near the head.
+
+        Room fields were generated toward a goal at z=0.75 m, so within ~1.2 m of every goal the
+        head-height field points steeply down (z -0.4..-0.9) with nothing overhead. That opened the
+        crouch gate (posture rewards off) and headgf paid for diving the head toward the goal:
+        measured torso pitch >15 deg in 54-60% of frames within 1 m of the goal, 0% beyond 2 m.
+        """
+        near=self.config.get('head_guidance_near_sdf')
+        if near:
+            replacement[:,0,2]=torch.where(sdf[:,0,0]<float(near),replacement[:,0,2],torch.zeros_like(replacement[:,0,2]))
+        return replacement
+
     def _fields(self,positions,root_xy,ids):
         scenes=self.scene_ids[ids]
         gf,bf,sdf=(self.bank.sample(k,positions,scenes) for k in ('gf','bf','sdf'))
@@ -312,6 +325,7 @@ class CATTask:
         velocity=direction*(speed*active)[:,None]
         room_command=torch.cat((torch.where(torch.linalg.vector_norm(velocity,dim=-1)>.01,.75,0.)[:,None],velocity,torch.zeros_like(velocity[:,:1])),-1)
         replacement=gf.clone();replacement[:,:,:2]=direction[:,None]*.6
+        replacement=self._gate_head_pull(replacement,sdf)
         if hasattr(self, 'speed_state'):
             replacement=torch.where(hold[:,None,None],0.,replacement)
         normal=bf/(torch.linalg.vector_norm(bf,dim=-1,keepdim=True)+1e-9)
@@ -694,8 +708,9 @@ class CATTask:
             threatening=(s['event_bucket']!=2).float()
             rewards['reactive_event']=finished*(s['event_success'].float()-(1.-s['event_success'].float())*threatening)
         if any(k in scales for k in ('upright','stand_tall','torso_rate')):
+            near=self.config.get('head_guidance_near_sdf')
             terms,crouch=tm.posture_terms(i['torso_rpy'][:,1],i['positions'][:,0,2],i['gf'][:,0],i['sdf'][:,0].reshape(-1),i['torso_angvel'],
-                head_target=float(_get(self.config,'posture_head_target',1.20)))
+                head_target=float(_get(self.config,'posture_head_target',1.20)),crouch_near=float(near) if near else None)
             rewards.update({k:v for k,v in terms.items() if k in scales})
             telemetry['crouch_required']=crouch.float();telemetry['torso_pitch_abs']=i['torso_rpy'][:,1].abs()
         if self.hand_contrast:

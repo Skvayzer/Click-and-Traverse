@@ -230,7 +230,7 @@ def stand_still_cost(global_velocity,torso_angvel,move,*,speed_scale=.05,yaw_sca
 
 
 def posture_terms(torso_pitch,head_z,head_guidance,head_sdf,torso_angvel,*,head_target=1.20,head_scale=.08,
-                  pitch_scale=torch.pi/18,crouch_field_z=-.3,crouch_sdf=.20):
+                  pitch_scale=torch.pi/18,crouch_field_z=-.3,crouch_sdf=.20,crouch_near=None):
     """Straight back and full height, unless the head field asks for a crouch.
 
     tracking_orientation ignores torso pitch whenever the head is below 1.1 m, so a policy
@@ -241,7 +241,12 @@ def posture_terms(torso_pitch,head_z,head_guidance,head_sdf,torso_angvel,*,head_
     the head. CAT's crouch scenes keep working because their head field dips exactly there.
     upright and stand_tall are bonuses in [0,1]; torso_rate is a cost that damps bobbing.
     """
-    crouch=(head_guidance[:,2]<crouch_field_z)|(head_sdf<crouch_sdf)
+    field_down=head_guidance[:,2]<crouch_field_z
+    if crouch_near is not None:
+        # A downward head field only counts with geometry within crouch_near of the head: room
+        # fields point down toward the goal point (z=0.75 m) with nothing overhead.
+        field_down=field_down&(head_sdf<crouch_near)
+    crouch=field_down|(head_sdf<crouch_sdf)
     free=(~crouch).float()
     upright=torch.exp(-(torso_pitch/pitch_scale).square())*free
     stand_tall=torch.exp(-((head_target-head_z).clamp_min(0)/head_scale).square())*free

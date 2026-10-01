@@ -928,6 +928,7 @@ def create_task(args, *, environment_config=None):
         action_rate_weight=getattr(args, 'action_rate_weight', None), joint_acc_weight=getattr(args, 'joint_acc_weight', None),
         hand_body_contact_weight=getattr(args, 'hand_body_contact_weight', None),
         heading_hand_probes=getattr(args, 'heading_hand_probes', None),
+        head_guidance_near_sdf=getattr(args, 'head_guidance_near_sdf', None),
         standing_gf_bonus=getattr(args, 'standing_gf_bonus', None),
         reactive_hand_guidance=getattr(args, 'reactive_hand_guidance', None),
         handsdf_weight=getattr(args, 'handsdf_weight', None),

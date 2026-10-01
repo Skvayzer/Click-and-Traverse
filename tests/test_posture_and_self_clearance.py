@@ -78,3 +78,16 @@ def test_sdf_rate_contract_and_function_preserving_widening():
     x = torch.randn(3, 222); extra = torch.randn(3, 4)
     assert torch.allclose(x @ w['actor.layers.0.weight'].T, torch.cat((x, extra), 1) @ wide['actor.layers.0.weight'].T, atol=1e-5)
     assert _expand_actor_input(w, 222) is w
+
+
+def test_crouch_gate_needs_geometry_near_the_head_when_configured():
+    from cat_mjlab.task_math import posture_terms
+    down = torch.tensor([[0., 0., -.8]])                 # head field pointing at a goal below
+    args = (torch.tensor([.5]), torch.tensor([1.0]), down)
+    _, open_space = posture_terms(*args, torch.tensor([.7]), torch.zeros(1, 3), crouch_near=.3)
+    _, under_beam = posture_terms(*args, torch.tensor([.25]), torch.zeros(1, 3), crouch_near=.3)
+    _, legacy = posture_terms(*args, torch.tensor([.7]), torch.zeros(1, 3))
+    assert not bool(open_space) and bool(under_beam) and bool(legacy)
+    from cat_mjlab.config import wholebody_config
+    assert wholebody_config(head_guidance_near_sdf=.3)['head_guidance_near_sdf'] == .3
+    assert 'head_guidance_near_sdf' not in wholebody_config(head_guidance_near_sdf=0)

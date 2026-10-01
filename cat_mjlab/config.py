@@ -33,7 +33,7 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
                      stand_still_weight=None,standing_requires_stillness=None,sdf_rate_obs=None,reactive_event_weight=None,
                      spot_hold_weight=None,standing_stillness_speed=None,route_recovery_speed=None,route_lost_seconds=None,goal_hold_seconds=None,
                      action_rate_weight=None,joint_acc_weight=None,hand_body_contact_weight=None,
-                     heading_hand_probes=None):
+                     heading_hand_probes=None,head_guidance_near_sdf=None):
     from cat_ppo.furniture.generalist_config import released_config
     from .collision import PROPOSAL
     config=copy.deepcopy(released_config()['env_config'] if base_config is None else base_config)
@@ -132,6 +132,13 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
         else:scales['hand_body_contact']=weight
     if joint_acc_weight is not None:
         scales['smoothness_joint']=_signed('joint_acc_weight',joint_acc_weight,positive=False)
+    # Head guidance pulls down (and opens the crouch gate) only with geometry within this distance
+    # of the head; see CATTask._gate_head_pull. 0 restores the original behaviour.
+    if head_guidance_near_sdf is not None:
+        near=float(head_guidance_near_sdf)
+        if not math.isfinite(near) or near<0:raise ValueError('head_guidance_near_sdf must be finite and >= 0')
+        if near==0:config.pop('head_guidance_near_sdf',None)
+        else:config['head_guidance_near_sdf']=near
     if goal_hold_seconds is not None:
         hold=float(goal_hold_seconds)
         if not math.isfinite(hold) or hold<0:raise ValueError('goal_hold_seconds must be finite and >= 0')

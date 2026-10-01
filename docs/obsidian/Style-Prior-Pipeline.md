@@ -204,6 +204,18 @@ hand vs other arm's wrist ~1%, hand vs pelvis 0.3%; 3 of 12 episodes, the other 
   hand-body contact -10; `--heading-hand-probes` (0.44 m table gaps: shoulder clearance +0.42 m kept the
   forward gate open, hand clearance -0.08 m now closes it; 1.5 m gaps unchanged).
 
+## 7d. Hunching near room goals (2026-10-01)
+
+Recorded rollouts: median torso pitch 1-2 deg in every version, but within 1 m of the goal the torso
+exceeds 15 deg in 54-60% of frames (p95 ~54 deg); beyond 2 m: 0%. Room fields were generated toward a
+goal at z=0.75 m, so at head height the field points down near every goal (z -0.86 at 0.25 m, -0.4 at
+1 m). That opened the crouch gate (upright/stand_tall off: 17-21% of all training steps) and headgf paid
+for moving the head down toward the goal. Likely worse since goal hold: the approach zone is now ~1/4
+of room experience instead of a sliver next to 70 s of parking.
+Fix `--head-guidance-near-sdf 0.3`: in rooms the head field keeps its vertical component, and the crouch
+gate its field condition, only with geometry within 0.3 m of the head (gate open near goals 100% -> 9%,
+40 random rooms). Ducking under real geometry is unchanged. v6 = v5 + this, warm start v5 update 340.
+
 ## 8. Not yet done / next
 
 - Reference-state initialisation from sidle / duck clips (planned; not in the first pilot).

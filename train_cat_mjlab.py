@@ -87,6 +87,9 @@ def parser():
         target.add_argument("--sdf-rate-obs", action="store_true", default=None,
                             help="Add the rate of change of the hand/elbow distance samples to the ACTOR observation (222 -> 226); "
                                  "a warm start widens the first layer with zero weights, so the policy is unchanged at step 0")
+        target.add_argument("--head-guidance-near-sdf", type=float,
+                            help="Head guidance pulls down / opens the crouch gate only with geometry within this distance "
+                                 "of the head (m); fixes the dive toward room goals at z=0.75; 0 = original")
         target.add_argument("--heading-hand-probes", action="store_true", default=None,
                             help="Heading/style gates also probe where the hands would hang facing forward (tabletop height)")
         target.add_argument("--hand-body-contact-weight", type=float,
