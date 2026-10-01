@@ -33,11 +33,11 @@
 # overhead -> crouch gate open (upright/stand_tall off on 100% of those points) and headgf paid the head
 # for diving toward the goal; torso >15 deg in 54-60% of frames within 1 m of the goal, 0% beyond 2 m.
 # The downward pull now needs geometry within 0.3 m of the head (gate open near goals: 100% -> 9%).
-# Warm start: v5 update 340 (last snapshot; rooms ~80%, tables ~53%).
+# Warm start: v5 final checkpoint, update 357 (rooms ~80%, tables ~53%).
 set -euo pipefail
 cd /home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
-CHECKPOINT=${CHECKPOINT:-outputs/expert_rooms_tables_v5_20260930/snapshots/update_0340.pt}   # v5, update 340
+CHECKPOINT=${CHECKPOINT:-outputs/expert_rooms_tables_v5_20260930/snapshots/update_0357_final.pt}   # v5, final update 357
 RUN_DIR=${RUN_DIR:-outputs/expert_rooms_tables_v6_20261001}
 .venv-mjlab/bin/python train_cat_mjlab.py run \
   --algorithm ppo --num-envs ${NUM_ENVS:-40960} --batch-size ${BATCH_SIZE:-1024} \
