@@ -288,6 +288,27 @@ degraded to 23% in v9 (obstacle-safe target applied to route worlds incl. hands 
 Tooling: CPU single-robot simulator (parity with Warp), browser + keyboard demo, command-following
 test, teleop recordings, no-push recordings.
 
+## 7h. Voxel student for the real G1 (head Mid-360 only), 2026-10-02
+
+Gallant (CVPR 2026) reimplemented in our mjlab stack (its code is Isaac-based, no checkpoints):
+- `cat_mjlab/lidar.py`: the G1's head Mid-360 (MJCF `mid360_site`, mounted upside down: vertical field of
+  view 52 deg down .. 7 deg up; floor visible beyond ~0.96 m, shin-height obstacles from ~0.7 m). 10 Hz
+  scans of 2048 random rays in the field of view (non-repetitive pattern), sphere-traced on the scene SDF,
+  plus the floor plane; the robot's collision-proxy primitives occlude rays (body hits dropped, as the real
+  pipeline filters them). Gallant randomisation: sensor pose N(0,1 cm)/N(0,1 deg) per episode, hits
+  N(0,1 cm), latency 1-2 scans, 2 % voxel dropout. Points of the last 10 scans kept in world coordinates
+  and voxelised in the robot frame every step (needed with one head sensor: the feet area is seen only
+  while approaching). Grid: 32x32x40, 0.05 m, x/y +-0.8 m, z +-1.0 m around the pelvis, yaw-aligned.
+- `cat_mjlab/student.py`: proprioception + command (teacher features 0..130, raw heading error instead of
+  the map-based gated one) + z-grouped 2D CNN on the voxels; 497k parameters.
+- `scripts/student/train_voxel_student.py`: DAgger from the field experts (rooms+keyboard v9 for rooms/
+  tables/flat/joystick, CAT expert for CAT scenes), beta 1 -> 0.1 over 150 updates, replay of 3 rollouts,
+  per-scene success/contact of student-driven episodes. CPU smoke: loss 0.16 -> 0.06 in 2 updates.
+- `scripts/student/lidar_preview.py`: images of LiDAR memory + voxel grid (outputs/lidar_preview).
+- Real robot (to build): Mid-360 -> FAST-LIO2 (odometry + deskewed world points) -> drop points on the
+  robot (kinematics) -> keep the last ~1 s -> same VoxelMemory.grid in the pelvis frame at 50 Hz -> student.
+  Route/goal heading from a map-based planner or the keyboard (same command as in training).
+
 ## 8. Not yet done / next
 
 - Reference-state initialisation from sidle / duck clips (planned; not in the first pilot).
