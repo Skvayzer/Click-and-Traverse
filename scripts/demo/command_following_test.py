@@ -41,6 +41,16 @@ def body_segments(s):
             ("sideways left 0.3", (0., .3, 0.), 4.), ("sideways right 0.3", (0., -.3, 0.), 4.), ("stop", (0., 0., 0.), 3.)]
     rows = []
     for name, command, seconds in plan:
+        # Each segment starts with the reference heading on the body (a heading reference otherwise
+        # carries the unfinished part of the previous turn into the next segment), after 1 s of settling.
+        s.body_command = [0., 0., 0.]
+        psi = getattr(s.task, "psi_ref", None)
+        for _ in range(50):
+            if psi is not None:
+                s.task.psi_ref[0] = s.yaw()
+            s.step()
+        if psi is not None:
+            s.task.psi_ref[0] = s.yaw()
         s.body_command = list(command)
         start_xy = s.sim.raw.qpos[:2].copy(); start_yaw = s.yaw(); falls0 = s.falls
         fwd, side, rates = [], [], []
