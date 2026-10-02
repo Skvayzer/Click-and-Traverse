@@ -278,6 +278,16 @@ tables (closed 32% there). Metrics: heading/heading_gate, heading/heading_error_
 Demo (v8+ automatically): W/S forward/back, A/D turn the reference heading (also in place), Q/E
 sideways; yellow arrow = reference heading; status shows whether orientation is held or free.
 
+## Milestone 2026-10-02: rooms + keyboard control (tag `milestone-2026-10-02-rooms-keyboard-v9`)
+
+Policy `checkpoints/cat_g1_rooms_keyboard_v9_u492/` (v9 update 492; actor 292,474 parameters, 1.2 MB,
+same size as released CAT). Route following: clutter/furniture dense 76%, pilot rooms ~90%, falls 0.1%;
+8/8 clutter videos without pushes. Keyboard (heading-reference interface): turn in place ~80% of the
+commanded rate (25-35 cm drift), forward + steer good; backward/sideways not learned; table edges
+degraded to 23% in v9 (obstacle-safe target applied to route worlds incl. hands -- fix planned).
+Tooling: CPU single-robot simulator (parity with Warp), browser + keyboard demo, command-following
+test, teleop recordings, no-push recordings.
+
 ## 8. Not yet done / next
 
 - Reference-state initialisation from sidle / duck clips (planned; not in the first pilot).
