@@ -48,6 +48,8 @@ PRESETS = {
     "demo": ["table-contrast-train-20260924-open-9e3c0119ba82", "random-furniture-dense-train-004003",
              "random-generic_clutter-dense-train-005001-1eaef5f4115f", "random-furniture-dense-train-20261205-c5b0ae199c87",
              "table-contrast-train-20260924-forward_protected-5faeda4369c6"],
+    # scripts/demo/build_obstacle_course.py; run with --bank data/furniture/course_v1
+    "course": ["course-mixed-obstacles-v1"],
 }
 BODY_TURN_RATE = .8           # rad/s for A/D with body-frame (v7+) checkpoints
 TURN_IN_PLACE_SPEED = .15     # m/s step toward the target facing while only A/D are held
@@ -132,7 +134,8 @@ class Session:
         self._mp = ns.bank_manifest.resolve(); self._loaded = load_generalist_manifest(self._mp, verify_files=False)
         self._scene_directory = scene_directory
         resolve = lambda key: key if key in self.index else next((s for s in self.index if s.startswith(key)), None)
-        self.scenes = [r for r in map(resolve, args.scenes) if r is not None]
+        names = [n for name in args.scenes for n in PRESETS.get(name, [name])]   # preset names expand
+        self.scenes = [r for r in map(resolve, names) if r is not None]
         if not self.scenes:
             raise ValueError("none of the requested scenes is in the bank")
         self.scene = None
@@ -149,7 +152,19 @@ class Session:
     def load(self, scene_id):
         with self.lock:
             self.scene = scene_id
-            self.task.reset(scene_ids=self.torch.tensor([self.index[scene_id]]))
+            record = self.manifest["scenes"][self.index[scene_id]]
+            if record.get("reset_mode") == "cat":
+                # CAT resets scatter the start (+-1 m, +-90 deg, joint scale 0.5-1.5); on a course the
+                # robot should stand at the start line facing it: take every ranged draw at its midpoint.
+                task, draw = self.task, self.task._rand
+                task._rand = lambda shape, low=0., high=1.: (draw(shape) if (low, high) == (0., 1.) else
+                                                            self.torch.full(shape, (low + high) / 2))
+                try:
+                    task.reset(scene_ids=self.torch.tensor([self.index[scene_id]]))
+                finally:
+                    task._rand = draw
+            else:
+                self.task.reset(scene_ids=self.torch.tensor([self.index[scene_id]]))
             self.task.joystick.zero_()
             self.speed, self.contacts, self.contact_parts, self.falls = 0., 0, {}, 0
             self.heading = self.yaw()
