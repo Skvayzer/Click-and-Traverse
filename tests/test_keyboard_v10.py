@@ -1,0 +1,82 @@
+"""Keyboard v10: blocking footprint, heading deadband, config wiring."""
+import math
+from types import SimpleNamespace
+
+import numpy as np
+import pytest
+import torch
+
+from cat_mjlab.blocking import BlockingMap, blocking_sdf2d
+from cat_mjlab import task_math as tm
+
+DX = .04
+
+
+def scene_sdf(boxes, shape=(100, 50, 40), origin=(0., 0., 0.)):
+    """Exact SDF of axis-aligned boxes (min/max corners) on a grid with cell i at origin + i*dx."""
+    axes = [origin[k] + DX * np.arange(shape[k]) for k in range(3)]
+    p = np.stack(np.meshgrid(*axes, indexing="ij"), -1)
+    sdf = np.full(shape, 10., np.float32)
+    for lo, hi in boxes:
+        lo, hi = np.asarray(lo), np.asarray(hi)
+        c, h = (lo + hi) / 2, (hi - lo) / 2
+        q = np.abs(p - c) - h
+        d = np.linalg.norm(np.maximum(q, 0), axis=-1) + np.minimum(q.max(-1), 0)
+        sdf = np.minimum(sdf, d.astype(np.float32))
+    return sdf
+
+
+def bank_of(sdfs, origin=(0., 0., 0.)):
+    shapes = [s.shape for s in sdfs]
+    offsets = np.cumsum([0] + [int(np.prod(s)) for s in shapes[:-1]])
+    return SimpleNamespace(fields={"sdf": torch.as_tensor(np.concatenate([s.reshape(-1, 1) for s in sdfs]))},
+                           shapes=torch.tensor(shapes), offsets=torch.as_tensor(offsets),
+                           origins=torch.tensor([origin] * len(sdfs), dtype=torch.float32),
+                           dxs=torch.full((len(sdfs),), DX))
+
+
+BEAM = ((1.9, 0., 1.02), (2.1, 2., 1.6))        # crouch under it
+HURDLE = ((1.9, 0., 0.), (2.0, 2., .20))       # step over it
+WALL = ((1.9, 0., 0.), (2.0, 2., 1.6))         # blocks
+TABLE = ((1.6, 0., .70), (2.4, .8, .75))       # top at hand height: blocks
+
+
+@pytest.mark.parametrize("box,blocks", [(BEAM, False), (HURDLE, False), (WALL, True), (TABLE, True)])
+def test_band_decides_what_blocks(box, blocks):
+    dist, _ = blocking_sdf2d(scene_sdf([box]), 0., DX)
+    assert (dist.min() <= 0) == blocks
+
+
+def test_sample_distance_and_direction_away_from_wall():
+    bm = BlockingMap(bank_of([scene_sdf([WALL])]))
+    xy = torch.tensor([[[1.5, 1.0], [2.4, 1.0]]])
+    dist, away = bm.sample(xy, torch.tensor([0]))
+    assert dist[0, 0] == pytest.approx(.40, abs=.05) and dist[0, 1] == pytest.approx(.40, abs=.05)
+    assert away[0, 0, 0] < -.9 and away[0, 1, 0] > .9            # in front: pushed back; behind: pushed on
+
+
+def test_safe_target_stops_at_wall_not_under_beam():
+    command = torch.tensor([[.5, 0.]])
+    xy = torch.tensor([[[1.65, 1.0]]])                          # 0.25 m before the obstacle
+    for box, expect in ((WALL, 0.), (BEAM, .5), (HURDLE, .5)):
+        bm = BlockingMap(bank_of([scene_sdf([box])]))
+        dist, away = bm.sample(xy, torch.tensor([0]))
+        target = tm.safe_velocity_target(command, away, dist)
+        assert float(target[0, 0]) == pytest.approx(expect, abs=.03), box
+
+
+def test_heading_hysteresis():
+    prev = torch.tensor([False, False, True, True])
+    err = torch.tensor([.10, .25, .10, .05])
+    assert tm.hysteresis(err, prev, on=.2, off=.08).tolist() == [False, True, True, False]
+
+
+def test_config_keyboard_v10_wiring():
+    from cat_mjlab.config import wholebody_config
+    with pytest.raises(ValueError):
+        wholebody_config(keyboard_v10=True)
+    c = wholebody_config(teleop_fraction=.5, heading_align_weight=.4, teleop_heading_commands=True, keyboard_v10=True,
+                         hand_clearance_tight=(.10, .40, .3))
+    assert c['blocking_map'] and c['safe_tracking_teleop_only'] and c['heading_deadband'] == (.20, .08)
+    assert c['teleop']['cat_scenes'] and c['teleop']['p_stop'] == .30 and c['teleop']['p_through_cat'] == .70
+    assert c['hand_clearance_tight'] == dict(low=.10, high=.40, floor=.3)

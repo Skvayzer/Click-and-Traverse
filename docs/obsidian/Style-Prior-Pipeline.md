@@ -309,6 +309,43 @@ Gallant (CVPR 2026) reimplemented in our mjlab stack (its code is Isaac-based, n
   robot (kinematics) -> keep the last ~1 s -> same VoxelMemory.grid in the pelvis frame at 50 Hz -> student.
   Route/goal heading from a map-based planner or the keyboard (same command as in training).
 
+## 7i. CAT expert and keyboard v10 (2026-10-02/03)
+
+**CAT expert.** v1 started from rooms+keyboard v9: 3% CAT success after 60 updates, 91-97% of episodes
+ending in contact (v9 had forgotten CAT). v2 starts from the released CAT generalist, converted with
+`scripts/convert_released_cat_to_native.py` (identical actions after widening 222 -> 226 inputs), body motion
+back to -0.5, upright on pitch only. Training success reached ~34% in all three CAT groups by update 616.
+Released CAT under our rule (paired eval, 3200 episodes, deterministic) scores 23-25%: it "fits" mostly by
+touching -- side scenes 15% clean / 72% contact (hands 33%), crouch 7% clean / 87% contact (head 60%).
+
+**Demo course** (`scripts/demo/build_obstacle_course.py`, bank `data/furniture/course_v1_*`): 25 m corridor,
+hurdles 10/20 cm, beams 1.16/1.02 m, side gaps 0.44/0.34 m, combinations, tables with a 0.60 m gap. CAT-type
+scene (no room route certificate, which would forbid gaps < 0.46 m). Field-driven, the CAT expert passed
+hurdles and both beams and stopped at the 0.44 m gap; keyboard-driven it stalled before the 1.02 m beam.
+
+**Diagnosis.**
+- Safe velocity target normalised the 3-D field's horizontal part to unit length: a beam overhead or a hurdle
+  underfoot became "wall ahead", target stop.
+- Heading gate (shoulder/hand probes on the 3-D SDF) read a beam at shoulder height as "too narrow to face",
+  released the heading, the robot turned sideways (~70 deg) in front of the beam.
+- Teleop worlds were drawn only from scenes with room navigation: in the CAT expert that is the flat scene,
+  ~44 episodes/update. It never drove a CAT obstacle by keyboard.
+- Idle stepping: the gait flag turned on above 0.05 rad heading error; with no command it was on 100% of
+  the time (28 touchdowns, 1.2 m drift in 20 s). With the error held at 0: 2-4 touchdowns.
+- Side gaps: 9 cm hand target with 20 cm anticipation cannot be held on both sides of a 0.34-0.44 m gap.
+
+**v10 (`--keyboard-v10`, `--hand-clearance-tight 0.10 0.40 0.3`, run `expert_cat_v3_20261003`).**
+- `cat_mjlab/blocking.py`: per-scene 2-D blocking footprint, occupied anywhere in 0.25-0.95 m; 2-D signed
+  distance + direction, built from the bank SDF at load. Used by the safe target and the heading gate.
+- Safe target in joystick worlds only.
+- Heading deadband 0.20 on / 0.08 off rad (hysteresis); a held turn key turns at once.
+- Teleop in CAT scenes; THROUGH commands (heading and walk along the stored goal field at the root) with
+  p 0.7 in CAT scenes, 0.3 elsewhere; p_stop 0.15 -> 0.30, a stop sets the reference heading to the facing.
+- Hand/elbow clearance targets x room scale: pelvis distance to the blocking footprint, 0.3 at <= 0.10 m,
+  1 at >= 0.40 m. Contact still terminates.
+- New metrics bucket `scene/teleop_cat/*` (keyboard episodes in CAT scenes, success = clean crossing):
+  6.9% success, 51% contact at the start of v3. Tests: `tests/test_keyboard_v10.py`.
+
 ## 8. Not yet done / next
 
 - Reference-state initialisation from sidle / duck clips (planned; not in the first pilot).

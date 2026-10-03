@@ -99,6 +99,13 @@ def parser():
                                  "velocity; gated heading error reaches the policy; obstacle-safe velocity reward; also route worlds")
         target.add_argument("--heading-track-weight", type=float, help="Weight of the gated heading reward (replaces heading_align)")
         target.add_argument("--upright-roll", action="store_true", default=None, help="Upright reward on total torso tilt (pitch and roll)")
+        target.add_argument("--keyboard-v10", action="store_true", default=None,
+                            help="With --teleop-heading-commands: 2-D blocking footprint for the safe target and heading gate "
+                                 "(beams/hurdles do not repel), safe target in joystick worlds only, heading deadband, "
+                                 "keyboard practice in CAT scenes (70%% through the obstacle), stop probability 0.3")
+        target.add_argument("--hand-clearance-tight", type=float, nargs=3, metavar=("LOW", "HIGH", "FLOOR"),
+                            help="Scale hand/elbow clearance targets by pelvis room to the blocking footprint: FLOOR at <= LOW m, "
+                                 "1 at >= HIGH m (e.g. 0.10 0.40 0.3)")
         target.add_argument("--body-motion-weight", type=float, help="Cost on velocity off the command line and torso rocking (default -0.5)")
         target.add_argument("--style-free-near-obstacles", action="store_true", default=None,
                             help="Style prior neutral (and no discriminator samples) while a hand is within 0.2-0.3 m of an obstacle")

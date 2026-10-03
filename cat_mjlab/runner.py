@@ -292,6 +292,7 @@ def collect_rollout(task, learner, *, unroll_length, trajectories, policy_ids):
     reactive_bucket = SCENE_BUCKETS.index('reactive_standing')
     walking_bucket = SCENE_BUCKETS.index('reactive_walking')
     teleop_bucket = SCENE_BUCKETS.index('teleop'); last_teleop = None
+    teleop_cat_bucket = SCENE_BUCKETS.index('teleop_cat')
     # Realized experience per sampling group: steps every step, lengths at episode end.
     sampling_ids = getattr(task.bank, 'sampling_ids', None)
     n_groups = int(task.bank.sampling_masses.numel()) if sampling_ids is not None else 0
@@ -363,7 +364,8 @@ def collect_rollout(task, learner, *, unroll_length, trajectories, policy_ids):
                 teleop_now = metrics['teleop/active'].bool()
                 was_teleop = torch.where(done, last_teleop, teleop_now) if last_teleop is not None else teleop_now
                 last_teleop = teleop_now
-                bucket = torch.where(was_teleop, teleop_bucket, bucket)
+                # Keyboard episodes in CAT scenes keep a goal (crossing the scene cleanly): own bucket with a success rate.
+                bucket = torch.where(was_teleop, torch.where(task.bank.is_cat[metrics['scene_ids']], teleop_cat_bucket, teleop_bucket), bucket)
             # Counted on different events on purpose: a verdict can land hundreds of steps
             # before the episode ends, so terminations and resolutions are not the same
             # population and must not be divided by one another within an update.
@@ -674,13 +676,13 @@ GOALLESS_BUCKETS = ('reactive_standing', 'reactive_walking', 'flat_balance', 'te
 # Per-step task telemetry averaged over the update: posture/* and self_clearance/*.
 TELEMETRY_MEANS = ('self_clearance_min_m', 'self_clearance_violation', 'crouch_required', 'torso_pitch_abs',
                    'hand_contact_trunk', 'hand_contact_head', 'hand_contact_arm', 'hand_contact_hand',
-                   'heading_gate', 'heading_error_abs')
+                   'heading_gate', 'heading_error_abs', 'hand_room_scale')
 SCENE_BUCKETS = ('procedural_cat', 'original_cat', 'published_cat',
                  'clutter_dense', 'clutter_pilot', 'clutter_legacy',
                  'furniture_dense', 'furniture_pilot', 'furniture_legacy',
                  'narrow_passage', 'protected_passage', 'transition_passage',
                  'table_edges',
-                 'open_passage', 'flat_balance', 'reactive_standing', 'reactive_walking', 'teleop')
+                 'open_passage', 'flat_balance', 'reactive_standing', 'reactive_walking', 'teleop', 'teleop_cat')
 
 
 def _scene_buckets(manifest):
@@ -949,6 +951,7 @@ def create_task(args, *, environment_config=None, sim_class=None):
         teleop_heading_commands=getattr(args, 'teleop_heading_commands', None), heading_track_weight=getattr(args, 'heading_track_weight', None),
         upright_roll=getattr(args, 'upright_roll', None), body_motion_weight=getattr(args, 'body_motion_weight', None),
         style_free_near_obstacles=getattr(args, 'style_free_near_obstacles', None),
+        keyboard_v10=getattr(args, 'keyboard_v10', None), hand_clearance_tight=getattr(args, 'hand_clearance_tight', None),
         standing_gf_bonus=getattr(args, 'standing_gf_bonus', None),
         reactive_hand_guidance=getattr(args, 'reactive_hand_guidance', None),
         handsdf_weight=getattr(args, 'handsdf_weight', None),

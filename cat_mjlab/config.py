@@ -35,7 +35,8 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
                      action_rate_weight=None,joint_acc_weight=None,hand_body_contact_weight=None,
                      heading_hand_probes=None,head_guidance_near_sdf=None,teleop_fraction=None,
                      teleop_body_commands=None,tracking_yaw_weight=None,teleop_heading_commands=None,
-                     heading_track_weight=None,upright_roll=None,body_motion_weight=None,style_free_near_obstacles=None):
+                     heading_track_weight=None,upright_roll=None,body_motion_weight=None,style_free_near_obstacles=None,
+                     keyboard_v10=None,hand_clearance_tight=None):
     from cat_ppo.furniture.generalist_config import released_config
     from .collision import PROPOSAL
     config=copy.deepcopy(released_config()['env_config'] if base_config is None else base_config)
@@ -222,6 +223,19 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
         if heading_track_weight is not None:scales['heading_align']=float(heading_track_weight)
     elif heading_track_weight is not None:
         raise ValueError('heading_track_weight requires teleop_heading_commands')
+    # Keyboard v10 (docs/obsidian/Style-Prior-Pipeline.md 7i): only what blocks the body band (0.25-0.95 m)
+    # repels -- beams and hurdles no longer zero the velocity target or release the heading; the safe target
+    # applies to joystick worlds only; a heading deadband (0.20 on / 0.08 off rad) so a robot with no command
+    # stands instead of marking time; keyboard practice in CAT scenes, mostly THROUGH the obstacle along the
+    # stored goal field; stop practice doubled and a stop holds the current facing.
+    if keyboard_v10:
+        if not config.get('heading_command'):raise ValueError('keyboard_v10 requires teleop_heading_commands')
+        config.update(blocking_map=True,heading_deadband=(.20,.08),safe_tracking_teleop_only=True)
+        config['teleop'].update(cat_scenes=True,p_stop=.30,p_through=.30,p_through_cat=.70)
+    if hand_clearance_tight is not None:
+        low,high,floor=(float(v) for v in hand_clearance_tight)
+        if not (0<=low<high and 0<floor<=1):raise ValueError('hand_clearance_tight: 0 <= low < high, 0 < floor <= 1')
+        config.update(blocking_map=True,hand_clearance_tight=dict(low=low,high=high,floor=floor))
     scales.update(wholebody_hand_clearance=-.5 if hand_protection else -5.,wholebody_arm_clearance=-2.)
     if standing_gf_bonus is not None:
         if isinstance(standing_gf_bonus,bool) or not math.isfinite(standing_gf_bonus) or standing_gf_bonus<0:

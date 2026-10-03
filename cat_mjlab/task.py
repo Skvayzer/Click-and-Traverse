@@ -55,7 +55,7 @@ class CATTask:
             'quat_mul','delay_body_pos','navi_rotation','world_to_navi','matrix_rpy',
             'motor_targets','pd_torque','compute_cmd_from_rtf','update_phase','observations',
             'upper_stability_terms','native_rewards','heading_probe_points','yaw_tracking',
-            'facing_probe_points','clearance_gate','safe_velocity_target')})
+            'facing_probe_points','clearance_gate','safe_velocity_target','hysteresis')})
         self.route_context=route_context
         self.swept_root_clearance=swept_root_clearance
         self.hand_contrast_context=hand_contrast_context
@@ -284,6 +284,13 @@ class CATTask:
             approach_distance=float(_get(self.config,'hand_contrast_approach_distance',0.)))
         for k,v in values.items():self._put(self.contrast,k,ids,v)
 
+    def _blocking(self):
+        """Lazily built 2-D blocking footprint of every scene (cat_mjlab/blocking.py)."""
+        if getattr(self,'_blocking_map',None) is None:
+            from .blocking import BlockingMap
+            self._blocking_map=BlockingMap(self.bank)
+        return self._blocking_map
+
     def _heading_command(self,ids,positions,root_xy,direction,velocity,active,teleop,store=False):
         """Gated heading error for command[:,3] (config 'heading_command').
 
@@ -307,8 +314,14 @@ class CATTask:
         scenes=self.scene_ids[ids]
         shoulders=self.math.facing_probe_points(root_xy,facing,travel,positions[:,9:11,2].mean(-1),half_width=.16)
         hands=self.math.facing_probe_points(root_xy,facing,travel,positions[:,5:7,2].mean(-1),half_width=.22)
-        clearance=torch.cat((self.bank.sample('sdf',shoulders,scenes).reshape(len(ids),-1),
-                             self.bank.sample('sdf',hands,scenes).reshape(len(ids),-1)-.10),-1)
+        if self.config.get('blocking_map'):
+            # 2-D blocking footprint (cat_mjlab/blocking.py): a beam above the shoulders no longer reads as
+            # "a body facing psi_ref does not fit", which released the heading and turned the robot sideways.
+            blocking=self._blocking()
+            clearance=torch.cat((blocking.sample(shoulders[...,:2],scenes)[0],blocking.sample(hands[...,:2],scenes)[0]-.10),-1)
+        else:
+            clearance=torch.cat((self.bank.sample('sdf',shoulders,scenes).reshape(len(ids),-1),
+                                 self.bank.sample('sdf',hands,scenes).reshape(len(ids),-1)-.10),-1)
         gate=self.math.clearance_gate(clearance)
         error=torch.remainder(psi-facing_yaw+torch.pi,2*torch.pi)-torch.pi
         commanded=self._commanded(ids)
@@ -319,9 +332,12 @@ class CATTask:
     def _teleop_resample_body(self,due):
         """Joystick commands in the body frame: (forward, sideways, turn rate).
 
-        Stop with p_stop; turn in place with p_turn (|rate| in [0.4, yaw_max]); toward the nearest
-        obstacle with p_toward (translation only); otherwise forward in [vx_min, vx_max], sideways
-        within +-vy_max and a turn rate within +-yaw_max, independently uniform.
+        Stop with p_stop; turn in place with p_turn (|rate| in [0.4, yaw_max]); THROUGH with p_through
+        (p_through_cat in CAT scenes): forward along the scene's stored goal field at the root -- it routes
+        under beams, over hurdles and through gaps -- with the reference heading turned to it, as an
+        operator steers at an opening; toward the nearest obstacle with p_toward (translation only);
+        otherwise forward in [vx_min, vx_max], sideways within +-vy_max and a turn rate within +-yaw_max.
+        A stop also sets the reference heading to the current facing: stop means stand where you are.
         """
         t=self.config['teleop'];n=self.num_envs;i=self.info
         r=self._rand((n,));p_stop,p_turn=float(t['p_stop']),float(t['p_turn'])
@@ -341,6 +357,19 @@ class CATTask:
         speed=self._rand((n,),float(t['speed_min']),float(t['speed_max']))
         vx=torch.where(toward,speed*bx,vx);vy=torch.where(toward,speed*by,vy);wz=torch.where(toward,0.,wz)
         vx=torch.where(turn,0.,vx);vy=torch.where(turn,0.,vy);wz=torch.where(turn,spin,wz)
+        q=self.data.qpos[:,3:7]
+        facing=torch.atan2(2*(q[:,0]*q[:,3]+q[:,1]*q[:,2]),1-2*(q[:,2]**2+q[:,3]**2))
+        if t.get('mode')=='heading':
+            p_through=torch.where(self.bank.is_cat[self.scene_ids],float(t.get('p_through_cat',0.)),float(t.get('p_through',0.)))
+            through=due&~stop&~turn&(self._rand((n,))<p_through)
+            if bool(through.any()):
+                goal=self.bank.sample('gf',self.data.qpos[:,None,:3],self.scene_ids)[:,0,:2]
+                norm=torch.linalg.vector_norm(goal,dim=-1)
+                through=through&(norm>1e-3)
+                self.psi_ref=torch.where(through,torch.atan2(goal[:,1],goal[:,0]),self.psi_ref)
+                fast=self._rand((n,),max(.2,float(t['vx_min'])),float(t['vx_max']))
+                vx=torch.where(through,fast,vx);vy=torch.where(through,0.,vy);wz=torch.where(through,0.,wz)
+            self.psi_ref=torch.where(due&stop,facing,self.psi_ref)
         command=torch.stack((vx,vy,wz),-1)*(~stop)[:,None]
         self.joystick_body=torch.where(due[:,None],command,self.joystick_body)
         self._teleop_timer=torch.where(due,self._rand((n,),float(t['hold_min']),float(t['hold_max'])),self._teleop_timer)
@@ -455,7 +484,23 @@ class CATTask:
             yaw_command=torch.where(teleop,joystick_yaw[ids],yaw_command)
         if self.config.get('heading_command'):
             yaw_command=self._heading_command(ids,positions,root_xy,direction,velocity,active,teleop,store=store)
-        moving=(torch.linalg.vector_norm(velocity,dim=-1)>.01)|(yaw_command.abs()>.05)   # turning in place moves the feet
+        deadband=self.config.get('heading_deadband')
+        if deadband is None:
+            turning=yaw_command.abs()>.05
+        else:
+            # A standing robot never holds its heading to 0.05 rad, so that threshold kept the gait on (and the
+            # robot marking time, drifting ~1.2 m in 20 s) with no command at all. Hysteresis: start turning in
+            # place above `on`, keep turning until below `off`; a held turn key (joystick yaw rate) turns at once.
+            on,off=(float(v) for v in deadband)
+            if getattr(self,'_turning',None) is None:
+                self._turning=torch.zeros(self.num_envs,dtype=torch.bool,device=self.device)
+            error=yaw_command.abs()
+            turning=self.math.hysteresis(error,self._turning[ids],on=on,off=off)
+            if teleop is not None and joystick_yaw is not None:
+                turning=turning|(teleop&(joystick_yaw[ids].abs()>.05))
+            if store:
+                self._turning[ids]=turning
+        moving=(torch.linalg.vector_norm(velocity,dim=-1)>.01)|turning   # turning in place moves the feet
         room_command=torch.cat((torch.where(moving,.75,0.)[:,None],velocity,yaw_command[:,None]),-1)
         replacement=gf.clone();replacement[:,:,:2]=direction[:,None]*.6
         replacement=self._gate_head_pull(replacement,sdf)
@@ -658,13 +703,20 @@ class CATTask:
                 self.psi_ref=torch.zeros(self.num_envs,device=self.device)
             q=self.data.qpos[ids,3:7]
             self.psi_ref[ids]=torch.atan2(2*(q[:,0]*q[:,3]+q[:,1]*q[:,2]),1-2*(q[:,2]**2+q[:,3]**2))
+        if getattr(self,'_turning',None) is not None:
+            self._turning[ids]=False
         teleop=self.config.get('teleop')
         if teleop:
             if getattr(self,'joystick_mask',None) is None:
                 self.joystick=torch.zeros((self.num_envs,2),device=self.device)
                 self.joystick_mask=torch.zeros(self.num_envs,dtype=torch.bool,device=self.device)
                 self._teleop_timer=torch.zeros(self.num_envs,device=self.device)
-            self.joystick_mask[ids]=(self._rand((n,))<float(teleop['fraction']))&self.navigation['enabled'][ids]
+            eligible=self.navigation['enabled'][ids]
+            if teleop.get('cat_scenes'):
+                # Keyboard practice around CAT obstacles too (before: rooms and the flat scene only, so a CAT
+                # expert never drove a beam, hurdle or gap by joystick).
+                eligible=eligible|self.bank.is_cat[self.scene_ids[ids]]
+            self.joystick_mask[ids]=(self._rand((n,))<float(teleop['fraction']))&eligible
             self.joystick[ids]=0.;self._teleop_timer[ids]=0.
             if teleop.get('mode') in ('body','heading'):
                 if getattr(self,'joystick_body',None) is None:
@@ -809,10 +861,20 @@ class CATTask:
             # Reward the command minus its component into nearby obstacles (pelvis, hands, knees,
             # shoulders): driven at a table, stopping or sliding along it is what earns the reward.
             points=[1,5,6,7,8,9,10]
-            away=i['bf'][:,points,:2];away=away/(torch.linalg.vector_norm(away,dim=-1,keepdim=True)+1e-9)
-            target=self.math.safe_velocity_target(reward_command[:,1:3],away,i['sdf'][:,points,0])
+            if self.config.get('blocking_map'):
+                # Only what blocks the body band repels: the 3-D field's horizontal part, rescaled to unit
+                # length, read a beam overhead / a hurdle underfoot as a wall ahead (target: stop).
+                distance,away=self._blocking().sample(i['positions'][:,points,:2],self.scene_ids)
+            else:
+                away=i['bf'][:,points,:2];away=away/(torch.linalg.vector_norm(away,dim=-1,keepdim=True)+1e-9)
+                distance=i['sdf'][:,points,0]
+            target=self.math.safe_velocity_target(reward_command[:,1:3],away,distance)
             reward_command=reward_command.clone()
-            reward_command[:,1:3]=torch.where(self._commanded(self.all_ids)[:,None],target,reward_command[:,1:3])
+            scope=self._commanded(self.all_ids)
+            mask=getattr(self,'joystick_mask',None)
+            if self.config.get('safe_tracking_teleop_only') and mask is not None:
+                scope=scope&mask           # route worlds follow a certified route; repulsion is for the joystick
+            reward_command[:,1:3]=torch.where(scope[:,None],target,reward_command[:,1:3])
         rewards=self.math.native_rewards(facing_yaw=facing_yaw,stand_still='stand_still' in _get(self.config,'reward_config.scales',{}),
             stillness_speed=_get(self.config,'standing_requires_stillness_speed',None),heading_sdf=heading_sdf,heading_margins=heading_margins,standing_gf=float(_get(self.config,'standing_gf_bonus',4.)),sdf_knee=sdf_knee,action=action,last_action=i['last_act'],last_last_action=i['last_last_act'],
             joint_pos=d.qpos[:,7:],joint_vel=d.qvel[:,6:],last_joint_vel=i['last_joint_vel'],lower=self.lower,upper=self.upper,
@@ -830,6 +892,20 @@ class CATTask:
         if balance:
             flat=self.bank.flat_balance[self.scene_ids]
             if self.reactive_objects is not None:flat=flat&~self.reactive_objects.state['active']
+        protection_target=float(_get(self.config,'hand_protection_target_clearance',.04))
+        protection_anticipation=float(_get(self.config,'hand_protection_anticipation_distance',.20))
+        arm_margin=float(_get(self.config,'arm_clearance_margin',.08))
+        tight=self.config.get('hand_clearance_tight')
+        room_scale=None
+        if tight:
+            # Hand/elbow clearance targets shrink with the room the body has (pelvis distance to the blocking
+            # footprint): 9 cm / 20 cm cannot be kept on both sides of a 0.34-0.44 m gap even sideways, so the
+            # whole passage was one long penalty and standing in front of it cost nothing. Contact still ends
+            # the episode; only the margin asked for shrinks.
+            room,_=self._blocking().sample(i['positions'][:,1:2,:2],self.scene_ids)
+            room_scale=((room[:,0]-float(tight['low']))/(float(tight['high'])-float(tight['low']))).clamp(float(tight['floor']),1.)[:,None]
+            protection_target=protection_target*room_scale;protection_anticipation=protection_anticipation*room_scale
+            arm_margin=arm_margin*room_scale
         costs,telemetry=self.math.upper_stability_terms(i['motor_targets'][:,12:],i['previous_upper'],i['previous_previous_upper'],self.upper_home,
             i['sdf'][:,5:7],i['elbow_clearance'],dt=self.dt,velocity_scale=float(_get(self.config,'upper_velocity_cost_scale',2.)),
             acceleration_scale=float(_get(self.config,'upper_acceleration_cost_scale',20.)),posture_scale=float(_get(self.config,'upper_action_scale',.8)),
@@ -837,15 +913,17 @@ class CATTask:
             clearance_taper=float(_get(self.config,'upper_posture_clearance_taper',.12)),waist_weight=float(_get(self.config,'upper_cost_waist_weight',4.)),
             hand_protection=self.hand_protection,arm_velocity_weight=float(_get(self.config,'upper_arm_velocity_weight',.5)),
             arm_acceleration_weight=float(_get(self.config,'upper_arm_acceleration_weight',.1)),
-            protection_target_clearance=float(_get(self.config,'hand_protection_target_clearance',.04)),
-            protection_anticipation_distance=float(_get(self.config,'hand_protection_anticipation_distance',.20)),
+            protection_target_clearance=protection_target,
+            protection_anticipation_distance=protection_anticipation,
             protection_near_weight=float(_get(self.config,'hand_protection_near_weight',.8)),
             protection_posture_taper=float(_get(self.config,'hand_protection_posture_taper',.10)),
             contrast_arm_active=None)
         enabled=bool(_get(self.config,'hand_protection_enabled',True))
         rewards['wholebody_hand_clearance']=(telemetry['hand_clearance_pressure'] if self.hand_protection else
             (float(_get(self.config,'hand_clearance_margin',.12))-i['sdf'][:,5:7]).clamp_min(0).square().flatten(1).mean(-1))*enabled
-        rewards['wholebody_arm_clearance']=(float(_get(self.config,'arm_clearance_margin',.08))-i['elbow_clearance']).clamp_min(0).square().mean(-1)*enabled
+        rewards['wholebody_arm_clearance']=(arm_margin-i['elbow_clearance']).clamp_min(0).square().mean(-1)*enabled
+        if room_scale is not None:
+            telemetry['hand_room_scale']=room_scale[:,0]
         if self.stabilization:rewards.update(costs)
         scales=_get(self.config,'reward_config.scales',{})
         if 'action_rate' in scales:rewards['action_rate']=self._action_rate
@@ -1233,7 +1311,7 @@ class CATTask:
                 metrics[key] = self.telemetry[key].clone()
             for key in ('self_clearance_min_m', 'self_clearance_violation', 'crouch_required', 'torso_pitch_abs',
                         'hand_contact_trunk', 'hand_contact_head', 'hand_contact_arm', 'hand_contact_hand',
-                        'heading_gate', 'heading_error_abs'):
+                        'heading_gate', 'heading_error_abs', 'hand_room_scale'):
                 if key in self.telemetry: metrics[key] = self.telemetry[key].clone()
             metrics['contrast_role'] = self.contrast['role'].clone()
             metrics['contrast_unresolved'] = (~self.outcome_counted | resolved).clone()

@@ -327,6 +327,11 @@ def safe_velocity_target(command_xy,normals,distances,*,near=.25,far=.60):
     return target
 
 
+def hysteresis(value,previous,*,on,off):
+    """True above ``on``; stays True while above ``off`` once on (turn in place until roughly aligned)."""
+    return (value>on)|(previous&(value>off))
+
+
 def yaw_tracking(command_yaw_rate,yaw_rate,*,sigma=.25):
     """exp(-error^2/sigma): following a commanded turn rate (rad/s), joystick training only."""
     return torch.exp(-(command_yaw_rate-yaw_rate).square()/sigma)
