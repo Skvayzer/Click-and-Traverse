@@ -291,6 +291,16 @@ class CATTask:
             self._blocking_map=BlockingMap(self.bank)
         return self._blocking_map
 
+    def _blocking_probes(self,xy,heading,scenes,lookahead=.25):
+        """Blocking distance/away-direction at body points AND ``lookahead`` m ahead along ``heading`` [n,2]
+        (the ahead probes report distance + lookahead): the nearest blocking cell alone can be a side wall
+        while a wall straight ahead is barely farther, and then nothing would stop the command. [n,2P],[n,2P,2]."""
+        unit=heading/(torch.linalg.vector_norm(heading,dim=-1,keepdim=True)+1e-9)
+        ahead=xy+lookahead*unit[:,None]
+        blocking=self._blocking()
+        d0,a0=blocking.sample(xy,scenes);d1,a1=blocking.sample(ahead,scenes)
+        return torch.cat((d0,d1+lookahead),1),torch.cat((a0,a1),1)
+
     def _heading_command(self,ids,positions,root_xy,direction,velocity,active,teleop,store=False):
         """Gated heading error for command[:,3] (config 'heading_command').
 
@@ -506,9 +516,22 @@ class CATTask:
         replacement=self._gate_head_pull(replacement,sdf)
         if hasattr(self, 'speed_state'):
             replacement=torch.where(hold[:,None,None],0.,replacement)
-        normal=bf/(torch.linalg.vector_norm(bf,dim=-1,keepdim=True)+1e-9)
-        inward=(replacement*normal).sum(-1,keepdim=True).clamp_max(0)
-        replacement-=inward*normal*(sdf<.5);replacement*=active[:,None,None]
+        if self.config.get('blocking_map'):
+            # Remove the command's component into BLOCKING obstacles only (2-D footprint, 0.25-0.95 m). The 3-D
+            # projection below cut the forward guidance of the feet at every hurdle (0.0 vs 0.8 field-driven)
+            # and of head/shoulders at every beam, and feetgf/headgf paid for not advancing: keyboard practice in
+            # CAT scenes taught refusing (v3, v4), which leaked into field mode. Vertical (step/duck) is kept.
+            distance,away=self._blocking_probes(positions[...,:2],direction,scenes)
+            P=positions.shape[1];replacement=replacement.clone();horizontal=replacement[...,:2]
+            for half in (slice(0,P),slice(P,2*P)):      # at the point, then 0.25 m ahead of it
+                inward=(horizontal*away[:,half]).sum(-1,keepdim=True).clamp_max(0)
+                horizontal=horizontal-inward*away[:,half]*(distance[:,half]<.5)[...,None]
+            replacement[...,:2]=horizontal
+            replacement*=active[:,None,None]
+        else:
+            normal=bf/(torch.linalg.vector_norm(bf,dim=-1,keepdim=True)+1e-9)
+            inward=(replacement*normal).sum(-1,keepdim=True).clamp_max(0)
+            replacement-=inward*normal*(sdf<.5);replacement*=active[:,None,None]
         replacement[:,1]=torch.cat((velocity,torch.zeros_like(velocity[:,:1])),-1)
         commanded=self._commanded(ids)
         gf=torch.where(commanded[:,None,None],replacement,gf)
@@ -868,7 +891,7 @@ class CATTask:
             if self.config.get('blocking_map'):
                 # Only what blocks the body band repels: the 3-D field's horizontal part, rescaled to unit
                 # length, read a beam overhead / a hurdle underfoot as a wall ahead (target: stop).
-                distance,away=self._blocking().sample(i['positions'][:,points,:2],self.scene_ids)
+                distance,away=self._blocking_probes(i['positions'][:,points,:2],reward_command[:,1:3],self.scene_ids)
             else:
                 away=i['bf'][:,points,:2];away=away/(torch.linalg.vector_norm(away,dim=-1,keepdim=True)+1e-9)
                 distance=i['sdf'][:,points,0]
