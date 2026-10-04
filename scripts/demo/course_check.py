@@ -5,6 +5,8 @@ Three drives on course-mixed-obstacles-v1 (scripts/demo/build_obstacle_course.py
   field     follow the scene's CAT field to the end (no keyboard)
   keyboard  hold W at --speed (heading mode, reference heading straight down the course)
   idle      no keys for 20 s: foot touchdowns, drift, yaw change
+--per-obstacle: instead, each obstacle on its own -- start 1 m before it, facing it, 12 s -- for the field and keyboard
+drives: "clean" (cleared without contact), "contact" (cleared, touched), "refused" (not cleared).
 For each drive: the obstacles cleared (root more than 0.3 m past the obstacle), contacts by section and body
 part, falls. A drive stops early once the robot has not advanced 5 cm in --stall-seconds.
 Prints one JSON line per drive; --compare FILE prints which obstacles a previous result cleared and this one did not.
@@ -34,6 +36,7 @@ def main():
     p.add_argument("--seconds", type=float, default=90.)
     p.add_argument("--stall-seconds", type=float, default=15.)
     p.add_argument("--drives", nargs="+", default=["field", "keyboard", "idle"])
+    p.add_argument("--per-obstacle", action="store_true", help="Each obstacle separately, starting 1 m before it")
     p.add_argument("--output", help="Write the results (JSON) here")
     p.add_argument("--compare", help="A previous --output to compare against")
     args = p.parse_args()
@@ -50,6 +53,39 @@ def main():
     def section(x):
         return ([n for b, n in OBSTACLES if x > b - .6] or ["start"])[-1]
 
+    def place(x):
+        task.data.qpos[0, 0] = x; task.data.qpos[0, 1] = 0.
+        task.sim.forward(task.all_ids)
+
+    if args.per_obstacle:
+        for drive in [d for d in args.drives if d != "idle"]:
+            table = {}
+            for bx, name in OBSTACLES:
+                if drive == "field":
+                    task.joystick = torch.zeros((1, 2)); task.joystick_body = torch.zeros((1, 3)) if s.body_mode else None
+                    s.load(s.scenes[0]); task.joystick = None; task.joystick_body = None
+                else:
+                    if task.joystick is None:
+                        task.joystick = torch.zeros((1, 2)); task.joystick_body = torch.zeros((1, 3)) if s.body_mode else None
+                    s.load(s.scenes[0]); s.hold_mode = True; s.held = {"up"}; s.speed_setting = args.speed
+                place(bx - 1.)
+                touched, cleared = set(), False
+                for k in range(int(12. / .02)):
+                    if drive == "field":
+                        with torch.no_grad():
+                            task.step(s.learner.act(task.obs, policy_ids=0, deterministic=True)["action"])
+                    else:
+                        s.step()
+                    x = float(s.sim.raw.qpos[0])
+                    if abs(x - bx) < .8:
+                        touched |= {r for r, v in zip(demo.REGIONS, s.last["regions"].tolist()) if v}
+                    if x > bx + .3:
+                        cleared = True; break
+                table[name] = ("clean" if not touched else "contact:" + "+".join(sorted(touched))) if cleared else \
+                              ("refused" if not touched else "refused,touched:" + "+".join(sorted(touched)))
+            results[drive] = table
+            print(json.dumps(dict(drive=drive, **table)), flush=True)
+        args.drives = []
     for drive in args.drives:
         if drive == "field":
             task.joystick = torch.zeros((1, 2)); task.joystick_body = torch.zeros((1, 3)) if s.body_mode else None
@@ -101,7 +137,13 @@ def main():
         print(json.dumps(dict(drive=drive, **results[drive])), flush=True)
     if args.output:
         Path(args.output).write_text(json.dumps(dict(checkpoint=args.checkpoint, speed=args.speed, results=results), indent=1) + "\n")
-    if args.compare:
+    if args.compare and args.per_obstacle:
+        before = json.loads(Path(args.compare).read_text())["results"]
+        for drive in results:
+            if drive in before:
+                rows = {n: (before[drive].get(n), results[drive].get(n)) for _, n in OBSTACLES}
+                print(json.dumps(dict(compare=drive, **{n: f"{a} -> {b}" for n, (a, b) in rows.items() if a != b})))
+    elif args.compare:
         before = json.loads(Path(args.compare).read_text())["results"]
         for drive in ("field", "keyboard"):
             if drive in before and drive in results:
