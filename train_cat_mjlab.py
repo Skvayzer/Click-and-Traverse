@@ -103,6 +103,11 @@ def parser():
                             help="With --teleop-heading-commands: 2-D blocking footprint for the safe target and heading gate "
                                  "(beams/hurdles do not repel), safe target in joystick worlds only, heading deadband, "
                                  "keyboard practice in CAT scenes (70%% through the obstacle), stop probability 0.3")
+        target.add_argument("--teleop-progress-weight", type=float,
+                            help="Keyboard worlds: reward for speed along the obstacle-safe target (0..1 per step) while it is > 0.15 m/s")
+        target.add_argument("--teleop-stall-weight", type=float,
+                            help="Keyboard worlds: cost per step of moving < 0.05 m/s along a passable target (> 0.15 m/s); negative")
+        target.add_argument("--teleop-cat-fraction", type=float, help="Keyboard share of CAT-scene episodes (default: --teleop-fraction)")
         target.add_argument("--hand-clearance-tight", type=float, nargs=3, metavar=("LOW", "HIGH", "FLOOR"),
                             help="Scale hand/elbow clearance targets by pelvis room to the blocking footprint: FLOOR at <= LOW m, "
                                  "1 at >= HIGH m (e.g. 0.10 0.40 0.3)")

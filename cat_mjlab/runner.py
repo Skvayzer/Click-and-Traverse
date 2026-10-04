@@ -952,6 +952,8 @@ def create_task(args, *, environment_config=None, sim_class=None):
         upright_roll=getattr(args, 'upright_roll', None), body_motion_weight=getattr(args, 'body_motion_weight', None),
         style_free_near_obstacles=getattr(args, 'style_free_near_obstacles', None),
         keyboard_v10=getattr(args, 'keyboard_v10', None), hand_clearance_tight=getattr(args, 'hand_clearance_tight', None),
+        teleop_progress_weight=getattr(args, 'teleop_progress_weight', None), teleop_stall_weight=getattr(args, 'teleop_stall_weight', None),
+        teleop_cat_fraction=getattr(args, 'teleop_cat_fraction', None),
         standing_gf_bonus=getattr(args, 'standing_gf_bonus', None),
         reactive_hand_guidance=getattr(args, 'reactive_hand_guidance', None),
         handsdf_weight=getattr(args, 'handsdf_weight', None),

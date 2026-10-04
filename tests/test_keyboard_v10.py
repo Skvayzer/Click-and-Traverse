@@ -80,3 +80,15 @@ def test_config_keyboard_v10_wiring():
     assert c['blocking_map'] and c['safe_tracking_teleop_only'] and c['heading_deadband'] == (.20, .08)
     assert c['teleop']['cat_scenes'] and c['teleop']['p_stop'] == .30 and c['teleop']['p_through_cat'] == .70
     assert c['hand_clearance_tight'] == dict(low=.10, high=.40, floor=.3)
+
+
+def test_config_v11_progress_stall_and_cat_fraction():
+    from cat_mjlab.config import wholebody_config
+    base = dict(teleop_fraction=.5, heading_align_weight=.4, teleop_heading_commands=True, keyboard_v10=True)
+    c = wholebody_config(**base, teleop_progress_weight=6., teleop_stall_weight=-3., teleop_cat_fraction=.3)
+    assert c['reward_config']['scales']['teleop_progress'] == 6. and c['reward_config']['scales']['teleop_stall'] == -3.
+    assert c['teleop']['cat_fraction'] == .3 and c['teleop']['fraction'] == .5
+    with pytest.raises(ValueError):
+        wholebody_config(**base, teleop_stall_weight=3.)          # a stall must cost
+    with pytest.raises(ValueError):
+        wholebody_config(teleop_fraction=.5, heading_align_weight=.4, teleop_heading_commands=True, teleop_cat_fraction=.3)

@@ -36,7 +36,8 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
                      heading_hand_probes=None,head_guidance_near_sdf=None,teleop_fraction=None,
                      teleop_body_commands=None,tracking_yaw_weight=None,teleop_heading_commands=None,
                      heading_track_weight=None,upright_roll=None,body_motion_weight=None,style_free_near_obstacles=None,
-                     keyboard_v10=None,hand_clearance_tight=None):
+                     keyboard_v10=None,hand_clearance_tight=None,teleop_progress_weight=None,teleop_stall_weight=None,
+                     teleop_cat_fraction=None):
     from cat_ppo.furniture.generalist_config import released_config
     from .collision import PROPOSAL
     config=copy.deepcopy(released_config()['env_config'] if base_config is None else base_config)
@@ -232,6 +233,15 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
         if not config.get('heading_command'):raise ValueError('keyboard_v10 requires teleop_heading_commands')
         config.update(blocking_map=True,heading_deadband=(.20,.08),safe_tracking_teleop_only=True)
         config['teleop'].update(cat_scenes=True,p_stop=.30,p_through=.30,p_through_cat=.70)
+    # v11: refusing a passable keyboard command must cost (see CATTask._rewards, teleop_progress/stall).
+    for name,value,positive in (('teleop_progress',teleop_progress_weight,True),('teleop_stall',teleop_stall_weight,False)):
+        if value is not None:
+            if not config.get('safe_tracking'):raise ValueError(name+'_weight requires teleop_heading_commands')
+            scales[name]=_signed(name+'_weight',value,positive=positive)
+    if teleop_cat_fraction is not None:
+        if not (config.get('teleop') or {}).get('cat_scenes'):raise ValueError('teleop_cat_fraction requires keyboard_v10')
+        if not 0<=teleop_cat_fraction<=1:raise ValueError('teleop_cat_fraction must be in [0, 1]')
+        config['teleop']['cat_fraction']=float(teleop_cat_fraction)
     if hand_clearance_tight is not None:
         low,high,floor=(float(v) for v in hand_clearance_tight)
         if not (0<=low<high and 0<floor<=1):raise ValueError('hand_clearance_tight: 0 <= low < high, 0 < floor <= 1')

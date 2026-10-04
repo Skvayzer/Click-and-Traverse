@@ -712,11 +712,15 @@ class CATTask:
                 self.joystick_mask=torch.zeros(self.num_envs,dtype=torch.bool,device=self.device)
                 self._teleop_timer=torch.zeros(self.num_envs,device=self.device)
             eligible=self.navigation['enabled'][ids]
+            fraction=torch.full((n,),float(teleop['fraction']),device=self.device)
             if teleop.get('cat_scenes'):
                 # Keyboard practice around CAT obstacles too (before: rooms and the flat scene only, so a CAT
                 # expert never drove a beam, hurdle or gap by joystick).
-                eligible=eligible|self.bank.is_cat[self.scene_ids[ids]]
-            self.joystick_mask[ids]=(self._rand((n,))<float(teleop['fraction']))&eligible
+                cat=self.bank.is_cat[self.scene_ids[ids]]
+                eligible=eligible|cat
+                if 'cat_fraction' in teleop:   # keep most CAT practice field-driven (the traversal skill)
+                    fraction=torch.where(cat,float(teleop['cat_fraction']),fraction)
+            self.joystick_mask[ids]=(self._rand((n,))<fraction)&eligible
             self.joystick[ids]=0.;self._teleop_timer[ids]=0.
             if teleop.get('mode') in ('body','heading'):
                 if getattr(self,'joystick_body',None) is None:
@@ -875,6 +879,7 @@ class CATTask:
             if self.config.get('safe_tracking_teleop_only') and mask is not None:
                 scope=scope&mask           # route worlds follow a certified route; repulsion is for the joystick
             reward_command[:,1:3]=torch.where(scope[:,None],target,reward_command[:,1:3])
+            self._safe_target=target
         rewards=self.math.native_rewards(facing_yaw=facing_yaw,stand_still='stand_still' in _get(self.config,'reward_config.scales',{}),
             stillness_speed=_get(self.config,'standing_requires_stillness_speed',None),heading_sdf=heading_sdf,heading_margins=heading_margins,standing_gf=float(_get(self.config,'standing_gf_bonus',4.)),sdf_knee=sdf_knee,action=action,last_action=i['last_act'],last_last_action=i['last_last_act'],
             joint_pos=d.qpos[:,7:],joint_vel=d.qvel[:,6:],last_joint_vel=i['last_joint_vel'],lower=self.lower,upper=self.upper,
@@ -927,6 +932,20 @@ class CATTask:
         if self.stabilization:rewards.update(costs)
         scales=_get(self.config,'reward_config.scales',{})
         if 'action_rate' in scales:rewards['action_rate']=self._action_rate
+        if ('teleop_progress' in scales or 'teleop_stall' in scales) and getattr(self,'_safe_target',None) is not None:
+            # Keyboard worlds: following a PASSABLE command must pay. Being upright and alive earns ~12.5 per step,
+            # velocity tracking ~0.7, and any contact ends the episode -- so v3 learned to stop in front of
+            # 10-20 cm hurdles (keyboard and even field-driven). The target is the blocking-footprint safe
+            # velocity: walls and tables zero it (stopping there stays free), hurdles and beams do not.
+            mask=getattr(self,'joystick_mask',None)
+            target=self._safe_target;wanted=torch.linalg.vector_norm(target,dim=-1)
+            active=(wanted>.15)&(torch.ones_like(wanted,dtype=torch.bool) if mask is None else mask)
+            velocity=self._sensor('global_linvel_pelvis',self.all_ids)[:,:2]
+            along=((velocity*target).sum(-1)/wanted.clamp_min(1e-6)).clamp_min(0.)
+            if 'teleop_progress' in scales:
+                rewards['teleop_progress']=(along/wanted.clamp_min(1e-6)).clamp_max(1.)*active
+            if 'teleop_stall' in scales:
+                rewards['teleop_stall']=((along<.05)&active).float()
         if self.config.get('heading_command') and getattr(self,'_heading_gate',None) is not None:
             # Face the reference heading where a body facing it fits; no demand (and no reward) in a
             # gap too narrow for it. Replaces the forward-facing bonus for route/joystick worlds.

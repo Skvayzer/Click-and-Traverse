@@ -346,6 +346,18 @@ hurdles and both beams and stopped at the 0.44 m gap; keyboard-driven it stalled
 - New metrics bucket `scene/teleop_cat/*` (keyboard episodes in CAT scenes, success = clean crossing):
   6.9% success, 51% contact at the start of v3. Tests: `tests/test_keyboard_v10.py`.
 
+**v3 result (360 updates): obstacles refused.** Idle standing fixed (0 touchdowns, 0.1 m drift in 20 s),
+but keyboard-driven the robot stopped before the 10 cm hurdle and field-driven before the 20 cm one. Training:
+keyboard contact 57% -> 37% while clean passes only 8% -> 12% -- contact avoided by not approaching. Upright/
+alive terms pay ~12.5 per step, velocity tracking ~0.7, and contact ends the episode.
+
+**v4 (run `expert_cat_v4_20261004`)**: warm start from v2 update 697 (best traversal), keyboard v10 kept, plus
+`--teleop-progress-weight 6` (speed along the blocking-footprint safe target, 0..1) and `--teleop-stall-weight -3`
+(< 0.05 m/s along a target > 0.15 m/s), keyboard share of CAT episodes 0.3. Regression check
+`scripts/demo/course_check.py` (field / keyboard / idle on the demo course) against
+`outputs/course_checks/v2_u697.json`: field 4 obstacles (stuck at the 0.44 m gap), keyboard 3 (stuck at the
+1.02 m beam), idle 26 touchdowns / 1.2 m drift.
+
 ## 8. Not yet done / next
 
 - Reference-state initialisation from sidle / duck clips (planned; not in the first pilot).
