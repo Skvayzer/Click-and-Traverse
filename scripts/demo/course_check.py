@@ -37,6 +37,8 @@ def main():
     p.add_argument("--stall-seconds", type=float, default=15.)
     p.add_argument("--drives", nargs="+", default=["field", "keyboard", "idle"])
     p.add_argument("--per-obstacle", action="store_true", help="Each obstacle separately, starting 1 m before it")
+    p.add_argument("--trials", type=int, default=1, help="--per-obstacle: trials per obstacle; >1 randomises the start "
+                   "(lateral +-0.15 m, 0.8-1.3 m before it, heading +-8 deg) and reports clean/contact/refused rates")
     p.add_argument("--output", help="Write the results (JSON) here")
     p.add_argument("--compare", help="A previous --output to compare against")
     args = p.parse_args()
@@ -53,14 +55,19 @@ def main():
     def section(x):
         return ([n for b, n in OBSTACLES if x > b - .6] or ["start"])[-1]
 
-    def place(x):
-        task.data.qpos[0, 0] = x; task.data.qpos[0, 1] = 0.
+    def place(x, y=0., yaw=0.):
+        task.data.qpos[0, 0] = x; task.data.qpos[0, 1] = y
+        task.data.qpos[0, 3:7] = torch.tensor([math.cos(yaw / 2), 0., 0., math.sin(yaw / 2)])
+        if getattr(task, "psi_ref", None) is not None:
+            task.psi_ref[0] = 0.
         task.sim.forward(task.all_ids)
+
+    rng = np.random.default_rng(0)
 
     if args.per_obstacle:
         for drive in [d for d in args.drives if d != "idle"]:
             table = {}
-            for bx, name in OBSTACLES:
+            for bx, name in [(b, n) for b, n in OBSTACLES for _ in range(args.trials)]:
                 if drive == "field":
                     task.joystick = torch.zeros((1, 2)); task.joystick_body = torch.zeros((1, 3)) if s.body_mode else None
                     s.load(s.scenes[0]); task.joystick = None; task.joystick_body = None
@@ -68,7 +75,10 @@ def main():
                     if task.joystick is None:
                         task.joystick = torch.zeros((1, 2)); task.joystick_body = torch.zeros((1, 3)) if s.body_mode else None
                     s.load(s.scenes[0]); s.hold_mode = True; s.held = {"up"}; s.speed_setting = args.speed
-                place(bx - 1.)
+                if args.trials > 1:
+                    place(bx - rng.uniform(.8, 1.3), rng.uniform(-.15, .15), math.radians(rng.uniform(-8, 8)))
+                else:
+                    place(bx - 1.)
                 touched, cleared = set(), False
                 for k in range(int(12. / .02)):
                     if drive == "field":
@@ -81,8 +91,17 @@ def main():
                         touched |= {r for r, v in zip(demo.REGIONS, s.last["regions"].tolist()) if v}
                     if x > bx + .3:
                         cleared = True; break
-                table[name] = ("clean" if not touched else "contact:" + "+".join(sorted(touched))) if cleared else \
-                              ("refused" if not touched else "refused,touched:" + "+".join(sorted(touched)))
+                verdict = ("clean" if not touched else "contact:" + "+".join(sorted(touched))) if cleared else \
+                          ("refused" if not touched else "refused,touched:" + "+".join(sorted(touched)))
+                if args.trials == 1:
+                    table[name] = verdict
+                else:
+                    t = table.setdefault(name, dict(clean=0, contact=0, refused=0))
+                    t["clean" if verdict == "clean" else "contact" if verdict.startswith("contact") else "refused"] += 1
+            if args.trials > 1:
+                table["TOTAL_clean_rate"] = round(sum(v["clean"] for v in table.values()) / (len(OBSTACLES) * args.trials), 3)
+                table["TOTAL_crossed_rate"] = round(sum(v["clean"] + v["contact"] for k, v in table.items()
+                                                        if isinstance(v, dict)) / (len(OBSTACLES) * args.trials), 3)
             results[drive] = table
             print(json.dumps(dict(drive=drive, **table)), flush=True)
         args.drives = []
