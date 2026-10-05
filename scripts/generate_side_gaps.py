@@ -31,45 +31,74 @@ LENGTH, WIDTH, HEIGHT = 3.0, 2.0, 1.52            # room frame: x 0..3, y 0..2; 
 START = np.array([.5, 1.])
 
 
-def scene_boxes(rng):
+VARIANTS = (("plain", .25), ("angled", .20), ("corridor", .20), ("far_offset", .15), ("two_walls", .20))
+
+
+def scene_boxes(rng, variant=None):
+    """One side-gap layout. Variants (v2 mixture): plain thin wall (optionally a low bar or a beam in the gap),
+    wall angled +-30 deg to the path, corridor (the narrow part 0.3-0.9 m long), gap far to one side
+    (0.40-0.65 m off the start line), two staggered walls."""
     boxes, info = [], {}
+    if variant is None:
+        names, p = zip(*VARIANTS); variant = str(rng.choice(names, p=p))
+    info["variant"] = variant
 
-    def add(name, category, lo, hi):
-        lo, hi = np.asarray(lo, float), np.asarray(hi, float)
-        boxes.append(dict(name=name, category=category, center=[round(v, 4) for v in (lo + hi) / 2],
-                          half_size=[round(v, 4) for v in (hi - lo) / 2], yaw=0.))
+    def add(name, category, center, half, yaw=0.):
+        boxes.append(dict(name=name, category=category, center=[round(float(v), 4) for v in center],
+                          half_size=[round(float(v), 4) for v in half], yaw=round(float(yaw), 4)))
 
-    def wall(name, x, depth, gap, offset):
-        y0, y1 = WIDTH / 2 + offset - gap / 2, WIDTH / 2 + offset + gap / 2
-        add(name + "_a", "wall_side", (x, -.15, 0.), (x + depth, y0, HEIGHT))
-        add(name + "_b", "wall_side", (x, y1, 0.), (x + depth, WIDTH + .15, HEIGHT))
-        return y0, y1
+    def wall(name, x, depth, gap, offset, angle=0.):
+        """Wall through (x + depth/2, mid + offset) along direction (-sin a, cos a), opening `gap` there."""
+        c = np.array([x + depth / 2, WIDTH / 2 + offset]); d = np.array([-np.sin(angle), np.cos(angle)]); L = 2.6
+        for sign, tag in ((-1, "_a"), (1, "_b")):
+            ctr = c + sign * d * (gap / 2 + L / 2)
+            add(name + tag, "wall_side", (ctr[0], ctr[1], HEIGHT / 2), (depth / 2, L / 2, HEIGHT / 2), angle)
+        return WIDTH / 2 + offset - gap / 2, WIDTH / 2 + offset + gap / 2
 
-    x = START[0] + rng.uniform(.8, 1.3); depth = rng.uniform(.04, .25)
-    gap = rng.uniform(.32, .60); offset = rng.uniform(-.35, .35)
-    y0, y1 = wall("w1", x, depth, gap, offset)
-    info.update(gap_m=round(gap, 3), wall_depth_m=round(depth, 3), offset_m=round(offset, 3), walls=1)
-    r = rng.uniform()
-    if r < .15:
-        h = rng.uniform(.05, .12)
-        add("bar", "hurdle", (x, y0, 0.), (x + min(depth, .08), y1, h)); info["bar_m"] = round(h, 3)
-    elif r < .25:
-        b = rng.uniform(1.05, 1.20)
-        add("beam", "beam", (x - .05, y0, b), (x + depth + .05, y1, HEIGHT)); info["beam_bottom_m"] = round(b, 3)
-    if rng.uniform() < .30 and x + depth + .5 < START[0] + 1.6:
-        x2 = x + depth + rng.uniform(.5, .7); depth2 = rng.uniform(.04, .15)
-        if x2 + depth2 < START[0] + 1.8:
-            gap2 = rng.uniform(.34, .60); offset2 = float(np.clip(-offset + rng.uniform(-.15, .15), -.35, .35))
-            wall("w2", x2, depth2, gap2, offset2); info.update(walls=2, gap2_m=round(gap2, 3), offset2_m=round(offset2, 3))
+    def fit(offset, gap):
+        limit = WIDTH / 2 - gap / 2 - .08
+        return float(np.clip(offset, -limit, limit))
+
+    gap = rng.uniform(.32, .60)
+    if variant == "plain":
+        x = START[0] + rng.uniform(.8, 1.3); depth = rng.uniform(.04, .25); offset = fit(rng.uniform(-.35, .35), gap)
+        y0, y1 = wall("w1", x, depth, gap, offset)
+        r = rng.uniform()
+        if r < .25:
+            h = rng.uniform(.05, .12)
+            add("bar", "hurdle", (x + min(depth, .08) / 2, (y0 + y1) / 2, h / 2), (min(depth, .08) / 2, gap / 2, h / 2)); info["bar_m"] = round(h, 3)
+        elif r < .40:
+            b = rng.uniform(1.05, 1.20)
+            add("beam", "beam", (x + depth / 2, (y0 + y1) / 2, (b + HEIGHT) / 2), (depth / 2 + .05, gap / 2, (HEIGHT - b) / 2)); info["beam_bottom_m"] = round(b, 3)
+    elif variant == "angled":
+        x = START[0] + rng.uniform(.9, 1.3); depth = rng.uniform(.04, .15); offset = fit(rng.uniform(-.25, .25), gap)
+        angle = np.radians(rng.uniform(15, 30)) * rng.choice([-1, 1])
+        wall("w1", x, depth, gap, offset, angle); info["angle_deg"] = round(float(np.degrees(angle)), 1)
+    elif variant == "corridor":
+        x = START[0] + rng.uniform(.6, .9); depth = rng.uniform(.30, min(.90, START[0] + 1.75 - x)); offset = fit(rng.uniform(-.25, .25), gap)
+        wall("w1", x, depth, gap, offset)
+    elif variant == "far_offset":
+        x = START[0] + rng.uniform(.9, 1.3); depth = rng.uniform(.04, .20)
+        offset = fit(rng.uniform(.40, .65) * rng.choice([-1, 1]), gap)
+        wall("w1", x, depth, gap, offset)
+    else:                                                  # two staggered walls
+        x = START[0] + rng.uniform(.55, .75); depth = rng.uniform(.04, .12); offset = fit(rng.uniform(.15, .35) * rng.choice([-1, 1]), gap)
+        wall("w1", x, depth, gap, offset)
+        x2 = x + depth + rng.uniform(.50, .70); depth2 = rng.uniform(.04, .12); gap2 = rng.uniform(.34, .60)
+        offset2 = fit(-offset + rng.uniform(-.10, .10), gap2)
+        wall("w2", x2, depth2, gap2, offset2); info.update(gap2_m=round(gap2, 3), offset2_m=round(offset2, 3))
+        x, offset = x, offset
+    info.update(gap_m=round(gap, 3), wall_depth_m=round(depth, 3), offset_m=round(offset, 3), walls=2 if variant == "two_walls" else 1)
     return boxes, info
 
 
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
-    p.add_argument("--output", type=Path, default=ROOT / "data/furniture/sidegap_v1_packed")
+    p.add_argument("--output", type=Path, default=ROOT / "data/furniture/sidegap_v2_packed")
     p.add_argument("--base-manifest", type=Path, default=ROOT / "data/furniture/table_edges_v1_packed/manifest.json")
-    p.add_argument("--count", type=int, default=160)
-    p.add_argument("--seed", type=int, default=20261005)
+    p.add_argument("--count", type=int, default=640)
+    p.add_argument("--seed", type=int, default=20261006)
+    p.add_argument("--prefix", default="sidegap2")
     p.add_argument("--dx", type=float, default=.04)
     args = p.parse_args()
     if args.output.exists():
@@ -86,7 +115,7 @@ def main():
         boxes, info = scene_boxes(rng)
         dims = [LENGTH, WIDTH, HEIGHT]
         start, goal = [float(START[0]), float(START[1]), 0.], [float(START[0] + 2.), float(START[1])]
-        scene_id = f"sidegap-{n:04d}-w{info['gap_m']:.2f}"
+        scene_id = f"{args.prefix}-{n:04d}-{info['variant']}-w{info['gap_m']:.2f}"
         scene = dict(schema=SCHEMA, scene_id=scene_id, family="furniture", split="train", units="metres",
                      coordinate_system="right-handed-z-up", boxes=boxes, room_dimensions=dims,
                      geometry_hash=_digest(dict(boxes=boxes, room_dimensions=dims)), start=start, goal=goal,
@@ -155,6 +184,8 @@ def main():
     load_generalist_manifest(temporary)
     temporary.replace(args.output / "manifest.json")
     gaps = [r["source"]["side_gap"]["gap_m"] for r in records]
+    from collections import Counter
+    print(json.dumps(dict(variants=Counter(r["source"]["side_gap"]["variant"] for r in records))))
     print(json.dumps(dict(scenes=len(records), gap_m=[round(min(gaps), 2), round(float(np.median(gaps)), 2), round(max(gaps), 2)],
                           two_walls=sum(r["source"]["side_gap"]["walls"] == 2 for r in records),
                           bars=sum("bar_m" in r["source"]["side_gap"] for r in records),
