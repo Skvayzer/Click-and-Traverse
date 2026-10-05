@@ -340,6 +340,7 @@ class Session:
             carrot = xy + .7 * self.np_dir(self.carrot_dir)        # turn toward the new direction with a short step
         else:
             carrot = None
+            self.carrot_dir = self.yaw()      # keys released: the next W / F go where the robot faces
         w = self.waypoint
         if carrot is not None and (w.pending is None or np.linalg.norm(carrot - w.pending) > .2):
             w.request(carrot)
@@ -355,6 +356,14 @@ class Session:
                 psi[0] = self.yaw()
         else:
             self.task.joystick, self.task.joystick_body = None, None   # field mode: the policy's own objective
+            # CAT's gait latch (task_math.update_phase): after one walk->stand transition in a CAT-type episode
+            # the command stays zero for good (stopped at the goal). A new waypoint must re-arm it.
+            self.task.info["stop_timestep"][0] = 100
+            if getattr(self, "_was_holding", False):
+                # Standing zeroes both foot phases (in-phase legs = a hop, the policy stays put); training restores
+                # anti-phase stepping only for joystick/route restarts, so do it here when leaving a hold.
+                self.task.info["phase"][0] = torch.tensor([0., math.pi])
+        self._was_holding = near
         return near
 
     def step(self):
