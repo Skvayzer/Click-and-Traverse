@@ -358,6 +358,26 @@ alive terms pay ~12.5 per step, velocity tracking ~0.7, and contact ends the epi
 `outputs/course_checks/v2_u697.json`: field 4 obstacles (stuck at the 0.44 m gap), keyboard 3 (stuck at the
 1.02 m beam), idle 26 touchdowns / 1.2 m drift.
 
+## 7j. Waypoint demo and sideways gaps (2026-10-05)
+
+**Keyboard training retired for CAT scenes.** Hurdle-scene rollouts (published hurdles, ~3200 episodes each):
+v2 field 82% / keyboard 49%; v5 (30% keyboard CAT episodes) field 65% / keyboard 60%. Random keyboard
+commands near obstacles are often unwinnable, so refusing became the compromise and leaked into field mode.
+Keyboard driving is now WAYPOINT driving (scripts/demo/teleop_demo.py): keys / Shift+click move a target
+point, the guidance field toward it is recomputed on the fly (CAT's own generator, ~0.2 s). v2 u697, per
+obstacle: 5 clean / 7 crossed of 10 (20 cm hurdle clean); holding at a waypoint 0 touchdowns.
+
+**Narrow passages.** Collision proxy, standing: 0.764 m wide (hands out), 0.236 m deep. Hand terms sideways
+in a 0.44 m gap ~-1.7/step, 0.34 m ~-12/step. Procedural CAT already has ~290 scenes with 0.30-0.50 m
+openings (an earlier "7 of 2300" counted only published scenes -- wrong). v6/v7 added 160 / 640 side-gap
+scenes (scripts/generate_side_gaps.py; v7: own sampling group, 15% of experience): success flat at ~4% for
+130 updates. scripts/diagnose_side_gaps.py on v7 (deterministic, ~3100-3450 episodes each):
+- training start: reaches the wall 97.5%, arrives facing forward 82%, sideways 5%, contact 11%
+- placed sideways, lined up 0.45 m before the wall: 0% clean, 28% contact (legs/hands/feet), mostly turns back
+- placed facing forward: 0% clean, 2-8% contact, never turns sideways
+The sidestep-through skill does not exist; at 0% success RL has nothing to reinforce. heading_align pays for
+facing forward until shoulder probes 0.3 m ahead close its gate.
+
 ## 8. Not yet done / next
 
 - Reference-state initialisation from sidle / duck clips (planned; not in the first pilot).
