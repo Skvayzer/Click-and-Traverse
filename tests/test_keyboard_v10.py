@@ -102,3 +102,15 @@ def test_side_gap_bucket_and_handsdf_scaling():
     hands = torch.full((1, 2, 1), .062)                        # sideways in a 0.34 m gap
     assert float(tm.sdf_reward(hands, knee=torch.tensor([.05]))) < -8.          # unscaled: ~ -8.7
     assert float(tm.sdf_reward(hands, knee=torch.tensor([.015]))) > -2.         # room scale 0.3: ~ -1.8
+
+
+def test_config_side_gap_curriculum_wiring():
+    from cat_mjlab.config import wholebody_config
+    c = wholebody_config(teleop_fraction=.5, heading_align_weight=.4, teleop_heading_commands=True,
+                         heading_lookaheads=(.3, .6, 1.), heading_blocking_probes=True, sideways_bonus_weight=.4,
+                         side_gap_curriculum=True, teleop_side_prob=.25)
+    assert c['heading_align']['lookaheads'] == [.3, .6, 1.] and c['heading_align']['blocking'] and c['blocking_map']
+    assert c['reward_config']['scales']['sideways_bonus'] == .4 and c['teleop']['p_side'] == .25
+    assert c['side_gap_curriculum']['thresholds'] == [.50, .42, .36, 0.]
+    with pytest.raises(ValueError):
+        wholebody_config(sideways_bonus_weight=-1., heading_align_weight=.4)

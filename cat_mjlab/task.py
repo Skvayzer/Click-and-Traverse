@@ -206,6 +206,7 @@ class CATTask:
             config['hand_raised_reset_certificate']=certificate
         else:
             config.pop('hand_raised_reset_certificate',None)
+        self._init_side_gap_curriculum()
         self.reset()
         # The released learner offsets EpisodeWrapper's horizon only. Native
         # task age remains zero for contact grace and held-odometry cadence.
@@ -283,6 +284,32 @@ class CATTask:
         values=self.hand_contrast_context(metadata,values['progress_m'],values['tangent'],
             approach_distance=float(_get(self.config,'hand_contrast_approach_distance',0.)))
         for k,v in values.items():self._put(self.contrast,k,ids,v)
+
+    def _init_side_gap_curriculum(self):
+        """config 'side_gap_curriculum': per side-gap scene a width level (narrowest gap >= thresholds[k]) and its
+        placement (gap centre xy, wall normal angle, wall half depth) for sideways starts; stage 0 samples only
+        level 0 (widest) side gaps, advancing when >= advance of >= window resolved episodes at the current
+        level are clean goals. Other scenes: level -1 (always sampled)."""
+        sg=self.config.get('side_gap_curriculum')
+        if not sg:
+            self.side_levels=None;return
+        import json as _json
+        from cat_ppo.furniture.generalist_fields import scene_directory
+        count=self.bank.count;levels=np.full(count,-1,dtype=np.int64);place=np.zeros((count,4),dtype=np.float32)
+        for k,record in enumerate(self.bank.manifest['scenes']):
+            info=(record.get('source') or {}).get('side_gap')
+            if record.get('source',{}).get('kind')!='side-gap' or not info:
+                continue
+            width=min(info['gap_m'],info.get('gap2_m',9.))
+            levels[k]=next(l for l,t in enumerate(sg['thresholds']) if width>=t)
+            spec=_json.loads((scene_directory(self.bank.manifest,self.bank.path,record)/'scene.json').read_text())
+            a=[b for b in spec['boxes'] if b['name']=='w1_a'][0];b=[b for b in spec['boxes'] if b['name']=='w1_b'][0]
+            place[k]=((a['center'][0]+b['center'][0])/2,(a['center'][1]+b['center'][1])/2,a['yaw'],a['half_size'][0])
+        self.side_levels=torch.as_tensor(levels,device=self.device);self.side_place=torch.as_tensor(place,device=self.device)
+        self.side_stage=0;self.side_counts=[0,0]
+        self.side_placed=torch.zeros(self.num_envs,dtype=torch.bool,device=self.device)
+        self.probabilities=self.bank.probabilities(self.bank.weights*(self.bank.weights>0)*((self.side_levels<0)|(self.side_levels<=0)),
+                                                   stage=self.curriculum_stage)
 
     def _blocking(self):
         """Lazily built 2-D blocking footprint of every scene (cat_mjlab/blocking.py)."""
@@ -367,6 +394,11 @@ class CATTask:
         speed=self._rand((n,),float(t['speed_min']),float(t['speed_max']))
         vx=torch.where(toward,speed*bx,vx);vy=torch.where(toward,speed*by,vy);wz=torch.where(toward,0.,wz)
         vx=torch.where(turn,0.,vx);vy=torch.where(turn,0.,vy);wz=torch.where(turn,spin,wz)
+        if t.get('p_side'):
+            # Pure sidesteps (side-gap curriculum): the gait a sideways passage needs, practised in the open.
+            sidestep=~stop&~turn&~toward&(self._rand((n,))<float(t['p_side']))
+            lateral=self._rand((n,),.15,.35)*torch.where(self._rand((n,))<.5,-1.,1.)
+            vx=torch.where(sidestep,0.,vx);vy=torch.where(sidestep,lateral,vy);wz=torch.where(sidestep,0.,wz)
         q=self.data.qpos[:,3:7]
         facing=torch.atan2(2*(q[:,0]*q[:,3]+q[:,1]*q[:,2]),1-2*(q[:,2]**2+q[:,3]**2))
         if t.get('mode')=='heading':
@@ -643,6 +675,22 @@ class CATTask:
         yaw=self.bank.reset_yaws[scenes];q=torch.stack(((yaw/2).cos(),torch.zeros_like(yaw),torch.zeros_like(yaw),(yaw/2).sin()),-1)
         qpos[:,:2]=torch.where(room[:,None],position,qpos[:,:2])
         qpos[:,3:7]=torch.where(room[:,None],self.math.quat_mul(q,qpos[:,3:7]),qpos[:,3:7])
+        if getattr(self,'side_levels',None) is not None:
+            # Side-gap curriculum: a share of side-gap episodes start already sideways (+-90 deg +- 10 deg) and
+            # lined up 0.35-0.6 m before the gap -- placed sideways the v7 policy still passed 0%, so RL needs
+            # starts where success is reachable. The share falls as the curriculum stage rises.
+            shares=self.config['side_gap_curriculum']['sideways_starts']
+            share=float(shares[min(self.side_stage,len(shares)-1)])
+            place=(self.side_levels[scenes]>=0)&(self._rand((n,))<share)
+            if bool(place.any()):
+                c=self.side_place[scenes];normal=torch.stack((c[:,2].cos(),c[:,2].sin()),-1);along=torch.stack((-normal[:,1],normal[:,0]),-1)
+                back=c[:,3:4]+self._rand((n,1),.35,.6)
+                xy=c[:,:2]-back*normal+along*self._rand((n,1),-.04,.04)
+                side=torch.where(self._rand((n,))<.5,-1.,1.)
+                yaw=c[:,2]+side*np.pi/2+self._rand((n,),-np.pi/18,np.pi/18)
+                quat=torch.stack(((yaw/2).cos(),torch.zeros_like(yaw),torch.zeros_like(yaw),(yaw/2).sin()),-1)
+                qpos[:,:2]=torch.where(place[:,None],xy,qpos[:,:2]);qpos[:,3:7]=torch.where(place[:,None],quat,qpos[:,3:7])
+            self.side_placed[ids]=place
         seeded=torch.zeros(n,dtype=torch.bool,device=self.device)
         if self.raised_reset_fraction:
             seeded=self.raised_reset_eligible[scenes]&(self._rand((n,))<self.raised_reset_fraction)
@@ -871,15 +919,25 @@ class CATTask:
             # term anyway. Reward-only -- these never enter observations, so obs dims are unchanged.
             cmd=i['command'][:,1:3];norm=torch.linalg.vector_norm(cmd,dim=-1,keepdim=True)
             direction=torch.where(norm>0,cmd/norm.clamp_min(1e-30),torch.zeros_like(cmd))
-            probes=self.math.heading_probe_points(i['positions'][:,1,:2],direction,i['positions'][:,9:11,2].mean(-1),
-                half_width=float(heading['half_width']),lookahead=float(heading['lookahead']))
-            heading_sdf=self.bank.sample('sdf',probes,self.scene_ids).reshape(probes.shape[0],-1)
-            hand=heading.get('hand_probe')
-            if hand:
-                hands=self.math.heading_probe_points(i['positions'][:,1,:2],direction,i['positions'][:,5:7,2].mean(-1),
-                    half_width=float(hand['half_width']),lookahead=float(heading['lookahead']))
-                hand_sdf=self.bank.sample('sdf',hands,self.scene_ids).reshape(hands.shape[0],-1)-float(hand['radius'])
-                heading_sdf=torch.minimum(heading_sdf,hand_sdf)
+            # Several lookaheads (side-gap curriculum): the forward bonus used to stop only 0.3 m before a gap too
+            # narrow to face, so the robot arrived facing forward (82%) and never turned. On the 2-D blocking
+            # footprint (heading['blocking']) a beam at shoulder height does not count as "too narrow".
+            blocking=self._blocking() if heading.get('blocking') else None
+            def clearance(points):
+                if blocking is not None:
+                    return blocking.sample(points[...,:2],self.scene_ids)[0]
+                return self.bank.sample('sdf',points,self.scene_ids).reshape(points.shape[0],-1)
+            parts=[]
+            for lookahead in heading.get('lookaheads',[heading['lookahead']]):
+                probes=self.math.heading_probe_points(i['positions'][:,1,:2],direction,i['positions'][:,9:11,2].mean(-1),
+                    half_width=float(heading['half_width']),lookahead=float(lookahead))
+                parts.append(clearance(probes))
+                hand=heading.get('hand_probe')
+                if hand:
+                    hands=self.math.heading_probe_points(i['positions'][:,1,:2],direction,i['positions'][:,5:7,2].mean(-1),
+                        half_width=float(hand['half_width']),lookahead=float(lookahead))
+                    parts.append(clearance(hands)-float(hand['radius']))
+            heading_sdf=torch.cat(parts,-1)
             self._heading_sdf=heading_sdf     # reused by the style-prior gates
             heading_margins=tuple(float(m) for m in heading['margins'])
         facing_yaw=torch.atan2(i['navi'][:,1,0],i['navi'][:,0,0])
@@ -955,9 +1013,20 @@ class CATTask:
         rewards['wholebody_arm_clearance']=(arm_margin-i['elbow_clearance']).clamp_min(0).square().mean(-1)*enabled
         if room_scale is not None:
             telemetry['hand_room_scale']=room_scale[:,0]
+        if getattr(self,'side_levels',None) is not None:
+            telemetry['side_gap_stage']=torch.full_like(rewards['wholebody_arm_clearance'],float(self.side_stage))
+            telemetry['side_gap_sideways_start']=(self.side_placed&(self.side_levels[self.scene_ids]>=0)).float()
         if self.stabilization:rewards.update(costs)
         scales=_get(self.config,'reward_config.scales',{})
         if 'action_rate' in scales:rewards['action_rate']=self._action_rate
+        if 'sideways_bonus' in scales and heading_sdf is not None:
+            # Where a body facing the travel direction does not fit (heading gate closed), pay for being turned
+            # sideways to it: |sin(facing - travel)|, 1 at 90 deg. Off in the open (gate 1).
+            m_low,m_high=heading_margins
+            gate=((heading_sdf.amin(-1)-m_low)/(m_high-m_low)).clamp(0.,1.)
+            cmd=i['command'][:,1:3];moving=torch.linalg.vector_norm(cmd,dim=-1)>1e-6
+            facing=torch.atan2(i['navi'][:,1,0],i['navi'][:,0,0])
+            rewards['sideways_bonus']=(1.-gate)*torch.sin(facing-torch.atan2(cmd[:,1],cmd[:,0])).abs()*moving
         if ('teleop_progress' in scales or 'teleop_stall' in scales) and getattr(self,'_safe_target',None) is not None:
             # Keyboard worlds: following a PASSABLE command must pay. Being upright and alive earns ~12.5 per step,
             # velocity tracking ~0.7, and any contact ends the episode -- so v3 learned to stop in front of
@@ -1086,6 +1155,15 @@ class CATTask:
         for column,mask in enumerate((resolved,successful)):
             increments=torch.zeros(3,dtype=torch.long,device=self.device).scatter_add_(0,groups,(mask&navigation_leader).long())
             self.navigation_counts[:3,column]+=increments;self.navigation_counts[3,column]+=increments.sum()
+        if getattr(self,'side_levels',None) is not None:
+            levels=self.side_levels[self.scene_ids];current=(levels>=0)&(levels==self.side_stage)
+            self.side_counts[0]+=int((resolved&current).sum());self.side_counts[1]+=int((successful&current).sum())
+            sg=self.config['side_gap_curriculum']
+            if (self.side_stage<self.side_levels.max()) and self.side_counts[0]>=int(sg['window']) and \
+                    self.side_counts[1]>=float(sg['advance'])*self.side_counts[0]:
+                self.side_stage+=1;self.side_counts=[0,0]
+                self.probabilities=self.bank.probabilities(torch.ones_like(self.scene_success_ema)*(self.bank.weights>0)*
+                    ((self.side_levels<0)|(self.side_levels<=self.side_stage)),stage=self.curriculum_stage)
         posture_success=successful
         if self.hand_contrast:
             c=self.contrast;t=self.telemetry
@@ -1165,6 +1243,8 @@ class CATTask:
         self.scene_episode_ema=decay*self.scene_episode_ema+counts;self.scene_success_ema=decay*self.scene_success_ema+goals
         rates=self.scene_success_ema/(self.scene_episode_ema+1e-6)
         weights=((1-rates)**alpha).clamp_min(1e-3)*(self.bank.weights>0)
+        if getattr(self,'side_levels',None) is not None:
+            weights=weights*((self.side_levels<0)|(self.side_levels<=self.side_stage))
         self.probabilities=self.bank.probabilities(weights,stage=self.curriculum_stage)
         return resolved,successful
 
@@ -1356,7 +1436,7 @@ class CATTask:
                 metrics[key] = self.telemetry[key].clone()
             for key in ('self_clearance_min_m', 'self_clearance_violation', 'crouch_required', 'torso_pitch_abs',
                         'hand_contact_trunk', 'hand_contact_head', 'hand_contact_arm', 'hand_contact_hand',
-                        'heading_gate', 'heading_error_abs', 'hand_room_scale'):
+                        'heading_gate', 'heading_error_abs', 'hand_room_scale', 'side_gap_stage', 'side_gap_sideways_start'):
                 if key in self.telemetry: metrics[key] = self.telemetry[key].clone()
             metrics['contrast_role'] = self.contrast['role'].clone()
             metrics['contrast_unresolved'] = (~self.outcome_counted | resolved).clone()

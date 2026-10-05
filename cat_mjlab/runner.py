@@ -552,7 +552,7 @@ def collect_rollout(task, learner, *, unroll_length, trajectories, policy_ids):
         for key, value in sorted(per_step.items()):
             term = key.split('/', 1)[1]
             if key.startswith('telemetry/'):
-                info['metrics']['posture/' + term if term in ('crouch_required', 'torso_pitch_abs') else
+                info['metrics']['side_gap/' + term if term.startswith('side_gap') else 'posture/' + term if term in ('crouch_required', 'torso_pitch_abs') else
                                 ('heading/' + term if term.startswith('heading_') else 'self_clearance/' + term.removeprefix('self_clearance_'))] = value
                 continue
             info['metrics']['reward_term/' + term] = value
@@ -676,7 +676,7 @@ GOALLESS_BUCKETS = ('reactive_standing', 'reactive_walking', 'flat_balance', 'te
 # Per-step task telemetry averaged over the update: posture/* and self_clearance/*.
 TELEMETRY_MEANS = ('self_clearance_min_m', 'self_clearance_violation', 'crouch_required', 'torso_pitch_abs',
                    'hand_contact_trunk', 'hand_contact_head', 'hand_contact_arm', 'hand_contact_hand',
-                   'heading_gate', 'heading_error_abs', 'hand_room_scale')
+                   'heading_gate', 'heading_error_abs', 'hand_room_scale', 'side_gap_stage', 'side_gap_sideways_start')
 SCENE_BUCKETS = ('procedural_cat', 'original_cat', 'published_cat',
                  'clutter_dense', 'clutter_pilot', 'clutter_legacy',
                  'furniture_dense', 'furniture_pilot', 'furniture_legacy',
@@ -966,6 +966,9 @@ def create_task(args, *, environment_config=None, sim_class=None):
         keyboard_v10=getattr(args, 'keyboard_v10', None), hand_clearance_tight=getattr(args, 'hand_clearance_tight', None),
         teleop_progress_weight=getattr(args, 'teleop_progress_weight', None), teleop_stall_weight=getattr(args, 'teleop_stall_weight', None),
         teleop_cat_fraction=getattr(args, 'teleop_cat_fraction', None),
+        heading_lookaheads=getattr(args, 'heading_lookaheads', None), heading_blocking_probes=getattr(args, 'heading_blocking_probes', None),
+        sideways_bonus_weight=getattr(args, 'sideways_bonus_weight', None), side_gap_curriculum=getattr(args, 'side_gap_curriculum', None),
+        teleop_side_prob=getattr(args, 'teleop_side_prob', None),
         standing_gf_bonus=getattr(args, 'standing_gf_bonus', None),
         reactive_hand_guidance=getattr(args, 'reactive_hand_guidance', None),
         handsdf_weight=getattr(args, 'handsdf_weight', None),

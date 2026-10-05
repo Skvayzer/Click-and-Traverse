@@ -109,6 +109,12 @@ def parser():
                             help="Keyboard worlds: cost per step of moving < 0.05 m/s along a passable target (> 0.15 m/s); negative")
         target.add_argument("--teleop-cat-fraction", type=float, help="Keyboard share of CAT-scene episodes (default: --teleop-fraction)")
         target.add_argument("--zero-weight-scenes", nargs="+", metavar="SCENE_ID", help="Never sample these scenes")
+        target.add_argument("--heading-lookaheads", type=float, nargs="+", help="Forward-facing gate probes at these distances ahead (m)")
+        target.add_argument("--heading-blocking-probes", action="store_true", default=None, help="Forward-facing gate on the 2-D blocking footprint")
+        target.add_argument("--sideways-bonus-weight", type=float, help="Bonus for facing sideways where forward does not fit")
+        target.add_argument("--side-gap-curriculum", action="store_true", default=None,
+                            help="Side-gap width levels (>=0.50/0.42/0.36/all, advance at 30%% of 300) with sideways starts 50/35/20/10%%")
+        target.add_argument("--teleop-side-prob", type=float, help="Open-ground keyboard practice: probability of a pure sidestep command")
         target.add_argument("--hand-clearance-tight", type=float, nargs=3, metavar=("LOW", "HIGH", "FLOOR"),
                             help="Scale hand/elbow clearance targets by pelvis room to the blocking footprint: FLOOR at <= LOW m, "
                                  "1 at >= HIGH m (e.g. 0.10 0.40 0.3)")

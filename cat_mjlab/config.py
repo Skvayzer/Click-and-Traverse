@@ -37,7 +37,8 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
                      teleop_body_commands=None,tracking_yaw_weight=None,teleop_heading_commands=None,
                      heading_track_weight=None,upright_roll=None,body_motion_weight=None,style_free_near_obstacles=None,
                      keyboard_v10=None,hand_clearance_tight=None,teleop_progress_weight=None,teleop_stall_weight=None,
-                     teleop_cat_fraction=None):
+                     teleop_cat_fraction=None,heading_lookaheads=None,heading_blocking_probes=None,sideways_bonus_weight=None,
+                     side_gap_curriculum=None,teleop_side_prob=None):
     from cat_ppo.furniture.generalist_config import released_config
     from .collision import PROPOSAL
     config=copy.deepcopy(released_config()['env_config'] if base_config is None else base_config)
@@ -242,6 +243,21 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
         if not (config.get('teleop') or {}).get('cat_scenes'):raise ValueError('teleop_cat_fraction requires keyboard_v10')
         if not 0<=teleop_cat_fraction<=1:raise ValueError('teleop_cat_fraction must be in [0, 1]')
         config['teleop']['cat_fraction']=float(teleop_cat_fraction)
+    # Side-gap curriculum (docs 7k): the forward-facing bonus releases earlier (probes at several lookaheads,
+    # on the 2-D blocking footprint), a bonus for being sideways where forward does not fit, width levels with
+    # sideways starts, open-ground sidesteps.
+    if heading_lookaheads is not None or heading_blocking_probes:
+        if 'heading_align' not in config:raise ValueError('heading_lookaheads/heading_blocking_probes require heading_align_weight')
+        if heading_lookaheads is not None:config['heading_align']['lookaheads']=[float(v) for v in heading_lookaheads]
+        if heading_blocking_probes:config['heading_align']['blocking']=True;config['blocking_map']=True
+    if sideways_bonus_weight is not None:
+        if 'heading_align' not in config:raise ValueError('sideways_bonus_weight requires heading_align_weight')
+        scales['sideways_bonus']=_signed('sideways_bonus_weight',sideways_bonus_weight,positive=True)
+    if side_gap_curriculum:
+        config['side_gap_curriculum']=dict(thresholds=[.50,.42,.36,0.],advance=.30,window=300,sideways_starts=[.5,.35,.2,.1])
+    if teleop_side_prob is not None:
+        if (config.get('teleop') or {}).get('mode') not in ('body','heading'):raise ValueError('teleop_side_prob requires body/heading teleop')
+        config['teleop']['p_side']=float(teleop_side_prob)
     if hand_clearance_tight is not None:
         low,high,floor=(float(v) for v in hand_clearance_tight)
         if not (0<=low<high and 0<floor<=1):raise ValueError('hand_clearance_tight: 0 <= low < high, 0 < floor <= 1')
