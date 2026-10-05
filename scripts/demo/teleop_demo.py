@@ -52,6 +52,7 @@ PRESETS = {
     "course": ["course-mixed-obstacles-v1"],
 }
 BODY_TURN_RATE = .8           # rad/s for A/D with body-frame (v7+) checkpoints
+CARROT = 1.5                  # m: waypoint-mode keys put the target this far ahead
 TURN_IN_PLACE_SPEED = .15     # m/s step toward the target facing while only A/D are held
 REGIONS = ("feet", "legs", "trunk", "head", "arms", "hands")
 PALETTE = {"wall": (158, 168, 178), "chair": (52, 120, 135), "table": (214, 140, 70), "top": (214, 140, 70)}
@@ -62,6 +63,96 @@ def box_color(category):
         if key in category:
             return rgb
     return (160, 110, 90)
+
+
+class WaypointField:
+    """Goal-directed driving (Click-and-Traverse): the guidance field toward a WAYPOINT, recomputed on the fly.
+
+    The policy then does what it was trained for -- reach a goal without touching anything -- and chooses speed,
+    approach, footwork, crouch and sidestep itself. The field is CAT's own generator (occupancy -> 3-D FMM toward
+    the goal at 0.75 m -> obstacle-tangent blend), computed in a window covering the robot and the waypoint plus
+    1.5 m (~0.2 s for 4-5 m of corridor) on a background thread and written into the scene's slot of the bank.
+    CAT-type scenes only: in room scenes the command comes from the room route, not from the field.
+    Bank fields are unit directions (packed), so the near-goal slow-down is not representable: the session holds
+    the robot (zero command) once it is within REACHED m of the waypoint.
+    """
+    REACHED = .35
+    MARGIN = 1.5
+
+    def __init__(self, session, scene_id):
+        import numpy as np
+        from cat_ppo.furniture.generalist_fields import _upstream
+        from cat_mjlab.packing.field_packing import pack_direction, unpack_occupancy
+        self.np, self.pack = np, pack_direction
+        self.session, self.bank = session, session.task.bank
+        index = session.index[scene_id]
+        record = session.manifest["scenes"][index]
+        directory = session._scene_directory(session._loaded, session._mp, record)
+        self.shape = tuple(record["shape"]); self.origin = np.asarray(record["origin"], dtype=np.float64); self.dx = float(record["dx"])
+        sdf = np.load(directory / "sdf.npy"); self.sdf = np.asarray(sdf, dtype=np.float32).reshape(self.shape)
+        occ = np.load(directory / "obs.npy")
+        self.occ = (occ.reshape(self.shape) if occ.size == np.prod(self.shape) else unpack_occupancy(occ, self.shape)).astype(bool)
+        self.offset = int(self.bank.offsets[index]); self.packed = "gf" in getattr(self.bank, "packed_fields", ())
+        self.module = _upstream("pf_modular"); self.config = self.module.PFConfig(); self.config.voxel = self.dx
+        self.goal, self.pending, self.busy, self.compute_s = None, None, False, 0.
+        self.wake = threading.Event(); self.alive = True
+        threading.Thread(target=self._loop, daemon=True).start()
+
+    def request(self, goal_xy):
+        """Ask for a new waypoint (latest wins); returns the free-space point actually used."""
+        goal = self._free(self.np.asarray(goal_xy, dtype=self.np.float64))
+        if goal is not None:
+            self.pending = goal; self.wake.set()
+        return goal
+
+    def _free(self, goal):
+        """Clamp into the grid and move out of obstacles: nearest cell at root height with >= 0.30 m clearance."""
+        np, o, dx = self.np, self.origin, self.dx
+        hi = o[:2] + dx * (np.asarray(self.shape[:2]) - 1)
+        goal = np.clip(goal, o[:2] + .3, hi - .3)
+        k = int(round((.75 - o[2]) / dx))
+        i, j = (int(round(v)) for v in (goal - o[:2]) / dx)
+        if self.sdf[i, j, k] >= .30:
+            return goal
+        r = int(1.5 / dx)
+        a0, a1, b0, b1 = max(0, i - r), min(self.shape[0], i + r), max(0, j - r), min(self.shape[1], j + r)
+        free = np.argwhere(self.sdf[a0:a1, b0:b1, k] >= .30)
+        if not len(free):
+            return None
+        best = free[np.argmin(((free + [a0, b0] - [i, j]) ** 2).sum(-1))] + [a0, b0]
+        return o[:2] + dx * best
+
+    def _loop(self):
+        while self.alive:
+            self.wake.wait(); self.wake.clear()
+            goal = self.pending
+            if goal is None:
+                continue
+            self.busy = True; t = time.time()
+            try:
+                self._compute(goal)
+                self.goal = goal
+            finally:
+                self.busy = False; self.compute_s = time.time() - t
+
+    def _compute(self, goal):
+        np, o, dx = self.np, self.origin, self.dx
+        robot = np.asarray(self.session.sim.raw.qpos[:2], dtype=np.float64)
+        lo = np.minimum(robot, goal) - self.MARGIN; hi = np.maximum(robot, goal) + self.MARGIN
+        i0, j0 = (max(0, int((lo[a] - o[a]) / dx)) for a in (0, 1))
+        i1, j1 = (min(self.shape[a], int((hi[a] - o[a]) / dx) + 1) for a in (0, 1))
+        occ, sdf = self.occ[i0:i1, j0:j1], self.sdf[i0:i1, j0:j1]
+        axes = [o[0] + dx * np.arange(i0, i1), o[1] + dx * np.arange(j0, j1), o[2] + dx * np.arange(self.shape[2])]
+        bf = self.module.grad3(sdf, dx)
+        _, gf = self.module.make_guidance_field_progressive(self.config, np.meshgrid(*axes, indexing="ij"), occ,
+                                                             np.array([goal[0], goal[1], .75]), bf, sdf)
+        values = self.pack(gf)[0].reshape(-1, 2) if self.packed else gf.reshape(-1, 3)
+        ii, jj, kk = np.meshgrid(np.arange(i0, i1), np.arange(j0, j1), np.arange(self.shape[2]), indexing="ij")
+        flat = self.offset + (ii * self.shape[1] + jj) * self.shape[2] + kk
+        torch = self.session.torch
+        with self.session.lock:
+            field = self.bank.fields["gf"]
+            field[torch.from_numpy(flat.reshape(-1))] = torch.from_numpy(np.ascontiguousarray(values)).to(field.dtype)
 
 
 class Session:
@@ -144,6 +235,9 @@ class Session:
         self.lock = threading.Lock()
         self.held, self.hold_mode = set(), False          # browser keys: hold-to-drive
         self.status = {}
+        # Waypoint mode (default in CAT-type scenes): the keyboard moves a target point, not a velocity.
+        self.mode, self.waypoints, self.carrot_dir = "velocity", {}, 0.
+        self._joystick = task.joystick; self._joystick_body = getattr(task, "joystick_body", None)
 
     def boxes(self):
         record = self.manifest["scenes"][self.index[self.scene]]
@@ -165,9 +259,55 @@ class Session:
                     task._rand = draw
             else:
                 self.task.reset(scene_ids=self.torch.tensor([self.index[scene_id]]))
-            self.task.joystick.zero_()
+            self._joystick.zero_()
+            if self._joystick_body is not None:
+                self._joystick_body.zero_()
+            self.task.joystick, self.task.joystick_body = self._joystick, self._joystick_body
             self.speed, self.contacts, self.contact_parts, self.falls = 0., 0, {}, 0
-            self.heading = self.yaw()
+            self.heading = self.yaw(); self.carrot_dir = self.heading
+            cat = record.get("reset_mode") == "cat"
+            self.mode = "waypoint" if cat else "velocity"
+            if cat and scene_id not in self.waypoints:
+                self.waypoints[scene_id] = WaypointField(self, scene_id)
+            if cat:
+                self.waypoints[scene_id].goal = None; self.waypoints[scene_id].pending = None
+
+    @property
+    def waypoint(self):
+        return self.waypoints.get(self.scene)
+
+    def set_goal(self, xy):
+        """Waypoint from a click or a key; returns the point used (moved out of obstacles) or None."""
+        if self.waypoint is None:
+            return None
+        if self.mode == "velocity":
+            self.mode = "waypoint"
+        return self.waypoint.request(xy)
+
+    def goal_ahead(self, distance=2.5):
+        xy = self.sim.raw.qpos[:2]; base = self.waypoint.goal if self.waypoint and self.waypoint.goal is not None else xy
+        ahead = max(float(self.np_dot(base - xy, self.carrot_dir)), 0.) + distance
+        return self.set_goal(xy + ahead * self.np_dir(self.carrot_dir))
+
+    @staticmethod
+    def np_dir(angle):
+        import numpy as np
+        return np.array([math.cos(angle), math.sin(angle)])
+
+    def np_dot(self, v, angle):
+        return v[0] * math.cos(angle) + v[1] * math.sin(angle)
+
+    def toggle_mode(self):
+        if self.waypoint is None:
+            return
+        self.mode = "velocity" if self.mode == "waypoint" else "waypoint"
+        self.speed = 0.; self.heading = self.yaw(); self.carrot_dir = self.heading
+        self.task.joystick, self.task.joystick_body = self._joystick, self._joystick_body
+        self._joystick.zero_()
+        if self._joystick_body is not None:
+            self._joystick_body.zero_()
+        if self.mode == "waypoint":
+            self.waypoint.goal = None; self.waypoint.pending = None
 
     def yaw(self):
         q = self.sim.raw.qpos[3:7]
@@ -181,10 +321,49 @@ class Session:
             self.heading = math.atan2(b["center"][1] - xy[1], b["center"][0] - xy[0])
             self.speed = self.speed_setting
 
+    def _waypoint_command(self):
+        """Keys move the waypoint (a carrot CARROT m ahead along carrot_dir; A/D rotate it); without keys it stays
+        put. Far from it: field mode toward it. Within REACHED m (or none set): hold -- zero command, reference
+        heading = current facing, so the policy sees exactly its standing input."""
+        import numpy as np
+        torch, held = self.torch, self.held
+        xy = np.asarray(self.sim.raw.qpos[:2], dtype=np.float64)
+        turning = ("left" in held) - ("right" in held)
+        self.carrot_dir += turning * math.radians(60) * .02
+        forward = ("up" in held) - ("down" in held); side = ("strafe_left" in held) - ("strafe_right" in held)
+        if forward or side:
+            # W ahead, S behind, Q/E to the side, W+Q/E diagonally -- relative to the carrot direction
+            angle = self.carrot_dir + (side * math.pi / 2 if not forward else
+                                       (side * math.pi / 4 if forward > 0 else math.pi - side * math.pi / 4))
+            carrot = xy + CARROT * self.np_dir(angle)
+        elif turning:
+            carrot = xy + .7 * self.np_dir(self.carrot_dir)        # turn toward the new direction with a short step
+        else:
+            carrot = None
+        w = self.waypoint
+        if carrot is not None and (w.pending is None or np.linalg.norm(carrot - w.pending) > .2):
+            w.request(carrot)
+        goal = w.goal
+        near = goal is None or float(np.linalg.norm(goal - xy)) < w.REACHED
+        if near:
+            self.task.joystick, self.task.joystick_body = self._joystick, self._joystick_body
+            self._joystick.zero_()
+            if self._joystick_body is not None:
+                self._joystick_body.zero_()
+            psi = getattr(self.task, "psi_ref", None)
+            if psi is not None:
+                psi[0] = self.yaw()
+        else:
+            self.task.joystick, self.task.joystick_body = None, None   # field mode: the policy's own objective
+        return near
+
     def step(self):
         torch = self.torch
         with self.lock:
-            if self.body_mode:
+            self.holding = None
+            if self.mode == "waypoint" and self.waypoint is not None:
+                self.holding = self._waypoint_command()
+            elif self.body_mode:
                 if self.hold_mode:
                     forward = ("up" in self.held) - ("down" in self.held)
                     self.body_command = [self.speed_setting if forward > 0 else (-min(.4, self.speed_setting) if forward < 0 else 0.),
@@ -204,7 +383,7 @@ class Session:
                 lag = math.remainder(self.heading - yaw, 2 * math.pi)
                 self.heading = yaw + max(-math.radians(60), min(math.radians(60), lag))
                 self.speed = self.speed_setting if "up" in self.held else (TURN_IN_PLACE_SPEED if turning else 0.)
-            if not self.body_mode:
+            if self.mode != "waypoint" and not self.body_mode:
                 self.task.joystick[0, 0] = self.speed * math.cos(self.heading)
                 self.task.joystick[0, 1] = self.speed * math.sin(self.heading)
             action = self.learner.act(self.task.obs, policy_ids=0, deterministic=True)["action"]
@@ -275,6 +454,10 @@ def handle_key(session, key, stop):
         s.load(s.scene)
     elif key == "n":
         s.load(s.scenes[(s.scenes.index(s.scene) + 1) % len(s.scenes)])
+    elif key == "v":
+        s.toggle_mode()
+    elif key == "f":
+        s.goal_ahead()
     elif key == "q":
         stop.set()
 
@@ -286,7 +469,7 @@ padding:8px 12px;border-radius:8px;max-width:46vw;pointer-events:none}#hud b.c{c
 <body><iframe id="v"></iframe><div id="hud">connecting ...</div><script>
 document.getElementById('v').src=location.protocol+'//'+location.hostname+':__VISER_PORT__/';
 const drive={ArrowUp:'up',KeyW:'up',ArrowDown:'down',KeyS:'down',ArrowLeft:'left',KeyA:'left',ArrowRight:'right',KeyD:'right',KeyQ:'strafe_left',KeyE:'strafe_right'};
-const act={Space:'stop',KeyT:'table',KeyR:'reset',KeyN:'next',Equal:'faster',NumpadAdd:'faster',Minus:'slower',NumpadSubtract:'slower'};
+const act={Space:'stop',KeyT:'table',KeyR:'reset',KeyN:'next',Equal:'faster',NumpadAdd:'faster',Minus:'slower',NumpadSubtract:'slower',KeyV:'mode',KeyF:'ahead'};
 const held=new Set();
 const send=o=>fetch('/key',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(o)});
 addEventListener('keydown',e=>{const k=drive[e.code];if(k){e.preventDefault();if(!held.has(k)){held.add(k);send({key:k,down:true});}}
@@ -296,9 +479,10 @@ addEventListener('keyup',e=>{const k=drive[e.code];if(k){e.preventDefault();held
 addEventListener('blur',()=>{for(const k of held)send({key:k,down:false});held.clear();setTimeout(()=>window.focus(),60);});
 setInterval(()=>{if(document.activeElement&&document.activeElement.tagName==='IFRAME')window.focus();},300);
 setInterval(async()=>{try{const s=await (await fetch('/status')).json();
- document.getElementById('hud').innerHTML=(s.touching&&s.touching.length?'<b class=c>CONTACT: '+s.touching.join(', ')+'</b>':'<b class=ok>no contact</b>')+
+ document.getElementById('hud').innerHTML='<b>'+(s.mode==='waypoint'?'WAYPOINT mode':'VELOCITY mode')+'</b> '+
+ (s.mode==='waypoint'?(s.goal_dist===null?'(no waypoint: robot holds)':('waypoint '+s.goal_dist.toFixed(1)+' m'+(s.holding?' - reached, holding':''))):'')+'<br>'+(s.touching&&s.touching.length?'<b class=c>CONTACT: '+s.touching.join(', ')+'</b>':'<b class=ok>no contact</b>')+
  '<br>speed setting '+s.setting.toFixed(1)+' m/s, actual '+s.speed.toFixed(2)+' m/s<br>closest: body '+s.body.toFixed(2)+' m, hands '+s.hands.toFixed(2)+
- ' m<br>'+(s.gate===null||s.gate===undefined?'':('orientation '+(s.gate>.5?'held (room)':'free (narrow: may turn sideways)')+'<br>'))+'contact steps '+s.contacts+', falls '+s.falls+'<br><span style="opacity:.7">hold W/Up forward, S/Down back, A/D turn, Q/E sideways, Space stop, +/- speed, T table, R reset, N next room</span>';}catch(e){}},250);
+ ' m<br>'+(s.gate===null||s.gate===undefined?'':('orientation '+(s.gate>.5?'held (room)':'free (narrow: may turn sideways)')+'<br>'))+'contact steps '+s.contacts+', falls '+s.falls+'<br><span style="opacity:.7">'+(s.mode==='waypoint'?'W/S/Q/E move the waypoint ahead/behind/sideways, A/D rotate it, F waypoint 2.5 m further, Shift+click floor = waypoint, Space stop here, V velocity mode':'hold W forward, S back, A/D turn, Q/E sideways, Space stop, +/- speed, V waypoint mode')+', R reset, N next scene</span>';}catch(e){}},250);
 </script></body></html>"""
 
 
@@ -328,6 +512,12 @@ def serve_keys(session, port, viser_port, stop):
             action = msg.get("action")
             if action == "stop":
                 session.held.clear(); session.speed = 0.
+                if session.mode == "waypoint":
+                    session.set_goal(session.sim.raw.qpos[:2])
+            elif action == "mode":
+                session.toggle_mode()
+            elif action == "ahead":
+                session.goal_ahead()
             elif action in ("faster", "slower"):
                 session.speed_setting = min(1., session.speed_setting + .1) if action == "faster" else max(.1, session.speed_setting - .1)
             elif action:
@@ -400,6 +590,17 @@ def main(argv=None):
             session.speed_setting = speed.value
             if session.speed: session.speed = speed.value
         server.gui.add_button("Drive straight at the nearest table").on_click(lambda _: session.aim_at_nearest("top"))
+    with server.gui.add_folder("Waypoint (CAT-type scenes)"):
+        server.gui.add_markdown("Shift+click the floor to send the robot there; keys W/S/Q/E move the waypoint, A/D rotate it.")
+        server.gui.add_button("Waypoint 2.5 m further").on_click(lambda _: session.goal_ahead())
+        server.gui.add_button("Toggle waypoint / velocity mode").on_click(lambda _: session.toggle_mode())
+
+    @server.scene.on_click(modifier="shift")
+    def _(event):
+        o = np.asarray(event.ray_origin, dtype=float); d = np.asarray(event.ray_direction, dtype=float)
+        if d[2] < -1e-6:
+            p = o - o[2] / d[2] * d
+            session.set_goal(p[:2])
     with server.gui.add_folder("Scene"):
         choice = server.gui.add_dropdown("Room", tuple(session.scenes), initial_value=session.scene)
         @choice.on_update
@@ -416,7 +617,8 @@ def main(argv=None):
     serve_keys(session, keys_port, args.port, stop)
     print(f"\nBrowser with keyboard: http://localhost:{keys_port}   (3D view only: http://localhost:{args.port})")
     print(f"From the laptop: ssh -L {args.port}:localhost:{args.port} -L {keys_port}:localhost:{keys_port} konstantinsmirnov@dep-1")
-    print("Keys: Up/W go, Down/S stop, Left/A Right/D turn 20 deg, +/- speed, T at nearest table, R reset, N next scene, Q quit\n", flush=True)
+    print("Keys: Up/W go, Down/S stop, Left/A Right/D turn 20 deg, +/- speed, T at nearest table, R reset, N next scene, Q quit\n"
+          "Waypoint mode (CAT-type scenes, default there): keys move a target point; Shift+click the floor; F = 2.5 m further; V toggles modes\n", flush=True)
     shown_scene, frame, t_report, n_report = session.scene, 0, time.time(), 0
     try:
         while not stop.is_set():
@@ -435,6 +637,15 @@ def main(argv=None):
                     wings = [(tip[0] - .15 * math.cos(h + s_), tip[1] - .15 * math.sin(h + s_)) for s_ in (.5, -.5)]
                     segments = np.array([[[x, y, .03], [tip[0], tip[1], .03]]] + [[[tip[0], tip[1], .03], [w[0], w[1], .03]] for w in wings])
                     server.scene.add_line_segments("/heading_ref", segments, (255, 200, 0), thickness=.03)
+                w = session.waypoint
+                goal = None if (w is None or session.mode != "waypoint") else (w.pending if w.pending is not None else w.goal)
+                if goal is not None:
+                    server.scene.add_icosphere("/waypoint", radius=.09, color=(40, 200, 255), position=(float(goal[0]), float(goal[1]), .09))
+                    server.scene.add_line_segments("/waypoint_line", np.array([[[float(vis_data.qpos[0]), float(vis_data.qpos[1]), .05],
+                                                   [float(goal[0]), float(goal[1]), .05]]]), (40, 200, 255), thickness=.02)
+                else:
+                    server.scene.add_icosphere("/waypoint", radius=.001, color=(40, 200, 255), position=(0., 0., -1.))
+                    server.scene.add_line_segments("/waypoint_line", np.zeros((1, 2, 3)), (40, 200, 255), thickness=.001)
                 if follow.value and frame % 6 == 0:
                     # ~8 Hz, smoothed, look_at and position moved together in one message: separate
                     # updates every frame made the view jump between half-applied camera states.
@@ -449,7 +660,9 @@ def main(argv=None):
             session.status = dict(touching=info["touching"], setting=session.speed_setting, speed=info["speed"],
                                   body=info["body_clearance"], hands=info["hand_clearance"], contacts=session.contacts, falls=session.falls,
                                   yaw_deg=math.degrees(session.yaw()), xy=[float(v) for v in session.sim.raw.qpos[:2]],
-                                  gate=getattr(session, "gate", None))
+                                  gate=getattr(session, "gate", None), mode=session.mode, holding=session.holding,
+                                  goal_dist=(None if session.waypoint is None or session.waypoint.goal is None else
+                                             float(np.linalg.norm(session.waypoint.goal - session.sim.raw.qpos[:2]))))
             if frame % 10 == 0:
                 rate = n_report * .02 / max(time.time() - t_report, 1e-6); t_report, n_report = time.time(), 0
                 touching = info["touching"]
