@@ -682,7 +682,7 @@ SCENE_BUCKETS = ('procedural_cat', 'original_cat', 'published_cat',
                  'furniture_dense', 'furniture_pilot', 'furniture_legacy',
                  'narrow_passage', 'protected_passage', 'transition_passage',
                  'table_edges',
-                 'open_passage', 'flat_balance', 'reactive_standing', 'reactive_walking', 'teleop', 'teleop_cat')
+                 'open_passage', 'flat_balance', 'reactive_standing', 'reactive_walking', 'teleop', 'teleop_cat', 'side_gap')
 
 
 def _scene_buckets(manifest):
@@ -704,6 +704,8 @@ def _scene_buckets(manifest):
             name = 'flat_balance'
         elif source.get('kind') == 'table-edge-passage':
             name = 'table_edges'
+        elif source.get('kind') == 'side-gap':
+            name = 'side_gap'
         elif role:
             name = {'narrow': 'narrow_passage', 'forward_protected': 'protected_passage',
                     'transition': 'transition_passage', 'open': 'open_passage'}.get(role, 'open_passage')
@@ -848,6 +850,16 @@ def _rebalance_bank(bank, args):
         narrow = torch.as_tensor([bool('-narrow-' in r['scene_id']) for r in bank.manifest['scenes']],
                                  device=bank.sampling_ids.device)
         bank.sampling_ids = torch.where(narrow, target, bank.sampling_ids)
+    zero = getattr(args, 'zero_weight_scenes', None) or []
+    if zero:
+        # Scenes never sampled (e.g. published-side1: a 0.24 m opening, unpassable without touching under the
+        # no-contact rule). The adaptive sampler keeps them at 0 too (CATTask: weights * (bank.weights > 0)).
+        index = {s['scene_id']: i for i, s in enumerate(bank.manifest['scenes'])}
+        missing = [z for z in zero if z not in index]
+        if missing:
+            raise ValueError(f'--zero-weight-scenes: unknown scene ids {missing}')
+        for z in zero:
+            bank.weights[index[z]] = 0.
     overrides = getattr(args, 'scene_group_override', None) or []
     if overrides:
         # Move whole scene types (reporting buckets) into a chosen sampling group, e.g. to give an

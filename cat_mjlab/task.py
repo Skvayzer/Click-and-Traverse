@@ -934,6 +934,9 @@ class CATTask:
             room_scale=((room[:,0]-float(tight['low']))/(float(tight['high'])-float(tight['low']))).clamp(float(tight['floor']),1.)[:,None]
             protection_target=protection_target*room_scale;protection_anticipation=protection_anticipation*room_scale
             arm_margin=arm_margin*room_scale
+            # handsdf (cost below 5 cm) shrinks with the same room: sideways in a 0.34 m gap the hands are 6 cm
+            # from the walls and handsdf alone cost ~-8.7 per step, as much as the whole positive reward.
+            rewards['handsdf']=tm.sdf_reward(i['sdf'][:,5:7],knee=.05*room_scale[:,0])
         costs,telemetry=self.math.upper_stability_terms(i['motor_targets'][:,12:],i['previous_upper'],i['previous_previous_upper'],self.upper_home,
             i['sdf'][:,5:7],i['elbow_clearance'],dt=self.dt,velocity_scale=float(_get(self.config,'upper_velocity_cost_scale',2.)),
             acceleration_scale=float(_get(self.config,'upper_acceleration_cost_scale',20.)),posture_scale=float(_get(self.config,'upper_action_scale',.8)),
@@ -1161,7 +1164,7 @@ class CATTask:
         decay=float(_get(self.config,'pf_config.sampling_ema_decay',.95));alpha=float(_get(self.config,'pf_config.sampling_alpha',1.))
         self.scene_episode_ema=decay*self.scene_episode_ema+counts;self.scene_success_ema=decay*self.scene_success_ema+goals
         rates=self.scene_success_ema/(self.scene_episode_ema+1e-6)
-        weights=((1-rates)**alpha).clamp_min(1e-3)
+        weights=((1-rates)**alpha).clamp_min(1e-3)*(self.bank.weights>0)
         self.probabilities=self.bank.probabilities(weights,stage=self.curriculum_stage)
         return resolved,successful
 

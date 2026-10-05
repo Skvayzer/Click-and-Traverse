@@ -92,3 +92,13 @@ def test_config_v11_progress_stall_and_cat_fraction():
         wholebody_config(**base, teleop_stall_weight=3.)          # a stall must cost
     with pytest.raises(ValueError):
         wholebody_config(teleop_fraction=.5, heading_align_weight=.4, teleop_heading_commands=True, teleop_cat_fraction=.3)
+
+
+def test_side_gap_bucket_and_handsdf_scaling():
+    from cat_mjlab.runner import _scene_buckets, SCENE_BUCKETS
+    manifest = dict(scenes=[dict(scene_id='sidegap-0000-w0.40', family='procedural_cat', source=dict(kind='side-gap')),
+                            dict(scene_id='published-side1', family='published_cat', source={})])
+    assert [SCENE_BUCKETS[i] for i in _scene_buckets(manifest)] == ['side_gap', 'published_cat']
+    hands = torch.full((1, 2, 1), .062)                        # sideways in a 0.34 m gap
+    assert float(tm.sdf_reward(hands, knee=torch.tensor([.05]))) < -8.          # unscaled: ~ -8.7
+    assert float(tm.sdf_reward(hands, knee=torch.tensor([.015]))) > -2.         # room scale 0.3: ~ -1.8

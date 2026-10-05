@@ -108,6 +108,7 @@ def parser():
         target.add_argument("--teleop-stall-weight", type=float,
                             help="Keyboard worlds: cost per step of moving < 0.05 m/s along a passable target (> 0.15 m/s); negative")
         target.add_argument("--teleop-cat-fraction", type=float, help="Keyboard share of CAT-scene episodes (default: --teleop-fraction)")
+        target.add_argument("--zero-weight-scenes", nargs="+", metavar="SCENE_ID", help="Never sample these scenes")
         target.add_argument("--hand-clearance-tight", type=float, nargs=3, metavar=("LOW", "HIGH", "FLOOR"),
                             help="Scale hand/elbow clearance targets by pelvis room to the blocking footprint: FLOOR at <= LOW m, "
                                  "1 at >= HIGH m (e.g. 0.10 0.40 0.3)")
