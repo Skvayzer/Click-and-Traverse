@@ -38,7 +38,7 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
                      heading_track_weight=None,upright_roll=None,body_motion_weight=None,style_free_near_obstacles=None,
                      keyboard_v10=None,hand_clearance_tight=None,teleop_progress_weight=None,teleop_stall_weight=None,
                      teleop_cat_fraction=None,heading_lookaheads=None,heading_blocking_probes=None,sideways_bonus_weight=None,
-                     side_gap_curriculum=None,teleop_side_prob=None):
+                     side_gap_curriculum=None,teleop_side_prob=None,hand_tight_walls_only=None,side_gap_tumbling=None):
     from cat_ppo.furniture.generalist_config import released_config
     from .collision import PROPOSAL
     config=copy.deepcopy(released_config()['env_config'] if base_config is None else base_config)
@@ -255,13 +255,16 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
         scales['sideways_bonus']=_signed('sideways_bonus_weight',sideways_bonus_weight,positive=True)
     if side_gap_curriculum:
         config['side_gap_curriculum']=dict(thresholds=[.50,.42,.36,0.],advance=.30,window=300,sideways_starts=[.5,.35,.2,.1])
+    if side_gap_tumbling:
+        if 'side_gap_curriculum' not in config:raise ValueError('side_gap_tumbling requires side_gap_curriculum')
+        config['side_gap_curriculum']['tumbling']=True
     if teleop_side_prob is not None:
         if (config.get('teleop') or {}).get('mode') not in ('body','heading'):raise ValueError('teleop_side_prob requires body/heading teleop')
         config['teleop']['p_side']=float(teleop_side_prob)
     if hand_clearance_tight is not None:
         low,high,floor=(float(v) for v in hand_clearance_tight)
         if not (0<=low<high and 0<floor<=1):raise ValueError('hand_clearance_tight: 0 <= low < high, 0 < floor <= 1')
-        config.update(blocking_map=True,hand_clearance_tight=dict(low=low,high=high,floor=floor))
+        config.update(blocking_map=True,hand_clearance_tight=dict(low=low,high=high,floor=floor,walls_only=bool(hand_tight_walls_only)))
     scales.update(wholebody_hand_clearance=-.5 if hand_protection else -5.,wholebody_arm_clearance=-2.)
     if standing_gf_bonus is not None:
         if isinstance(standing_gf_bonus,bool) or not math.isfinite(standing_gf_bonus) or standing_gf_bonus<0:

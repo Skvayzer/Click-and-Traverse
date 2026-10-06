@@ -79,7 +79,7 @@ def test_config_keyboard_v10_wiring():
                          hand_clearance_tight=(.10, .40, .3))
     assert c['blocking_map'] and c['safe_tracking_teleop_only'] and c['heading_deadband'] == (.20, .08)
     assert c['teleop']['cat_scenes'] and c['teleop']['p_stop'] == .30 and c['teleop']['p_through_cat'] == .70
-    assert c['hand_clearance_tight'] == dict(low=.10, high=.40, floor=.3)
+    assert c['hand_clearance_tight'] == dict(low=.10, high=.40, floor=.3, walls_only=False)
 
 
 def test_config_v11_progress_stall_and_cat_fraction():
@@ -114,3 +114,16 @@ def test_config_side_gap_curriculum_wiring():
     assert c['side_gap_curriculum']['thresholds'] == [.50, .42, .36, 0.]
     with pytest.raises(ValueError):
         wholebody_config(sideways_bonus_weight=-1., heading_align_weight=.4)
+
+
+@pytest.mark.parametrize("box,blocks", [(BEAM, False), (HURDLE, False), (WALL, True), (TABLE, False)])
+def test_full_height_walls_only(box, blocks):
+    dist, _ = blocking_sdf2d(scene_sdf([box]), 0., DX, also=(1.0, 1.4))
+    assert (dist.min() <= 0) == blocks
+
+
+def test_config_walls_only_and_tumbling():
+    from cat_mjlab.config import wholebody_config
+    c = wholebody_config(teleop_fraction=.5, heading_align_weight=.4, teleop_heading_commands=True, side_gap_curriculum=True,
+                         side_gap_tumbling=True, hand_clearance_tight=(.10, .40, .3), hand_tight_walls_only=True)
+    assert c['side_gap_curriculum']['tumbling'] and c['hand_clearance_tight']['walls_only']

@@ -21,12 +21,20 @@ import torch
 BAND = (.25, .95)
 
 
-def blocking_sdf2d(sdf3, origin_z, dx, band=BAND):
-    """[X,Y,Z] scene SDF -> ([X,Y] 2-D signed distance in metres, [X,Y,2] unit gradient away from blocking)."""
+def blocking_sdf2d(sdf3, origin_z, dx, band=BAND, also=None):
+    """[X,Y,Z] scene SDF -> ([X,Y] 2-D signed distance in metres, [X,Y,2] unit gradient away from blocking).
+
+    ``also``: a second band the column must ALSO be occupied in (e.g. (1.0, 1.4) for full-height walls only:
+    a table blocks the body band but not shoulder height, a beam the reverse)."""
     from scipy import ndimage
     z = origin_z + dx * np.arange(sdf3.shape[2])
-    k = (z >= band[0]) & (z <= band[1])
-    blocked = (sdf3[:, :, k] <= 0).any(-1) if k.any() else np.zeros(sdf3.shape[:2], bool)
+
+    def occupied(b):
+        k = (z >= b[0]) & (z <= b[1])
+        return (sdf3[:, :, k] <= 0).any(-1) if k.any() else np.zeros(sdf3.shape[:2], bool)
+    blocked = occupied(band)
+    if also is not None:
+        blocked = blocked & occupied(also)
     if blocked.any():
         outside = ndimage.distance_transform_edt(~blocked) * dx
         inside = ndimage.distance_transform_edt(blocked) * dx
@@ -42,7 +50,7 @@ def blocking_sdf2d(sdf3, origin_z, dx, band=BAND):
 class BlockingMap:
     """Per-scene 2-D blocking distance + direction, sampled bilinearly at world xy."""
 
-    def __init__(self, bank, band=BAND):
+    def __init__(self, bank, band=BAND, also=None):
         device = bank.offsets.device
         shapes, offsets, origins, dxs = (bank.shapes.cpu().numpy(), bank.offsets.cpu().numpy(),
                                          bank.origins.cpu().numpy(), bank.dxs.cpu().numpy())
@@ -52,7 +60,7 @@ class BlockingMap:
         for i in range(len(shapes)):
             X, Y, Z = (int(v) for v in shapes[i])
             sdf3 = field[int(offsets[i]):int(offsets[i]) + X * Y * Z].reshape(X, Y, Z).float().cpu().numpy()
-            d, g = blocking_sdf2d(sdf3, float(origins[i, 2]), float(dxs[i]), band)
+            d, g = blocking_sdf2d(sdf3, float(origins[i, 2]), float(dxs[i]), band, also)
             dists.append(d.reshape(-1)); grads.append(g.reshape(-1, 2)); offsets2.append(total); total += X * Y
         self.dist = torch.as_tensor(np.concatenate(dists), device=device)
         self.grad = torch.as_tensor(np.concatenate(grads), device=device)

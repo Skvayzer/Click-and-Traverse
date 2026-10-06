@@ -969,6 +969,7 @@ def create_task(args, *, environment_config=None, sim_class=None):
         heading_lookaheads=getattr(args, 'heading_lookaheads', None), heading_blocking_probes=getattr(args, 'heading_blocking_probes', None),
         sideways_bonus_weight=getattr(args, 'sideways_bonus_weight', None), side_gap_curriculum=getattr(args, 'side_gap_curriculum', None),
         teleop_side_prob=getattr(args, 'teleop_side_prob', None),
+        hand_tight_walls_only=getattr(args, 'hand_tight_walls_only', None), side_gap_tumbling=getattr(args, 'side_gap_tumbling', None),
         standing_gf_bonus=getattr(args, 'standing_gf_bonus', None),
         reactive_hand_guidance=getattr(args, 'reactive_hand_guidance', None),
         handsdf_weight=getattr(args, 'handsdf_weight', None),

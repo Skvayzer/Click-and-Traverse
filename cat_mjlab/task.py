@@ -988,7 +988,16 @@ class CATTask:
             # footprint): 9 cm / 20 cm cannot be kept on both sides of a 0.34-0.44 m gap even sideways, so the
             # whole passage was one long penalty and standing in front of it cost nothing. Contact still ends
             # the episode; only the margin asked for shrinks.
-            room,_=self._blocking().sample(i['positions'][:,1:2,:2],self.scene_ids)
+            if tight.get('walls_only'):
+                # Room to FULL-HEIGHT walls only (blocking at 0.25-0.95 m AND 1.0-1.4 m): side-gap walls relax the
+                # hand margins, table tops (hand height, nothing above) and beams do not -- v8 relaxed them between
+                # tables too and its hands touched a 0.60 m table gap in 4/4 field-driven course trials.
+                if getattr(self,'_wall_map',None) is None:
+                    from .blocking import BlockingMap
+                    self._wall_map=BlockingMap(self.bank,also=(1.0,1.4))
+                room,_=self._wall_map.sample(i['positions'][:,1:2,:2],self.scene_ids)
+            else:
+                room,_=self._blocking().sample(i['positions'][:,1:2,:2],self.scene_ids)
             room_scale=((room[:,0]-float(tight['low']))/(float(tight['high'])-float(tight['low']))).clamp(float(tight['floor']),1.)[:,None]
             protection_target=protection_target*room_scale;protection_anticipation=protection_anticipation*room_scale
             arm_margin=arm_margin*room_scale
@@ -1159,8 +1168,11 @@ class CATTask:
             levels=self.side_levels[self.scene_ids];current=(levels>=0)&(levels==self.side_stage)
             self.side_counts[0]+=int((resolved&current).sum());self.side_counts[1]+=int((successful&current).sum())
             sg=self.config['side_gap_curriculum']
-            if (self.side_stage<self.side_levels.max()) and self.side_counts[0]>=int(sg['window']) and \
-                    self.side_counts[1]>=float(sg['advance'])*self.side_counts[0]:
+            advance=(self.side_stage<self.side_levels.max()) and self.side_counts[0]>=int(sg['window']) and \
+                self.side_counts[1]>=float(sg['advance'])*self.side_counts[0]
+            if sg.get('tumbling') and self.side_counts[0]>=int(sg['window']) and not advance:
+                self.side_counts=[0,0]      # judge each block of `window` episodes on its own: early failures do not linger
+            if advance:
                 self.side_stage+=1;self.side_counts=[0,0]
                 self.probabilities=self.bank.probabilities(torch.ones_like(self.scene_success_ema)*(self.bank.weights>0)*
                     ((self.side_levels<0)|(self.side_levels<=self.side_stage)),stage=self.curriculum_stage)
