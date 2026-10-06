@@ -38,7 +38,8 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
                      heading_track_weight=None,upright_roll=None,body_motion_weight=None,style_free_near_obstacles=None,
                      keyboard_v10=None,hand_clearance_tight=None,teleop_progress_weight=None,teleop_stall_weight=None,
                      teleop_cat_fraction=None,heading_lookaheads=None,heading_blocking_probes=None,sideways_bonus_weight=None,
-                     side_gap_curriculum=None,teleop_side_prob=None,hand_tight_walls_only=None,side_gap_tumbling=None):
+                     side_gap_curriculum=None,teleop_side_prob=None,hand_tight_walls_only=None,side_gap_tumbling=None,
+                     sideways_bonus_progress=None):
     from cat_ppo.furniture.generalist_config import released_config
     from .collision import PROPOSAL
     config=copy.deepcopy(released_config()['env_config'] if base_config is None else base_config)
@@ -255,6 +256,10 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
         scales['sideways_bonus']=_signed('sideways_bonus_weight',sideways_bonus_weight,positive=True)
     if side_gap_curriculum:
         config['side_gap_curriculum']=dict(thresholds=[.50,.42,.36,0.],advance=.30,window=300,sideways_starts=[.5,.35,.2,.1])
+    if sideways_bonus_progress is not None:
+        if 'sideways_bonus' not in scales:raise ValueError('sideways_bonus_progress requires sideways_bonus_weight')
+        if not sideways_bonus_progress>0:raise ValueError('sideways_bonus_progress must be > 0 (m/s for the full bonus)')
+        config['sideways_bonus_progress']=float(sideways_bonus_progress)
     if side_gap_tumbling:
         if 'side_gap_curriculum' not in config:raise ValueError('side_gap_tumbling requires side_gap_curriculum')
         config['side_gap_curriculum']['tumbling']=True

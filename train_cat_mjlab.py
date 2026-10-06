@@ -117,6 +117,8 @@ def parser():
         target.add_argument("--teleop-side-prob", type=float, help="Open-ground keyboard practice: probability of a pure sidestep command")
         target.add_argument("--hand-tight-walls-only", action="store_true", default=None,
                             help="--hand-clearance-tight measures room to full-height walls only (not tables, not beams)")
+        target.add_argument("--sideways-bonus-progress", type=float, metavar="M_PER_S",
+                            help="Sideways bonus scaled by speed along the travel direction: 0 standing, full at M_PER_S")
         target.add_argument("--side-gap-tumbling", action="store_true", default=None,
                             help="Side-gap curriculum: judge each block of 300 episodes on its own (recent, not all-time success)")
         target.add_argument("--hand-clearance-tight", type=float, nargs=3, metavar=("LOW", "HIGH", "FLOOR"),

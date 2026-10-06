@@ -127,3 +127,11 @@ def test_config_walls_only_and_tumbling():
     c = wholebody_config(teleop_fraction=.5, heading_align_weight=.4, teleop_heading_commands=True, side_gap_curriculum=True,
                          side_gap_tumbling=True, hand_clearance_tight=(.10, .40, .3), hand_tight_walls_only=True)
     assert c['side_gap_curriculum']['tumbling'] and c['hand_clearance_tight']['walls_only']
+
+
+def test_config_sideways_bonus_progress():
+    from cat_mjlab.config import wholebody_config
+    c = wholebody_config(heading_align_weight=.4, sideways_bonus_weight=1., sideways_bonus_progress=.15)
+    assert c['sideways_bonus_progress'] == .15
+    with pytest.raises(ValueError):
+        wholebody_config(heading_align_weight=.4, sideways_bonus_progress=.15)      # needs the bonus itself

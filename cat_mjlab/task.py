@@ -1036,6 +1036,13 @@ class CATTask:
             cmd=i['command'][:,1:3];moving=torch.linalg.vector_norm(cmd,dim=-1)>1e-6
             facing=torch.atan2(i['navi'][:,1,0],i['navi'][:,0,0])
             rewards['sideways_bonus']=(1.-gate)*torch.sin(facing-torch.atan2(cmd[:,1],cmd[:,0])).abs()*moving
+            progress=self.config.get('sideways_bonus_progress')
+            if progress:
+                # Only while actually moving through: v9 learned to stand sideways in front of gaps and collect the
+                # bonus (side-gap success 26% -> 16% while the bonus rose 0.30 -> 0.37 per step).
+                travel=cmd/torch.linalg.vector_norm(cmd,dim=-1,keepdim=True).clamp_min(1e-6)
+                along=(self._sensor('global_linvel_pelvis',self.all_ids)[:,:2]*travel).sum(-1)
+                rewards['sideways_bonus']=rewards['sideways_bonus']*(along/float(progress)).clamp(0.,1.)
         if ('teleop_progress' in scales or 'teleop_stall' in scales) and getattr(self,'_safe_target',None) is not None:
             # Keyboard worlds: following a PASSABLE command must pay. Being upright and alive earns ~12.5 per step,
             # velocity tracking ~0.7, and any contact ends the episode -- so v3 learned to stop in front of
