@@ -135,3 +135,18 @@ def test_config_sideways_bonus_progress():
     assert c['sideways_bonus_progress'] == .15
     with pytest.raises(ValueError):
         wholebody_config(heading_align_weight=.4, sideways_bonus_progress=.15)      # needs the bonus itself
+
+
+def test_scene_skill_tags():
+    from cat_mjlab.runner import scene_skill_tags
+    wall = scene_sdf([((1.0, 0., 0.), (1.1, .8, 1.6)), ((1.0, 1.2, 0.), (1.1, 2., 1.6))])   # 0.40 m opening
+    flat = np.full_like(wall, 5.)
+    bank = bank_of([wall, flat, flat, flat])
+    bank.manifest = dict(scenes=[dict(scene_id='procedural-D4G0', family='procedural_cat'),
+                                 dict(scene_id='published-side-hurdle3', family='published_cat'),
+                                 dict(scene_id='sidegap2-0001-angled-w0.38', family='procedural_cat',
+                                      source=dict(kind='side-gap', side_gap=dict(variant='angled', gap_m=.38))),
+                                 dict(scene_id='D8G0L1O0S3', family='original_cat')])
+    names, matrix = scene_skill_tags(bank)
+    tags = [sorted(n for n, on in zip(names, row) if on) for row in matrix]
+    assert tags == [['proc_narrow'], ['pub_side_hurdle'], ['gap_angled', 'gapw_lt040'], ['original']]

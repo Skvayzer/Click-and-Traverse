@@ -13,6 +13,7 @@ env = copy.deepcopy(c['environment_config'])
 env.pop('side_gap_curriculum', None)      # this bank has no side-gap scenes
 env['push_config']['enable'] = False
 mode = sys.argv[2]
+STOCHASTIC = len(sys.argv) > 3 and sys.argv[3] == 'stochastic'   # sample actions as in training
 if 'teleop' in env:
     env['teleop'].update(fraction=1. if mode == 'keyboard' else 0., cat_fraction=1. if mode == 'keyboard' else 0., cat_scenes=mode == 'keyboard')
 B = 'data/furniture/table_edges_v1'
@@ -38,7 +39,7 @@ cmd = dict(stop=0, turn=0, through=0, other=0)
 for t in range(3000):
     with torch.no_grad():
         jb = task.joystick_body.clone() if getattr(task, 'joystick_body', None) is not None else None
-        out = task.step(learner.act(task.obs, policy_ids=0, deterministic=True)['action'])
+        out = task.step(learner.act(task.obs, policy_ids=0, deterministic=not STOCHASTIC)['action'])
     done = out['done'].bool(); m = out['metrics']
     stats['success'] += int(m['successful'].bool().sum())     # recorded at the step the goal is reached
     if not bool(done.any()): continue
@@ -56,7 +57,7 @@ for t in range(3000):
         through = ~stop & ~turn & (b[:, 1].abs() < 1e-6) & (b[:, 2].abs() < 1e-6) & (b[:, 0] > 0)
         cmd['stop'] += int(stop.sum()); cmd['turn'] += int(turn.sum()); cmd['through'] += int(through.sum()); cmd['other'] += int((~stop & ~turn & ~through).sum())
 E = max(stats['episodes'], 1)
-print(json.dumps(dict(policy=Path(sys.argv[1]).name, mode=mode, scenes=len(ids), episodes=stats['episodes'], refused=round(1 - stats['success'] / E - stats['contact'] / E, 3),
+print(json.dumps(dict(policy=Path(sys.argv[1]).name, mode=mode, actions='stochastic' if STOCHASTIC else 'deterministic', scenes=len(ids), episodes=stats['episodes'], refused=round(1 - stats['success'] / E - stats['contact'] / E, 3),
                       success=round(stats['success'] / E, 3), contact=round(stats['contact'] / E, 3), timeout=round(stats['timeout'] / E, 3),
                       fall=round(stats['fall'] / E, 3), hit={r: round(stats['hit_' + r] / E, 3) for r in REG},
                       **({'command_at_contact': cmd} if mode == 'keyboard' else {}))))

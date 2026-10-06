@@ -293,6 +293,11 @@ def collect_rollout(task, learner, *, unroll_length, trajectories, policy_ids):
     walking_bucket = SCENE_BUCKETS.index('reactive_walking')
     teleop_bucket = SCENE_BUCKETS.index('teleop'); last_teleop = None
     teleop_cat_bucket = SCENE_BUCKETS.index('teleop_cat')
+    if getattr(task, '_skill_tags', None) is None:
+        names, matrix = scene_skill_tags(task.bank)
+        task._skill_tags = (names, torch.as_tensor(matrix, device=task.device, dtype=torch.float64))
+    skill_names, skill_matrix = task._skill_tags
+    skill_stats = torch.zeros((len(skill_names), 5), dtype=torch.float64, device=task.device)   # ended, clean goal, contact, refused, length
     # Realized experience per sampling group: steps every step, lengths at episode end.
     sampling_ids = getattr(task.bank, 'sampling_ids', None)
     n_groups = int(task.bank.sampling_masses.numel()) if sampling_ids is not None else 0
@@ -381,6 +386,16 @@ def collect_rollout(task, learner, *, unroll_length, trajectories, policy_ids):
             bucket_stats[:, 7].scatter_add_(0, bucket, lost.double())
             obstacle = ended & metrics.get('episode/obstacle', torch.zeros_like(done)).bool()
             bucket_stats[:, 8].scatter_add_(0, bucket, obstacle.double())
+            if bool(ended.any()):
+                # Per skill, field-driven episodes only (keyboard episodes have their own buckets).
+                field = ended & ~(was_teleop if 'teleop/active' in metrics else torch.zeros_like(ended))
+                goal = metrics.get('episode/goal_reached', torch.zeros_like(done)).bool()
+                fell_ep = metrics.get('episode/fall', torch.zeros_like(done)).bool()
+                clean = field & goal; touched = field & obstacle & ~goal; refused = field & ~goal & ~obstacle & ~fell_ep
+                tags = skill_matrix[metrics['scene_ids']]
+                for column, flag in enumerate((field, clean, touched, refused)):
+                    skill_stats[:, column] += (tags * flag.double()[:, None]).sum(0)
+                skill_stats[:, 4] += (tags * torch.where(field, metrics['episode_length'], 0.).double()[:, None]).sum(0)
             if 'blocked' in task.navigation:
                 blocked = task.navigation['blocked'] & task.navigation['enabled']
                 old = task.info['step'] > 1000
@@ -510,6 +525,13 @@ def collect_rollout(task, learner, *, unroll_length, trajectories, policy_ids):
     from .response_split import summaries
     info['metrics'].update({'training/response_split/'+k:v for k,v in
         summaries({k:float(v) for k,v in response_counts.items()}).items()})
+    for name, (ended_n, clean_n, touched_n, refused_n, length_n) in zip(skill_names, skill_stats.cpu().numpy().tolist()):
+        if ended_n:
+            info['metrics'][f'skill/{name}/episodes'] = ended_n
+            info['metrics'][f'skill/{name}/success_rate'] = clean_n / ended_n
+            info['metrics'][f'skill/{name}/contact_rate'] = touched_n / ended_n
+            info['metrics'][f'skill/{name}/refused_rate'] = refused_n / ended_n
+            info['metrics'][f'skill/{name}/mean_episode_length'] = length_n / ended_n
     stats = bucket_stats.cpu().numpy(); nav_stats = bucket_nav.cpu().numpy()
     for index, name in enumerate(SCENE_BUCKETS):
         ended, resolved, successful, undecided, touched, fell, length_sum, lost, obstacle = (float(x) for x in stats[index])
@@ -683,6 +705,55 @@ SCENE_BUCKETS = ('procedural_cat', 'original_cat', 'published_cat',
                  'narrow_passage', 'protected_passage', 'transition_passage',
                  'table_edges',
                  'open_passage', 'flat_balance', 'reactive_standing', 'reactive_walking', 'teleop', 'teleop_cat', 'side_gap')
+
+
+def scene_skill_tags(bank):
+    """Per-scene skill tags for reporting what each KIND of motion does (several tags per scene allowed).
+
+    The per-type buckets hid a 82% -> 63% drop in hurdle success (deterministic) behind stable published-CAT
+    numbers: 5 hurdle scenes among 27 published ones. Tags: published scene types (pub_hurdle, pub_crouch,
+    pub_side, ... combinations), original, procedural by narrowest opening at 0.75 m (proc_narrow < 0.45 m
+    needs sideways, proc_mid 0.45-0.77, proc_open), side gaps by layout (gap_plain, gap_angled, ...) and width
+    band (gapw_lt040, gapw_040_050, gapw_ge050), flat. Returns (names, bool [scenes, tags])."""
+    import numpy as _np
+    manifest = bank.manifest; scenes = manifest['scenes']; tags = {}
+
+    def add(k, name):
+        tags.setdefault(name, set()).add(k)
+    sdf = bank.fields['sdf']
+    for k, scene in enumerate(scenes):
+        sid, family = scene['scene_id'], scene['family']
+        source = scene.get('source', {}) or {}
+        if sid.startswith('published-'):
+            add(k, 'pub_' + sid[len('published-'):].rstrip('0123456789').replace('-', '_'))
+        elif family == 'original_cat':
+            add(k, 'original')
+        elif source.get('kind') == 'side-gap':
+            info = source.get('side_gap', {})
+            add(k, 'gap_' + str(info.get('variant', 'v1')))
+            w = min(info.get('gap_m', 9.), info.get('gap2_m', 9.))
+            add(k, 'gapw_lt040' if w < .40 else 'gapw_040_050' if w < .50 else 'gapw_ge050')
+        elif sid == 'flat-balance-walk-v1':
+            add(k, 'flat')
+        elif family == 'procedural_cat':
+            X, Y, Z = (int(v) for v in bank.shapes[k]); o = bank.origins[k].tolist(); dx = float(bank.dxs[k])
+            z = int(round((.75 - o[2]) / dx))
+            if not 0 <= z < Z:
+                add(k, 'proc_open'); continue
+            grid = sdf[int(bank.offsets[k]):int(bank.offsets[k]) + X * Y * Z].reshape(X, Y, Z)[:, :, z].float().cpu().numpy() <= 0
+            narrowest = 9.
+            for column in grid:
+                if column.any() and not column.all():
+                    free = ~column; best = run = 0
+                    for v in free:
+                        run = run + 1 if v else 0; best = max(best, run)
+                    narrowest = min(narrowest, best * dx)
+            add(k, 'proc_narrow' if narrowest < .45 else 'proc_mid' if narrowest < .77 else 'proc_open')
+    names = sorted(tags)
+    matrix = _np.zeros((len(scenes), len(names)), dtype=bool)
+    for j, name in enumerate(names):
+        matrix[sorted(tags[name]), j] = True
+    return names, matrix
 
 
 def _scene_buckets(manifest):
