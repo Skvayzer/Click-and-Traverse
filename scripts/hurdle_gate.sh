@@ -6,17 +6,25 @@
 # only if hurdle success >= THRESHOLD. Otherwise leave it stopped. Log: RUN_DIR.gate.log
 RUN=$1; RESUME=$2; THRESHOLD=$3; shift 3
 LOG=$RUN.gate.log; cd "$(dirname "$0")/.."
+# The trainer only: its argv starts with the venv python. A plain `pgrep -f "python train_cat_mjlab.py run"`
+# also matches any shell whose command line merely CONTAINS that text (the first version of this gate
+# interrupted such a waiter shell instead of the trainer, then ran the check on a full GPU).
+trainer() { ps -eo pid,args | awk '$2 ~ /python$/ && $3 == "train_cat_mjlab.py" && $4 == "run" {print $1}' | head -1; }
 for U in "$@"; do
   while [ -z "$(ls "$RUN/snapshots" 2>/dev/null | awk -F'[_.]' -v u="$U" '$2+0>=u')" ]; do
-    pgrep -f "python train_cat_mjlab.py run" >/dev/null || { echo "$(date +%F_%T) training not running; gate exits" >> "$LOG"; exit 1; }
+    [ -n "$(trainer)" ] || { echo "$(date +%F_%T) training not running; gate exits" >> "$LOG"; exit 1; }
     sleep 60
   done
   SNAP=$(ls "$RUN/snapshots" | awk -F'[_.]' -v u="$U" '$2+0>=u' | head -1)
-  P=$(pgrep -f "python train_cat_mjlab.py run" | head -1)
+  P=$(trainer)
+  [ -n "$P" ] || { echo "$(date +%F_%T) no trainer process found" >> "$LOG"; exit 1; }
   kill -INT "$P"; while kill -0 "$P" 2>/dev/null; do sleep 5; done
   pkill -f "keep_snapshots.sh $RUN" 2>/dev/null
   RESULT=$(timeout 1800 .venv-mjlab/bin/python scripts/diagnose_hurdles.py "$RUN/snapshots/$SNAP" field 2>&1 | grep '^{')
-  SUCCESS=$(echo "$RESULT" | python3 -c "import json,sys;print(json.load(sys.stdin)['success'])")
+  SUCCESS=$(echo "$RESULT" | python3 -c "import json,sys;print(json.load(sys.stdin)['success'])" 2>/dev/null)
+  if [ -z "$SUCCESS" ]; then
+    echo "$(date +%F_%T) $SNAP: hurdle check produced no result; NOT a verdict -- training left stopped for inspection" >> "$LOG"; exit 3
+  fi
   echo "$(date +%F_%T) $SNAP hurdle success $SUCCESS (threshold $THRESHOLD) $RESULT" >> "$LOG"
   if python3 -c "import sys;sys.exit(0 if float('$SUCCESS')>=float('$THRESHOLD') else 1)"; then
     nohup setsid bash "$RESUME" >> "$RUN.resume.log" 2>&1 < /dev/null &
