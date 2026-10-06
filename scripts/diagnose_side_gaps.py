@@ -59,7 +59,7 @@ rows = []
 REG = ('feet', 'legs', 'trunk', 'head', 'arms', 'hands')
 for t in range(3000):
     scene = task.scene_ids.clone()
-    q = sim.data.qpos; x = q[:, 0]; y = q[:, 1]
+    q = sim.data.qpos; x = q[:, 0].clone(); y = q[:, 1].clone()   # clones: task.step resets done worlds in place
     yaw = torch.atan2(2 * (q[:, 3] * q[:, 6] + q[:, 4] * q[:, 5]), 1 - 2 * (q[:, 5] ** 2 + q[:, 6] ** 2))
     near = torch.isnan(rec_yaw) & (x >= WX[scene] - .35)
     rec_yaw = torch.where(near, yaw.abs(), rec_yaw); rec_lat = torch.where(near, (y - GY[scene]).abs(), rec_lat)

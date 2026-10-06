@@ -378,6 +378,14 @@ scenes (scripts/generate_side_gaps.py; v7: own sampling group, 15% of experience
 The sidestep-through skill does not exist; at 0% success RL has nothing to reinforce. heading_align pays for
 facing forward until shoulder probes 0.3 m ahead close its gate.
 
+**Correction (2026-10-06):** scripts/diagnose_side_gaps.py read x through a view of sim.data.qpos, which
+task.step resets in place for done worlds, so "passed clean" was always 0. The v7 "placed sideways: 0% clean"
+above is therefore unmeasured (v7's training side-gap success, ~4%, was correct). Facing/alignment/contact
+numbers were computed before the step and stand. Fixed (clone). v8 final (update 355), corrected:
+forward start 13% clean (corridor 31, angled 21, plain 7, far offset 5, two walls 5; ~0% sideways at the
+wall), free 28%, sideways start 37%. v8 course check u340: field 17.5% clean / 45% crossed (v2 30 / 47.5),
+keyboard 50 / 60 (v2 22.5 / 30); course gaps refused 4/4 both modes; field hands touched the tables 4/4.
+
 ## 8. Not yet done / next
 
 - Reference-state initialisation from sidle / duck clips (planned; not in the first pilot).
