@@ -150,3 +150,10 @@ def test_scene_skill_tags():
     names, matrix = scene_skill_tags(bank)
     tags = [sorted(n for n, on in zip(names, row) if on) for row in matrix]
     assert tags == [['proc_narrow'], ['pub_side_hurdle'], ['gap_angled', 'gapw_lt040'], ['original']]
+
+
+def test_config_contact_penalty():
+    from cat_mjlab.config import wholebody_config
+    assert wholebody_config(contact_penalty=3.)['contact_penalty'] == 3.
+    with pytest.raises(ValueError):
+        wholebody_config(contact_penalty=-1.)

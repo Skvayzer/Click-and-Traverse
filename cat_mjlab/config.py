@@ -39,7 +39,7 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
                      keyboard_v10=None,hand_clearance_tight=None,teleop_progress_weight=None,teleop_stall_weight=None,
                      teleop_cat_fraction=None,heading_lookaheads=None,heading_blocking_probes=None,sideways_bonus_weight=None,
                      side_gap_curriculum=None,teleop_side_prob=None,hand_tight_walls_only=None,side_gap_tumbling=None,
-                     sideways_bonus_progress=None):
+                     sideways_bonus_progress=None,contact_penalty=None):
     from cat_ppo.furniture.generalist_config import released_config
     from .collision import PROPOSAL
     config=copy.deepcopy(released_config()['env_config'] if base_config is None else base_config)
@@ -260,6 +260,9 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
         if 'sideways_bonus' not in scales:raise ValueError('sideways_bonus_progress requires sideways_bonus_weight')
         if not sideways_bonus_progress>0:raise ValueError('sideways_bonus_progress must be > 0 (m/s for the full bonus)')
         config['sideways_bonus_progress']=float(sideways_bonus_progress)
+    if contact_penalty is not None:
+        if not contact_penalty>=0:raise ValueError('contact_penalty must be >= 0')
+        config['contact_penalty']=float(contact_penalty)
     if side_gap_tumbling:
         if 'side_gap_curriculum' not in config:raise ValueError('side_gap_tumbling requires side_gap_curriculum')
         config['side_gap_curriculum']['tumbling']=True

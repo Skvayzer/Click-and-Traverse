@@ -921,7 +921,10 @@ def _rebalance_bank(bank, args):
         narrow = torch.as_tensor([bool('-narrow-' in r['scene_id']) for r in bank.manifest['scenes']],
                                  device=bank.sampling_ids.device)
         bank.sampling_ids = torch.where(narrow, target, bank.sampling_ids)
-    zero = getattr(args, 'zero_weight_scenes', None) or []
+    zero = []
+    for item in getattr(args, 'zero_weight_scenes', None) or []:
+        # '@file': one scene id per line (lists of hundreds of scenes, e.g. a specialist's excluded scenes)
+        zero += [l.strip() for l in Path(item[1:]).read_text().splitlines() if l.strip()] if item.startswith('@') else [item]
     if zero:
         # Scenes never sampled (e.g. published-side1: a 0.24 m opening, unpassable without touching under the
         # no-contact rule). The adaptive sampler keeps them at 0 too (CATTask: weights * (bank.weights > 0)).
@@ -1041,7 +1044,7 @@ def create_task(args, *, environment_config=None, sim_class=None):
         sideways_bonus_weight=getattr(args, 'sideways_bonus_weight', None), side_gap_curriculum=getattr(args, 'side_gap_curriculum', None),
         teleop_side_prob=getattr(args, 'teleop_side_prob', None),
         hand_tight_walls_only=getattr(args, 'hand_tight_walls_only', None), side_gap_tumbling=getattr(args, 'side_gap_tumbling', None),
-        sideways_bonus_progress=getattr(args, 'sideways_bonus_progress', None),
+        sideways_bonus_progress=getattr(args, 'sideways_bonus_progress', None), contact_penalty=getattr(args, 'contact_penalty', None),
         standing_gf_bonus=getattr(args, 'standing_gf_bonus', None),
         reactive_hand_guidance=getattr(args, 'reactive_hand_guidance', None),
         handsdf_weight=getattr(args, 'handsdf_weight', None),

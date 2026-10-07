@@ -875,6 +875,16 @@ class CATTask:
             mask=getattr(self,'joystick_mask',None)
             root=torch.zeros_like(root) if mask is None else root&~mask
         obstacle=fields|elbows|root|body;done=fall|self_contact|numerical|obstacle
+        self._soft_contact=None
+        if self.config.get('contact_penalty') is not None:
+            # Contact curriculum (narrow-passage specialist, phase 1): only HAND contact (hand proxy shapes or the
+            # hand envelope) ends the episode; any other touch costs contact_penalty per step instead, so the
+            # sidestep can be learned by correcting small bumps (with every touch terminal, narrow-gap success
+            # stayed at 0-1% and RL had nothing to reinforce). The episode flags still record the touch, so
+            # success stays strict: a touched episode is never a clean goal.
+            hands=regions[:,5]|((i['sdf'][:,5:7]<threshold).flatten(1).any(-1)&grace)
+            done=fall|self_contact|numerical|hands
+            self._soft_contact=obstacle&~hands
         if _get(self.config,'terminate_on_hand_self_contact',False):done=done|hand_self_contact
         recovery=self.config.get('route_recovery')
         route_lost=None
@@ -1377,6 +1387,8 @@ class CATTask:
         terminated,faults=self._termination(regions,contacts)
         reward,components=self._rewards(action,contacts)
         penalty=-float(_get(self.config,'wholebody.body_collision.event_penalty',1.))*regions.any(-1)
+        if getattr(self,'_soft_contact',None) is not None:
+            penalty=penalty-float(self.config['contact_penalty'])*self._soft_contact
         if self.collision is not None:reward+=penalty;components['body_collision_event']=penalty
         i['wrapper_steps']+=1
         lengths=self.bank.episode_lengths[self.scene_ids]

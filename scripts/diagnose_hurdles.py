@@ -21,8 +21,12 @@ ns = SimpleNamespace(bank_manifest=ROOT / (B + '_packed/manifest.json'), body_co
                      body_collision_resets=ROOT / (B + '_resets/manifest.json'), device=dev, seed=1, num_envs=1024, compile_task=False,
                      nconmax=c['nconmax'], njmax=c['njmax'], reactive_bank=None, reactive_row=None)
 task, sim, _ = create_task(ns, environment_config=env)
-ids = [i for i, s in enumerate(task.bank.manifest['scenes']) if s['scene_id'].startswith(('published-hurdle', 'published-multi-hurdle'))
-       and 'crouch' not in s['scene_id']]
+SCENES = sys.argv[4] if len(sys.argv) > 4 else 'hurdle'
+SETS = dict(hurdle=lambda i: i.startswith(('published-hurdle', 'published-multi-hurdle')) and 'crouch' not in i,
+            crouch=lambda i: i.startswith('published-crouch'),
+            hurdle_crouch=lambda i: i.startswith('published-hurdle-crouch'),
+            side=lambda i: i.startswith('published-side') and 'hurdle' not in i and 'crouch' not in i and i != 'published-side1')
+ids = [i for i, s in enumerate(task.bank.manifest['scenes']) if SETS[SCENES](s['scene_id'])]
 pool = torch.tensor(ids, device=dev)
 orig = task.reset
 def pinned(env_ids=None, scene_ids=None):
@@ -57,7 +61,7 @@ for t in range(3000):
         through = ~stop & ~turn & (b[:, 1].abs() < 1e-6) & (b[:, 2].abs() < 1e-6) & (b[:, 0] > 0)
         cmd['stop'] += int(stop.sum()); cmd['turn'] += int(turn.sum()); cmd['through'] += int(through.sum()); cmd['other'] += int((~stop & ~turn & ~through).sum())
 E = max(stats['episodes'], 1)
-print(json.dumps(dict(policy=Path(sys.argv[1]).name, mode=mode, actions='stochastic' if STOCHASTIC else 'deterministic', scenes=len(ids), episodes=stats['episodes'], refused=round(1 - stats['success'] / E - stats['contact'] / E, 3),
+print(json.dumps(dict(scenes_set=SCENES, policy=Path(sys.argv[1]).name, mode=mode, actions='stochastic' if STOCHASTIC else 'deterministic', scenes=len(ids), episodes=stats['episodes'], refused=round(1 - stats['success'] / E - stats['contact'] / E, 3),
                       success=round(stats['success'] / E, 3), contact=round(stats['contact'] / E, 3), timeout=round(stats['timeout'] / E, 3),
                       fall=round(stats['fall'] / E, 3), hit={r: round(stats['hit_' + r] / E, 3) for r in REG},
                       **({'command_at_contact': cmd} if mode == 'keyboard' else {}))))
