@@ -391,7 +391,8 @@ def collect_rollout(task, learner, *, unroll_length, trajectories, policy_ids):
                 field = ended & ~(was_teleop if 'teleop/active' in metrics else torch.zeros_like(ended))
                 goal = metrics.get('episode/goal_reached', torch.zeros_like(done)).bool()
                 fell_ep = metrics.get('episode/fall', torch.zeros_like(done)).bool()
-                clean = field & goal; touched = field & obstacle & ~goal; refused = field & ~goal & ~obstacle & ~fell_ep
+                # clean = reached the goal and never touched (with non-terminal contact a robot can touch, then cross)
+                clean = field & goal & ~obstacle; touched = field & obstacle; refused = field & ~goal & ~obstacle & ~fell_ep
                 tags = skill_matrix[metrics['scene_ids']]
                 for column, flag in enumerate((field, clean, touched, refused)):
                     skill_stats[:, column] += (tags * flag.double()[:, None]).sum(0)
@@ -1045,6 +1046,8 @@ def create_task(args, *, environment_config=None, sim_class=None):
         teleop_side_prob=getattr(args, 'teleop_side_prob', None),
         hand_tight_walls_only=getattr(args, 'hand_tight_walls_only', None), side_gap_tumbling=getattr(args, 'side_gap_tumbling', None),
         sideways_bonus_progress=getattr(args, 'sideways_bonus_progress', None), contact_penalty=getattr(args, 'contact_penalty', None),
+        stall_weight=getattr(args, 'stall_weight', None), goal_progress_weight=getattr(args, 'goal_progress_weight', None),
+        goal_bonus_weight=getattr(args, 'goal_bonus_weight', None), timeout_failure=getattr(args, 'timeout_failure', None),
         standing_gf_bonus=getattr(args, 'standing_gf_bonus', None),
         reactive_hand_guidance=getattr(args, 'reactive_hand_guidance', None),
         handsdf_weight=getattr(args, 'handsdf_weight', None),

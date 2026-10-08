@@ -763,6 +763,8 @@ class CATTask:
         left=torch.rand((n,),device=self.device,generator=self.generator)<.5
         defaults['phase']=torch.where(left[:,None],qpos.new_tensor([0.,np.pi]),qpos.new_tensor([np.pi,0.]))
         defaults['foot_height']=self._rand((n,),*_get(self.config,'gait_config.foot_height_range',[.07,.07]))
+        defaults['progress_ema']=torch.zeros(n,device=self.device)
+        defaults['goal_prev']=torch.zeros(n,dtype=torch.bool,device=self.device)
         defaults['kp']=self._rand((n,),*_get(self.config,'dm_rand_config.kp_range',[.75,1.25])) if _get(self.config,'dm_rand_config.enable_pd',True) else torch.ones(n,device=self.device)
         defaults['kd']=self._rand((n,),*_get(self.config,'dm_rand_config.kd_range',[.75,1.25])) if _get(self.config,'dm_rand_config.enable_pd',True) else torch.ones(n,device=self.device)
         defaults['rfi']=self._rand((n,29),*_get(self.config,'dm_rand_config.rfi_lim_range',[.5,1.5]))*float(_get(self.config,'dm_rand_config.rfi_lim',.1))*self.torque_limit
@@ -1038,6 +1040,24 @@ class CATTask:
         if self.stabilization:rewards.update(costs)
         scales=_get(self.config,'reward_config.scales',{})
         if 'action_rate' in scales:rewards['action_rate']=self._action_rate
+        if any(k in scales for k in ('stall','goal_progress','goal_bonus')):
+            # Anti-refusal (reports/RL refusal versus attempt incentives.md): standing in front of an obstacle earned
+            # the same ~15/step as crossing, so refusing was the reward-optimal answer. CAT-type (x-plane goal),
+            # field-driven worlds only. stall: 1-s average forward speed < 0.1 m/s while > 0.5 m before the goal
+            # plane and the goal not yet reached (ANYmal Parkour / Rudin 2022 'don't wait'); goal_progress: forward
+            # speed toward the goal plane, capped at 0.6 m/s; goal_bonus: once, on the step the goal is reached.
+            mask=getattr(self,'joystick_mask',None)
+            cat=self.bank.crossed_is_plane[self.scene_ids]&(torch.ones_like(self.scene_ids,dtype=torch.bool) if mask is None else ~mask)
+            vx=self._sensor('global_linvel_pelvis',self.all_ids)[:,0]
+            i['progress_ema']=.98*i['progress_ema']+.02*vx
+            reached=self.episode['goal_reached']
+            ahead=self.bank.goals[self.scene_ids,0]-self.data.qpos[:,0]
+            terms=dict(stall=lambda:(cat&~reached&(ahead>.5)&(i['progress_ema']<.1)&(i['step']>25)).float(),
+                       goal_progress=lambda:(vx.clamp(0.,.6)/.6)*(cat&~reached),
+                       goal_bonus=lambda:(cat&reached&~i['goal_prev']).float())
+            for name,term in terms.items():
+                if name in scales:rewards[name]=term()
+            i['goal_prev']=reached.clone()
         if 'sideways_bonus' in scales and heading_sdf is not None:
             # Where a body facing the travel direction does not fit (heading gate closed), pay for being turned
             # sideways to it: |sin(facing - travel)|, 1 at 90 deg. Off in the open (gate 1).
@@ -1406,6 +1426,15 @@ class CATTask:
             # by losing the future standing reward.
             i['goal_steps']=torch.where(self.episode['goal_reached']&self.navigation['enabled'],i['goal_steps']+1,0)
             timeout=timeout|(i['goal_steps']*self.dt>=float(hold))
+        if self.config.get('timeout_failure'):
+            # A CAT-type episode that runs out of time without reaching the goal is a FAILURE (terminal, no bootstrap):
+            # the task is "cross within the time limit" (Pardo et al. 2018). Bootstrapping it valued refusing as if the
+            # robot could stand there forever. Only full-length episodes (not the shortened ones at launch), only
+            # field-driven worlds; reached-goal timeouts stay truncations.
+            mask=getattr(self,'joystick_mask',None)
+            field=torch.ones_like(timeout) if mask is None else ~mask
+            failed=timeout&~terminated&self.bank.crossed_is_plane[self.scene_ids]&field&~self.episode['goal_reached']&(i['step']>=(.9*lengths).long())
+            terminated=terminated|failed
         truncated=timeout&~terminated;done=terminated|timeout
         resolved,successful=self._outcomes(done,truncated)
         self.episode_reward+=reward

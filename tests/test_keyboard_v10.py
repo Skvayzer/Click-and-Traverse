@@ -157,3 +157,12 @@ def test_config_contact_penalty():
     assert wholebody_config(contact_penalty=3.)['contact_penalty'] == 3.
     with pytest.raises(ValueError):
         wholebody_config(contact_penalty=-1.)
+
+
+def test_config_anti_refusal():
+    from cat_mjlab.config import wholebody_config
+    c = wholebody_config(stall_weight=-5., goal_progress_weight=5., goal_bonus_weight=2000., timeout_failure=True)
+    s = c['reward_config']['scales']
+    assert (s['stall'], s['goal_progress'], s['goal_bonus']) == (-5., 5., 2000.) and c['timeout_failure']
+    with pytest.raises(ValueError):
+        wholebody_config(stall_weight=5.)

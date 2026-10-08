@@ -109,6 +109,11 @@ def parser():
                             help="Keyboard worlds: cost per step of moving < 0.05 m/s along a passable target (> 0.15 m/s); negative")
         target.add_argument("--teleop-cat-fraction", type=float, help="Keyboard share of CAT-scene episodes (default: --teleop-fraction)")
         target.add_argument("--zero-weight-scenes", nargs="+", metavar="SCENE_ID", help="Never sample these scenes (@FILE: one id per line)")
+        target.add_argument("--stall-weight", type=float, help="CAT scenes: cost while 1-s forward speed < 0.1 m/s > 0.5 m before the goal (negative)")
+        target.add_argument("--goal-progress-weight", type=float, help="CAT scenes: reward for forward speed toward the goal plane (capped 0.6 m/s)")
+        target.add_argument("--goal-bonus-weight", type=float, help="CAT scenes: one-step bonus when the goal is reached")
+        target.add_argument("--timeout-failure", action="store_true", default=None,
+                            help="CAT scenes: a full-length episode that times out without reaching the goal is terminal (no bootstrap)")
         target.add_argument("--contact-penalty", type=float, metavar="W",
                             help="Contact curriculum: only hand contact ends the episode; other touches cost W per step (success stays strict)")
         target.add_argument("--heading-lookaheads", type=float, nargs="+", help="Forward-facing gate probes at these distances ahead (m)")
