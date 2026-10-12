@@ -48,6 +48,8 @@ def parser():
                    help="Force this reactive-bank row (an approaching object) instead of the .25 reset coin; "
                         "needs --reactive-bank. The object trajectory is exported for the renderer.")
     p.add_argument("--no-pushes", action="store_true", help="Disable the training's random pushes (0.1-1 m/s kicks every 5-10 s)")
+    p.add_argument("--no-curriculum-starts", action="store_true",
+                   help="Drop the side-gap curriculum (its sideways starts): episodes start like ordinary CAT resets")
     p.add_argument("--joystick", help="Teleoperation: constant world-frame velocity 'vx,vy' (m/s) replaces the route")
     p.add_argument("--joystick-toward", help="Teleoperation: drive straight at the nearest scene box whose category "
                                              "contains this text (e.g. 'top' = tabletops), from the reset position")
@@ -250,6 +252,8 @@ def main(argv=None):
     environment = json.loads(json.dumps(contract["environment_config"]))
     if args.no_pushes:
         environment["push_config"]["enable"] = False
+    if getattr(args, "no_curriculum_starts", False):
+        environment.pop("side_gap_curriculum", None)
     if args.joystick or args.joystick_toward:
         environment.pop("teleop", None)             # the recorder drives the joystick itself
     task, sim, _ = create_task(factory_args, environment_config=environment)
