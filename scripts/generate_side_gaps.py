@@ -34,6 +34,22 @@ START = np.array([.5, 1.])
 VARIANTS = (("plain", .25), ("angled", .20), ("corridor", .20), ("far_offset", .15), ("two_walls", .20))
 
 
+def fixed_gap_boxes(width, dx, depth=.10, x_offset=1.0):
+    """Demo/test layout: one plain wall whose VOXELIZED gap is `width` metres, no bar or beam. The occupancy grid
+    rounds wall edges outward one cell per side, so the geometric gap is width + 2 dx, shifted half a cell when
+    needed to put both edges on cell boundaries (measured: a centred 0.58 m gap voxelizes like 0.56 m, to 0.52)."""
+    boxes = []
+    gap = width + 2 * dx
+    offset = 0. if abs(gap / 2 / dx - round(gap / 2 / dx)) < 1e-6 else dx / 2
+    x = START[0] + x_offset
+    for sign, tag in ((-1, "_a"), (1, "_b")):
+        L = 2.6
+        cy = WIDTH / 2 + offset + sign * (gap / 2 + L / 2)
+        boxes.append(dict(name="w1" + tag, category="wall_side", center=[round(x + depth / 2, 4), round(cy, 4), round(HEIGHT / 2, 4)],
+                          half_size=[round(depth / 2, 4), L / 2, round(HEIGHT / 2, 4)], yaw=0.))
+    return boxes, dict(variant="plain", gap_m=round(gap, 3), voxel_gap_m=round(width, 3), wall_depth_m=depth, offset_m=offset, walls=1)
+
+
 def scene_boxes(rng, variant=None):
     """One side-gap layout. Variants (v2 mixture): plain thin wall (optionally a low bar or a beam in the gap),
     wall angled +-30 deg to the path, corridor (the narrow part 0.3-0.9 m long), gap far to one side
@@ -100,6 +116,8 @@ def main():
     p.add_argument("--seed", type=int, default=20261006)
     p.add_argument("--prefix", default="sidegap2")
     p.add_argument("--dx", type=float, default=.04)
+    p.add_argument("--widths", type=float, nargs="+", help="Fixed VOXELIZED gap widths (m, what collision sees): one plain wall "
+                   "per width, no bar/beam (demo / width sweep); ignores --count")
     args = p.parse_args()
     if args.output.exists():
         raise ValueError("Output bank already exists; refusing to overwrite")
@@ -111,11 +129,12 @@ def main():
     rng = np.random.default_rng(args.seed)
     records = []
     shift = np.array([START[0], START[1], 0.])
-    for n in range(args.count):
-        boxes, info = scene_boxes(rng)
+    for n in range(len(args.widths) if args.widths else args.count):
+        boxes, info = fixed_gap_boxes(args.widths[n], args.dx) if args.widths else scene_boxes(rng)
         dims = [LENGTH, WIDTH, HEIGHT]
         start, goal = [float(START[0]), float(START[1]), 0.], [float(START[0] + 2.), float(START[1])]
-        scene_id = f"{args.prefix}-{n:04d}-{info['variant']}-w{info['gap_m']:.2f}"
+        scene_id = (f"{args.prefix}-{n:04d}-voxel-gap-{info['voxel_gap_m']:.2f}" if "voxel_gap_m" in info
+                    else f"{args.prefix}-{n:04d}-{info['variant']}-w{info['gap_m']:.2f}")
         scene = dict(schema=SCHEMA, scene_id=scene_id, family="furniture", split="train", units="metres",
                      coordinate_system="right-handed-z-up", boxes=boxes, room_dimensions=dims,
                      geometry_hash=_digest(dict(boxes=boxes, room_dimensions=dims)), start=start, goal=goal,
