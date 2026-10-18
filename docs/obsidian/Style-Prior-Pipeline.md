@@ -386,6 +386,46 @@ forward start 13% clean (corridor 31, angled 21, plain 7, far offset 5, two wall
 wall), free 28%, sideways start 37%. v8 course check u340: field 17.5% clean / 45% crossed (v2 30 / 47.5),
 keyboard 50 / 60 (v2 22.5 / 30); course gaps refused 4/4 both modes; field hands touched the tables 4/4.
 
+## 7k. Specialist experts, then one student (2026-10-07 .. 10-18)
+
+**Why specialists.** One CAT expert trading skills (v8-v10): side gaps 4% -> ~45% while hurdles fell 82% -> 63%
+and crouch 62% -> 42% (deterministic), through refusals (4% -> 25%). Refusal was reward-optimal: standing earned
+~15/step like crossing, failed 20 s timeouts were bootstrapped, contact cut the reward stream
+(reports/RL refusal versus attempt incentives.md). Fixes: stall -5, goal progress 5, goal bonus 2000 (once),
+failed full-length CAT timeouts terminal. A contact *penalty* instead of termination made refusals worse (phase 1).
+
+| expert | scenes | result | checkpoint |
+|---|---|---|---|
+| narrow v2 (10-08) | side gaps, procedural openings < 0.77 m | refusals 17-55% -> 2-9%; side gaps >= 0.50 m 70%, 0.40-0.50 47%, < 0.40 15%; procedural < 0.45 m 2-3% | outputs/saved_checkpoints/narrow_expert_v2_u1400.pt |
+| traversal v1 (10-12..15) | hurdles, crouch, open CAT, openings >= 0.45 m | hurdle gate 82% (deterministic) at 100/200/400; training clean (u~1550): hurdle 73%, crouch 66-75%, side+hurdle 62%, multi-hurdle 49%, procedural open 57%; plateau from ~1250, stopped 1784 | outputs/traversal_expert_v1_20261012/snapshots/update_1764.pt |
+| rooms+keyboard v9 (10-01) | furniture, clutter, table edges, flat, keyboard | clutter/furniture ~75%, table edges ~22% | outputs/saved_checkpoints/cat_g1_rooms_keyboard_v9_u492_full.pt |
+
+**Combining (plan of 10-18, external research checked against this code).** Step 1: three-teacher DAgger in the
+field-observation space; step 2: RL fine-tune of that student with per-group rewards and a fading DAgger
+regulariser (the CAT JAX pipeline is DAgger -> PPO: cat_ppo/learning/policy/ppo/train.py
+`compute_dagger_then_ppo_loss`); step 3: voxel student distilled from the fine-tuned generalist only. MoE only as an
+ablation: the measured conflict is shared reward weights and data, not gradients (section 7); a wider MLP first.
+
+What the code needed, and what was built (commit 345581f):
+- **Per-scene routing.** distill.py routed by bucket; the traversal/narrow split runs through procedural_cat and
+  published_cat by opening width. Now `--distill-route-file` (scene id -> expert) from
+  `scripts/build_distill_routing.py`: the expert that trained on the scene, unless the other CAT expert measured
+  > 15 points better (`scripts/eval_per_scene.py`, 12 deterministic episodes per scene); scenes whose owner is
+  below 20% clean are dropped (zero weight) -- imitating a failing teacher teaches failure.
+- **Same inputs as in training, per teacher.** Checkpoint contracts differ in two settings that change what the
+  policy SEES in commanded (room / keyboard) worlds: blocking_map (narrow/traversal on: heading command gate and
+  guidance projection) and head_guidance_near_sdf (rooms 0.3). CAT worlds are field-driven and identical for all
+  three (task._observe; the commanded replacement applies only where `_commanded`). The student env uses the
+  rooms settings in commanded worlds. SAPG experts are queried at head 0 (leader), as in all deterministic tests.
+- **RL fine-tune mode.** `--distill-regularize L0 L1 N` (PPO learns; teacher labels add lambda * action-mean MSE
+  to the PPO loss, lambda L0 -> L1 over N updates; scenes without a teacher unlabelled), `--critic-warmup-updates`
+  (actor frozen, value loss only), `--reward-group-room TERM=SCALE ...` (room worlds use the rooms expert's
+  weights, CAT worlds the global ones), `--commanded-blocking-map off`, `--hand-tight-cat-only`.
+  No critic one-hot group label: the critic input contract (310) is fixed across the codebase; the command inputs
+  already differ between field-driven and room worlds.
+- Pass test: `scripts/compare_student_teachers.py` -- per skill tag, student clean success within 5 points of the
+  routed teacher on the same scenes, hand contacts reported.
+
 ## 8. Not yet done / next
 
 - Reference-state initialisation from sidle / duck clips (planned; not in the first pilot).

@@ -40,6 +40,7 @@ def main():
     p.add_argument("--stochastic", action="store_true")
     p.add_argument("--max-steps", type=int, default=40000)
     p.add_argument("--seed", type=int, default=1)
+    p.add_argument("--no-compile", action="store_true", help="Skip torch.compile of the task (about 4x slower at 16k envs)")
     p.add_argument("--out", type=Path, required=True)
     args = p.parse_args()
     from record_mjlab_rollout import load_policy
@@ -54,7 +55,7 @@ def main():
     B = ROOT / args.bank
     ns = SimpleNamespace(bank_manifest=Path(str(B) + "_packed/manifest.json"), body_collision_bank=Path(str(B) + "_collision/manifest.json"),
                          body_collision_resets=Path(str(B) + "_resets/manifest.json"), device=dev, seed=args.seed, num_envs=args.num_envs,
-                         compile_task=False, nconmax=contract["nconmax"], njmax=contract["njmax"], reactive_bank=None, reactive_row=None)
+                         compile_task=not args.no_compile, nconmax=contract["nconmax"], njmax=contract["njmax"], reactive_bank=None, reactive_row=None)
     task, sim, _ = create_task(ns, environment_config=env)
     scenes = task.bank.manifest["scenes"]
     if args.scenes.startswith("@"):
