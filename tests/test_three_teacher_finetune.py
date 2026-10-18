@@ -44,11 +44,11 @@ def test_distill_regulariser_adds_masked_mse():
     total, m = compute_loss(learner.model, data, config, distill_lambda=2., entropy_noise=noise)
     mean, _ = gaussian_parameters(learner.model.logits(data["state"], data["policy_id"]))
     expected = mean.square().mean(-1).mean()
-    assert torch.allclose(m["distill_reg_mse"], expected, atol=1e-6)
+    assert torch.allclose(m["distill/reg_mse"], expected, atol=1e-6)
     assert torch.allclose(total, base + 2. * expected, atol=1e-5)
     data["distill_mask"] = torch.zeros_like(data["distill_mask"])
     total0, m0 = compute_loss(learner.model, data, config, distill_lambda=2., entropy_noise=noise)
-    assert float(m0["distill_reg_mse"]) == 0. and torch.allclose(total0, base, atol=1e-6)
+    assert float(m0["distill/reg_mse"]) == 0. and torch.allclose(total0, base, atol=1e-6)
 
 
 def test_critic_warmup_leaves_actor_unchanged():

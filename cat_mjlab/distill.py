@@ -96,14 +96,17 @@ class DistillController:
             # Scenes without a competent teacher: no label (mask 0). Only meaningful in regularize mode; plain
             # DAgger never samples them (zero weight).
             index = {s["scene_id"]: i for i, s in enumerate(task.bank.manifest["scenes"])}
-            rows = torch.tensor([index[sid] for sid in dropped if sid in index], dtype=torch.long, device=self.device)
+            unknown_dropped = [sid for sid in dropped if sid not in index]
+            if unknown_dropped:
+                raise ValueError(f"dropped list has {len(unknown_dropped)} scene ids not in the bank, e.g. {unknown_dropped[:3]}")
+            rows = torch.tensor([index[sid] for sid in dropped], dtype=torch.long, device=self.device)
             self.owner_of_scene = self.owner_of_scene.clone(); self.owner_of_scene[rows] = -1
         # RL fine-tune mode: PPO drives and learns (the student acts stochastically, values and log-probs from the
         # learner); expert labels ride along as a fading regulariser in the PPO loss; the first `critic_warmup`
         # updates train only the critic (actor frozen). dict(lambda_start, lambda_end, decay, critic_warmup).
         self.regularize = regularize
         self.beta_start, self.beta_end, self.beta_decay = beta_start, beta_end, beta_decay
-        self.beta = beta_start
+        self.beta = self._beta(learner.updates)
         self.expert_drives = torch.ones(task.num_envs, dtype=torch.bool, device=self.device)
         self.epochs, self.replay_rollouts, self.noise = epochs, replay_rollouts, student_noise
         self.optimizer = torch.optim.Adam(learner.model.actor.parameters(), lr=lr)
@@ -144,6 +147,11 @@ class DistillController:
         self.labels.append((label, owner))
         return dict(action=raw.tanh(), raw_action=raw, log_prob=log_probability(logits, raw), mean=mean,
                     value=torch.zeros(n, device=self.device), action_std=scale, policy_id=ids)
+
+    def _beta(self, updates):
+        # Schedules follow learner.updates (saved in resume.pt; 0 after --checkpoint-native), so a resume continues
+        # them instead of restarting (the controller's own counter is not checkpointed).
+        return max(self.beta_end, self.beta_start - (self.beta_start - self.beta_end) * updates / max(1, self.beta_decay))
 
     # ---------------------------------------------------------------- training side
     def update(self, rollout):
@@ -186,8 +194,8 @@ class DistillController:
                     per_owner[f"distill/{name}/action_mse"] = float(err[m].mean())
                     per_owner[f"distill/{name}/sample_share"] = float(m.float().mean())
         self.updates += 1
-        self.beta = max(self.beta_end, self.beta_start - (self.beta_start - self.beta_end) * self.updates / max(1, self.beta_decay))
         self.learner.updates += 1; self.learner.env_steps += trajectories * T
+        self.beta = self._beta(self.learner.updates)
         return dict(total_loss=sum(losses) / max(1, len(losses)), policy_loss=sum(losses) / max(1, len(losses)),
                     v_loss=0., entropy_loss=0., rollout_reward_mean=float(rollout["reward"].mean()),
                     physical_transitions=trajectories * T, optimizer_transitions=rows,
@@ -196,9 +204,10 @@ class DistillController:
 
     def _regularized_update(self, rollout, label, owner):
         r = self.regularize
-        progress = min(1., self.updates / max(1, int(r.get("decay", 200))))
+        step = self.learner.updates          # checkpointed: resume continues the schedule
+        progress = min(1., step / max(1, int(r.get("decay", 200))))
         lam = float(r.get("lambda_start", 1.)) + (float(r.get("lambda_end", 0.)) - float(r.get("lambda_start", 1.))) * progress
-        frozen = self.updates < int(r.get("critic_warmup", 0))
+        frozen = step < int(r.get("critic_warmup", 0))
         self.learner.distill_lambda = 0. if frozen else lam
         self.learner.actor_frozen = frozen
         rollout = dict(rollout, distill_label=label, distill_mask=(owner >= 0).float())

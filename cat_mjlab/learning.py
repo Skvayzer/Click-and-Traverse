@@ -373,7 +373,7 @@ def compute_loss(model, data, config, *, entropy_noise=None, style_lambda=0., di
         mask = data["distill_mask"]
         mse = ((mean - data["distill_label"]).square().mean(-1) * mask).sum() / mask.sum().clamp_min(1.)
         total = total + distill_lambda * mse
-        extra = dict(extra, distill_reg_mse=mse.detach(), distill_reg_loss=(distill_lambda * mse).detach())
+        extra = dict(extra, **{"distill/reg_mse": mse.detach(), "distill/reg_loss": (distill_lambda * mse).detach()})
     return total, dict(total_loss=total, policy_loss=policy_loss, v_loss=value_loss, entropy_loss=entropy_loss) | extra | ratio_diagnostics(log_prob, data, config)
 
 
@@ -467,6 +467,7 @@ class Learner:
                     # Critic warm-up (fine-tuning a distilled actor under a new reward: an untrained critic's
                     # advantages would wreck it first). Policy, entropy and regulariser terms are left out.
                     loss = metrics["v_loss"]
+                    metrics = dict(metrics, total_loss=loss)
                 if not bool(torch.isfinite(loss)):
                     raise FloatingPointError("Nonfinite learner loss; refusing optimizer step")
                 loss.backward()
