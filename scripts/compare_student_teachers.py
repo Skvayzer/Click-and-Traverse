@@ -32,7 +32,8 @@ def tags_of(scene, narrowest):
         w = min(info.get("gap_m", 9.), info.get("gap2_m", 9.))
         return ["gap_" + str(info.get("variant", "v1")), "gapw_lt040" if w < .40 else "gapw_040_050" if w < .50 else "gapw_ge050"]
     if scene.get("task_kind") == "cat":
-        n = narrowest.get(sid, 9.)
+        n = narrowest.get(sid)
+        n = 9. if n is None else n          # None: nothing blocks at body height
         return ["proc_narrow" if n < .45 else "proc_mid" if n < .77 else "proc_open"]
     if sid == "flat-balance-walk-v1":
         return ["flat"]
@@ -49,6 +50,7 @@ def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--routing", required=True)
     p.add_argument("--student", action="append", required=True, help="student eval_per_scene.py JSON (repeat: cat, room)")
+    p.add_argument("--teacher-eval", action="append", default=[], metavar="NAME=FILE", help="extra teacher evaluations (e.g. rooms)")
     p.add_argument("--bank", default="data/furniture/sidegap_v2_packed/manifest.json")
     p.add_argument("--feasibility", default="outputs/narrow_feasibility_sidegap_v2.json")
     p.add_argument("--tolerance", type=float, default=.05)
@@ -56,7 +58,8 @@ def main():
     p.add_argument("--out", type=Path)
     args = p.parse_args()
     routing = json.loads(Path(args.routing).read_text())
-    teachers = {name: json.loads(Path(path).read_text())["per_scene"] for name, path in routing["evals"].items()}
+    paths = dict(routing["evals"], **dict(item.split("=", 1) for item in args.teacher_eval))
+    teachers = {name: json.loads(Path(path).read_text())["per_scene"] for name, path in paths.items()}
     student = {}
     for path in args.student:
         student.update(json.loads(Path(path).read_text())["per_scene"])
@@ -72,7 +75,7 @@ def main():
             missing += sid in owner; continue
         st = student[sid]
         for tag in tags_of(s, narrowest):
-            if sid in owner:
+            if sid in owner and sid in teachers.get(owner[sid], {}):
                 te = teachers[owner[sid]][sid]; e = st["episodes"]
                 a = acc[tag]; a[0] += e; a[1] += st["clean"] * e; a[2] += te["clean"] * e
                 a[3] += st.get("hands", 0.) * e; a[4] += te.get("hands", 0.) * e

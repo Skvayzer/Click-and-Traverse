@@ -30,6 +30,9 @@ def main():
     p.add_argument("--traversal-excluded", default="configs/pilots/traversal_excluded_scenes.txt")
     p.add_argument("--min-clean", type=float, default=.20)
     p.add_argument("--margin", type=float, default=.15)
+    p.add_argument("--rooms-trained-types", action="store_true",
+                   help="No rooms evaluation: room scenes the rooms expert TRAINED on (clutter, furniture, table edges, flat) "
+                        "go to it unfiltered; passages (hand-contrast roles, mass 0 in its training) are dropped")
     p.add_argument("--out", type=Path, required=True)
     args = p.parse_args()
     evals = {}
@@ -52,6 +55,15 @@ def main():
             reasons[f"{default}->{chosen}"] += 1
         else:
             chosen = "rooms"
+            if args.rooms_trained_types:
+                source = s.get("source", {}) or {}
+                role = (source.get("hand_contrast") or {}).get("role")
+                # runner._scene_buckets order: table edges (trained, group 6) before passage roles (group 7, mass 0)
+                if role and source.get("kind") != "table-edge-passage":
+                    dropped.append(sid); reasons["dropped_rooms_passage"] += 1
+                else:
+                    owner[sid] = chosen; reasons["rooms_unevaluated"] += 1
+                continue
             if sid not in evals["rooms"]:
                 raise ValueError(f"{sid}: missing rooms evaluation")
             reasons["rooms"] += 1
@@ -62,7 +74,8 @@ def main():
         else:
             owner[sid] = chosen
     by_owner = collections.Counter(owner.values())
-    mean_clean = {n: round(sum(best_clean[k] for k, v in owner.items() if v == n) / max(1, by_owner[n]), 3) for n in by_owner}
+    mean_clean = {n: round(sum(best_clean[k] for k, v in owner.items() if v == n and k in best_clean) /
+                           max(1, sum(1 for k, v in owner.items() if v == n and k in best_clean)), 3) for n in by_owner}
     summary = dict(owners=dict(by_owner), dropped=len(dropped), decisions=dict(reasons), mean_clean_of_owned=mean_clean,
                    min_clean=args.min_clean, margin=args.margin)
     args.out.parent.mkdir(parents=True, exist_ok=True)
