@@ -53,8 +53,11 @@ def load_expert(path, device):
 class DistillController:
     """Stands in for Learner in collect_rollout (act/config/device) and in the training loop (update)."""
 
+    regularize = None       # plain DAgger unless __init__ sets the RL fine-tune mode
+
     def __init__(self, learner, task, experts, routing, *, beta_start=1., beta_end=0., beta_decay=60,
-                 epochs=2, lr=3e-4, replay_rollouts=3, student_noise=.05):
+                 epochs=2, lr=3e-4, replay_rollouts=3, student_noise=.05, scene_routing=None, dropped=None,
+                 regularize=None):
         from .runner import SCENE_BUCKETS, _scene_buckets
         self.learner, self.task = learner, task
         self.config, self.device = learner.config, learner.device
@@ -72,6 +75,33 @@ class DistillController:
         owner_of_bucket[owner_of_bucket < 0] = self.default_owner
         self.owner_of_scene = owner_of_bucket[bucket_of_scene]
         self.unowned = unowned
+        self.scene_routed = 0
+        if scene_routing:
+            # Per-scene owners (scripts/build_distill_routing.py: the expert with the higher measured clean success
+            # in THIS scene). Bucket routing cannot express the traversal/narrow split, which runs through the
+            # middle of procedural_cat and published_cat by opening width. Unlisted scenes keep the bucket owner.
+            index = {s["scene_id"]: i for i, s in enumerate(task.bank.manifest["scenes"])}
+            unknown = sorted(set(scene_routing.values()) - set(self.names))
+            if unknown:
+                raise ValueError(f"scene routing names experts that were not given: {unknown}")
+            missing = [sid for sid in scene_routing if sid not in index]
+            if missing:
+                raise ValueError(f"scene routing lists {len(missing)} scene ids not in the bank, e.g. {missing[:3]}")
+            rows = torch.tensor([index[sid] for sid in scene_routing], dtype=torch.long, device=self.device)
+            owners = torch.tensor([self.names.index(n) for n in scene_routing.values()], dtype=torch.long, device=self.device)
+            self.owner_of_scene = self.owner_of_scene.clone()
+            self.owner_of_scene[rows] = owners
+            self.scene_routed = len(rows)
+        if dropped:
+            # Scenes without a competent teacher: no label (mask 0). Only meaningful in regularize mode; plain
+            # DAgger never samples them (zero weight).
+            index = {s["scene_id"]: i for i, s in enumerate(task.bank.manifest["scenes"])}
+            rows = torch.tensor([index[sid] for sid in dropped if sid in index], dtype=torch.long, device=self.device)
+            self.owner_of_scene = self.owner_of_scene.clone(); self.owner_of_scene[rows] = -1
+        # RL fine-tune mode: PPO drives and learns (the student acts stochastically, values and log-probs from the
+        # learner); expert labels ride along as a fading regulariser in the PPO loss; the first `critic_warmup`
+        # updates train only the critic (actor frozen). dict(lambda_start, lambda_end, decay, critic_warmup).
+        self.regularize = regularize
         self.beta_start, self.beta_end, self.beta_decay = beta_start, beta_end, beta_decay
         self.beta = beta_start
         self.expert_drives = torch.ones(task.num_envs, dtype=torch.bool, device=self.device)
@@ -85,7 +115,7 @@ class DistillController:
         owner = self.owner_of_scene[self.task.scene_ids]
         label = torch.zeros((len(state), self.config.action_size), device=self.device)
         for k, model in enumerate(self.experts):
-            rows = owner == k
+            rows = owner == k   # owner -1 (no competent teacher): label stays 0, masked out
             if bool(rows.any()):
                 width = model.config.actor_obs
                 mean, _ = gaussian_parameters(model.logits(state[rows, :width], 0))
@@ -95,6 +125,10 @@ class DistillController:
     @torch.no_grad()
     def act(self, obs, policy_ids=None, *, deterministic=False):
         state, privileged = obs["state"], obs["privileged_state"]
+        if self.regularize is not None:
+            label, owner = self._expert_means(state)
+            self.labels.append((label, owner))
+            return self.learner.act(state, privileged, policy_ids, deterministic=deterministic)
         n = len(state)
         # Re-draw who drives for envs that just started an episode (step counter 0).
         fresh = self.task.info["step"] == 0
@@ -124,6 +158,8 @@ class DistillController:
                 label[begin:begin + n, t], owner[begin:begin + n, t] = self.labels[k]
                 k += 1
         self.labels.clear()
+        if self.regularize is not None:
+            return self._regularized_update(rollout, label, owner)
         batch = dict(state=rollout["state"].reshape(-1, rollout["state"].shape[-1]), label=label.reshape(-1, label.shape[-1]),
                      owner=owner.reshape(-1))
         self.replay.append(batch); self.replay = self.replay[-self.replay_rollouts:]
@@ -157,3 +193,27 @@ class DistillController:
                     physical_transitions=trajectories * T, optimizer_transitions=rows,
                     env_steps=self.learner.env_steps, updates=self.learner.updates,
                     **per_owner, **{"distill/beta_next": self.beta, "distill/expert_driving_share": float(self.expert_drives.float().mean())})
+
+    def _regularized_update(self, rollout, label, owner):
+        r = self.regularize
+        progress = min(1., self.updates / max(1, int(r.get("decay", 200))))
+        lam = float(r.get("lambda_start", 1.)) + (float(r.get("lambda_end", 0.)) - float(r.get("lambda_start", 1.))) * progress
+        frozen = self.updates < int(r.get("critic_warmup", 0))
+        self.learner.distill_lambda = 0. if frozen else lam
+        self.learner.actor_frozen = frozen
+        rollout = dict(rollout, distill_label=label, distill_mask=(owner >= 0).float())
+        metrics = self.learner.update(rollout)
+        per_owner = {}
+        with torch.no_grad():
+            state = rollout["state"].reshape(-1, rollout["state"].shape[-1])
+            mean, _ = gaussian_parameters(self.learner.model.logits(state, torch.zeros(len(state), dtype=torch.long, device=self.device)))
+            err = (mean - label.reshape(-1, label.shape[-1])).square().mean(-1); flat = owner.reshape(-1)
+            for j, name in enumerate(self.names):
+                m = flat == j
+                if bool(m.any()):
+                    per_owner[f"distill/{name}/action_mse"] = float(err[m].mean())
+                    per_owner[f"distill/{name}/sample_share"] = float(m.float().mean())
+            per_owner["distill/unlabelled_share"] = float((flat < 0).float().mean())
+        self.updates += 1
+        return dict(metrics, **per_owner, **{"distill/lambda": self.learner.distill_lambda, "distill/actor_frozen": float(frozen)})
+

@@ -1048,6 +1048,8 @@ def create_task(args, *, environment_config=None, sim_class=None):
         sideways_bonus_progress=getattr(args, 'sideways_bonus_progress', None), contact_penalty=getattr(args, 'contact_penalty', None),
         stall_weight=getattr(args, 'stall_weight', None), goal_progress_weight=getattr(args, 'goal_progress_weight', None),
         goal_bonus_weight=getattr(args, 'goal_bonus_weight', None), timeout_failure=getattr(args, 'timeout_failure', None),
+        reward_group_room=getattr(args, 'reward_group_room', None), commanded_blocking_map=getattr(args, 'commanded_blocking_map', None),
+        hand_tight_cat_only=getattr(args, 'hand_tight_cat_only', None),
         standing_gf_bonus=getattr(args, 'standing_gf_bonus', None),
         reactive_hand_guidance=getattr(args, 'reactive_hand_guidance', None),
         handsdf_weight=getattr(args, 'handsdf_weight', None),
@@ -1409,9 +1411,20 @@ def run(args):
             name, buckets = item.split('=', 1); routing[name] = [b for b in buckets.split(',') if b]
         if not any(routing.values()) and set(experts) == {'cat', 'rooms'}:
             routing = {'cat': ['procedural_cat', 'original_cat', 'published_cat'], '_default': ['rooms']}
+        scene_routing, dropped = None, None
+        if getattr(args, 'distill_route_file', None):
+            route = json.loads(Path(args.distill_route_file).read_text())
+            scene_routing, dropped = route["owner"], route.get("dropped")
+        regularize = None
+        if getattr(args, 'distill_regularize', None):
+            start, end, decay = args.distill_regularize
+            regularize = dict(lambda_start=float(start), lambda_end=float(end), decay=int(decay),
+                              critic_warmup=int(getattr(args, 'critic_warmup_updates', 0) or 0))
         distiller = DistillController(learner, task, experts, routing, beta_decay=int(args.distill_beta_decay),
-                                      epochs=int(args.distill_epochs), lr=float(args.distill_lr))
-        print(f"DAgger distillation: experts {experts}; routing {routing}; unowned buckets -> default: {distiller.unowned}", flush=True)
+                                      epochs=int(args.distill_epochs), lr=float(args.distill_lr), scene_routing=scene_routing,
+                                      dropped=dropped if regularize is not None else None, regularize=regularize)
+        print(f"DAgger distillation: experts {experts}; routing {routing}; unowned buckets -> default: {distiller.unowned}; "
+              f"{distiller.scene_routed} scenes routed by id; regularize {regularize}", flush=True)
     try:
         if not args.resume:
             save_runtime()

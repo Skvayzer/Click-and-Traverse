@@ -323,7 +323,7 @@ def ratio_diagnostics(log_prob, data, config):
     return result
 
 
-def compute_loss(model, data, config, *, entropy_noise=None, style_lambda=0.):
+def compute_loss(model, data, config, *, entropy_noise=None, style_lambda=0., distill_lambda=0.):
     ids = data["target_policy_id"] if config.algorithm == "sapg" else data["policy_id"]
     logits = model.logits(data["state"], ids)
     baseline = model.value(data["privileged_state"], ids)
@@ -365,6 +365,15 @@ def compute_loss(model, data, config, *, entropy_noise=None, style_lambda=0.):
         extra = dict(style_v_loss=style_value_loss.detach())
     entropy_loss = -config.entropy_cost * transformed_entropy(logits, entropy_noise).mean()
     total = policy_loss + value_loss + entropy_loss
+    if "distill_label" in data:
+        # DAgger regulariser during RL fine-tuning (cat_mjlab/distill.py, regularize mode): regress the action mean
+        # onto the scene's teacher where one exists (mask), weight distill_lambda fading to 0. Keeps the distilled
+        # skills while PPO adapts (the CAT JAX pipeline: compute_dagger_then_ppo_loss).
+        mean, _ = gaussian_parameters(logits)
+        mask = data["distill_mask"]
+        mse = ((mean - data["distill_label"]).square().mean(-1) * mask).sum() / mask.sum().clamp_min(1.)
+        total = total + distill_lambda * mse
+        extra = dict(extra, distill_reg_mse=mse.detach(), distill_reg_loss=(distill_lambda * mse).detach())
     return total, dict(total_loss=total, policy_loss=policy_loss, v_loss=value_loss, entropy_loss=entropy_loss) | extra | ratio_diagnostics(log_prob, data, config)
 
 
@@ -404,6 +413,8 @@ class Learner:
         self.updates = 0
         self.env_steps = 0
         self.style_lambda = 0.       # set by the runner's StyleSchedule each update
+        self.distill_lambda = 0.     # DAgger regulariser weight (cat_mjlab/distill.py, regularize mode)
+        self.actor_frozen = False    # critic warm-up: only the value losses are optimised
 
     @torch.no_grad()
     def reset_action_std(self, sigma):
@@ -450,7 +461,12 @@ class Learner:
             for indices in permutation.reshape(self.config.num_minibatches, -1):
                 mini = {key: value[indices] for key, value in data.items()}
                 self.optimizer.zero_grad(set_to_none=True)
-                loss, metrics = compute_loss(self.model, mini, self.config, style_lambda=self.style_lambda)
+                loss, metrics = compute_loss(self.model, mini, self.config, style_lambda=self.style_lambda,
+                                             distill_lambda=self.distill_lambda)
+                if self.actor_frozen:
+                    # Critic warm-up (fine-tuning a distilled actor under a new reward: an untrained critic's
+                    # advantages would wreck it first). Policy, entropy and regulariser terms are left out.
+                    loss = metrics["v_loss"]
                 if not bool(torch.isfinite(loss)):
                     raise FloatingPointError("Nonfinite learner loss; refusing optimizer step")
                 loss.backward()

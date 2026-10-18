@@ -351,7 +351,7 @@ class CATTask:
         scenes=self.scene_ids[ids]
         shoulders=self.math.facing_probe_points(root_xy,facing,travel,positions[:,9:11,2].mean(-1),half_width=.16)
         hands=self.math.facing_probe_points(root_xy,facing,travel,positions[:,5:7,2].mean(-1),half_width=.22)
-        if self.config.get('blocking_map'):
+        if self._commanded_blocking():
             # 2-D blocking footprint (cat_mjlab/blocking.py): a beam above the shoulders no longer reads as
             # "a body facing psi_ref does not fit", which released the heading and turned the robot sideways.
             blocking=self._blocking()
@@ -435,6 +435,13 @@ class CATTask:
             mask=getattr(self,'joystick_mask',None)
             self.joystick=world if mask is None else torch.where(mask[:,None],world,self.joystick)
         self.joystick_yaw=body[:,2].clone()
+
+    def _commanded_blocking(self):
+        """Blocking map for COMMANDED (room / keyboard) worlds. 'blocking_map_commanded' False keeps the rooms expert's
+        command inputs (3-D field heading gate and guidance projection) while CAT-world rewards still use the map:
+        a three-teacher student must show each teacher the inputs it was trained on."""
+        own=self.config.get('blocking_map_commanded')
+        return bool(self.config.get('blocking_map')) if own is None else bool(own)
 
     def _commanded(self,ids):
         """Worlds whose command is room-style (route or joystick velocity) rather than CAT's field command.
@@ -548,7 +555,7 @@ class CATTask:
         replacement=self._gate_head_pull(replacement,sdf)
         if hasattr(self, 'speed_state'):
             replacement=torch.where(hold[:,None,None],0.,replacement)
-        if self.config.get('blocking_map'):
+        if self._commanded_blocking():
             # Remove the command's component into BLOCKING obstacles only (2-D footprint, 0.25-0.95 m). The 3-D
             # projection below cut the forward guidance of the feet at every hurdle (0.0 vs 0.8 field-driven)
             # and of head/shoulders at every beam, and feetgf/headgf paid for not advancing: keyboard practice in
@@ -958,7 +965,7 @@ class CATTask:
             # Reward the command minus its component into nearby obstacles (pelvis, hands, knees,
             # shoulders): driven at a table, stopping or sliding along it is what earns the reward.
             points=[1,5,6,7,8,9,10]
-            if self.config.get('blocking_map'):
+            if self._commanded_blocking():
                 # Only what blocks the body band repels: the 3-D field's horizontal part, rescaled to unit
                 # length, read a beam overhead / a hurdle underfoot as a wall ahead (target: stop).
                 distance,away=self._blocking_probes(i['positions'][:,points,:2],reward_command[:,1:3],self.scene_ids)
@@ -1011,6 +1018,9 @@ class CATTask:
             else:
                 room,_=self._blocking().sample(i['positions'][:,1:2,:2],self.scene_ids)
             room_scale=((room[:,0]-float(tight['low']))/(float(tight['high'])-float(tight['low']))).clamp(float(tight['floor']),1.)[:,None]
+            if tight.get('cat_only'):
+                # Rooms keep the rooms expert's full margins (it never had the relaxation).
+                room_scale=torch.where(self.bank.is_cat[self.scene_ids][:,None],room_scale,torch.ones_like(room_scale))
             protection_target=protection_target*room_scale;protection_anticipation=protection_anticipation*room_scale
             arm_margin=arm_margin*room_scale
             # handsdf (cost below 5 cm) shrinks with the same room: sideways in a 0.34 m gap the hands are 6 cm
@@ -1166,7 +1176,17 @@ class CATTask:
         scales=_get(self.config,'reward_config.scales',{})
         missing=set(rewards)-set(scales)
         if missing:raise ValueError(f'Missing preserved reward scales: {sorted(missing)}')
-        scaled={k:v*float(scales[k]) for k,v in rewards.items()}
+        group=self.config.get('reward_group_scales')
+        if group:
+            # Per scene group (the teacher's own weights): 'room' overrides apply in room worlds, the global scales
+            # in CAT worlds. One weight set for all scenes rebuilt the compromise the experts escaped (hand clearance
+            # -60: narrow 53% -> ~30%).
+            room_world=~self.bank.is_cat[self.scene_ids];over=group.get('room',{})
+            unknown=set(over)-set(scales)
+            if unknown:raise ValueError(f'reward_group_scales names unknown terms: {sorted(unknown)}')
+            scaled={k:(v*torch.where(room_world,float(over[k]),float(scales[k])) if k in over else v*float(scales[k])) for k,v in rewards.items()}
+        else:
+            scaled={k:v*float(scales[k]) for k,v in rewards.items()}
         if balance:scaled['flat_balance_posture_bonus']=bonus
         for name in ('wholebody_hand_contrast_region','wholebody_hand_contrast_heading','flat_balance_posture_bonus'):
             if name in scaled:scaled[name]=torch.zeros_like(scaled[name])

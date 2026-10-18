@@ -64,6 +64,20 @@ def parser():
         target.add_argument("--distill-route", action="append", metavar="NAME=BUCKET,BUCKET",
                             help="Scene types (runner.SCENE_BUCKETS) labelled by an expert; NAME '_default' takes the rest. "
                                  "Default for experts cat+rooms: CAT buckets -> cat, everything else -> rooms")
+        target.add_argument("--distill-route-file", help="JSON {'owner': {scene_id: expert name}} (scripts/build_distill_routing.py); "
+                            "overrides the bucket routing per scene")
+        target.add_argument("--distill-regularize", type=float, nargs=3, metavar=("LAMBDA_START", "LAMBDA_END", "DECAY_UPDATES"),
+                            help="RL fine-tune: PPO learns, expert labels are a fading regulariser (action-mean MSE weight "
+                                 "LAMBDA_START -> LAMBDA_END over DECAY_UPDATES) instead of plain DAgger")
+        target.add_argument("--critic-warmup-updates", type=int, default=0,
+                            help="With --distill-regularize: first N updates train only the critic (actor frozen)")
+        target.add_argument("--reward-group-room", nargs="+", metavar="TERM=SCALE",
+                            help="Reward scales for ROOM worlds (the global scales apply to CAT worlds); e.g. "
+                                 "wholebody_hand_clearance=-40 heading_align=1.0")
+        target.add_argument("--commanded-blocking-map", choices=("on", "off"),
+                            help="Blocking map for commanded (room/keyboard) worlds' inputs; off = the rooms expert's inputs")
+        target.add_argument("--hand-tight-cat-only", action="store_true",
+                            help="--hand-clearance-tight relaxes margins in CAT worlds only")
         target.add_argument("--distill-beta-decay", type=int, default=60, help="Updates for the expert-driving probability to go 1 -> 0")
         target.add_argument("--distill-epochs", type=int, default=2)
         target.add_argument("--distill-lr", type=float, default=3e-4)

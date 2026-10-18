@@ -40,7 +40,8 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
                      teleop_cat_fraction=None,heading_lookaheads=None,heading_blocking_probes=None,sideways_bonus_weight=None,
                      side_gap_curriculum=None,teleop_side_prob=None,hand_tight_walls_only=None,side_gap_tumbling=None,
                      sideways_bonus_progress=None,contact_penalty=None,stall_weight=None,goal_progress_weight=None,
-                     goal_bonus_weight=None,timeout_failure=None):
+                     goal_bonus_weight=None,timeout_failure=None,reward_group_room=None,commanded_blocking_map=None,
+                     hand_tight_cat_only=None):
     from cat_ppo.furniture.generalist_config import released_config
     from .collision import PROPOSAL
     config=copy.deepcopy(released_config()['env_config'] if base_config is None else base_config)
@@ -311,4 +312,19 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
         hand_clearance_target=inherited.get('target') if hand_clearance_target is None else hand_clearance_target,
         hand_clearance_anticipation=inherited.get('anticipation') if hand_clearance_anticipation is None else hand_clearance_anticipation,
         hand_clearance_near_weight=inherited.get('near_weight') if hand_clearance_near_weight is None else hand_clearance_near_weight)
+    if commanded_blocking_map is not None:
+        config['blocking_map_commanded']=commanded_blocking_map=='on' if isinstance(commanded_blocking_map,str) else bool(commanded_blocking_map)
+    if hand_tight_cat_only:
+        if not config.get('hand_clearance_tight'):raise ValueError('hand_tight_cat_only requires hand_clearance_tight')
+        config['hand_clearance_tight']['cat_only']=True
+    if reward_group_room:
+        # Per scene group reward weights (task._rewards): ROOM worlds use these, CAT worlds the global scales.
+        room={}
+        for item in reward_group_room:
+            term,value=item.split('=',1) if isinstance(item,str) else item
+            if term not in scales:raise ValueError(f'reward_group_room: unknown reward term {term}')
+            value=float(value)
+            if not math.isfinite(value):raise ValueError('reward_group_room scales must be finite')
+            room[term]=value
+        config['reward_group_scales']=dict(room=room)
     return config
