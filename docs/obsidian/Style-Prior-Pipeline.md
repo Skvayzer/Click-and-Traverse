@@ -448,6 +448,27 @@ traversal: narrow > 15 points better), rooms 553, dropped 463 (owner < 20% clean
 first rollout (the traversal expert alone used 47.9 of 49 GB there) and the unattended pipeline evaluated the
 untrained student -- post_dagger.sh now gates on status updates >= 190.
 
+**DAgger result** (deterministic, scenes each teacher owns): student 66.5% clean vs teachers 72.8%. Traversal
+skills kept (procedural open 73.5 vs 74.4, published hurdle 88 vs 85, side+hurdle 83 vs 83); narrow skills lag
+(gaps 0.40-0.50 m 64 vs 77, < 0.40 m 34 vs 53, procedural narrow 19 vs 42; hands 6% vs 4%). Narrow action MSE
+plateaued at ~0.011 from update ~60 (rooms 0.0075, traversal 0.003). Decision (user): go to RL fine-tuning.
+
+**Success-Guided Sampling** (Zhang et al., "A Balanced Data Diet", CoRL 2026, arXiv 2610.12465; task._init_sgs,
+commit e1afa9b). Our previous adaptive sampler weighted scenes by (1 - success) with a per-STEP EMA decay of 0.95
+(~20-step memory, while a scene ends an episode only every ~60 steps): in effect "did this scene's last episode
+fail", with the most weight on hopeless scenes. Measured on the student's per-scene success: adding the no-teacher
+scenes, it would spend 41% of CAT experience on scenes at 0-20% (SGS: ~1%; mean p(1-p) of practice 0.136 vs 0.192).
+SGS: configurations = scenes x 4 fixed start states; last 100 clean-goal outcomes per configuration;
+w = (p+eps)^(kappa t)(1-p+eps)^(kappa(1-t)), l = log(max(w,eps)+eps), P ~ exp(l/max(T,1)), t 0.66, kappa 5, T 2,
+eps 1e-8 (paper, locomotion); drawn at every reset WITHIN the fixed group masses, 5% uniform per group (fine-tune:
+mastered configurations keep some practice), 4 prior pseudo-outcomes at the measured per-scene success.
+
+**RL fine-tune v1** (`outputs/finetune_generalist_v1_20261019`, configs/pilots/finetune_generalist_v1_run.sh,
+started 2026-10-19 17:38): from the DAgger student, 32768 envs, per-group rewards, DAgger regulariser 1 -> 0 over
+300 updates, critic-only first 20 updates, std 0.10 (ceiling 0.15), SGS; all scenes except 11 geometrically
+infeasible (the 463 without a teacher are unlabelled, pure RL). First updates: ~97 s/update, 42.9 GB, practised
+configurations at ~55% estimated success, ~10% of experience unlabelled.
+
 ## 8. Not yet done / next
 
 - Reference-state initialisation from sidle / duck clips (planned; not in the first pilot).

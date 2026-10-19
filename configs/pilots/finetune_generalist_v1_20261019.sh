@@ -24,7 +24,7 @@ NARROW=${NARROW:-outputs/saved_checkpoints/narrow_expert_v2_u1400.pt}
 ROOMS=${ROOMS:-outputs/saved_checkpoints/cat_g1_rooms_keyboard_v9_u492_full.pt}
 ROUTING=${ROUTING:-outputs/distill_v1_prep/routing_v2.json}
 ZERO_WEIGHT=${ZERO_WEIGHT:-configs/pilots/finetune_infeasible_scenes.txt}
-SGS_PRIOR=${SGS_PRIOR:-outputs/distill_v1_prep/eval_student_v1_cat.json outputs/distill_v1_prep/eval_student_v1_room.json}
+SGS_PRIOR=${SGS_PRIOR:-outputs/distill_v1_prep/eval_student_v1_cat.json outputs/distill_v1_prep/eval_rooms_v9.json}   # rooms: the teacher it copies
 RUN_DIR=${RUN_DIR:-outputs/finetune_generalist_v1_20261019}
 .venv-mjlab/bin/python train_cat_mjlab.py run \
   --algorithm ppo --num-envs ${NUM_ENVS:-40960} --batch-size ${BATCH_SIZE:-1024} \
