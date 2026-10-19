@@ -426,6 +426,28 @@ What the code needed, and what was built (commit 345581f):
 - Pass test: `scripts/compare_student_teachers.py` -- per skill tag, student clean success within 5 points of the
   routed teacher on the same scenes, hand contacts reported.
 
+**Teacher measurements (2026-10-19, deterministic, 12 episodes per scene, outputs/distill_v1_prep/).** Clean = goal
+and no touch.
+
+| skill | traversal u1764 | narrow u1400 |
+|---|---|---|
+| published hurdle / multi-hurdle | 85% / 67% | 69% / 0% |
+| crouch / hurdle+crouch | 71% / 83% | 46% / 54% |
+| side+hurdle / side+crouch (traversal's scenes) | 83% / 88% | -- |
+| procedural open / mid (0.45-0.77 m) / narrow (< 0.45 m) | 72% / 57% / 3% | 61% / 61% / 9% |
+| original CAT | 56% | 47% |
+| side gaps >= 0.50 / 0.40-0.50 / < 0.40 m | 37% / 3% / 0% | 84% / 74% / 31% |
+
+Rooms v9: 90% clean on all 597 room scenes (passages included, although it trained them at mass 0), 97% on the 553
+it teaches. Same-input check: traversal in its own env 48.73% clean on all CAT scenes, in the student env 48.77%.
+Routing v2 (`outputs/distill_v1_prep/routing_v2.json`): traversal 1687 scenes, narrow 824 (245 moved from
+traversal: narrow > 15 points better), rooms 553, dropped 463 (owner < 20% clean; mostly openings < 0.40 m).
+
+**DAgger run** (`outputs/distill_three_teachers_v1_20261018`, configs/pilots/distill_three_teachers_v1_run.sh):
+200 updates at 32768 envs (~94 s/update, 46.8 GB). The first attempt at 40960 envs ran out of GPU memory in its
+first rollout (the traversal expert alone used 47.9 of 49 GB there) and the unattended pipeline evaluated the
+untrained student -- post_dagger.sh now gates on status updates >= 190.
+
 ## 8. Not yet done / next
 
 - Reference-state initialisation from sidle / duck clips (planned; not in the first pilot).
