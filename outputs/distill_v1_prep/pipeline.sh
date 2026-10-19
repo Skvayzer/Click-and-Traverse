@@ -7,7 +7,7 @@ O=outputs/distill_v1_prep
 RUN=outputs/distill_three_teachers_v1_20261018
 log() { echo "$(date +%F_%T) $*"; }
 run() { name=$1; shift; log "start eval $name"; .venv-mjlab/bin/python scripts/eval_per_scene.py "$@" --out $O/eval_$name.json > $O/eval_$name.log 2>&1; log "done eval $name exit $?: $(tail -1 $O/eval_$name.log | cut -c1-300)"; }
-while pgrep -f "eval_per_scene.py outputs/traversal_expert_v1_20261012/snapshots/update_1764.pt" > /dev/null; do sleep 30; done
+while pgrep -f "eval_per_scene.py outputs/traversal_expert_v1_20261012/snapshots/update_1764.pt" > /dev/null; do sleep 30; done   # restarted 00:08 with the fine-tune smoke step
 log "traversal eval finished: $(tail -1 $O/eval_traversal_u1764.log | cut -c1-300)"
 [ -f $O/eval_traversal_u1764.json ] || { log "traversal eval missing: abort"; exit 1; }
 run narrow_u1400 outputs/saved_checkpoints/narrow_expert_v2_u1400.pt --scenes cat --episodes 12 --num-envs 32768
@@ -15,6 +15,13 @@ run narrow_u1400 outputs/saved_checkpoints/narrow_expert_v2_u1400.pt --scenes ca
 .venv-mjlab/bin/python scripts/build_distill_routing.py --eval traversal=$O/eval_traversal_u1764.json --eval narrow=$O/eval_narrow_u1400.json \
   --rooms-trained-types --out $O/routing_v1.json > $O/routing_v1.log 2>&1 || { log "routing failed: abort"; cat $O/routing_v1.log; exit 1; }
 log "routing: $(tr -d '\n' < $O/routing_v1.log | cut -c1-600)"
+S=/tmp/claude-1004/-home-konstantinsmirnov/b9355b37-92cb-4f44-ae4b-ebe6675dc864/scratchpad
+rm -rf $S/finetune_smoke
+log "start fine-tune smoke (code path: critic warm-up 1 update, regulariser, per-group rewards; student = traversal expert)"
+STUDENT=outputs/traversal_expert_v1_20261012/snapshots/update_1764.pt ROUTING=$O/routing_v1.json NUM_ENVS=1024 NUM_MINIBATCHES=4 COMPILE=" " \
+  WANDB_MODE=disabled WARMUP=1 RUN_DIR=$S/finetune_smoke EXTRA="--max-updates 3" MASSES="0.15 0.36 0.08 0.15 0.13 0.03 0.10 0" \
+  timeout 2400 bash configs/pilots/finetune_generalist_v1_20261019.sh > $S/finetune_smoke.log 2>&1
+log "fine-tune smoke exit $?"
 log "start DAgger $RUN"
 MASSES="0.15 0.36 0.08 0.15 0.13 0.03 0.10 0" EXTRA="--max-updates ${DAGGER_UPDATES:-200}" \
   bash configs/pilots/distill_three_teachers_v1_20261018.sh > $RUN.log 2>&1
