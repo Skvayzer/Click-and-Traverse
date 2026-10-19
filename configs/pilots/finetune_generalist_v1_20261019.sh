@@ -9,7 +9,12 @@
 #     (--reward-group-room: hand clearance -40, heading 1.0, body motion -1.5, no sideways bonus / anti-refusal).
 #   * Inputs as the teachers saw them: commanded worlds without the blocking map, head-guidance gate 0.3.
 #   * Low action spread (Parkour-in-the-Wild recipe): initial std 0.10, ceiling 0.15.
-#   * ZERO_WEIGHT: scenes left out (default: the DAgger drop list); learnable no-teacher scenes may be added back.
+#   * Success-Guided Sampling (arXiv 2610.12465, task._init_sgs): configurations = scenes x 4 fixed start states,
+#     drawn at every reset with the paper's kernel (t 0.66, kappa 5, T 2, eps 1e-8, last 100 outcomes) within the
+#     fixed group masses, 5% uniform per group; buffers primed with the student's measured per-scene success.
+#     All scenes are in the pool -- also the 463 without a competent teacher (unlabelled, pure RL): SGS gives
+#     hopeless configurations ~nothing and picks them up once some start succeeds. ZERO_WEIGHT: only the 11
+#     geometrically infeasible scenes (scripts/narrow_scene_feasibility.py).
 set -euo pipefail
 cd /home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
@@ -17,14 +22,15 @@ STUDENT=${STUDENT:-outputs/distill_three_teachers_v1_20261018/resume.pt}
 TRAVERSAL=${TRAVERSAL:-outputs/traversal_expert_v1_20261012/snapshots/update_1764.pt}
 NARROW=${NARROW:-outputs/saved_checkpoints/narrow_expert_v2_u1400.pt}
 ROOMS=${ROOMS:-outputs/saved_checkpoints/cat_g1_rooms_keyboard_v9_u492_full.pt}
-ROUTING=${ROUTING:-outputs/distill_v1_prep/routing_v1.json}
-ZERO_WEIGHT=${ZERO_WEIGHT:-$ROUTING.dropped.txt}
+ROUTING=${ROUTING:-outputs/distill_v1_prep/routing_v2.json}
+ZERO_WEIGHT=${ZERO_WEIGHT:-configs/pilots/finetune_infeasible_scenes.txt}
+SGS_PRIOR=${SGS_PRIOR:-outputs/distill_v1_prep/eval_student_v1_cat.json outputs/distill_v1_prep/eval_student_v1_room.json}
 RUN_DIR=${RUN_DIR:-outputs/finetune_generalist_v1_20261019}
 .venv-mjlab/bin/python train_cat_mjlab.py run \
   --algorithm ppo --num-envs ${NUM_ENVS:-40960} --batch-size ${BATCH_SIZE:-1024} \
   --num-minibatches ${NUM_MINIBATCHES:-40} --unroll-length 32 \
   --checkpoint-native "$STUDENT" \
-  --fresh-optimizer --init-action-std 0.10 --max-action-std 0.15 \
+  ${FRESH---fresh-optimizer --init-action-std 0.10} --max-action-std 0.15 \
   --bank-manifest data/furniture/sidegap_v2_packed/manifest.json \
   --body-collision-bank data/furniture/sidegap_v2_collision/manifest.json \
   --body-collision-resets data/furniture/sidegap_v2_resets/manifest.json \
@@ -54,6 +60,8 @@ RUN_DIR=${RUN_DIR:-outputs/finetune_generalist_v1_20261019}
   --distill-expert traversal="$TRAVERSAL" --distill-expert narrow="$NARROW" --distill-expert rooms="$ROOMS" \
   --distill-route _default=rooms --distill-route-file "$ROUTING" \
   --distill-regularize ${REG:-1.0 0.0 300} --critic-warmup-updates ${WARMUP:-20} \
+  --sgs-slots ${SGS_SLOTS:-4} --sgs-history 100 --sgs-target 0.66 --sgs-kappa 5 --sgs-temperature 2 --sgs-epsilon 1e-8 \
+  --sgs-uniform-mix ${SGS_MIX:-0.05} --sgs-prior $SGS_PRIOR --sgs-prior-count 4 \
   --style-library data/motion_library/library_v1 --style-weight 0.1 \
   --style-stride 5 --style-features pose --style-grad-penalty 10 --style-disc-steps 4 \
   --style-warmup ${STYLE_WARMUP:-30} --style-ramp ${STYLE_RAMP:-50} --style-guard-tolerance 0.05 \

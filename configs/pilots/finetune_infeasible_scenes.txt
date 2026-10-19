@@ -1,0 +1,11 @@
+published-side1
+sidegap2-0006-angled-w0.32
+sidegap2-0046-angled-w0.34
+sidegap2-0171-angled-w0.32
+sidegap2-0296-angled-w0.32
+sidegap2-0358-angled-w0.35
+sidegap2-0442-angled-w0.32
+sidegap2-0452-angled-w0.34
+sidegap2-0569-angled-w0.34
+sidegap2-0606-angled-w0.33
+sidegap2-0627-angled-w0.34

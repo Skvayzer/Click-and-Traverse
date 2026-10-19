@@ -575,7 +575,7 @@ def collect_rollout(task, learner, *, unroll_length, trajectories, policy_ids):
         for key, value in sorted(per_step.items()):
             term = key.split('/', 1)[1]
             if key.startswith('telemetry/'):
-                info['metrics']['side_gap/' + term if term.startswith('side_gap') else 'posture/' + term if term in ('crouch_required', 'torso_pitch_abs') else
+                info['metrics']['sgs/' + term[4:] if term.startswith('sgs_') else 'side_gap/' + term if term.startswith('side_gap') else 'posture/' + term if term in ('crouch_required', 'torso_pitch_abs') else
                                 ('heading/' + term if term.startswith('heading_') else 'self_clearance/' + term.removeprefix('self_clearance_'))] = value
                 continue
             info['metrics']['reward_term/' + term] = value
@@ -699,7 +699,8 @@ GOALLESS_BUCKETS = ('reactive_standing', 'reactive_walking', 'flat_balance', 'te
 # Per-step task telemetry averaged over the update: posture/* and self_clearance/*.
 TELEMETRY_MEANS = ('self_clearance_min_m', 'self_clearance_violation', 'crouch_required', 'torso_pitch_abs',
                    'hand_contact_trunk', 'hand_contact_head', 'hand_contact_arm', 'hand_contact_hand',
-                   'heading_gate', 'heading_error_abs', 'hand_room_scale', 'side_gap_stage', 'side_gap_sideways_start')
+                   'heading_gate', 'heading_error_abs', 'hand_room_scale', 'side_gap_stage', 'side_gap_sideways_start',
+                   'sgs_config_p')
 SCENE_BUCKETS = ('procedural_cat', 'original_cat', 'published_cat',
                  'clutter_dense', 'clutter_pilot', 'clutter_legacy',
                  'furniture_dense', 'furniture_pilot', 'furniture_legacy',
@@ -1050,6 +1051,10 @@ def create_task(args, *, environment_config=None, sim_class=None):
         goal_bonus_weight=getattr(args, 'goal_bonus_weight', None), timeout_failure=getattr(args, 'timeout_failure', None),
         reward_group_room=getattr(args, 'reward_group_room', None), commanded_blocking_map=getattr(args, 'commanded_blocking_map', None),
         hand_tight_cat_only=getattr(args, 'hand_tight_cat_only', None),
+        sgs=(dict(slots=args.sgs_slots, history=args.sgs_history, target=args.sgs_target, kappa=args.sgs_kappa,
+                  temperature=args.sgs_temperature, epsilon=args.sgs_epsilon, uniform_mix=args.sgs_uniform_mix,
+                  prior_files=list(args.sgs_prior or []), prior_count=args.sgs_prior_count)
+             if getattr(args, 'sgs_slots', None) else None),
         standing_gf_bonus=getattr(args, 'standing_gf_bonus', None),
         reactive_hand_guidance=getattr(args, 'reactive_hand_guidance', None),
         handsdf_weight=getattr(args, 'handsdf_weight', None),

@@ -207,6 +207,7 @@ class CATTask:
         else:
             config.pop('hand_raised_reset_certificate',None)
         self._init_side_gap_curriculum()
+        self._init_sgs()
         self.reset()
         # The released learner offsets EpisodeWrapper's horizon only. Native
         # task age remains zero for contact grace and held-odometry cadence.
@@ -435,6 +436,87 @@ class CATTask:
             mask=getattr(self,'joystick_mask',None)
             self.joystick=world if mask is None else torch.where(mask[:,None],world,self.joystick)
         self.joystick_yaw=body[:,2].clone()
+
+    def _init_sgs(self):
+        """Success-Guided Sampling (Zhang et al., "A Balanced Data Diet", CoRL 2026, arXiv 2610.12465).
+
+        A fixed set of task configurations is drawn before training: here every scene x `slots` fixed start
+        states (base xy offset and yaw drawn once from the usual reset distribution; joint noise stays per
+        episode). Per configuration the last H binary outcomes (clean goal: reached, nothing touched) are kept;
+        at every reset the next configuration is drawn with
+            w = (p+eps)^(kappa t) (1-p+eps)^(kappa(1-t)),  l = log(max(w,eps)+eps),  P ~ exp(l / max(T,1))
+        which concentrates practice on the frontier (p near t) and away from mastered (p~1) and hopeless (p~0)
+        configurations. Adaptations here (documented choices, not in the paper): the draw is WITHIN the fixed
+        per-group experience masses (bank.sampling_masses: the skill groups keep their share), `uniform_mix`
+        of each group is uniform (fine-tuning: mastered configurations keep a little practice), and a prior of
+        `prior_count` pseudo-outcomes at the scene's measured success (per-scene evaluations) stands in for the
+        empty buffers -- ~1500 episodes per update over ~14k configurations would take ~1000 updates to fill.
+        Configurations never tried and without a prior get p = t (sampled first). Teleop episodes are not
+        recorded (no goal). Scenes passed explicitly to reset() (evaluations, demos) keep the legacy random start.
+        """
+        sgs=self.config.get('sgs')
+        if not sgs:
+            self.sgs=None;return
+        S=self.bank.count;K=int(sgs['slots']);H=int(sgs['history'])
+        self.sgs=dict(K=K,H=H,t=float(sgs['target']),kappa=float(sgs['kappa']),T=float(sgs['temperature']),
+                      eps=float(sgs['epsilon']),mix=float(sgs.get('uniform_mix',0.)))
+        self.sgs_xy=self._rand((S,K,2),-1,1)
+        self.sgs_yaw=self._rand((S,K),-np.pi/2,np.pi/2)
+        self.sgs_hist=torch.zeros((S*K,H),dtype=torch.bool,device=self.device)
+        self.sgs_count=torch.zeros(S*K,dtype=torch.long,device=self.device)
+        self.sgs_ptr=torch.zeros(S*K,dtype=torch.long,device=self.device)
+        prior_p=torch.full((S,),self.sgs['t'],device=self.device);prior_n=torch.zeros(S,device=self.device)
+        index={s['scene_id']:i for i,s in enumerate(self.bank.manifest['scenes'])}
+        for path in sgs.get('prior_files') or []:
+            import json as _json
+            from pathlib import Path as _Path
+            for sid,row in _json.loads(_Path(path).read_text())['per_scene'].items():
+                if sid in index:
+                    prior_p[index[sid]]=float(row['clean']);prior_n[index[sid]]=float(sgs.get('prior_count',4.))
+        self.sgs_prior_p=prior_p.repeat_interleave(K);self.sgs_prior_n=prior_n.repeat_interleave(K)
+        self.sgs_env_config=torch.full((self.num_envs,),-1,dtype=torch.long,device=self.device)
+        self.sgs_p=self._sgs_success()
+
+    def _sgs_success(self):
+        H=self.sgs['H']
+        n=self.sgs_count.clamp_max(H).float();k=self.sgs_hist.float().sum(-1)
+        denominator=n+self.sgs_prior_n
+        return torch.where(denominator>0,(k+self.sgs_prior_n*self.sgs_prior_p)/denominator.clamp_min(1e-9),
+                           torch.full_like(n,self.sgs['t']))
+
+    def _sgs_probabilities(self):
+        g=self.sgs;K=g['K'];eps=g['eps']
+        p=self._sgs_success();self.sgs_p=p
+        w=(p+eps)**(g['kappa']*g['t'])*(1-p+eps)**(g['kappa']*(1-g['t']))
+        logits=torch.log(w.clamp_min(eps)+eps)/max(g['T'],1.)
+        scene=torch.arange(len(p),device=self.device)//K
+        valid=(self.bank.weights[scene]>0).float()
+        q=torch.exp(logits-logits.max())*valid
+        group=self.bank.sampling_ids[scene];G=len(self.bank.sampling_masses)
+        total=torch.zeros(G,device=self.device).scatter_add_(0,group,q)
+        members=torch.zeros(G,device=self.device).scatter_add_(0,group,valid)
+        within=(1-g['mix'])*q/total[group].clamp_min(1e-30)+g['mix']*valid/members[group].clamp_min(1.)
+        return self.bank.sampling_masses[group]*within
+
+    def _sgs_record(self,done):
+        """Write the outcome of every finished SGS episode into its configuration's ring buffer."""
+        ended=done&(self.sgs_env_config>=0)
+        teleop=getattr(self,'joystick_mask',None)
+        if teleop is not None and self.config.get('teleop'):ended=ended&~teleop
+        if not bool(ended.any()):return
+        failure=torch.zeros_like(ended)
+        for key in ('fall','obstacle','self_contact','numerical','body_collision','hand_violation','elbow_violation','outside_bounds','route_lost'):
+            if key in self.episode:failure=failure|self.episode[key]
+        clean=self.episode['goal_reached']&~failure
+        ids=torch.nonzero(ended).flatten()
+        cfg,order=self.sgs_env_config[ids].sort();outcome=clean[ids][order]
+        first=torch.ones_like(cfg,dtype=torch.bool);first[1:]=cfg[1:]!=cfg[:-1]
+        position=torch.arange(len(cfg),device=self.device)
+        rank=position-torch.cummax(torch.where(first,position,torch.zeros_like(position)),0).values
+        H=self.sgs['H']
+        self.sgs_hist[cfg,(self.sgs_ptr[cfg]+rank)%H]=outcome
+        self.sgs_ptr.index_add_(0,cfg,torch.ones_like(cfg));self.sgs_ptr%=H
+        self.sgs_count.index_add_(0,cfg,torch.ones_like(cfg))
 
     def _commanded_blocking(self):
         """Blocking map for COMMANDED (room / keyboard) worlds. 'blocking_map_commanded' False keeps the rooms expert's
@@ -666,7 +748,13 @@ class CATTask:
         ids=self.all_ids if env_ids is None else env_ids.long();n=len(ids)
         if n==0:return self.obs
         if getattr(self,'_style_age',None) is not None:self._style_age[ids]=0     # strided style pairs restart
-        if scene_ids is None:
+        sgs_config=None
+        if scene_ids is None and getattr(self,'sgs',None) is not None:
+            # SGS: a configuration (scene x fixed start), re-weighted at every reset from the latest outcomes.
+            cdf=self._sgs_probabilities().cumsum(0);cdf=cdf/cdf[-1]
+            sgs_config=torch.searchsorted(cdf,self._rand((n,))).clamp_max(len(cdf)-1)
+            scene_ids=sgs_config//self.sgs['K']
+        elif scene_ids is None:
             cdf=self.probabilities.cumsum(0);cdf=cdf/cdf[-1]
             scene_ids=torch.searchsorted(cdf,self._rand((n,))).clamp_max(self.bank.count-1)
         if self.reactive_objects is not None:
@@ -675,6 +763,13 @@ class CATTask:
         qpos=self.init_q.expand(n,-1).clone();qpos[:,:2]+=self._rand((n,2),-1,1);qpos[:,2]=.8
         yaw=self._rand((n,),-np.pi/2,np.pi/2)
         quat=torch.stack(((yaw/2).cos(),torch.zeros_like(yaw),torch.zeros_like(yaw),(yaw/2).sin()),-1)
+        if getattr(self,'sgs',None) is not None:
+            self.sgs_env_config[ids]=-1 if sgs_config is None else sgs_config
+            if sgs_config is not None:
+                # The configuration's fixed start (same distribution as the random draw above, frozen per slot).
+                slot=sgs_config%self.sgs['K'];sc=sgs_config//self.sgs['K']
+                qpos[:,:2]=self.init_q[:2]+self.sgs_xy[sc,slot];yaw=self.sgs_yaw[sc,slot]
+                quat=torch.stack(((yaw/2).cos(),torch.zeros_like(yaw),torch.zeros_like(yaw),(yaw/2).sin()),-1)
         qpos[:,3:7]=self.math.quat_mul(qpos[:,3:7],quat)
         qpos[:,7:]=torch.maximum(torch.minimum(qpos[:,7:]*self._rand((n,29),.5,1.5),self.upper),self.lower)
         scenes=self.scene_ids[ids];room=~self.bank.reset_is_cat[scenes]
@@ -1574,6 +1669,10 @@ class CATTask:
                 blend=((clearance-.20)/.10).clamp(0.,1.);near=1.-blend.square()*(3-2*blend)
             self.style_transition=(first,self._style_features(),weights,near)
             metrics['style/gap_m']=gap
+        if getattr(self,'sgs',None) is not None:
+            self._sgs_record(done)
+            metrics['sgs_config_p']=torch.where(self.sgs_env_config>=0,self.sgs_p[self.sgs_env_config.clamp_min(0)],
+                                                torch.full_like(self.sgs_p[:1].expand(self.num_envs),self.sgs['t']))
         # Only physically completed worlds reset; cached terminal observations
         # and terminal rewards retain the transition before reset.
         self.reset(torch.nonzero(done,as_tuple=False).flatten())
@@ -1707,6 +1806,8 @@ class CATTask:
         if hasattr(self,'speed_state'):names+=('speed_state',)
         if hasattr(self,'tolerance_state'):names+=('tolerance_state','tolerance_episode_rung','tolerance_zone_steps')
         if self.analytic_objects is not None:names+=('analytic_object_state',)
+        if getattr(self,'sgs',None) is not None:
+            names+=('sgs_xy','sgs_yaw','sgs_hist','sgs_count','sgs_ptr','sgs_prior_p','sgs_prior_n','sgs_env_config','sgs_p')
         return {**{name:getattr(self,name) for name in names},'rng':self.generator.get_state()}
 
     def load_state_dict(self,state):

@@ -25,7 +25,7 @@ RUN_DIR=${RUN_DIR:-outputs/distill_three_teachers_v1_20261018}
   --algorithm ppo --num-envs ${NUM_ENVS:-40960} --batch-size ${BATCH_SIZE:-1024} \
   --num-minibatches ${NUM_MINIBATCHES:-40} --unroll-length 32 \
   --checkpoint-native "$STUDENT_INIT" \
-  --fresh-optimizer --max-action-std 0 \
+  ${FRESH---fresh-optimizer} --max-action-std 0 \
   --bank-manifest data/furniture/sidegap_v2_packed/manifest.json \
   --body-collision-bank data/furniture/sidegap_v2_collision/manifest.json \
   --body-collision-resets data/furniture/sidegap_v2_resets/manifest.json \

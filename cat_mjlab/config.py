@@ -41,7 +41,7 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
                      side_gap_curriculum=None,teleop_side_prob=None,hand_tight_walls_only=None,side_gap_tumbling=None,
                      sideways_bonus_progress=None,contact_penalty=None,stall_weight=None,goal_progress_weight=None,
                      goal_bonus_weight=None,timeout_failure=None,reward_group_room=None,commanded_blocking_map=None,
-                     hand_tight_cat_only=None):
+                     hand_tight_cat_only=None,sgs=None):
     from cat_ppo.furniture.generalist_config import released_config
     from .collision import PROPOSAL
     config=copy.deepcopy(released_config()['env_config'] if base_config is None else base_config)
@@ -317,6 +317,16 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
     if hand_tight_cat_only:
         if not config.get('hand_clearance_tight'):raise ValueError('hand_tight_cat_only requires hand_clearance_tight')
         config['hand_clearance_tight']['cat_only']=True
+    if sgs:
+        # Success-Guided Sampling (task._init_sgs): paper defaults for locomotion are history 100, target .66,
+        # kappa 5, temperature 2, epsilon 1e-8.
+        sgs=dict(sgs)
+        for key,low in (('slots',1),('history',1)):
+            if int(sgs[key])<low:raise ValueError(f'sgs {key} must be >= {low}')
+        if not 0<float(sgs['target'])<1:raise ValueError('sgs target must be in (0, 1)')
+        if float(sgs['kappa'])<0 or float(sgs['temperature'])<=0 or float(sgs['epsilon'])<=0:raise ValueError('invalid sgs kernel')
+        if not 0<=float(sgs.get('uniform_mix',0.))<=1:raise ValueError('sgs uniform_mix must be in [0, 1]')
+        config['sgs']=sgs
     if reward_group_room:
         # Per scene group reward weights (task._rewards): ROOM worlds use these, CAT worlds the global scales.
         room={}

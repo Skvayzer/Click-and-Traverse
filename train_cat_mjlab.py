@@ -78,6 +78,17 @@ def parser():
                             help="Blocking map for commanded (room/keyboard) worlds' inputs; off = the rooms expert's inputs")
         target.add_argument("--hand-tight-cat-only", action="store_true",
                             help="--hand-clearance-tight relaxes margins in CAT worlds only")
+        target.add_argument("--sgs-slots", type=int,
+                            help="Success-Guided Sampling (arXiv 2610.12465): fixed start states per scene; configurations = "
+                                 "scenes x slots, drawn at every reset by recent clean-goal success (enables SGS)")
+        target.add_argument("--sgs-history", type=int, default=100, help="SGS outcomes kept per configuration (paper: 100)")
+        target.add_argument("--sgs-target", type=float, default=.66, help="SGS target success t (paper locomotion: 0.66)")
+        target.add_argument("--sgs-kappa", type=float, default=5., help="SGS concentration (paper locomotion: 5)")
+        target.add_argument("--sgs-temperature", type=float, default=2., help="SGS softmax temperature (paper: 2)")
+        target.add_argument("--sgs-epsilon", type=float, default=1e-8, help="SGS floor (paper locomotion: 1e-8)")
+        target.add_argument("--sgs-uniform-mix", type=float, default=0., help="Share of each group drawn uniformly")
+        target.add_argument("--sgs-prior", nargs="+", help="eval_per_scene.py JSONs: per-scene clean success as the buffers' prior")
+        target.add_argument("--sgs-prior-count", type=float, default=4., help="Pseudo-outcomes of the prior")
         target.add_argument("--distill-beta-decay", type=int, default=60, help="Updates for the expert-driving probability to go 1 -> 0")
         target.add_argument("--distill-epochs", type=int, default=2)
         target.add_argument("--distill-lr", type=float, default=3e-4)
