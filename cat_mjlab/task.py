@@ -210,10 +210,11 @@ class CATTask:
         self._init_sgs()
         self.robust=self.config.get('robustness');self._robust_steps=0
         self._dr_views={}
-        if self.robust and (self.robust.get('friction') or self.robust.get('mass')):
+        if self.robust and (self.robust.get('friction') or self.robust.get('mass') or self.robust.get('com')):
             backend=getattr(self.sim,'backend',None)
             if backend is not None:     # MuJoCo Warp: per-world model fields (the CPU simulator has one world: skipped)
-                fields=tuple(f for f,k in (('pair_friction','friction'),('body_mass','mass')) if self.robust.get(k))
+                self.torso_body=self.model.body('torso_link').id
+                fields=tuple(f for f,k in (('pair_friction','friction'),('body_mass','mass'),('body_ipos','com')) if self.robust.get(k))
                 backend.expand_model_fields(fields)
                 self._dr_views={f:getattr(backend.model,f) for f in fields}
                 self._dr_default={f:backend.get_default_field(f).clone() for f in fields}
@@ -923,6 +924,10 @@ class CATTask:
             defaults['mount_offset']=torch.randn((n,3),device=self.device,generator=self.generator)*offset*r
             defaults['navi_actor']=defaults['navi'].clone()
             defaults['pose_error']=torch.zeros((n,4),device=self.device);defaults['pose_error'][:,0]=1.
+            # Targets of the control period before last (action latency longer than one period, up to 40 ms) and a
+            # constant per-episode torque offset (PBHC's "RAO"): U(+-torque_offset) x torque limit per joint.
+            defaults['motor_targets_prev']=defaults['motor_targets'].clone()
+            defaults['torque_offset']=self._rand((n,29),-1.,1.)*float(rb.get('torque_offset',0.))*r*self.torque_limit
         for k,v in defaults.items():self._put(self.info,k,ids,v)
         if getattr(self,'_dr_views',None):
             # Friction of the foot-floor contact pairs (tangential slots) and every body's mass, per episode.
@@ -936,6 +941,11 @@ class CATTask:
             if 'body_mass' in self._dr_views:
                 nb=self._dr_default['body_mass'].shape[-1]
                 self._dr_views['body_mass'][ids]=self._dr_default['body_mass'][None]*factor((n,nb),'mass')
+            if 'body_ipos' in self._dr_views:
+                # Torso centre-of-mass offset (BeyondMimic / PBHC): U(+-com) per axis, per episode.
+                half=torch.tensor([float(v) for v in self.robust['com']],device=self.device)
+                offset=self._rand((n,3),-1.,1.)*half*r
+                self._dr_views['body_ipos'][ids,self.torso_body]=self._dr_default['body_ipos'][self.torso_body][None]+offset
         if getattr(self,'robust',None):
             estimate,_=self._pose_estimate(qpos[:,:7],ids)
             self._put(self.info,'odom_delay',ids,estimate)
@@ -1518,9 +1528,11 @@ class CATTask:
                 feedforward[:,12:]=self.upper_gravity(current)
             applied=targets
             if getattr(self,'robust',None):
-                # Observation-to-motor latency: the motors keep tracking the previous targets for this episode's
-                # first `latency_substeps` physics substeps of the control period.
-                applied=torch.where((substep<i['latency_substeps'])[:,None],i['motor_targets'],targets)
+                # Observation-to-motor latency of `latency_substeps` physics substeps (up to two control periods): the
+                # motors track the newest targets issued at least that long ago.
+                lat=i['latency_substeps'][:,None]
+                applied=torch.where(substep>=lat,targets,torch.where(substep+self.n_substeps>=lat,i['motor_targets'],i['motor_targets_prev']))
+                feedforward=(feedforward if feedforward is not None else torch.zeros_like(d.ctrl))+i['torque_offset']
             torque=self.math.pd_torque(d.qpos[:,7:],d.qvel[:,6:],applied,self.kps,self.kds,i['kp'],i['kd'],
                 i['rfi'],self._rand((self.num_envs,29),-1.,1.),self.torque_limit,feedforward=feedforward)
             d.ctrl.copy_(torque)
@@ -1534,6 +1546,7 @@ class CATTask:
             if self.collision is not None and getattr(self,'collision_every_substep',True):regions|=self.collision(self.scene_ids,d)
         if self.collision is not None:regions|=self.collision(self.scene_ids,self.sim.final_collision_data())
         contacts=self.sim.contact_flags(self.contact_pairs)
+        if getattr(self,'robust',None):i['motor_targets_prev']=i['motor_targets']
         i['motor_targets']=targets
         rotations=d.site_xmat.reshape(self.num_envs,-1,3,3)
         pelvis,torso=rotations[:,self.pelvis_site],rotations[:,self.torso_site]

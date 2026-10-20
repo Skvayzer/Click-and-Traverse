@@ -1058,6 +1058,8 @@ def create_task(args, *, environment_config=None, sim_class=None):
                          mount=[float(v) for v in (args.robust_mount or [0., 0., 0.])],
                          friction=[float(v) for v in args.robust_friction] if args.robust_friction else None,
                          mass=[float(v) for v in args.robust_mass] if args.robust_mass else None,
+                         com=[float(v) for v in args.robust_com] if getattr(args, 'robust_com', None) else None,
+                         torque_offset=float(getattr(args, 'robust_torque_offset', None) or 0.),
                          ramp_steps=int(args.robust_ramp_steps or 0))
                     if getattr(args, 'robust_action_latency_ms', None) is not None or getattr(args, 'robust_pose_noise', None) else None),
         sgs=(dict(slots=args.sgs_slots, history=args.sgs_history, target=args.sgs_target, kappa=args.sgs_kappa,

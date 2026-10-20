@@ -331,7 +331,9 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
         # Sim-to-real robustness (task: _pose_estimate, latency in the PD loop, per-world friction/mass): actor-side
         # localisation error (constant mount error + jitter + update period) and observation-to-motor latency.
         rb=dict(robustness)
-        if not 0<=float(rb.get('action_latency_ms',0.))<=20:raise ValueError('action latency must be within one control period (0-20 ms)')
+        if not 0<=float(rb.get('action_latency_ms',0.))<=40:raise ValueError('action latency must be within two control periods (0-40 ms)')
+        if rb.get('com') is not None and any(not 0<=float(v)<=.2 for v in rb['com']):raise ValueError('com offsets must be in [0, 0.2] m')
+        if not 0<=float(rb.get('torque_offset',0.))<=.5:raise ValueError('torque offset must be in [0, 0.5] of the torque limit')
         lo,hi=(int(v) for v in rb.get('pose_period_steps',[5,5]))
         if not 1<=lo<=hi:raise ValueError('invalid pose update period range')
         for key in ('pose_noise','mount'):

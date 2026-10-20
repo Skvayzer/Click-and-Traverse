@@ -88,6 +88,10 @@ def parser():
                             help="Robustness: per-episode constant localisation/mount error (std)")
         target.add_argument("--robust-friction", type=float, nargs=2, metavar=("LO", "HI"), help="Robustness: foot-floor friction scale")
         target.add_argument("--robust-mass", type=float, nargs=2, metavar=("LO", "HI"), help="Robustness: per-body mass scale")
+        target.add_argument("--robust-com", type=float, nargs=3, metavar=("X_M", "Y_M", "Z_M"),
+                            help="Robustness: torso centre-of-mass offset U(+-X, +-Y, +-Z) per episode")
+        target.add_argument("--robust-torque-offset", type=float,
+                            help="Robustness: constant per-episode joint torque offset U(+-F) x torque limit")
         target.add_argument("--robust-ramp-steps", type=int, default=0, help="Robustness: control steps to ramp all perturbations 0 -> full")
         target.add_argument("--sgs-slots", type=int,
                             help="Success-Guided Sampling (arXiv 2610.12465): fixed start states per scene; configurations = "
