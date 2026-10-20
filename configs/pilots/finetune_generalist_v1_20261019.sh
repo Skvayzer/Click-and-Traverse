@@ -30,7 +30,7 @@ RUN_DIR=${RUN_DIR:-outputs/finetune_generalist_v1_20261019}
   --algorithm ppo --num-envs ${NUM_ENVS:-40960} --batch-size ${BATCH_SIZE:-1024} \
   --num-minibatches ${NUM_MINIBATCHES:-40} --unroll-length 32 \
   --checkpoint-native "$STUDENT" \
-  ${FRESH---fresh-optimizer --init-action-std 0.10} --max-action-std 0.15 \
+  ${FRESH---fresh-optimizer --init-action-std 0.10} --max-action-std ${MAX_STD:-0.15} \
   --bank-manifest data/furniture/sidegap_v2_packed/manifest.json \
   --body-collision-bank data/furniture/sidegap_v2_collision/manifest.json \
   --body-collision-resets data/furniture/sidegap_v2_resets/manifest.json \
