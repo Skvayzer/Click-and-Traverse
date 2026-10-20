@@ -492,6 +492,17 @@ uniform share (fine for training from scratch, as in the paper; erodes skills in
 student): anchor 1.0 -> 0.3 over 300 updates then kept, std fixed at 0.10 (ceiling 0.10), SGS uniform share 30%.
 Progress is judged with the paired same-configuration snapshot analysis, not the raw training rates.
 
+**Robustness fine-tune** (2026-10-20, `outputs/finetune_robust_v1_20261020`, configs/pilots/finetune_robust_v1_run.sh,
+commit a1c55b0; v2 stopped at update 141). From `generalist_finetune_v1_u596` (the checkpoint chosen for the robot),
+after the sim-to-sim (humanoid_navigation cat/WHOLEBODY.md) found that a full 20 ms action delay plus pose noise makes
+it fall. New in the task: observation-to-motor latency U(0, 20 ms) per episode (previous targets for the first k
+physics substeps); actor-side pose estimate with a constant per-episode mount error (1.5 deg tilt, 1 deg yaw, 1.5 cm
+std) + update jitter (1 cm xy, 0.5 cm z, 0.6 deg yaw) + update period U(3, 8) steps, used for the field sampling and
+the actor's heading frame (physics, IMU, critic true); foot-floor pair friction x[0.5, 1.2] and body masses x[0.9,
+1.1] per world (mjlab expand_model_fields). Ramp over 100 updates. Anchor = the starting checkpoint itself (1.0 -> 0.3
+over 200 updates), std 0.10, SGS 30% uniform. Judge: sim-to-sim worst case (full delay + noise) must stop falling,
+realistic 20/20 must hold, paired SGS analysis for skills.
+
 ## 8. Not yet done / next
 
 - Reference-state initialisation from sidle / duck clips (planned; not in the first pilot).
