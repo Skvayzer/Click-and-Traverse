@@ -469,6 +469,29 @@ started 2026-10-19 17:38): from the DAgger student, 32768 envs, per-group reward
 infeasible (the 463 without a teacher are unlabelled, pure RL). First updates: ~97 s/update, 42.9 GB, practised
 configurations at ~55% estimated success, ~10% of experience unlabelled.
 
+**v1 result (stopped at update 596, 2026-10-20).** Under SGS the per-skill training success rates are biased by
+which configurations are served (table edges "4% -> 85%" was flat at 48% on the same configurations). Bias-free
+measure: outcomes written into the SGS ring buffers between two snapshots, compared on the SAME configurations
+across windows (stochastic training episodes):
+
+| skill | upd 50-150 | 250-350 | 450-550 |
+|---|---|---|---|
+| procedural open / mid | 62 / 45% | 59 / 39% | 57 / 36% |
+| original CAT | 38% | 33% | 29% |
+| side gaps >= 0.50 / 0.40-0.50 / < 0.40 m | 63 / 39 / 13% | 58 / 33 / 8% | 56 / 30 / 6% |
+| published hurdle | 79% | 79% | 81% |
+| furniture / clutter / table edges | 68 / 67 / 48% | 67 / 67 / 48% | 70 / 67 / 48% |
+| passages narrow / transition / protected | 24 / 40 / 55% | 33 / 45 / 61% | 40 / 50 / 70% |
+
+Causes: PPO raised the action std 0.10 -> 0.148 (ceiling 0.15) by update 150 (style reward 0.64 -> 0.38, smoothness
+penalty +50%, procedural-mid contact 37 -> 53%); after the anchor reached 0 (update 300) the action distance to the
+teachers grew 3-5x (traversal 0.003 -> 0.016, rooms 0.011 -> 0.034); SGS left mastered configurations only the 5%
+uniform share (fine for training from scratch, as in the paper; erodes skills in a fine-tune).
+
+**v2** (`outputs/finetune_generalist_v2_20261020`, configs/pilots/finetune_generalist_v2_run.sh, from the DAgger
+student): anchor 1.0 -> 0.3 over 300 updates then kept, std fixed at 0.10 (ceiling 0.10), SGS uniform share 30%.
+Progress is judged with the paired same-configuration snapshot analysis, not the raw training rates.
+
 ## 8. Not yet done / next
 
 - Reference-state initialisation from sidle / duck clips (planned; not in the first pilot).
