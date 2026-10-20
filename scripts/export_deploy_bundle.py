@@ -106,7 +106,14 @@ def main():
 
     # ---------------------------------------------------------------- reference rollouts
     from cat_mjlab.sim_cpu import assemble_training_xml
-    (args.out / "robot.xml").write_text(assemble_training_xml())
+    # Self-contained robot model: meshes copied next to it, paths relative (training XML uses absolute paths).
+    import re, shutil
+    xml = assemble_training_xml()
+    (args.out / "assets").mkdir(exist_ok=True)
+    for path in sorted(set(re.findall(r'file="([^"]+)"', xml))):
+        shutil.copy2(path, args.out / "assets" / Path(path).name)
+        xml = xml.replace(f'file="{path}"', f'file="assets/{Path(path).name}"')
+    (args.out / "robot.xml").write_text(xml)
     index = {s["scene_id"]: i for i, s in enumerate(task.bank.manifest["scenes"])}
     record = {}
     keys = ("gf", "bf", "sdf", "gf_delay", "bf_delay", "sdf_delay", "positions", "command", "command_delay", "last_command",
@@ -204,6 +211,7 @@ def main():
     )
     (args.out / "deploy_spec.json").write_text(json.dumps(spec, indent=1, default=str) + "\n")
     hashes = {f.name: sha256(f) for f in sorted(args.out.iterdir()) if f.is_file() and f.name != "SHA256SUMS"}
+    hashes.update({f"assets/{f.name}": sha256(f) for f in sorted((args.out / "assets").iterdir())})
     (args.out / "SHA256SUMS").write_text("".join(f"{h}  {n}\n" for n, h in hashes.items()))
     print(json.dumps(dict(out=str(args.out), verification=verification, steps=len(obs)), indent=1))
 
