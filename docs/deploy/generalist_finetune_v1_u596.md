@@ -93,3 +93,11 @@ realistic combined perturbations (pose noise 1 cm, 40 ms pose latency, 10 ms act
 perception limits) 20/20 through flat / 0.47 / 0.48 / 0.44 m gaps with physical walls and no contact; a full 20 ms
 action delay plus pose noise causes falls (latency never randomised in training). The 25 m corridor course fails in
 the training simulator as well (policy behaviour).
+
+## Robust variant: `generalist_robust_delay_v1_u150` (2026-10-20)
+
+Action-delay and perturbation resistant: this policy fine-tuned 150 updates (`outputs/finetune_robust_v1_20261020`,
+snapshot 150) with action latency 0-20 ms, SLAM-rate pose noise, LiDAR-mount error, friction x0.5-1.2, mass x0.9-1.1.
+Checkpoint `outputs/saved_checkpoints/generalist_robust_delay_v1_u150.pt`, bundle `outputs/deploy/generalist_robust_delay_v1_u150/`,
+shipped in humanoid_navigation `cat/wholebody/robust_delay_v1_u150/` (same runtime contract). Sim-to-sim: 0 falls at
+0-20 ms delay (parent 2 at 20 ms); worst case 2/20 falls (parent 10/20); both fall at 40 ms.
