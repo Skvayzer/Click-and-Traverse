@@ -172,6 +172,7 @@ class Session:
         env["dm_rand_config"].update(enable_pd=False, enable_rfi=False)
         env.pop("goal_hold_seconds", None)
         env.pop("teleop", None)                     # the keyboard is the joystick here
+        env.pop("sgs", None)                        # training-only scene sampler (Success-Guided Sampling)
         # Checkpoints trained with body-frame joystick commands (v7+) take (forward, sideways, turn
         # rate) directly; older ones only take a walking direction (emulated turning below).
         # v8+: heading_command (A/D turn a reference heading, W/S/Q/E walk relative to it; the robot
