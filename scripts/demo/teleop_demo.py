@@ -227,7 +227,13 @@ class Session:
         self._scene_directory = scene_directory
         resolve = lambda key: key if key in self.index else next((s for s in self.index if s.startswith(key)), None)
         names = [n for name in args.scenes for n in PRESETS.get(name, [name])]   # preset names expand
-        self.scenes = [r for r in map(resolve, names) if r is not None]
+        # "label=scene_id" shows the label in the scene list (procedural ids like D8G0L1O0S3 say nothing)
+        pairs = [(n.split("=", 1) if "=" in n else (None, n)) for n in names]
+        self.scenes, self.labels = [], {}
+        for label, key in pairs:
+            found = resolve(key)
+            if found is not None and found not in self.labels:
+                self.scenes.append(found); self.labels[found] = label or found
         if not self.scenes:
             raise ValueError("none of the requested scenes is in the bank")
         self.scene = None
@@ -612,10 +618,12 @@ def main(argv=None):
             p = o - o[2] / d[2] * d
             session.set_goal(p[:2])
     with server.gui.add_folder("Scene"):
-        choice = server.gui.add_dropdown("Room", tuple(session.scenes), initial_value=session.scene)
+        by_label = {session.labels[s]: s for s in session.scenes}
+        choice = server.gui.add_dropdown("Scene", tuple(by_label), initial_value=session.labels[session.scene])
         @choice.on_update
         def _(_):
-            session.load(choice.value); draw_scene()
+            if by_label[choice.value] != session.scene:
+                session.load(by_label[choice.value]); draw_scene()
         server.gui.add_button("Reset").on_click(lambda _: (session.load(session.scene), draw_scene()))
         follow = server.gui.add_checkbox("Camera follows robot", True)
     draw_scene()
@@ -635,7 +643,7 @@ def main(argv=None):
             start = time.time()
             info = session.step(); frame += 1; n_report += 1
             if session.scene != shown_scene:
-                shown_scene = session.scene; draw_scene(); choice.value = session.scene
+                shown_scene = session.scene; draw_scene(); choice.value = session.labels[session.scene]
             if frame % 2 == 0:
                 vis_data.qpos[:] = session.sim.raw.qpos; mujoco.mj_kinematics(session.sim.model, vis_data)
                 robot.update_from_mjdata(vis_data)
