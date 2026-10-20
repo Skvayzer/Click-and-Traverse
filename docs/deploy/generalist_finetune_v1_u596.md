@@ -83,3 +83,13 @@ FK machinery, the field-computation core, the no-motion safety structure.
 * Obstacles were never physical in training (contact ended the episode): any real contact is outside its experience.
 * Flat floor only; no slopes or stairs; hands rigid.
 * Fields in training were perfect (no unknown cells, no LiDAR noise, static scene).
+
+## Robot-side runtime and sim-to-sim (2026-10-20)
+
+Implemented in `humanoid_navigation` branch `feature/cat-wholebody-policy` (local on dep-1, `cat/WHOLEBODY.md`):
+numpy runtime (observation builder, FK on `robot.xml`, gravity feedforward, action rule), training-convention field
+generator, replay tests and a MuJoCo sim-to-sim. Results: recorded training steps rebuilt to 2e-5 (actions 2e-6);
+realistic combined perturbations (pose noise 1 cm, 40 ms pose latency, 10 ms action latency, kp -10%, robot
+perception limits) 20/20 through flat / 0.47 / 0.48 / 0.44 m gaps with physical walls and no contact; a full 20 ms
+action delay plus pose noise causes falls (latency never randomised in training). The 25 m corridor course fails in
+the training simulator as well (policy behaviour).
