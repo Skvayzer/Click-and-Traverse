@@ -253,7 +253,28 @@ class Session:
 
     def boxes(self):
         record = self.manifest["scenes"][self.index[self.scene]]
-        return json.loads((self._scene_directory(self._loaded, self._mp, record) / "scene.json").read_text())["boxes"]
+        path = self._scene_directory(self._loaded, self._mp, record) / "scene.json"
+        return json.loads(path.read_text())["boxes"] if path.exists() else []   # released CAT scenes: voxels only
+
+    def obstacle_mesh(self):
+        """Surface of the scene's obstacles (SDF = 0, marching cubes) for scenes without a box list, or None."""
+        record = self.manifest["scenes"][self.index[self.scene]]
+        directory = self._scene_directory(self._loaded, self._mp, record)
+        if (directory / "scene.json").exists():
+            return None
+        cache = getattr(self, "_meshes", None) or {}; self._meshes = cache
+        if self.scene not in cache:
+            import numpy as np
+            from skimage.measure import marching_cubes
+            sdf = np.asarray(np.load(directory / "sdf.npy"), dtype=np.float32).reshape(tuple(record["shape"]))
+            if sdf.min() >= 0:
+                cache[self.scene] = None
+            else:
+                padded = np.pad(sdf, 1, constant_values=float(sdf.max()))       # close surfaces at the grid border
+                vertices, faces, _, _ = marching_cubes(padded, level=0.)
+                vertices = (vertices - 1) * float(record["dx"]) + np.asarray(record["origin"], dtype=np.float64)
+                cache[self.scene] = (vertices.astype(np.float32), faces.astype(np.int32))
+        return cache[self.scene]
 
     def load(self, scene_id):
         with self.lock:
@@ -599,6 +620,10 @@ def main(argv=None):
         for h in box_handles:
             h.remove()
         box_handles.clear()
+        mesh = session.obstacle_mesh()
+        if mesh is not None:
+            box_handles.append(server.scene.add_mesh_simple("/furniture/voxels", mesh[0], mesh[1], color=(150, 160, 172),
+                                                            side="double", flat_shading=False))
         for k, b in enumerate(session.boxes()):
             yaw = b["yaw"]
             box_handles.append(server.scene.add_box(f"/furniture/{k}", color=box_color(b["category"]),
