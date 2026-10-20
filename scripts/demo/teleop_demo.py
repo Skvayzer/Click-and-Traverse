@@ -90,8 +90,13 @@ class WaypointField:
         directory = session._scene_directory(session._loaded, session._mp, record)
         self.shape = tuple(record["shape"]); self.origin = np.asarray(record["origin"], dtype=np.float64); self.dx = float(record["dx"])
         sdf = np.load(directory / "sdf.npy"); self.sdf = np.asarray(sdf, dtype=np.float32).reshape(self.shape)
-        occ = np.load(directory / "obs.npy")
-        self.occ = (occ.reshape(self.shape) if occ.size == np.prod(self.shape) else unpack_occupancy(occ, self.shape)).astype(bool)
+        if (directory / "obs.npy").exists():
+            occ = np.load(directory / "obs.npy")
+            self.occ = (occ.reshape(self.shape) if occ.size == np.prod(self.shape) else unpack_occupancy(occ, self.shape)).astype(bool)
+        else:
+            # Released CAT scenes, some passages and the flat floor store no occupancy: inside = SDF < 0
+            # (the generators check exactly this equivalence for the scenes that have both).
+            self.occ = self.sdf < 0
         self.offset = int(self.bank.offsets[index]); self.packed = "gf" in getattr(self.bank, "packed_fields", ())
         self.module = _upstream("pf_modular"); self.config = self.module.PFConfig(); self.config.voxel = self.dx
         self.goal, self.pending, self.busy, self.compute_s = None, None, False, 0.
@@ -275,7 +280,11 @@ class Session:
             cat = record.get("reset_mode") == "cat"
             self.mode = "waypoint" if cat else "velocity"
             if cat and scene_id not in self.waypoints:
-                self.waypoints[scene_id] = WaypointField(self, scene_id)
+                try:
+                    self.waypoints[scene_id] = WaypointField(self, scene_id)
+                except Exception as error:      # never take the server down: drive this scene by velocity
+                    print(f"waypoint field unavailable for {scene_id}: {error!r}", flush=True)
+                    cat = False; self.mode = "velocity"
             if cat:
                 self.waypoints[scene_id].goal = None; self.waypoints[scene_id].pending = None
 
