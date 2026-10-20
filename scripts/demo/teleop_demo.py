@@ -160,6 +160,88 @@ class WaypointField:
             field[torch.from_numpy(flat.reshape(-1))] = torch.from_numpy(np.ascontiguousarray(values)).to(field.dtype)
 
 
+class RoomWaypoint:
+    """Click-to-go in ROOM scenes. Rooms are driven by a body-frame command (forward, sideways, turn rate) in
+    training -- route or keyboard -- not by the CAT field, so a click plans a 2-D path and the session steers
+    along it with exactly the keyboard's command: turn the reference heading toward a point LOOKAHEAD m ahead on
+    the path, walk forward (slower when misaligned), stop within REACHED m. Free space = cells farther than CLEAR
+    from anything blocking at body height (cat_mjlab.blocking: occupied at 0.25-0.95 m); 8-connected Dijkstra
+    with a small cost for passing close to obstacles. Same interface as WaypointField (goal/pending/request)."""
+    REACHED = .35
+    LOOKAHEAD = .8
+    CLEARANCES = (.32, .24)          # corridor >= 0.48 m: below that the robot cannot pass even sideways
+
+    def __init__(self, session, scene_id):
+        import numpy as np
+        from cat_mjlab.blocking import blocking_sdf2d
+        self.np, self.session = np, session
+        record = session.manifest["scenes"][session.index[scene_id]]
+        directory = session._scene_directory(session._loaded, session._mp, record)
+        shape = tuple(record["shape"]); origin = np.asarray(record["origin"], dtype=np.float64)
+        sdf = np.asarray(np.load(directory / "sdf.npy"), dtype=np.float32).reshape(shape)
+        # Anything from 5 cm up to head height blocks: room policies never learned to step over objects (the
+        # 0.25-0.95 m body band routed the path over low boxes; feet and legs hit them).
+        self.dist, _ = blocking_sdf2d(sdf, float(origin[2]), float(record["dx"]), band=(.05, 1.6))
+        self.origin, self.dx, self.shape = origin[:2], float(record["dx"]), shape[:2]
+        self.goal = self.pending = self.path = None
+
+    def _cell(self, xy):
+        np = self.np
+        return tuple(int(v) for v in np.clip(np.round((np.asarray(xy) - self.origin) / self.dx), 0, np.asarray(self.shape) - 1))
+
+    def _nearest_free(self, cell, free, radius):
+        np = self.np
+        i, j = cell; r = int(radius / self.dx)
+        a0, a1, b0, b1 = max(0, i - r), min(self.shape[0], i + r + 1), max(0, j - r), min(self.shape[1], j + r + 1)
+        cand = np.argwhere(free[a0:a1, b0:b1])
+        if not len(cand):
+            return None
+        best = cand[np.argmin(((cand + [a0, b0] - [i, j]) ** 2).sum(-1))] + [a0, b0]
+        return int(best[0]), int(best[1])
+
+    def _dijkstra(self, free, start, goal):
+        import heapq
+        np = self.np
+        cost = np.full(self.shape, np.inf); cost[start] = 0.; parent = {}
+        near = 1. + .8 * np.clip((.6 - self.dist) / .6, 0., 1.)          # prefer the middle of a passage
+        heap = [(0., start)]
+        steps = [(di, dj, math.hypot(di, dj)) for di in (-1, 0, 1) for dj in (-1, 0, 1) if di or dj]
+        while heap:
+            c, (i, j) = heapq.heappop(heap)
+            if (i, j) == goal:
+                break
+            if c > cost[i, j]:
+                continue
+            for di, dj, length in steps:
+                a, b = i + di, j + dj
+                if 0 <= a < self.shape[0] and 0 <= b < self.shape[1] and free[a, b]:
+                    n = c + length * near[a, b]
+                    if n < cost[a, b]:
+                        cost[a, b] = n; parent[(a, b)] = (i, j); heapq.heappush(heap, (n, (a, b)))
+        if goal not in parent and goal != start:
+            return None
+        cells = [goal]
+        while cells[-1] != start:
+            cells.append(parent[cells[-1]])
+        return [self.origin + self.dx * self.np.asarray(c, dtype=float) for c in reversed(cells)]
+
+    def request(self, goal_xy):
+        np = self.np
+        robot = np.array(self.session.sim.raw.qpos[:2], dtype=np.float64)   # a copy: asarray is a live view of qpos
+        for clear in self.CLEARANCES:
+            free = self.dist >= clear
+            goal = self._nearest_free(self._cell(goal_xy), free, 1.5)
+            start = self._nearest_free(self._cell(robot), free, .6)
+            if goal is None or start is None:
+                continue
+            path = self._dijkstra(free, start, goal)
+            if path:
+                self.path = [robot] + path[::3] + [path[-1]]
+                self.goal = self.pending = path[-1]
+                return self.goal
+        return None
+
+
 class Session:
     """One world: policy + unchanged training task on CPU MuJoCo, with a joystick command."""
 
@@ -306,8 +388,15 @@ class Session:
                 except Exception as error:      # never take the server down: drive this scene by velocity
                     print(f"waypoint field unavailable for {scene_id}: {error!r}", flush=True)
                     cat = False; self.mode = "velocity"
-            if cat:
+            if not cat and scene_id not in self.waypoints:
+                try:
+                    self.waypoints[scene_id] = RoomWaypoint(self, scene_id)
+                except Exception as error:
+                    print(f"room waypoints unavailable for {scene_id}: {error!r}", flush=True)
+            if scene_id in self.waypoints:
                 self.waypoints[scene_id].goal = None; self.waypoints[scene_id].pending = None
+                if isinstance(self.waypoints[scene_id], RoomWaypoint):
+                    self.waypoints[scene_id].path = None
 
     @property
     def waypoint(self):
@@ -403,11 +492,46 @@ class Session:
         self._was_holding = near
         return near
 
+    def _room_waypoint_command(self):
+        """Steer along the planned room path with the keyboard's own command (see RoomWaypoint)."""
+        import numpy as np
+        w = self.waypoint
+        xy = np.asarray(self.sim.raw.qpos[:2], dtype=np.float64)
+        self.task.joystick, self.task.joystick_body = self._joystick, self._joystick_body
+        psi = getattr(self.task, "psi_ref", None)
+        if w.goal is None or w.path is None or float(np.linalg.norm(w.goal - xy)) < w.REACHED:
+            self.body_command = [0., 0., 0.]
+            if psi is not None:
+                psi[0] = self.yaw()
+        else:
+            path = np.asarray(w.path)
+            k = int(np.argmin(((path - xy) ** 2).sum(-1))); carrot = path[-1]; left = w.LOOKAHEAD
+            for a, b in zip(path[k:-1], path[k + 1:]):
+                seg = float(np.linalg.norm(b - a))
+                if seg >= left:
+                    carrot = a + (b - a) * (left / max(seg, 1e-9)); break
+                left -= seg
+            desired = math.atan2(carrot[1] - xy[1], carrot[0] - xy[0])
+            # Heading-command checkpoints walk ALONG THE REFERENCE heading (task._joystick_body_to_world) and turn
+            # the body toward it where there is room: steer the reference along the path like a joystick, and walk
+            # at full speed once it points there -- waiting for the body to line up stalled at path corners next
+            # to furniture, where the policy (by design) turns the body slowly.
+            reference = float(psi[0]) if psi is not None else self.yaw()
+            swing = math.remainder(desired - reference, 2 * math.pi)
+            turn = max(-BODY_TURN_RATE, min(BODY_TURN_RATE, 3. * swing))
+            forward = self.speed_setting * max(0., math.cos(swing)) ** 2
+            self.body_command = [forward, 0., turn]
+        if self._joystick_body is not None:
+            self._joystick_body[0] = self.torch.tensor(self.body_command)
+        return self.body_command == [0., 0., 0.]
+
     def step(self):
         torch = self.torch
         with self.lock:
             self.holding = None
-            if self.mode == "waypoint" and self.waypoint is not None:
+            if self.mode == "waypoint" and isinstance(self.waypoint, RoomWaypoint) and self.body_mode:
+                self.holding = self._room_waypoint_command()
+            elif self.mode == "waypoint" and self.waypoint is not None and not isinstance(self.waypoint, RoomWaypoint):
                 self.holding = self._waypoint_command()
             elif self.body_mode:
                 if self.hold_mode:
@@ -691,6 +815,12 @@ def main(argv=None):
                     server.scene.add_line_segments("/heading_ref", segments, (255, 200, 0), thickness=.03)
                 w = session.waypoint
                 goal = None if (w is None or session.mode != "waypoint") else (w.pending if w.pending is not None else w.goal)
+                path = getattr(w, "path", None) if session.mode == "waypoint" else None
+                if path is not None and len(path) > 1:
+                    pts = np.asarray([[float(p[0]), float(p[1]), .04] for p in path])
+                    server.scene.add_line_segments("/waypoint_path", np.stack((pts[:-1], pts[1:]), 1), (40, 200, 255), thickness=.025)
+                else:
+                    server.scene.add_line_segments("/waypoint_path", np.zeros((1, 2, 3)), (40, 200, 255), thickness=.001)
                 if goal is not None:
                     server.scene.add_icosphere("/waypoint", radius=.09, color=(40, 200, 255), position=(float(goal[0]), float(goal[1]), .09))
                     server.scene.add_line_segments("/waypoint_line", np.array([[[float(vis_data.qpos[0]), float(vis_data.qpos[1]), .05],
