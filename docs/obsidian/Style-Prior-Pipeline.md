@@ -503,6 +503,14 @@ the actor's heading frame (physics, IMU, critic true); foot-floor pair friction 
 over 200 updates), std 0.10, SGS 30% uniform. Judge: sim-to-sim worst case (full delay + noise) must stop falling,
 realistic 20/20 must hold, paired SGS analysis for skills.
 
+**Capacity check** (2026-10-20, scripts/capacity_probe.py, outputs/capacity_probe/): 100k states the DAgger student
+visits (375 episodes, balanced over teachers), labelled by the routed teacher; same regression for four actor widths,
+600 epochs, held-out episodes. Training error falls with width (0.0088 / 0.0059 / 0.0030 / 0.0007 for 0.1M / 0.29M /
+0.9M / 3.6M) but held-out error does not (0.0113 / 0.0110 / 0.0114 / 0.0123); narrow-teacher error 0.014-0.016 at
+every width. Not capacity-limited at this data scale: the narrow imitation gap is generalisation / teacher conflict,
+not representational size. Spare capacity is still cheap: scripts/widen_checkpoint.py widens an actor function-
+preservingly (Net2WiderNet; 512-256-128-64 -> 1024-512-256-128 = 0.29M -> 0.93M, outputs equal to 1.3e-6).
+
 ## 8. Not yet done / next
 
 - Reference-state initialisation from sidle / duck clips (planned; not in the first pilot).
