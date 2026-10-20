@@ -492,7 +492,7 @@ setInterval(async()=>{try{const s=await (await fetch('/status')).json();
  document.getElementById('hud').innerHTML='<b>'+(s.mode==='waypoint'?'WAYPOINT mode':'VELOCITY mode')+'</b> '+
  (s.mode==='waypoint'?(s.goal_dist===null?'(no waypoint: robot holds)':('waypoint '+s.goal_dist.toFixed(1)+' m'+(s.holding?' - reached, holding':''))):'')+'<br>'+(s.touching&&s.touching.length?'<b class=c>CONTACT: '+s.touching.join(', ')+'</b>':'<b class=ok>no contact</b>')+
  '<br>speed setting '+s.setting.toFixed(1)+' m/s, actual '+s.speed.toFixed(2)+' m/s<br>closest: body '+s.body.toFixed(2)+' m, hands '+s.hands.toFixed(2)+
- ' m<br>'+(s.gate===null||s.gate===undefined?'':('orientation '+(s.gate>.5?'held (room)':'free (narrow: may turn sideways)')+'<br>'))+'contact steps '+s.contacts+', falls '+s.falls+'<br><span style="opacity:.7">'+(s.mode==='waypoint'?'W/S/Q/E move the waypoint ahead/behind/sideways, A/D rotate it, F waypoint 2.5 m further, Shift+click floor = waypoint, Space stop here, V velocity mode':'hold W forward, S back, A/D turn, Q/E sideways, Space stop, +/- speed, V waypoint mode')+', R reset, N next scene</span>';}catch(e){}},250);
+ ' m<br>'+(s.gate===null||s.gate===undefined?'':('orientation '+(s.gate>.5?'held (room)':'free (narrow: may turn sideways)')+'<br>'))+'contact steps '+s.contacts+', falls '+s.falls+'<br><span style="opacity:.7">'+(s.mode==='waypoint'?'W/S/Q/E move the waypoint ahead/behind/sideways, A/D rotate it, F waypoint 2.5 m further, click floor = waypoint, Space stop here, V velocity mode':'hold W forward, S back, A/D turn, Q/E sideways, Space stop, +/- speed, V waypoint mode')+', R reset, N next scene</span>';}catch(e){}},250);
 </script></body></html>"""
 
 
@@ -601,11 +601,11 @@ def main(argv=None):
             if session.speed: session.speed = speed.value
         server.gui.add_button("Drive straight at the nearest table").on_click(lambda _: session.aim_at_nearest("top"))
     with server.gui.add_folder("Waypoint (CAT-type scenes)"):
-        server.gui.add_markdown("Shift+click the floor to send the robot there; keys W/S/Q/E move the waypoint, A/D rotate it.")
+        server.gui.add_markdown("Click the floor to send the robot there; keys W/S/Q/E move the waypoint, A/D rotate it.")
         server.gui.add_button("Waypoint 2.5 m further").on_click(lambda _: session.goal_ahead())
         server.gui.add_button("Toggle waypoint / velocity mode").on_click(lambda _: session.toggle_mode())
 
-    @server.scene.on_click(modifier="shift")
+    @server.scene.on_click()                      # plain click on the floor (a drag still orbits the camera)
     def _(event):
         o = np.asarray(event.ray_origin, dtype=float); d = np.asarray(event.ray_direction, dtype=float)
         if d[2] < -1e-6:
@@ -628,7 +628,7 @@ def main(argv=None):
     print(f"\nBrowser with keyboard: http://localhost:{keys_port}   (3D view only: http://localhost:{args.port})")
     print(f"From the laptop: ssh -L {args.port}:localhost:{args.port} -L {keys_port}:localhost:{keys_port} konstantinsmirnov@dep-1")
     print("Keys: Up/W go, Down/S stop, Left/A Right/D turn 20 deg, +/- speed, T at nearest table, R reset, N next scene, Q quit\n"
-          "Waypoint mode (CAT-type scenes, default there): keys move a target point; Shift+click the floor; F = 2.5 m further; V toggles modes\n", flush=True)
+          "Waypoint mode (CAT-type scenes, default there): keys move a target point; click the floor; F = 2.5 m further; V toggles modes\n", flush=True)
     shown_scene, frame, t_report, n_report = session.scene, 0, time.time(), 0
     try:
         while not stop.is_set():
