@@ -78,6 +78,17 @@ def parser():
                             help="Blocking map for commanded (room/keyboard) worlds' inputs; off = the rooms expert's inputs")
         target.add_argument("--hand-tight-cat-only", action="store_true",
                             help="--hand-clearance-tight relaxes margins in CAT worlds only")
+        target.add_argument("--robust-action-latency-ms", type=float,
+                            help="Robustness: per-episode observation-to-motor latency U(0, MS) at physics-substep resolution")
+        target.add_argument("--robust-pose-noise", type=float, nargs=3, metavar=("XY_M", "Z_M", "YAW_DEG"),
+                            help="Robustness: jitter of the pelvis pose the actor's fields/heading frame are built from")
+        target.add_argument("--robust-pose-period", type=int, nargs=2, metavar=("MIN", "MAX"),
+                            help="Robustness: pose update period in control steps, per episode (training default 5)")
+        target.add_argument("--robust-mount", type=float, nargs=3, metavar=("TILT_DEG", "YAW_DEG", "OFFSET_M"),
+                            help="Robustness: per-episode constant localisation/mount error (std)")
+        target.add_argument("--robust-friction", type=float, nargs=2, metavar=("LO", "HI"), help="Robustness: foot-floor friction scale")
+        target.add_argument("--robust-mass", type=float, nargs=2, metavar=("LO", "HI"), help="Robustness: per-body mass scale")
+        target.add_argument("--robust-ramp-steps", type=int, default=0, help="Robustness: control steps to ramp all perturbations 0 -> full")
         target.add_argument("--sgs-slots", type=int,
                             help="Success-Guided Sampling (arXiv 2610.12465): fixed start states per scene; configurations = "
                                  "scenes x slots, drawn at every reset by recent clean-goal success (enables SGS)")

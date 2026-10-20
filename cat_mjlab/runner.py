@@ -1051,6 +1051,15 @@ def create_task(args, *, environment_config=None, sim_class=None):
         goal_bonus_weight=getattr(args, 'goal_bonus_weight', None), timeout_failure=getattr(args, 'timeout_failure', None),
         reward_group_room=getattr(args, 'reward_group_room', None), commanded_blocking_map=getattr(args, 'commanded_blocking_map', None),
         hand_tight_cat_only=getattr(args, 'hand_tight_cat_only', None),
+        robustness=(dict(action_latency_ms=float(args.robust_action_latency_ms or 0.),
+                         pose_noise=[float(args.robust_pose_noise[0]), float(args.robust_pose_noise[1]), math.radians(float(args.robust_pose_noise[2]))]
+                         if args.robust_pose_noise else [0., 0., 0.],
+                         pose_period_steps=[int(v) for v in (args.robust_pose_period or [5, 5])],
+                         mount=[float(v) for v in (args.robust_mount or [0., 0., 0.])],
+                         friction=[float(v) for v in args.robust_friction] if args.robust_friction else None,
+                         mass=[float(v) for v in args.robust_mass] if args.robust_mass else None,
+                         ramp_steps=int(args.robust_ramp_steps or 0))
+                    if getattr(args, 'robust_action_latency_ms', None) is not None or getattr(args, 'robust_pose_noise', None) else None),
         sgs=(dict(slots=args.sgs_slots, history=args.sgs_history, target=args.sgs_target, kappa=args.sgs_kappa,
                   temperature=args.sgs_temperature, epsilon=args.sgs_epsilon, uniform_mix=args.sgs_uniform_mix,
                   prior_files=list(args.sgs_prior or []), prior_count=args.sgs_prior_count)

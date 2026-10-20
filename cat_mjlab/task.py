@@ -52,7 +52,7 @@ class CATTask:
         config['disable_hand_contrast']=True
         self.sim,self.bank,self.config,self.collision=sim,bank,config,collision
         self.math=SimpleNamespace(**{name:getattr(tm,name) for name in (
-            'quat_mul','delay_body_pos','navi_rotation','world_to_navi','matrix_rpy',
+            'quat_mul','quat_rotate','quat_conj','delay_body_pos','navi_rotation','world_to_navi','matrix_rpy',
             'motor_targets','pd_torque','compute_cmd_from_rtf','update_phase','observations',
             'upper_stability_terms','native_rewards','heading_probe_points','yaw_tracking',
             'facing_probe_points','clearance_gate','safe_velocity_target','hysteresis')})
@@ -208,6 +208,15 @@ class CATTask:
             config.pop('hand_raised_reset_certificate',None)
         self._init_side_gap_curriculum()
         self._init_sgs()
+        self.robust=self.config.get('robustness');self._robust_steps=0
+        self._dr_views={}
+        if self.robust and (self.robust.get('friction') or self.robust.get('mass')):
+            backend=getattr(self.sim,'backend',None)
+            if backend is not None:     # MuJoCo Warp: per-world model fields (the CPU simulator has one world: skipped)
+                fields=tuple(f for f,k in (('pair_friction','friction'),('body_mass','mass')) if self.robust.get(k))
+                backend.expand_model_fields(fields)
+                self._dr_views={f:getattr(backend.model,f) for f in fields}
+                self._dr_default={f:backend.get_default_field(f).clone() for f in fields}
         self.reset()
         # The released learner offsets EpisodeWrapper's horizon only. Native
         # task age remains zero for contact grace and held-odometry cadence.
@@ -436,6 +445,35 @@ class CATTask:
             mask=getattr(self,'joystick_mask',None)
             self.joystick=world if mask is None else torch.where(mask[:,None],world,self.joystick)
         self.joystick_yaw=body[:,2].clone()
+
+    def _robust_scale(self):
+        """Curriculum: robustness perturbations ramp linearly from 0 to full over `ramp_steps` control steps."""
+        ramp=float(self.robust.get('ramp_steps',0))
+        return 1. if ramp<=0 else min(1.,self._robust_steps/ramp)
+
+    def _small_rotation(self,n,roll_pitch,yaw):
+        """Quaternions (w,x,y,z) of random small rotations: roll/pitch ~ N(0, roll_pitch), yaw ~ N(0, yaw) [rad]."""
+        angles=torch.randn((n,3),device=self.device,generator=self.generator)*torch.tensor([roll_pitch,roll_pitch,yaw],device=self.device)
+        q=torch.zeros((n,4),device=self.device);q[:,0]=1.
+        for axis in range(3):
+            half=angles[:,axis]/2;r=torch.zeros((n,4),device=self.device);r[:,0]=half.cos();r[:,1+axis]=half.sin()
+            q=self.math.quat_mul(q,r)
+        return q
+
+    def _pose_estimate(self,pose,ids):
+        """What the robot's localisation reports for the pelvis (robustness training, actor inputs only): the true
+        pose with this episode's constant mount error (rotation in the body frame + offset) and fresh jitter
+        (xy / z position, yaw). Returns (estimated pose [n,7], world-frame error quaternion [n,4])."""
+        r=self._robust_scale();n=len(ids);i=self.info
+        noise=self.robust.get('pose_noise',[0.,0.,0.])
+        q=self.math.quat_mul(pose[:,3:7],i['mount_quat'][ids])
+        yaw=torch.randn(n,device=self.device,generator=self.generator)*float(noise[2])*r
+        jitter=torch.zeros((n,4),device=self.device);jitter[:,0]=(yaw/2).cos();jitter[:,3]=(yaw/2).sin()
+        q=self.math.quat_mul(jitter,q)
+        p=pose[:,:3]+self.math.quat_rotate(pose[:,3:7],i['mount_offset'][ids])
+        p=p+torch.randn((n,3),device=self.device,generator=self.generator)*torch.tensor([noise[0],noise[0],noise[1]],device=self.device)*r
+        error=self.math.quat_mul(q,self.math.quat_conj(pose[:,3:7]))
+        return torch.cat((p,q),-1),error
 
     def _init_sgs(self):
         """Success-Guided Sampling (Zhang et al., "A Balanced Data Diet", CoRL 2026, arXiv 2610.12465).
@@ -710,8 +748,9 @@ class CATTask:
         gf=gf*move[:,None,None]/(torch.linalg.vector_norm(gf,dim=-1,keepdim=True)+1e-6)
         bf=bf/(torch.linalg.vector_norm(bf,dim=-1,keepdim=True)+1e-6)
         if actor:
-            gf=self.math.world_to_navi(self.info['navi'][ids],gf)
-            bf=self.math.world_to_navi(self.info['navi'][ids],bf)*(sdf<.5);sdf=sdf.clamp(-1,.5)
+            navi=self.info['navi_actor' if getattr(self,'robust',None) else 'navi'][ids]
+            gf=self.math.world_to_navi(navi,gf)
+            bf=self.math.world_to_navi(navi,bf)*(sdf<.5);sdf=sdf.clamp(-1,.5)
         return torch.cat((gf.flatten(1),bf.flatten(1),sdf.flatten(1)),-1)
 
     def _observe(self,ids,contacts):
@@ -734,7 +773,8 @@ class CATTask:
         result=self.math.observations(keep_yaw=bool(self.config.get('yaw_command') or self.config.get('heading_command')),sdf_rate=sdf_rate,joint_pos=self.data.qpos[ids,7:],joint_vel=self.data.qvel[ids,6:],nominal=self.nominal,
             gyro=self._sensor('gyro_pelvis',ids),gravity=gravity,linear_velocity=self._sensor('local_linvel_pelvis',ids),
             noise=noise,last_action=info['last_act'],targets=info['motor_targets'],command=info['command'],
-            command_delay=info['command_delay'],foot_height=info['foot_height'],phase=info['phase'],navi=info['navi'],
+            command_delay=info['command_delay'],foot_height=info['foot_height'],phase=info['phase'],
+            navi=info['navi_actor'] if getattr(self,'robust',None) else info['navi'],
             gf=info['gf'],bf=info['bf'],sdf=info['sdf'],gf_delay=info['gf_delay'],bf_delay=info['bf_delay'],sdf_delay=info['sdf_delay'],
             positions=info['positions'],velocities=info['velocities'],torso_rpy=info['torso_rpy'],gait=info['gait'],contacts=contacts,
             kp=info['kp'],kd=info['kd'],rfi=info['rfi'],elbow_true=elbow_true,elbow_actor=torch.nan_to_num(elbow_actor))
@@ -871,7 +911,34 @@ class CATTask:
         defaults['kd']=self._rand((n,),*_get(self.config,'dm_rand_config.kd_range',[.75,1.25])) if _get(self.config,'dm_rand_config.enable_pd',True) else torch.ones(n,device=self.device)
         defaults['rfi']=self._rand((n,29),*_get(self.config,'dm_rand_config.rfi_lim_range',[.5,1.5]))*float(_get(self.config,'dm_rand_config.rfi_lim',.1))*self.torque_limit
         if not _get(self.config,'dm_rand_config.enable_rfi',True):defaults['rfi'].zero_()
+        if getattr(self,'robust',None):
+            r=self._robust_scale();rb=self.robust
+            sub=int(round(float(rb.get('action_latency_ms',0.))/1000./(self.dt/self.n_substeps)*r))
+            defaults['latency_substeps']=torch.randint(0,sub+1,(n,),device=self.device,generator=self.generator)
+            lo,hi=(int(v) for v in rb.get('pose_period_steps',[5,5]))
+            hi=int(round(5+(hi-5)*r));lo=int(round(5+(lo-5)*r))
+            defaults['pose_period']=torch.randint(lo,hi+1,(n,),device=self.device,generator=self.generator)
+            tilt,myaw,offset=(float(v) for v in rb.get('mount',[0.,0.,0.]))
+            defaults['mount_quat']=self._small_rotation(n,np.radians(tilt)*r,np.radians(myaw)*r)
+            defaults['mount_offset']=torch.randn((n,3),device=self.device,generator=self.generator)*offset*r
+            defaults['navi_actor']=defaults['navi'].clone()
+            defaults['pose_error']=torch.zeros((n,4),device=self.device);defaults['pose_error'][:,0]=1.
         for k,v in defaults.items():self._put(self.info,k,ids,v)
+        if getattr(self,'_dr_views',None):
+            # Friction of the foot-floor contact pairs (tangential slots) and every body's mass, per episode.
+            r=self._robust_scale()
+            def factor(shape,key):
+                lo,hi=(float(v) for v in self.robust[key])
+                return 1.+(self._rand(shape,lo,hi)-1.)*r
+            if 'pair_friction' in self._dr_views:
+                f=factor((n,),'friction')
+                self._dr_views['pair_friction'][ids,:,:2]=self._dr_default['pair_friction'][None,:,:2]*f[:,None,None]
+            if 'body_mass' in self._dr_views:
+                nb=self._dr_default['body_mass'].shape[-1]
+                self._dr_views['body_mass'][ids]=self._dr_default['body_mass'][None]*factor((n,nb),'mass')
+        if getattr(self,'robust',None):
+            estimate,_=self._pose_estimate(qpos[:,:7],ids)
+            self._put(self.info,'odom_delay',ids,estimate)
         self._navigation(ids,reset=True)
         if self.config.get('heading_command'):
             if getattr(self,'psi_ref',None) is None:
@@ -1440,7 +1507,7 @@ class CATTask:
         object_initiated=robot_initiated.clone() if robot_initiated is not None else None
         if self.reactive_objects is not None:
             self.reactive_objects.begin_step(self.info['velocities'][:,5:7])
-        for _ in range(self.n_substeps):
+        for substep in range(self.n_substeps):
             if self.reactive_objects is not None:
                 reactive_before=self.reactive_objects.advance(self.sim.final_collision_data(),self.dt/self.n_substeps)
             feedforward=None
@@ -1449,7 +1516,12 @@ class CATTask:
                 current=self.sim.final_collision_data()
                 feedforward=torch.zeros_like(d.ctrl)
                 feedforward[:,12:]=self.upper_gravity(current)
-            torque=self.math.pd_torque(d.qpos[:,7:],d.qvel[:,6:],targets,self.kps,self.kds,i['kp'],i['kd'],
+            applied=targets
+            if getattr(self,'robust',None):
+                # Observation-to-motor latency: the motors keep tracking the previous targets for this episode's
+                # first `latency_substeps` physics substeps of the control period.
+                applied=torch.where((substep<i['latency_substeps'])[:,None],i['motor_targets'],targets)
+            torque=self.math.pd_torque(d.qpos[:,7:],d.qvel[:,6:],applied,self.kps,self.kds,i['kp'],i['kd'],
                 i['rfi'],self._rand((self.num_envs,29),-1.,1.),self.torque_limit,feedforward=feedforward)
             d.ctrl.copy_(torque)
             self.sim.step()
@@ -1475,8 +1547,17 @@ class CATTask:
         velocities[:,[1,2,7,8,9,10]]=0.
         self._navigation(ids)
         gf,bf,sdf,command=self._fields(positions,d.qpos[:,:2],ids,store=True)
-        update=i['step']%5==0
-        odom=torch.where(update[:,None],d.qpos[:,:7],i['odom_delay'])
+        if getattr(self,'robust',None):
+            self._robust_steps+=1
+            update=i['step']%i['pose_period']==0
+            estimate,error=self._pose_estimate(d.qpos[:,:7],ids)
+            odom=torch.where(update[:,None],estimate,i['odom_delay'])
+            i['pose_error']=torch.where(update[:,None],error,i['pose_error'])
+            rot=self.math.quat_rotate(i['pose_error'][:,None].expand(-1,3,-1),pelvis.transpose(-1,-2)).transpose(-1,-2)
+            i['navi_actor']=self.math.navi_rotation(rot)
+        else:
+            update=i['step']%5==0
+            odom=torch.where(update[:,None],d.qpos[:,:7],i['odom_delay'])
         delayed=self.math.delay_body_pos(d.qpos,odom,positions)
         gfd,bfd,sdfd,command_delay=self._fields(delayed,odom[:,:2],ids)
         # Standing sets both foot phases to 0; walking resumed from there commanded a synchronized
