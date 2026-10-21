@@ -1051,6 +1051,7 @@ def create_task(args, *, environment_config=None, sim_class=None):
         goal_bonus_weight=getattr(args, 'goal_bonus_weight', None), timeout_failure=getattr(args, 'timeout_failure', None),
         reward_group_room=getattr(args, 'reward_group_room', None), commanded_blocking_map=getattr(args, 'commanded_blocking_map', None),
         hand_tight_cat_only=getattr(args, 'hand_tight_cat_only', None),
+        upper_target_average=getattr(args, 'upper_target_average', None),
         robustness=(dict(action_latency_ms=float(args.robust_action_latency_ms or 0.),
                          pose_noise=[float(args.robust_pose_noise[0]), float(args.robust_pose_noise[1]), math.radians(float(args.robust_pose_noise[2]))]
                          if args.robust_pose_noise else [0., 0., 0.],

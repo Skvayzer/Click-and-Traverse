@@ -260,6 +260,8 @@ class Session:
         env.pop("goal_hold_seconds", None)
         env.pop("teleop", None)                     # the keyboard is the joystick here
         env.pop("sgs", None)                        # training-only scene sampler (Success-Guided Sampling)
+        if not getattr(args, "keep_robustness", False):
+            env.pop("robustness", None)             # clean demo: no action latency / pose / mount / torque perturbations
         # Checkpoints trained with body-frame joystick commands (v7+) take (forward, sideways, turn
         # rate) directly; older ones only take a walking direction (emulated turning below).
         # v8+: heading_command (A/D turn a reference heading, W/S/Q/E walk relative to it; the robot
@@ -708,6 +710,7 @@ def main(argv=None):
     p.add_argument("--scenes", nargs="+", default=PRESETS["demo"])
     p.add_argument("--speed", type=float, default=.5, help="Initial speed setting (m/s)")
     p.add_argument("--body-mode", action="store_true", help="Force body-frame joystick commands (automatic for v7+ checkpoints)")
+    p.add_argument("--keep-robustness", action="store_true", help="Keep the checkpoint's robustness perturbations (latency, pose/mount error, torque offset)")
     p.add_argument("--port", type=int, default=8080)
     p.add_argument("--no-keyboard", action="store_true", help="Browser buttons only (no terminal key capture)")
     p.add_argument("--keys-port", type=int, help="Port of the browser keyboard page (default: --port + 1)")

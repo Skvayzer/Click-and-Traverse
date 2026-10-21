@@ -88,6 +88,8 @@ def parser():
                             help="Robustness: per-episode constant localisation/mount error (std)")
         target.add_argument("--robust-friction", type=float, nargs=2, metavar=("LO", "HI"), help="Robustness: foot-floor friction scale")
         target.add_argument("--robust-mass", type=float, nargs=2, metavar=("LO", "HI"), help="Robustness: per-body mass scale")
+        target.add_argument("--upper-target-average", action="store_true",
+                            help="Upper-body motors (12-28) track the mean of the last two targets (no 25 Hz dither); deploy the same")
         target.add_argument("--robust-com", type=float, nargs=3, metavar=("X_M", "Y_M", "Z_M"),
                             help="Robustness: torso centre-of-mass offset U(+-X, +-Y, +-Z) per episode")
         target.add_argument("--robust-torque-offset", type=float,
