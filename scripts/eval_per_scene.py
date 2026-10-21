@@ -41,6 +41,7 @@ def main():
     p.add_argument("--max-steps", type=int, default=40000)
     p.add_argument("--seed", type=int, default=1)
     p.add_argument("--no-compile", action="store_true", help="Skip torch.compile of the task (about 4x slower at 16k envs)")
+    p.add_argument("--nominal", action="store_true", help="Drop the robustness perturbations (delay, pose/mount error, friction/mass/COM/torque DR): skill only")
     p.add_argument("--out", type=Path, required=True)
     args = p.parse_args()
     from record_mjlab_rollout import load_policy
@@ -50,6 +51,9 @@ def main():
     env = copy.deepcopy(contract["environment_config"])
     env.pop("side_gap_curriculum", None)                 # standard CAT starts, every width
     env["push_config"]["enable"] = False
+    env.pop("sgs", None)                                 # every scene gets its K jobs, no success-guided resampling
+    if args.nominal:
+        env.pop("robustness", None)
     if "teleop" in env:
         env["teleop"].update(fraction=0., cat_fraction=0., cat_scenes=False)
     B = ROOT / args.bank
