@@ -133,10 +133,12 @@ class CATTask:
         # Where each standing (reactive) episode started; leaving it is not avoidance.
         self.reactive_spot=torch.zeros((self.num_envs,2),device=self.device)
         # Stationary reactive standing (opt-in, config reactive_stationary): after a settle period both feet stay on
-        # the floor and the pelvis within root_m of its spot, else the episode ends as a failure -- protecting the hands
-        # must come from the upper body (arms are light and cheap to move; stepping aside is not allowed).
+        # the floor (at most air_steps off) and neither foot moves more than feet_m from where it settled (no stepping,
+        # no shuffling or sliding away); the pelvis keeps a loose root_m limit, so leaning and crouching stay allowed.
+        # Violation ends the episode as a failure: protecting the hands must come from the upper body.
         self.reactive_stationary=self.config.get('reactive_stationary')
         self.reactive_air=torch.zeros((self.num_envs,2),dtype=torch.long,device=self.device)
+        self.reactive_feet_spot=torch.zeros((self.num_envs,2,2),device=self.device)
         if self.reactive_objects is not None and self.reactive_stationary:
             self.reactive_objects.spot_radius=float(self.reactive_stationary['root_m'])
         self.leg_ids=torch.tensor([self.model.body(n).id for n in ('left_knee_link','left_ankle_roll_link','right_knee_link','right_ankle_roll_link')],device=self.device)
@@ -987,6 +989,10 @@ class CATTask:
                 if 'cat_fraction' in teleop:   # keep most CAT practice field-driven (the traversal skill)
                     fraction=torch.where(cat,float(teleop['cat_fraction']),fraction)
             self.joystick_mask[ids]=(self._rand((n,))<fraction)&eligible
+            if self.reactive_objects is not None:
+                # A standing-object episode is never a keyboard episode: its heading reference must not turn
+                # (a resampled heading made the robot rotate in place, 0.5 rad/s, and leave its spot).
+                self.joystick_mask[ids]&=~self.reactive_objects.state['active'][ids]
             self.joystick[ids]=0.;self._teleop_timer[ids]=0.
             if teleop.get('mode') in ('body','heading'):
                 if getattr(self,'joystick_body',None) is None:
@@ -1091,15 +1097,23 @@ class CATTask:
         walking=self.reactive_objects.state['walking'] if self.reactive_objects is not None else torch.zeros_like(grace)
         stationary=getattr(self,'reactive_stationary',None)
         if stationary and self.reactive_objects is not None:
-            # The reset throws the base (+-0.5 m/s): the spot is re-taken once the robot has settled (grace_steps), then
-            # a foot off the floor for more than air_steps steps or the pelvis more than root_m away ends the episode.
+            # The reset throws the base (+-0.5 m/s): spots are re-taken once the robot has settled (grace_steps), then
+            # a foot off the floor for more than air_steps steps, a foot more than feet_m from its spot, or the pelvis
+            # more than root_m away ends the episode. Feet = observed sites 3, 4 (left_foot, right_foot).
             standing=active&~walking;settle=int(stationary.get('grace_steps',50));after=standing&(i['step']>settle)
-            self.reactive_spot=torch.where((standing&(i['step']==settle))[:,None],i['positions'][:,1,:2],self.reactive_spot)
+            settling=(standing&(i['step']==settle))
+            self.reactive_spot=torch.where(settling[:,None],i['positions'][:,1,:2],self.reactive_spot)
+            self.reactive_feet_spot=torch.where(settling[:,None,None],i['positions'][:,3:5,:2],self.reactive_feet_spot)
             self.reactive_root_displacement=torch.linalg.vector_norm(i['positions'][:,1,:2]-self.reactive_spot,dim=-1)*active
+            feet_moved=torch.linalg.vector_norm(i['positions'][:,3:5,:2]-self.reactive_feet_spot,dim=-1).amax(-1)
             self.reactive_air=torch.where(contacts[:,0:2]|~after[:,None],torch.zeros_like(self.reactive_air),self.reactive_air+1)
             lifted=(self.reactive_air>int(stationary['air_steps'])).any(-1)
-            reactive_left_spot=after&((self.reactive_root_displacement>float(stationary['root_m']))|lifted)
+            slid=feet_moved>float(stationary['feet_m']);drifted=self.reactive_root_displacement>float(stationary['root_m'])
+            reactive_left_spot=after&(lifted|slid|drifted)
             done=done|reactive_left_spot
+            # Merged into this step's telemetry by _rewards (which runs next and replaces self.telemetry).
+            self._stationary_telemetry=dict(reactive_end_lift=(after&lifted).float(),reactive_end_slide=(after&slid&~lifted).float(),
+                                            reactive_end_drift=(after&drifted&~lifted&~slid).float())
         else:
             reactive_left_spot=active&~walking&(self.reactive_root_displacement>float(_get(self.config,'reactive_spot_radius',.3)))
         flags=dict(fall=fall,obstacle=obstacle,self_contact=self_contact,hand_self_contact=hand_self_contact,reactive_left_spot=reactive_left_spot,numerical=numerical,body_collision=body,
@@ -1377,6 +1391,7 @@ class CATTask:
             bonus,report=self.balance_terms(flat,i['positions'][:,5:7],d.qpos[:,:2],self.navigation['tangent'],
                 self._sensor('global_linvel_pelvis',self.all_ids),self.balance_lower,self.balance_upper,**self.balance_reward)
             telemetry.update({'balance_'+key:value for key,value in report.items()})
+        telemetry.update(getattr(self,'_stationary_telemetry',None) or {})
         self.telemetry=telemetry
         scales=_get(self.config,'reward_config.scales',{})
         missing=set(rewards)-set(scales)
@@ -1748,7 +1763,8 @@ class CATTask:
                 metrics[key] = self.telemetry[key].clone()
             for key in ('self_clearance_min_m', 'self_clearance_violation', 'crouch_required', 'torso_pitch_abs',
                         'hand_contact_trunk', 'hand_contact_head', 'hand_contact_arm', 'hand_contact_hand',
-                        'heading_gate', 'heading_error_abs', 'hand_room_scale', 'side_gap_stage', 'side_gap_sideways_start'):
+                        'heading_gate', 'heading_error_abs', 'hand_room_scale', 'side_gap_stage', 'side_gap_sideways_start',
+                        'reactive_power_w', 'reactive_standing', 'reactive_end_lift', 'reactive_end_slide', 'reactive_end_drift'):
                 if key in self.telemetry: metrics[key] = self.telemetry[key].clone()
             metrics['contrast_role'] = self.contrast['role'].clone()
             metrics['contrast_unresolved'] = (~self.outcome_counted | resolved).clone()

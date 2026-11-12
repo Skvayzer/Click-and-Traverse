@@ -202,9 +202,9 @@ def parser():
                             help="With --route-recovery-speed: end the episode as a failure after this long without a visible route (default 5)")
         target.add_argument("--stand-still-weight", type=float,
                             help="Cost <= 0 on body motion while commanded to stand (zero command); 0 disables")
-        target.add_argument("--reactive-stationary", type=float, nargs='+', metavar="ROOT_M AIR_STEPS [GRACE]",
+        target.add_argument("--reactive-stationary", type=float, nargs='+', metavar="FEET_M AIR_STEPS [GRACE [ROOT_M]]",
                             help="Stationary reactive standing: after GRACE steps (50) both feet stay on the floor (at most AIR_STEPS "
-                                 "steps off) and the pelvis within ROOT_M of its spot, else the episode ends as a failure")
+                                 "steps off) and within FEET_M of where they settled, the pelvis within ROOT_M (0.2), else failure")
         target.add_argument("--reactive-power-weight", type=float,
                             help="Cost per watt of joint mechanical power |tau qdot| in standing reactive episodes (negative)")
         target.add_argument("--spot-hold-weight", type=float,

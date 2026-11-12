@@ -575,7 +575,7 @@ def collect_rollout(task, learner, *, unroll_length, trajectories, policy_ids):
         for key, value in sorted(per_step.items()):
             term = key.split('/', 1)[1]
             if key.startswith('telemetry/'):
-                info['metrics']['sgs/' + term[4:] if term.startswith('sgs_') else 'side_gap/' + term if term.startswith('side_gap') else 'posture/' + term if term in ('crouch_required', 'torso_pitch_abs') else
+                info['metrics']['sgs/' + term[4:] if term.startswith('sgs_') else 'reactive/' + term if term.startswith('reactive_') else 'side_gap/' + term if term.startswith('side_gap') else 'posture/' + term if term in ('crouch_required', 'torso_pitch_abs') else
                                 ('heading/' + term if term.startswith('heading_') else 'self_clearance/' + term.removeprefix('self_clearance_'))] = value
                 continue
             info['metrics']['reward_term/' + term] = value
@@ -700,7 +700,8 @@ GOALLESS_BUCKETS = ('reactive_standing', 'reactive_walking', 'flat_balance', 'te
 TELEMETRY_MEANS = ('self_clearance_min_m', 'self_clearance_violation', 'crouch_required', 'torso_pitch_abs',
                    'hand_contact_trunk', 'hand_contact_head', 'hand_contact_arm', 'hand_contact_hand',
                    'heading_gate', 'heading_error_abs', 'hand_room_scale', 'side_gap_stage', 'side_gap_sideways_start',
-                   'sgs_config_p', 'reactive_power_w', 'reactive_standing')
+                   'sgs_config_p', 'reactive_power_w', 'reactive_standing', 'reactive_end_lift', 'reactive_end_slide',
+                   'reactive_end_drift')
 SCENE_BUCKETS = ('procedural_cat', 'original_cat', 'published_cat',
                  'clutter_dense', 'clutter_pilot', 'clutter_legacy',
                  'furniture_dense', 'furniture_pilot', 'furniture_legacy',
