@@ -41,7 +41,8 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
                      side_gap_curriculum=None,teleop_side_prob=None,hand_tight_walls_only=None,side_gap_tumbling=None,
                      sideways_bonus_progress=None,contact_penalty=None,stall_weight=None,goal_progress_weight=None,
                      goal_bonus_weight=None,timeout_failure=None,reward_group_room=None,commanded_blocking_map=None,
-                     hand_tight_cat_only=None,sgs=None,robustness=None,upper_target_average=None):
+                     hand_tight_cat_only=None,sgs=None,robustness=None,upper_target_average=None,
+                     reactive_stationary=None,reactive_power_weight=None):
     from cat_ppo.furniture.generalist_config import released_config
     from .collision import PROPOSAL
     config=copy.deepcopy(released_config()['env_config'] if base_config is None else base_config)
@@ -190,6 +191,17 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
         else:config['route_recovery']=dict(speed=speed,lost_seconds=lost)
     elif route_lost_seconds is not None:
         raise ValueError('route_lost_seconds requires route_recovery_speed')
+    if reactive_stationary is not None:
+        # Stationary standing against approaching objects: [root_m, air_steps(, grace_steps)]; task._termination.
+        root_m,air_steps=float(reactive_stationary[0]),int(reactive_stationary[1])
+        grace=int(reactive_stationary[2]) if len(reactive_stationary)>2 else 50
+        if not (0<root_m<=.3 and 0<=air_steps<=50 and 0<=grace<=200):raise ValueError('invalid reactive_stationary')
+        config['reactive_stationary']=dict(root_m=root_m,air_steps=air_steps,grace_steps=grace)
+        config['reactive_spot_radius']=root_m          # spot_hold saturates at the same radius
+    if reactive_power_weight is not None:
+        weight=_signed('reactive_power_weight',reactive_power_weight,positive=False)
+        if weight==0:scales.pop('reactive_power',None)
+        else:scales['reactive_power']=weight
     if spot_hold_weight is not None:
         weight=_signed('spot_hold_weight',spot_hold_weight,positive=False)
         if weight==0:scales.pop('spot_hold',None)

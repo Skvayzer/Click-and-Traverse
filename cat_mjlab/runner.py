@@ -700,7 +700,7 @@ GOALLESS_BUCKETS = ('reactive_standing', 'reactive_walking', 'flat_balance', 'te
 TELEMETRY_MEANS = ('self_clearance_min_m', 'self_clearance_violation', 'crouch_required', 'torso_pitch_abs',
                    'hand_contact_trunk', 'hand_contact_head', 'hand_contact_arm', 'hand_contact_hand',
                    'heading_gate', 'heading_error_abs', 'hand_room_scale', 'side_gap_stage', 'side_gap_sideways_start',
-                   'sgs_config_p')
+                   'sgs_config_p', 'reactive_power_w', 'reactive_standing')
 SCENE_BUCKETS = ('procedural_cat', 'original_cat', 'published_cat',
                  'clutter_dense', 'clutter_pilot', 'clutter_legacy',
                  'furniture_dense', 'furniture_pilot', 'furniture_legacy',
@@ -1052,6 +1052,8 @@ def create_task(args, *, environment_config=None, sim_class=None):
         reward_group_room=getattr(args, 'reward_group_room', None), commanded_blocking_map=getattr(args, 'commanded_blocking_map', None),
         hand_tight_cat_only=getattr(args, 'hand_tight_cat_only', None),
         upper_target_average=getattr(args, 'upper_target_average', None),
+        reactive_stationary=getattr(args, 'reactive_stationary', None),
+        reactive_power_weight=getattr(args, 'reactive_power_weight', None),
         robustness=(dict(action_latency_ms=float(args.robust_action_latency_ms or 0.),
                          pose_noise=[float(args.robust_pose_noise[0]), float(args.robust_pose_noise[1]), math.radians(float(args.robust_pose_noise[2]))]
                          if args.robust_pose_noise else [0., 0., 0.],

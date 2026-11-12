@@ -6,6 +6,10 @@ import argparse
 import json
 from pathlib import Path
 
+from cat_mjlab.pathmap import install as _install_path_map
+
+_install_path_map()   # CAT_PATH_MAP (HPC): file access to dep-1 absolute paths pinned in data manifests -> local mirror
+
 
 def parser():
     parser = argparse.ArgumentParser(description=__doc__)
@@ -198,6 +202,11 @@ def parser():
                             help="With --route-recovery-speed: end the episode as a failure after this long without a visible route (default 5)")
         target.add_argument("--stand-still-weight", type=float,
                             help="Cost <= 0 on body motion while commanded to stand (zero command); 0 disables")
+        target.add_argument("--reactive-stationary", type=float, nargs='+', metavar="ROOT_M AIR_STEPS [GRACE]",
+                            help="Stationary reactive standing: after GRACE steps (50) both feet stay on the floor (at most AIR_STEPS "
+                                 "steps off) and the pelvis within ROOT_M of its spot, else the episode ends as a failure")
+        target.add_argument("--reactive-power-weight", type=float,
+                            help="Cost per watt of joint mechanical power |tau qdot| in standing reactive episodes (negative)")
         target.add_argument("--spot-hold-weight", type=float,
                             help="Cost <= 0 on distance from the standing spot (saturates at 0.3 m); 0 disables")
         target.add_argument("--standing-stillness-speed", type=float,

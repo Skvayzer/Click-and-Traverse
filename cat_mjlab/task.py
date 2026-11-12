@@ -132,6 +132,13 @@ class CATTask:
         self.capsule_radii=torch.tensor([.06,.08,.06,.08],device=self.device)
         # Where each standing (reactive) episode started; leaving it is not avoidance.
         self.reactive_spot=torch.zeros((self.num_envs,2),device=self.device)
+        # Stationary reactive standing (opt-in, config reactive_stationary): after a settle period both feet stay on
+        # the floor and the pelvis within root_m of its spot, else the episode ends as a failure -- protecting the hands
+        # must come from the upper body (arms are light and cheap to move; stepping aside is not allowed).
+        self.reactive_stationary=self.config.get('reactive_stationary')
+        self.reactive_air=torch.zeros((self.num_envs,2),dtype=torch.long,device=self.device)
+        if self.reactive_objects is not None and self.reactive_stationary:
+            self.reactive_objects.spot_radius=float(self.reactive_stationary['root_m'])
         self.leg_ids=torch.tensor([self.model.body(n).id for n in ('left_knee_link','left_ankle_roll_link','right_knee_link','right_ankle_roll_link')],device=self.device)
         self.hand_radii=tensor([hand_sphere(s)['radius'] for s in ('left','right')])
         sensor_names=[f'{prefix}_{frame}' for frame in ('pelvis','torso') for prefix in ('upvector','global_linvel','global_angvel','local_linvel','gyro')]
@@ -847,6 +854,7 @@ class CATTask:
             qpos=torch.where(reactive_active[:,None],reactive_qpos,qpos)
         if self.reactive_objects is not None:
             self.reactive_spot[ids]=qpos[:,:2]   # the standing spot; leaving it is measured, not rewarded
+            self.reactive_air[ids]=0
         self.sim.reset_data(ids)
         self.data.qpos[ids]=qpos;self.data.qvel[ids]=0.;self.data.qvel[ids,:6]=self._rand((n,6),-.5,.5)
         if self.raised_reset_fraction:
@@ -1081,7 +1089,19 @@ class CATTask:
         active=self.reactive_objects.state['active'] if self.reactive_objects is not None else torch.zeros_like(grace)
         self.reactive_root_displacement=torch.linalg.vector_norm(i['positions'][:,1,:2]-self.reactive_spot,dim=-1)*active
         walking=self.reactive_objects.state['walking'] if self.reactive_objects is not None else torch.zeros_like(grace)
-        reactive_left_spot=active&~walking&(self.reactive_root_displacement>float(_get(self.config,'reactive_spot_radius',.3)))
+        stationary=getattr(self,'reactive_stationary',None)
+        if stationary and self.reactive_objects is not None:
+            # The reset throws the base (+-0.5 m/s): the spot is re-taken once the robot has settled (grace_steps), then
+            # a foot off the floor for more than air_steps steps or the pelvis more than root_m away ends the episode.
+            standing=active&~walking;settle=int(stationary.get('grace_steps',50));after=standing&(i['step']>settle)
+            self.reactive_spot=torch.where((standing&(i['step']==settle))[:,None],i['positions'][:,1,:2],self.reactive_spot)
+            self.reactive_root_displacement=torch.linalg.vector_norm(i['positions'][:,1,:2]-self.reactive_spot,dim=-1)*active
+            self.reactive_air=torch.where(contacts[:,0:2]|~after[:,None],torch.zeros_like(self.reactive_air),self.reactive_air+1)
+            lifted=(self.reactive_air>int(stationary['air_steps'])).any(-1)
+            reactive_left_spot=after&((self.reactive_root_displacement>float(stationary['root_m']))|lifted)
+            done=done|reactive_left_spot
+        else:
+            reactive_left_spot=active&~walking&(self.reactive_root_displacement>float(_get(self.config,'reactive_spot_radius',.3)))
         flags=dict(fall=fall,obstacle=obstacle,self_contact=self_contact,hand_self_contact=hand_self_contact,reactive_left_spot=reactive_left_spot,numerical=numerical,body_collision=body,
                    hand_violation=(i['sdf'][:,5:7]<threshold).flatten(1).any(-1)&grace,elbow_violation=elbows)
         if route_lost is not None:flags['route_lost']=route_lost
@@ -1307,6 +1327,13 @@ class CATTask:
             # left-spot radius. stand_still prices speed; this prices the drift it accumulates.
             radius=float(_get(self.config,'reactive_spot_radius',.3))
             rewards['spot_hold']=(self.reactive_root_displacement/radius).clamp(0.,1.).square()
+        if 'reactive_power' in scales and self.reactive_objects is not None:
+            # Mechanical power of all 29 joints (W, |torque x velocity|) in standing reactive episodes: the light arms
+            # cost far less to move than stepping or swaying the whole body, so pricing energy prefers hand motion.
+            s=self.reactive_objects.state;standing=(s['active']&~s['walking']).float()
+            power=(self.data.ctrl*self.data.qvel[:,6:]).abs().sum(-1)
+            rewards['reactive_power']=power*standing
+            telemetry['reactive_power_w']=power*standing;telemetry['reactive_standing']=standing
         if 'reactive_event' in scales and self.reactive_objects is not None:
             # Sparse, paid once per finished approach: +1 handled, -1 unhandled for a threatening
             # object (buckets 0/1), 0 for an unneeded flinch. Dense shaping (hand_clearance,
@@ -1380,7 +1407,8 @@ class CATTask:
     def _outcomes(self,done,truncation):
         self.info['minimum_episode_hand_clearance']=torch.minimum(self.info['minimum_episode_hand_clearance'],self.info['sdf'][:,5:7,0].amin(-1))
         failure=done&~truncation
-        for key in ('fall','obstacle','self_contact','numerical','body_collision','hand_violation','elbow_violation','outside_bounds','route_lost'):
+        for key in ('fall','obstacle','self_contact','numerical','body_collision','hand_violation','elbow_violation','outside_bounds','route_lost')+(
+                ('reactive_left_spot',) if getattr(self,'reactive_stationary',None) else ()):
             if key in self.episode:failure|=self.episode[key]
         successful=self.episode['goal_reached']&~failure
         resolved=~self.outcome_counted&(successful|failure|done)
