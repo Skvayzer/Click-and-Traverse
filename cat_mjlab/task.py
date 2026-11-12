@@ -17,6 +17,8 @@ from .observation_contract import ACTOR_SIZE, CRITIC_SIZE
 from .navigation import route_context,swept_root_clearance,hand_contrast_context,contrast_reward_terms
 
 HAND_BODY_REGIONS=("trunk","head","arm","hand")
+# Feet-planted thresholds measured, not enforced, in standing episodes of runs without reactive_stationary.
+SHADOW_STATIONARY=dict(feet_m=.05,air_steps=5,grace_steps=50,root_m=.2,push_recover_steps=25,settle_wait_steps=100)
 
 
 def _get(config,path,default=None):
@@ -863,9 +865,8 @@ class CATTask:
         if self.reactive_objects is not None:
             self.reactive_spot[ids]=qpos[:,:2]   # the standing spot; leaving it is measured, not rewarded
             self.reactive_air[ids]=0
-            if self.reactive_stationary:
-                self.reactive_settle_at[ids]=int(self.reactive_stationary['grace_steps']);self.reactive_settled[ids]=False
-                self.reactive_calm[ids]=0
+            self.reactive_settle_at[ids]=int((self.reactive_stationary or SHADOW_STATIONARY)['grace_steps'])
+            self.reactive_settled[ids]=False;self.reactive_calm[ids]=0
         self.sim.reset_data(ids)
         self.data.qpos[ids]=qpos;self.data.qvel[ids]=0.;self.data.qvel[ids,:6]=self._rand((n,6),-.5,.5)
         if self.raised_reset_fraction:
@@ -1105,36 +1106,50 @@ class CATTask:
         self.reactive_root_displacement=torch.linalg.vector_norm(i['positions'][:,1,:2]-self.reactive_spot,dim=-1)*active
         walking=self.reactive_objects.state['walking'] if self.reactive_objects is not None else torch.zeros_like(grace)
         stationary=getattr(self,'reactive_stationary',None)
-        if stationary and self.reactive_objects is not None:
-            # The reset throws the base (+-0.5 m/s): spots are re-taken once the robot has settled (grace_steps), then
-            # a foot off the floor for more than air_steps steps, a foot more than feet_m from its spot, or the pelvis
-            # more than root_m away ends the episode. Feet = observed sites 3, 4 (left_foot, right_foot).
+        if self.reactive_objects is not None:
+            # Feet-planted rule for standing episodes. Enforced with config reactive_stationary; otherwise run in shadow
+            # mode with the default thresholds -- measured only (telemetry), no termination, standing spot untouched -- so
+            # runs without the rule report how far their feet move.
+            # The reset throws the base (+-0.5 m/s): spots are taken once the robot has settled (grace_steps), then a
+            # foot off the floor for more than air_steps steps, a foot more than feet_m from its spot, or (enforced
+            # rule) the pelvis more than root_m away is a violation. Feet = observed sites 3, 4 (left_foot, right_foot).
             # A training push (up to 1 m/s) can need recovery steps: the rule is suspended after one and the spots are
-            # re-taken once the robot is calm again, so only stepping by choice is a failure.
+            # re-taken once the robot is calm again, so only stepping by choice is a violation.
+            rule=stationary or SHADOW_STATIONARY
             standing=active&~walking
             pushed=getattr(self,'_push_signal',None)
             if pushed is not None:
                 hit=standing&pushed
-                self.reactive_settle_at=torch.where(hit,i['step']+int(stationary.get('push_recover_steps',25)),self.reactive_settle_at)
+                self.reactive_settle_at=torch.where(hit,i['step']+int(rule.get('push_recover_steps',25)),self.reactive_settle_at)
                 self.reactive_settled&=~hit
             calm=(torch.linalg.vector_norm(self.data.qvel[:,:2],dim=-1)<.15)&contacts[:,0:2].all(-1)
             self.reactive_calm=torch.where(calm,self.reactive_calm+1,torch.zeros_like(self.reactive_calm))
-            late=i['step']>=self.reactive_settle_at+int(stationary.get('settle_wait_steps',100))
+            late=i['step']>=self.reactive_settle_at+int(rule.get('settle_wait_steps',100))
             settling=standing&~self.reactive_settled&(i['step']>=self.reactive_settle_at)&((self.reactive_calm>=10)|late)
             self.reactive_settled|=settling
             after=standing&self.reactive_settled&~settling
-            self.reactive_spot=torch.where(settling[:,None],i['positions'][:,1,:2],self.reactive_spot)
             self.reactive_feet_spot=torch.where(settling[:,None,None],i['positions'][:,3:5,:2],self.reactive_feet_spot)
-            self.reactive_root_displacement=torch.linalg.vector_norm(i['positions'][:,1,:2]-self.reactive_spot,dim=-1)*active
             feet_moved=torch.linalg.vector_norm(i['positions'][:,3:5,:2]-self.reactive_feet_spot,dim=-1).amax(-1)
             self.reactive_air=torch.where(contacts[:,0:2]|~after[:,None],torch.zeros_like(self.reactive_air),self.reactive_air+1)
-            lifted=(self.reactive_air>int(stationary['air_steps'])).any(-1)
-            slid=feet_moved>float(stationary['feet_m']);drifted=self.reactive_root_displacement>float(stationary['root_m'])
-            reactive_left_spot=after&(lifted|slid|drifted)
-            done=done|reactive_left_spot
-            # Merged into this step's telemetry by _rewards (which runs next and replaces self.telemetry).
+            lifted=(self.reactive_air>int(rule['air_steps'])).any(-1)
+            slid=feet_moved>float(rule['feet_m'])
+            if stationary:
+                self.reactive_spot=torch.where(settling[:,None],i['positions'][:,1,:2],self.reactive_spot)
+                self.reactive_root_displacement=torch.linalg.vector_norm(i['positions'][:,1,:2]-self.reactive_spot,dim=-1)*active
+                drifted=self.reactive_root_displacement>float(rule['root_m'])
+            else:
+                drifted=torch.zeros_like(slid)
+            violation=after&(lifted|slid|drifted)
+            if stationary:
+                reactive_left_spot=violation
+                done=done|reactive_left_spot
+            else:
+                reactive_left_spot=standing&(self.reactive_root_displacement>float(_get(self.config,'reactive_spot_radius',.3)))
+            # Merged into this step's telemetry by _rewards (which runs next and replaces self.telemetry). Per step;
+            # with the rule enforced a violation ends the episode, in shadow mode it persists while the feet stay away.
             self._stationary_telemetry=dict(reactive_end_lift=(after&lifted).float(),reactive_end_slide=(after&slid&~lifted).float(),
-                                            reactive_end_drift=(after&drifted&~lifted&~slid).float())
+                                            reactive_end_drift=(after&drifted&~lifted&~slid).float(),reactive_violation=violation.float(),
+                                            reactive_settled=after.float(),reactive_feet_moved_m=feet_moved*after)
         else:
             reactive_left_spot=active&~walking&(self.reactive_root_displacement>float(_get(self.config,'reactive_spot_radius',.3)))
         flags=dict(fall=fall,obstacle=obstacle,self_contact=self_contact,hand_self_contact=hand_self_contact,reactive_left_spot=reactive_left_spot,numerical=numerical,body_collision=body,
@@ -1362,12 +1377,13 @@ class CATTask:
             # left-spot radius. stand_still prices speed; this prices the drift it accumulates.
             radius=float(_get(self.config,'reactive_spot_radius',.3))
             rewards['spot_hold']=(self.reactive_root_displacement/radius).clamp(0.,1.).square()
-        if 'reactive_power' in scales and self.reactive_objects is not None:
+        if self.reactive_objects is not None:
             # Mechanical power of all 29 joints (W, |torque x velocity|) in standing reactive episodes: the light arms
             # cost far less to move than stepping or swaying the whole body, so pricing energy prefers hand motion.
+            # Measured in every reactive run; a reward only with reactive_power in scales.
             s=self.reactive_objects.state;standing=(s['active']&~s['walking']).float()
             power=(self.data.ctrl*self.data.qvel[:,6:]).abs().sum(-1)
-            rewards['reactive_power']=power*standing
+            if 'reactive_power' in scales:rewards['reactive_power']=power*standing
             telemetry['reactive_power_w']=power*standing;telemetry['reactive_standing']=standing
         if 'reactive_event' in scales and self.reactive_objects is not None:
             # Sparse, paid once per finished approach: +1 handled, -1 unhandled for a threatening
@@ -1786,7 +1802,8 @@ class CATTask:
             for key in ('self_clearance_min_m', 'self_clearance_violation', 'crouch_required', 'torso_pitch_abs',
                         'hand_contact_trunk', 'hand_contact_head', 'hand_contact_arm', 'hand_contact_hand',
                         'heading_gate', 'heading_error_abs', 'hand_room_scale', 'side_gap_stage', 'side_gap_sideways_start',
-                        'reactive_power_w', 'reactive_standing', 'reactive_end_lift', 'reactive_end_slide', 'reactive_end_drift'):
+                        'reactive_power_w', 'reactive_standing', 'reactive_end_lift', 'reactive_end_slide', 'reactive_end_drift',
+                        'reactive_violation', 'reactive_settled', 'reactive_feet_moved_m'):
                 if key in self.telemetry: metrics[key] = self.telemetry[key].clone()
             metrics['contrast_role'] = self.contrast['role'].clone()
             metrics['contrast_unresolved'] = (~self.outcome_counted | resolved).clone()
