@@ -12,7 +12,7 @@ set -euo pipefail
 # allocates transient tensors every call, and at 30720 envs that churn fragments the
 # pool until a graph launch cannot find contiguous memory.
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
-cd /home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab
+cd "${REPO:-/home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab}"
 .venv-mjlab/bin/python train_cat_mjlab.py run \
   --algorithm ppo --num-envs 30720 --batch-size 768 \
   --num-minibatches 40 --unroll-length 32 \

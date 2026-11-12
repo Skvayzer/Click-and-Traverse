@@ -13,7 +13,7 @@
 #   teachers. Rewards are logged only (DAgger learns from labels); success metrics are the evaluation.
 # Student: warm start from the traversal expert (largest share), standard actor 512-256-128-64.
 set -euo pipefail
-cd /home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab
+cd "${REPO:-/home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab}"
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 TRAVERSAL=${TRAVERSAL:-outputs/traversal_expert_v1_20261012/snapshots/update_1764.pt}
 NARROW=${NARROW:-outputs/saved_checkpoints/narrow_expert_v2_u1400.pt}

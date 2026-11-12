@@ -26,7 +26,7 @@
 #                           so every sweep we ran on the -20 moved under a third of the
 #                           real signal. One owner now, at -60.
 set -euo pipefail
-cd /home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab
+cd "${REPO:-/home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab}"
 # The previous run died at update 108 on fragmentation with 6 GB of headroom; the
 # per-sample direction decode allocates transient tensors every call.
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True

@@ -8,7 +8,7 @@
 # Weights are unchanged from APPROVED_CLEARANCE_WEIGHTS_20260922. Only the scenes changed,
 # so any metric movement is attributable to the scenes and not to a reward edit.
 set -euo pipefail
-cd /home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab
+cd "${REPO:-/home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab}"
 .venv-mjlab/bin/python train_cat_mjlab.py run \
   --algorithm ppo --num-envs 30720 --batch-size 768 \
   --num-minibatches 40 --unroll-length 32 \

@@ -3,7 +3,7 @@
 # Owner-approved scenes (docs/assets/reactive-approval-20260922, 30/30 certified).
 # Weights identical to APPROVED_CLEARANCE_WEIGHTS_20260922; only --reactive-bank is new.
 set -euo pipefail
-cd /home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab
+cd "${REPO:-/home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab}"
 .venv-mjlab/bin/python train_cat_mjlab.py run \
   --algorithm ppo --num-envs 30720 --batch-size 768 \
   --num-minibatches 40 --unroll-length 32 \

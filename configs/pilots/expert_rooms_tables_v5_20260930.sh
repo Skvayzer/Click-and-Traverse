@@ -29,7 +29,7 @@
 #     (hand clearance -0.08 m) that shoulder probes left fully open (+0.42 m); 1.5 m gaps unchanged
 #   * warm start: v4 update 20 (before the drop: rooms 81%, tables 76%)
 set -euo pipefail
-cd /home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab
+cd "${REPO:-/home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab}"
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 CHECKPOINT=${CHECKPOINT:-outputs/expert_rooms_tables_v4_20260930/snapshots/update_0020.pt}   # v4, update 20
 RUN_DIR=${RUN_DIR:-outputs/expert_rooms_tables_v5_20260930}

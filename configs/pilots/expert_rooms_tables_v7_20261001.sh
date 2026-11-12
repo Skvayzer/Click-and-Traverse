@@ -42,7 +42,7 @@
 # forward-facing reward now uses the body's world yaw (it compared the command with the world x axis).
 # Warm start: v6 final checkpoint, update 98.
 set -euo pipefail
-cd /home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab
+cd "${REPO:-/home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab}"
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 CHECKPOINT=${CHECKPOINT:-outputs/expert_rooms_tables_v6_20261001/snapshots/update_0098_final.pt}   # v6, final update 98
 RUN_DIR=${RUN_DIR:-outputs/expert_rooms_tables_v7_20261001}

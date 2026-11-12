@@ -17,7 +17,7 @@
 #   * discriminator: pose features (no joint velocities, no wrist angles), pairs 0.1 s apart (stride 5),
 #     gradient penalty 10 (was 5), 4 steps per update (was 8)
 set -euo pipefail
-cd /home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab
+cd "${REPO:-/home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab}"
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 CHECKPOINT=${CHECKPOINT:-outputs/expert_rooms_passages_20260929/resume.pt}   # combined expert, update 30
 RUN_DIR=${RUN_DIR:-outputs/expert_rooms_tables_v3_20260930}

@@ -12,7 +12,7 @@
 #   * head-pull gate off (room-goal fix; CAT's head field must start ducking early under beams)
 #   * style guard watches CAT success
 set -euo pipefail
-cd /home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab
+cd "${REPO:-/home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab}"
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 CHECKPOINT=${CHECKPOINT:-outputs/expert_rooms_tables_v9_20261001/snapshots/update_0492_final.pt}   # rooms+keyboard v9, update 492
 RUN_DIR=${RUN_DIR:-outputs/expert_cat_20261002}

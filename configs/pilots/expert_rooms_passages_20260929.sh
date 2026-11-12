@@ -11,7 +11,7 @@
 #   - approaching-object (reactive) episodes removed for now (user decision 2026-09-29):
 #     no --reactive-bank, no reactive share/horizon/walking/hand-guidance/spot-hold flags.
 set -euo pipefail
-cd /home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab
+cd "${REPO:-/home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab}"
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 CHECKPOINT=${CHECKPOINT:-outputs/cat_style_20260929/resume.pt}   # style pilot, update 40
 RUN_DIR=${RUN_DIR:-outputs/expert_rooms_passages_20260929}

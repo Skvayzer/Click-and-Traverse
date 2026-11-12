@@ -52,7 +52,7 @@
 # 0.25-0.6 m): driven at a table, stopping or sliding along it is rewarded. Heading reward = gate x
 # alignment with psi_ref (weight 1.0, replaces the forward-facing bonus). Joystick episodes 50%.
 set -euo pipefail
-cd /home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab
+cd "${REPO:-/home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab}"
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 CHECKPOINT=${CHECKPOINT:-outputs/expert_rooms_tables_v6_20261001/snapshots/update_0098_final.pt}   # v6, final update 98
 RUN_DIR=${RUN_DIR:-outputs/expert_rooms_tables_v8_20261001}

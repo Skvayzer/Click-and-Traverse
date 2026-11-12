@@ -2,7 +2,7 @@
 # PREPARED ONLY. Owner-approved clearance overrides; do not launch without owner decision.
 # Anticipation .20 and near share .8 deliberately retained; see docs/APPROVED_CLEARANCE_WEIGHTS_20260922.md.
 set -euo pipefail
-cd /home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab
+cd "${REPO:-/home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab}"
 .venv-mjlab/bin/python train_cat_mjlab.py run \
   --algorithm ppo --num-envs 30720 --batch-size 768 \
   --num-minibatches 40 --unroll-length 32 \

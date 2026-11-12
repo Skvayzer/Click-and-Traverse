@@ -2,7 +2,7 @@
 # Overnight continuation of the reactive standing pilot. Same scenes, same approved weights.
 # Resumes the pilot run in place (--resume); no --max-updates, so it runs until stopped.
 set -euo pipefail
-cd /home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab
+cd "${REPO:-/home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab}"
 .venv-mjlab/bin/python train_cat_mjlab.py run \
   --algorithm ppo --num-envs 30720 --batch-size 768 \
   --num-minibatches 40 --unroll-length 32 \

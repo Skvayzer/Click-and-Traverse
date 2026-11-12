@@ -26,7 +26,7 @@
 #   feed scene/*/hand_self_contact_rate; termination on contact is opt-in
 #   (--terminate-on-hand-self-contact) and deliberately off for this pilot.
 set -euo pipefail
-cd /home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab
+cd "${REPO:-/home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab}"
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 CHECKPOINT=${CHECKPOINT:-outputs/cat_reactive_standing_20260923/resume.pt}   # pre-degradation warm start
 .venv-mjlab/bin/python train_cat_mjlab.py run \

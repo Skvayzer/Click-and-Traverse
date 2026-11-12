@@ -21,7 +21,7 @@
 # v2 run at update 200 (best snapshot: rooms 76.7%, table edges 46%, 10-update means), not the combined
 # expert. Style discriminators start fresh (pose features differ from v2's).
 set -euo pipefail
-cd /home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab
+cd "${REPO:-/home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab}"
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 CHECKPOINT=${CHECKPOINT:-outputs/expert_rooms_tables_v2_20260930/snapshots/update_0200.pt}   # v2, update 200
 RUN_DIR=${RUN_DIR:-outputs/expert_rooms_tables_v4_20260930}

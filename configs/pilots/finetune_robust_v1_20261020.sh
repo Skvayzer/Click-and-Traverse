@@ -25,7 +25,7 @@
 # Anchor = the starting checkpoint itself (DAgger regulariser 1.0 -> 0.3 over 200 updates, then 0.3): keeps its
 # behaviour while PPO learns to cope; exploration std fixed 0.10; SGS 30% uniform; per-group rewards as v1.
 set -euo pipefail
-cd /home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab
+cd "${REPO:-/home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab}"
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 STUDENT=${STUDENT:-outputs/saved_checkpoints/generalist_finetune_v1_u596.pt}
 TRAVERSAL=${TRAVERSAL:-outputs/traversal_expert_v1_20261012/snapshots/update_1764.pt}

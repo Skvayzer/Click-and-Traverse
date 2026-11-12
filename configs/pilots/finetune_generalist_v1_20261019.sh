@@ -16,7 +16,7 @@
 #     hopeless configurations ~nothing and picks them up once some start succeeds. ZERO_WEIGHT: only the 11
 #     geometrically infeasible scenes (scripts/narrow_scene_feasibility.py).
 set -euo pipefail
-cd /home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab
+cd "${REPO:-/home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab}"
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 STUDENT=${STUDENT:-outputs/distill_three_teachers_v1_20261018/resume.pt}
 TRAVERSAL=${TRAVERSAL:-outputs/traversal_expert_v1_20261012/snapshots/update_1764.pt}

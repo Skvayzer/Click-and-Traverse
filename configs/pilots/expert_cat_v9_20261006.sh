@@ -47,7 +47,7 @@
 # with zero weights, identical actions), and the room-tuned body costs back to their earlier values:
 # body_motion -0.5 (was -1.5), upright on pitch only (no roll).
 set -euo pipefail
-cd /home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab
+cd "${REPO:-/home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab}"
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 CHECKPOINT=${CHECKPOINT:-outputs/saved_checkpoints/cat_expert_v8_final_resume.pt}   # CAT expert v8, update 355
 RUN_DIR=${RUN_DIR:-outputs/expert_cat_v9_20261006}

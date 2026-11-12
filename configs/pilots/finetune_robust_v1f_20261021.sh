@@ -8,7 +8,7 @@
 # mass x0.9-1.1 -- at full strength from the start (u150 already trained at full strength; ramp 0).
 # Anchor: u150 itself, lambda 0.5 -> 0.3 over 100 updates (v1 was at 0.49 at update 150); 5 critic warm-up updates.
 set -euo pipefail
-cd /home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab
+cd "${REPO:-/home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab}"
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 STUDENT=${STUDENT:-outputs/saved_checkpoints/generalist_robust_delay_v1_u150.pt}
 TRAVERSAL=${TRAVERSAL:-outputs/traversal_expert_v1_20261012/snapshots/update_1764.pt}

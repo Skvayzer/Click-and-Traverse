@@ -35,7 +35,7 @@
 # The downward pull now needs geometry within 0.3 m of the head (gate open near goals: 100% -> 9%).
 # Warm start: v5 final checkpoint, update 357 (rooms ~80%, tables ~53%).
 set -euo pipefail
-cd /home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab
+cd "${REPO:-/home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab}"
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 CHECKPOINT=${CHECKPOINT:-outputs/expert_rooms_tables_v5_20260930/snapshots/update_0357_final.pt}   # v5, final update 357
 RUN_DIR=${RUN_DIR:-outputs/expert_rooms_tables_v6_20261001}

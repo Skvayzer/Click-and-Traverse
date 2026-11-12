@@ -11,7 +11,7 @@
 # clutter_dense attempts per update, and a synchronized timeout wave at update ~95 that crashed the
 # success metric). Everything else identical to v1.
 set -euo pipefail
-cd /home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab
+cd "${REPO:-/home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab}"
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 CHECKPOINT=${CHECKPOINT:-outputs/expert_rooms_passages_20260929/resume.pt}   # combined expert, update 30
 RUN_DIR=${RUN_DIR:-outputs/expert_rooms_tables_v2_20260930}

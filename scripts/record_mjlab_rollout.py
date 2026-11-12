@@ -48,6 +48,10 @@ def parser():
                    help="Force this reactive-bank row (an approaching object) instead of the .25 reset coin; "
                         "needs --reactive-bank. The object trajectory is exported for the renderer.")
     p.add_argument("--no-pushes", action="store_true", help="Disable the training's random pushes (0.1-1 m/s kicks every 5-10 s)")
+    p.add_argument("--upper-target-average", action="store_true",
+                   help="Waist/arm motors track the mean of the last two targets (the deployed waist-dither fix)")
+    p.add_argument("--nominal", action="store_true",
+                   help="Drop the robustness perturbations (action latency, pose/mount error, friction/mass DR)")
     p.add_argument("--no-curriculum-starts", action="store_true",
                    help="Drop the side-gap curriculum (its sideways starts): episodes start like ordinary CAT resets")
     p.add_argument("--joystick", help="Teleoperation: constant world-frame velocity 'vx,vy' (m/s) replaces the route")
@@ -252,6 +256,14 @@ def main(argv=None):
     environment = json.loads(json.dumps(contract["environment_config"]))
     if args.no_pushes:
         environment["push_config"]["enable"] = False
+    if args.upper_target_average:
+        environment["upper_target_average"] = True
+    if args.nominal:
+        environment.pop("robustness", None)
+    environment.pop("sgs", None)                    # explicit scene; no success-guided resampling
+    if "teleop" in environment and not (args.joystick or args.joystick_toward):
+        # Field-driven goal episode: no random keyboard-command episodes (as scripts/eval_per_scene.py)
+        environment["teleop"].update(fraction=0., cat_fraction=0., cat_scenes=False)
     if getattr(args, "no_curriculum_starts", False):
         environment.pop("side_gap_curriculum", None)
     if args.joystick or args.joystick_toward:
@@ -313,7 +325,8 @@ def main(argv=None):
             collision_sha256=contract["collision_sha256"], resets_sha256=contract["resets_sha256"],
             source_sha256=contract["source_sha256"], dt=task.dt, inference="deterministic tanh(mean)",
             compile_task=False,
-            outcome=outcome, teleoperation=joystick_info, requested_control_frames=args.frames, recorded_control_frames=len(arrays["time"])-1,
+            outcome=outcome, teleoperation=joystick_info,
+            upper_target_average=bool(environment.get("upper_target_average", False)), nominal=bool(args.nominal), requested_control_frames=args.frames, recorded_control_frames=len(arrays["time"])-1,
             reset="Explicit scene; fresh full episode horizon; seeded native noise/PD/push randomization retained",
             stopping="First clean goal, first fault/native horizon, or explicit recording frame bound",
             final_frame="Integrated pose copied before normal autoreset", capacity=sim.capacity_report(),

@@ -6,7 +6,7 @@
 # probability beta, which decays 1 -> 0 over 60 updates; the experts label every visited state;
 # the student regresses its action mean onto the labels. Full scene mix (CAT groups included).
 set -euo pipefail
-cd /home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab
+cd "${REPO:-/home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab}"
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 CAT_EXPERT=${CAT_EXPERT:-outputs/mjlab_migration_20260919/original-cat-expanded.npz}
 ROOMS_EXPERT=${ROOMS_EXPERT:-outputs/expert_rooms_passages_20260929/resume.pt}

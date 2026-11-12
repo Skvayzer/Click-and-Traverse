@@ -5,7 +5,7 @@
 # with the retained cat_flat_hand_balance_v2 distribution.
 # Weights per docs/APPROVED_CLEARANCE_WEIGHTS_20260922; no --max-updates, runs until stopped.
 set -euo pipefail
-cd /home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab
+cd "${REPO:-/home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab}"
 .venv-mjlab/bin/python train_cat_mjlab.py run \
   --algorithm ppo --num-envs 30720 --batch-size 768 \
   --num-minibatches 40 --unroll-length 32 \

@@ -11,7 +11,7 @@
 # Anchor: the warm start itself (constant lambda 0.3, as v1 ended); 5 critic warm-up updates; perturbations ramp in
 # over 1600 control steps (~50 updates).
 set -euo pipefail
-cd /home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab
+cd "${REPO:-/home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab}"
 export PYTORCH_CUDA_ALLOC_CONF=expandable_segments:True
 STUDENT=${STUDENT:-outputs/saved_checkpoints/robust_v1_final_u226.pt}
 TRAVERSAL=${TRAVERSAL:-outputs/traversal_expert_v1_20261012/snapshots/update_1764.pt}
