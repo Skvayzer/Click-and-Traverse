@@ -139,6 +139,12 @@ class CATTask:
         self.reactive_stationary=self.config.get('reactive_stationary')
         self.reactive_air=torch.zeros((self.num_envs,2),dtype=torch.long,device=self.device)
         self.reactive_feet_spot=torch.zeros((self.num_envs,2,2),device=self.device)
+        # Earliest step at which the spots are (re-)taken: grace_steps after reset, push_recover_steps after a push.
+        # They are taken once the robot has been calm for 10 steps (pelvis < 0.15 m/s, both feet down), at most
+        # settle_wait_steps later; the rule applies after.
+        self.reactive_settle_at=torch.zeros(self.num_envs,dtype=torch.long,device=self.device)
+        self.reactive_settled=torch.zeros(self.num_envs,dtype=torch.bool,device=self.device)
+        self.reactive_calm=torch.zeros(self.num_envs,dtype=torch.long,device=self.device)
         if self.reactive_objects is not None and self.reactive_stationary:
             self.reactive_objects.spot_radius=float(self.reactive_stationary['root_m'])
         self.leg_ids=torch.tensor([self.model.body(n).id for n in ('left_knee_link','left_ankle_roll_link','right_knee_link','right_ankle_roll_link')],device=self.device)
@@ -857,6 +863,9 @@ class CATTask:
         if self.reactive_objects is not None:
             self.reactive_spot[ids]=qpos[:,:2]   # the standing spot; leaving it is measured, not rewarded
             self.reactive_air[ids]=0
+            if self.reactive_stationary:
+                self.reactive_settle_at[ids]=int(self.reactive_stationary['grace_steps']);self.reactive_settled[ids]=False
+                self.reactive_calm[ids]=0
         self.sim.reset_data(ids)
         self.data.qpos[ids]=qpos;self.data.qvel[ids]=0.;self.data.qvel[ids,:6]=self._rand((n,6),-.5,.5)
         if self.raised_reset_fraction:
@@ -1100,8 +1109,20 @@ class CATTask:
             # The reset throws the base (+-0.5 m/s): spots are re-taken once the robot has settled (grace_steps), then
             # a foot off the floor for more than air_steps steps, a foot more than feet_m from its spot, or the pelvis
             # more than root_m away ends the episode. Feet = observed sites 3, 4 (left_foot, right_foot).
-            standing=active&~walking;settle=int(stationary.get('grace_steps',50));after=standing&(i['step']>settle)
-            settling=(standing&(i['step']==settle))
+            # A training push (up to 1 m/s) can need recovery steps: the rule is suspended after one and the spots are
+            # re-taken once the robot is calm again, so only stepping by choice is a failure.
+            standing=active&~walking
+            pushed=getattr(self,'_push_signal',None)
+            if pushed is not None:
+                hit=standing&pushed
+                self.reactive_settle_at=torch.where(hit,i['step']+int(stationary.get('push_recover_steps',25)),self.reactive_settle_at)
+                self.reactive_settled&=~hit
+            calm=(torch.linalg.vector_norm(self.data.qvel[:,:2],dim=-1)<.15)&contacts[:,0:2].all(-1)
+            self.reactive_calm=torch.where(calm,self.reactive_calm+1,torch.zeros_like(self.reactive_calm))
+            late=i['step']>=self.reactive_settle_at+int(stationary.get('settle_wait_steps',100))
+            settling=standing&~self.reactive_settled&(i['step']>=self.reactive_settle_at)&((self.reactive_calm>=10)|late)
+            self.reactive_settled|=settling
+            after=standing&self.reactive_settled&~settling
             self.reactive_spot=torch.where(settling[:,None],i['positions'][:,1,:2],self.reactive_spot)
             self.reactive_feet_spot=torch.where(settling[:,None,None],i['positions'][:,3:5,:2],self.reactive_feet_spot)
             self.reactive_root_displacement=torch.linalg.vector_norm(i['positions'][:,1,:2]-self.reactive_spot,dim=-1)*active
@@ -1556,6 +1577,7 @@ class CATTask:
         theta=self._rand((self.num_envs,),0.,2*torch.pi)
         magnitude=self._rand((self.num_envs,),*_get(self.config,'push_config.magnitude_range',[.1,1.]))
         signal=((i['push_step']+1)%i['push_interval']==0)&bool(_get(self.config,'push_config.enable',True))
+        self._push_signal=signal
         push=torch.stack((theta.cos(),theta.sin()),-1)*(signal*magnitude)[:,None]
         d.qvel[:,:2]+=push
         targets=self.math.motor_targets(action,i['motor_targets'],self.nominal,self.lower,self.upper,
