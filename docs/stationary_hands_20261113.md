@@ -74,6 +74,45 @@ flinch more at objects that pass by. Not ready for a real-robot hand-protection 
 standing episodes and/or the rule + energy combined (S3), then re-check under noise. S1b's training-condition violation
 rate plateaued at ~62% of standing episodes from update ~220.
 
+### Hand retreat distance (S2far, S2far2) and table passages (T1), 2026-11-14 ~01:00
+
+S2far = S2 + standing hand clearance target 0.20 / anticipation 0.40 m and >= 0.15 m retreat for threatening objects;
+S2far2 = S2far u200 + 0.30 / 0.50 m and >= 0.25 m. Clean evaluation (2000 rows x 16 s; "threatening" = danger +
+anticipation events):
+
+| | u150 | S2 u430 | S2far u200 | S2far u550 (final) | S2far2 u330 |
+|---|---|---|---|---|---|
+| mean hand retreat, threatening objects | 12.9 cm | 16.1 cm | 22.1 cm | 25.2 cm | 26.8 cm |
+| retreat >= 15 cm / >= 25 cm | 37% / 10% | 56% / 13% | 84% / 35% | 90% / 52% | 93% / 62% |
+| danger / anticipation handled | 0.87 / 0.72 | 0.94 / 0.87 | 0.99 / 0.96 | 0.99 / 0.98 | 0.99 / 0.99 |
+| pass-by object, no flinch | 0.59 | 0.46 | 0.15 | 0.10 | 0.07 |
+| episodes with a foot moved > 5 cm | 49% | 2.6% | 5.0% | 3.3% | 5.8% |
+| standing power | 43.7 W | 31.5 W | 32.1 W | 30.8 W | 31.1 W |
+
+Table-edge passages (scripts/eval_table_style.py, 8 episodes per scene, clean). The 16 forward_protected scenes are
+passages between table pairs: 0.44 m gap at tabletop height (0.71 m), tall baffles block detours, 3 pairs along 7 m.
+T1 = S2far u200 + face-the-route cost -3 and leg+waist power -0.005/W in table scenes, table mass 0.25, standing share
+0.3, 30% raised-hand starts, no anchor in table scenes.
+
+| | S2 u430 | T1 start (S2far u200) | T1 u130 |
+|---|---|---|---|
+| open table scenes: goal / sideways near tables | 100% / 25% | 100% / 25% | 100% / 3% |
+| between tables: goal | 0% | 0% | 0% |
+| between tables: sideways / hand raised / tucked (walking near tables) | 89% / 33% / 33% | 90% / 39% / 38% | 89% / 54% / 32% |
+| between tables: episodes still running at 40-60 s (stalled) | 40 of 128 | 101 of 128 | 83 of 128 |
+
+Cause found: table scenes are room worlds, where the anti-refusal terms (stall, goal progress, goal bonus) were not
+computed (x-plane goals only) and the room reward group zeroes them -- stopping in front of the gap cost nothing,
+squeezing through cost hand clearance (-40). T1b (from T1 u210, 2026-11-14 02:30, gpu partition): --table-progress
+gives table scenes those terms with CAT weights (passages run along +x).
+
+Traversal retention (eval_per_scene, 384 fixed non-table scenes x 4 episodes, clean; clean success):
+T1 start 0.60 -> T1 u130 0.59 overall; per type within +-0.03 (furniture 0.90/0.92, clutter 0.88/0.87, original CAT
+0.22/0.24, procedural 0.41/0.39, published 0.41/0.42, side gap 0.31/0.29, narrow 0.35/0.38) except transition passages
+0.63 -> 0.53; refusals 5.5% -> 9.5%.
+
+Videos: outputs/stationary_hands_20261113/videos_S2_vs_S2far, videos_0045 (S2far vs S2far2; table start vs T1).
+
 ## Measurement notes
 - Standing power, u150 clean: 26-31 W at rest (CPU trace), recovery steps after a shove 170-570 W.
 - Training metrics `reactive/*` average over all env-steps: divide by `reactive/reactive_standing` (power) or

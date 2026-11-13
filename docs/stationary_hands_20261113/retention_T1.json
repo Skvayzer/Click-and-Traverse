@@ -1,0 +1,3476 @@
+{
+ "checkpoint": "/l/users/konstantin.smirnov/runs/eval_20261114_0045/ckpt/T1_u130.pt",
+ "env_from": null,
+ "scenes": "@/home/konstantin.smirnov/jobs/retention_scenes_20261114.txt",
+ "episodes_per_scene": 4,
+ "deterministic": true,
+ "finished": 1536,
+ "target": 1536,
+ "seconds": 1878,
+ "summary": {
+  "clean": 0.5924,
+  "contact": 0.3118,
+  "refused": 0.0951,
+  "fall": 0.0007,
+  "hands": 0.0404,
+  "length": 820.5033
+ },
+ "per_scene": {
+  "D8G0L1O0S3": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.25,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.25,
+   "length": 787.5
+  },
+  "D8G0L1O0S13": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.0,
+   "refused": 0.25,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 1000.0
+  },
+  "D8G0L1O1S4": {
+   "episodes": 4,
+   "clean": 0.5,
+   "contact": 0.5,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 540.5
+  },
+  "D8G0L1O1S17": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.25,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 802.25
+  },
+  "D8G0L1O2S6": {
+   "episodes": 4,
+   "clean": 0.25,
+   "contact": 0.25,
+   "refused": 0.5,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 776.25
+  },
+  "D8G0L1O2S21": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 1.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 80.5
+  },
+  "D8G0L3O0S6": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.0,
+   "refused": 0.25,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 1000.0
+  },
+  "D8G0L3O0S25": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.25,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 771.0
+  },
+  "D8G0L3O1S9": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 1.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.25,
+   "length": 101.0
+  },
+  "D8G0L3O1S33": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.25,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 782.5
+  },
+  "D8G0L3O2S13": {
+   "episodes": 4,
+   "clean": 0.25,
+   "contact": 0.75,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.25,
+   "length": 313.25
+  },
+  "D8G0L3O2S41": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 1.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 82.0
+  },
+  "D8G1L1O0S5": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.25,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 773.25
+  },
+  "D8G1L1O0S19": {
+   "episodes": 4,
+   "clean": 0.25,
+   "contact": 0.75,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 301.5
+  },
+  "D8G1L1O1S8": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 1.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 103.25
+  },
+  "D8G1L1O1S25": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 1.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 79.75
+  },
+  "D8G1L1O2S11": {
+   "episodes": 4,
+   "clean": 0.25,
+   "contact": 0.5,
+   "refused": 0.0,
+   "fall": 0.25,
+   "hands": 0.0,
+   "length": 330.75
+  },
+  "D8G1L1O2S31": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 0.75,
+   "refused": 0.25,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 314.5
+  },
+  "D8G1L3O0S11": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 1.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.25,
+   "length": 156.0
+  },
+  "D8G1L3O0S37": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 1.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 137.0
+  },
+  "D8G1L3O1S18": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 0.75,
+   "refused": 0.25,
+   "fall": 0.0,
+   "hands": 0.25,
+   "length": 337.0
+  },
+  "D8G1L3O1S49": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 1.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.25,
+   "length": 117.75
+  },
+  "D8G1L3O2S25": {
+   "episodes": 4,
+   "clean": 0.5,
+   "contact": 0.25,
+   "refused": 0.25,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 784.75
+  },
+  "D8G1L3O2S61": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 1.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 100.25
+  },
+  "D8G2L1O0S7": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 1.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 130.25
+  },
+  "D8G2L1O0S25": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 0.75,
+   "refused": 0.25,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 77.25
+  },
+  "D8G2L1O1S12": {
+   "episodes": 4,
+   "clean": 0.5,
+   "contact": 0.25,
+   "refused": 0.25,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 768.5
+  },
+  "D8G2L1O1S33": {
+   "episodes": 4,
+   "clean": 0.5,
+   "contact": 0.5,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 559.75
+  },
+  "D8G2L1O2S16": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 1.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 96.75
+  },
+  "D8G2L1O2S41": {
+   "episodes": 4,
+   "clean": 0.25,
+   "contact": 0.75,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 331.25
+  },
+  "D8G2L3O0S16": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 1.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 108.75
+  },
+  "D8G2L3O0S49": {
+   "episodes": 4,
+   "clean": 0.25,
+   "contact": 0.75,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 381.75
+  },
+  "D8G2L3O1S27": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 1.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 161.0
+  },
+  "D8G2L3O1S65": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 1.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 126.75
+  },
+  "D8G2L3O2S13": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 1.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 184.25
+  },
+  "D8G2L3O2S37": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 1.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 179.5
+  },
+  "D8G2L3O2S81": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 1.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 93.5
+  },
+  "published-forward": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 1000.0
+  },
+  "published-hurdle0": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.25,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 762.75
+  },
+  "published-hurdle1": {
+   "episodes": 4,
+   "clean": 0.5,
+   "contact": 0.0,
+   "refused": 0.5,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 1000.0
+  },
+  "published-hurdle2": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.25,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 753.25
+  },
+  "published-hurdle3": {
+   "episodes": 4,
+   "clean": 0.25,
+   "contact": 0.5,
+   "refused": 0.25,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 513.0
+  },
+  "published-multi-hurdle0": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 0.75,
+   "refused": 0.25,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 324.75
+  },
+  "published-crouch0": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 1000.0
+  },
+  "published-crouch1": {
+   "episodes": 4,
+   "clean": 0.25,
+   "contact": 0.5,
+   "refused": 0.25,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 535.5
+  },
+  "published-hurdle-crouch0": {
+   "episodes": 4,
+   "clean": 0.5,
+   "contact": 0.25,
+   "refused": 0.25,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 791.0
+  },
+  "published-hurdle-crouch1": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 1.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 101.75
+  },
+  "published-side0": {
+   "episodes": 4,
+   "clean": 0.25,
+   "contact": 0.75,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.5,
+   "length": 326.5
+  },
+  "published-side1": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 1.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 1.0,
+   "length": 92.75
+  },
+  "published-side2": {
+   "episodes": 4,
+   "clean": 0.5,
+   "contact": 0.25,
+   "refused": 0.25,
+   "fall": 0.0,
+   "hands": 0.25,
+   "length": 758.75
+  },
+  "published-side3": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 1.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 51.75
+  },
+  "published-side4": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.0,
+   "refused": 0.25,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 1000.0
+  },
+  "published-side-crouch0": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.0,
+   "refused": 0.25,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 787.75
+  },
+  "published-side-crouch1": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.25,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 780.0
+  },
+  "published-side-crouch2": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 1.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.25,
+   "length": 111.5
+  },
+  "published-side-hurdle0": {
+   "episodes": 4,
+   "clean": 0.25,
+   "contact": 0.75,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 341.0
+  },
+  "published-side-hurdle1": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 1.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.5,
+   "length": 104.75
+  },
+  "published-side-hurdle2": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 1000.0
+  },
+  "published-side-hurdle3": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.25,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 770.5
+  },
+  "published-side-hurdle4": {
+   "episodes": 4,
+   "clean": 0.5,
+   "contact": 0.25,
+   "refused": 0.25,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 765.25
+  },
+  "published-side-hurdle-crouch0": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.25,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 759.5
+  },
+  "published-side-hurdle-crouch1": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 0.75,
+   "refused": 0.25,
+   "fall": 0.0,
+   "hands": 0.25,
+   "length": 297.5
+  },
+  "published-side-hurdle-crouch2": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 1.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 144.75
+  },
+  "published-side-hurdle-crouch3": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 1.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 162.0
+  },
+  "procedural-D4G0L3O3S2001": {
+   "episodes": 4,
+   "clean": 0.25,
+   "contact": 0.25,
+   "refused": 0.5,
+   "fall": 0.0,
+   "hands": 0.25,
+   "length": 769.75
+  },
+  "procedural-D4G1L7O3S2001": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.0,
+   "refused": 0.25,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 1000.0
+  },
+  "procedural-D4G1L9O2S2002": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 1000.0
+  },
+  "procedural-D4G2L3O2S2001": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.0,
+   "refused": 0.25,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 1000.0
+  },
+  "procedural-D4G2L8O0S2001": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.0,
+   "refused": 0.25,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 771.5
+  },
+  "procedural-D4G3L7O3S2001": {
+   "episodes": 4,
+   "clean": 0.5,
+   "contact": 0.5,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 520.75
+  },
+  "procedural-D5G1L3O0S2001": {
+   "episodes": 4,
+   "clean": 0.5,
+   "contact": 0.0,
+   "refused": 0.5,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 1000.0
+  },
+  "procedural-D6G0L2O1S2002": {
+   "episodes": 4,
+   "clean": 0.5,
+   "contact": 0.5,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 516.75
+  },
+  "procedural-D6G0L7O1S2001": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.0,
+   "refused": 0.25,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 1000.0
+  },
+  "procedural-D6G0L7O1S2002": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.25,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 794.25
+  },
+  "procedural-D6G0L9O0S2002": {
+   "episodes": 4,
+   "clean": 0.5,
+   "contact": 0.0,
+   "refused": 0.5,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 1000.0
+  },
+  "procedural-D6G2L4O3S2002": {
+   "episodes": 4,
+   "clean": 0.25,
+   "contact": 0.5,
+   "refused": 0.25,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 328.25
+  },
+  "procedural-D6G2L5O2S2001": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.25,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 776.75
+  },
+  "procedural-D6G3L8O1S2002": {
+   "episodes": 4,
+   "clean": 0.5,
+   "contact": 0.5,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 546.5
+  },
+  "procedural-D7G1L0O2S2001": {
+   "episodes": 4,
+   "clean": 0.5,
+   "contact": 0.5,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 526.0
+  },
+  "procedural-D7G1L0O3S2002": {
+   "episodes": 4,
+   "clean": 0.5,
+   "contact": 0.5,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 506.75
+  },
+  "procedural-D7G2L0O2S2002": {
+   "episodes": 4,
+   "clean": 0.5,
+   "contact": 0.5,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 536.0
+  },
+  "procedural-D7G2L1O2S2001": {
+   "episodes": 4,
+   "clean": 0.25,
+   "contact": 0.75,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 292.25
+  },
+  "procedural-D7G3L4O1S2001": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.25,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 785.25
+  },
+  "procedural-D7G3L4O2S2001": {
+   "episodes": 4,
+   "clean": 0.5,
+   "contact": 0.5,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 554.5
+  },
+  "procedural-D7G3L6O3S2001": {
+   "episodes": 4,
+   "clean": 0.25,
+   "contact": 0.75,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.25,
+   "length": 295.0
+  },
+  "procedural-D8G3L1O0S2001": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.25,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 750.5
+  },
+  "procedural-D8G3L2O0S2002": {
+   "episodes": 4,
+   "clean": 0.25,
+   "contact": 0.75,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 317.0
+  },
+  "procedural-D8G3L2O1S2001": {
+   "episodes": 4,
+   "clean": 0.25,
+   "contact": 0.75,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 331.25
+  },
+  "procedural-D8G3L4O0S2001": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 1.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 123.75
+  },
+  "procedural-D9G0L2O1S2002": {
+   "episodes": 4,
+   "clean": 0.5,
+   "contact": 0.5,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 549.25
+  },
+  "procedural-D9G0L3O0S2001": {
+   "episodes": 4,
+   "clean": 0.5,
+   "contact": 0.5,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 555.75
+  },
+  "procedural-D9G0L9O1S2001": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 1.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 163.25
+  },
+  "procedural-D9G1L1O3S2001": {
+   "episodes": 4,
+   "clean": 0.25,
+   "contact": 0.75,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 320.75
+  },
+  "procedural-D9G1L4O0S2002": {
+   "episodes": 4,
+   "clean": 0.5,
+   "contact": 0.5,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.25,
+   "length": 546.75
+  },
+  "procedural-D9G1L8O1S2002": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 1.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 133.0
+  },
+  "procedural-D9G2L3O1S2001": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 1.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.25,
+   "length": 120.25
+  },
+  "procedural-D9G2L6O1S2002": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 1.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 77.75
+  },
+  "procedural-D9G3L0O0S2001": {
+   "episodes": 4,
+   "clean": 0.5,
+   "contact": 0.25,
+   "refused": 0.25,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 754.75
+  },
+  "procedural-D9G3L6O2S2001": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 1.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 112.25
+  },
+  "procedural-D10G0L0O3S2001": {
+   "episodes": 4,
+   "clean": 0.5,
+   "contact": 0.5,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 558.25
+  },
+  "procedural-D10G0L8O3S2001": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 1.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.75,
+   "length": 100.75
+  },
+  "procedural-D10G1L8O3S2002": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 1.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 125.0
+  },
+  "procedural-D10G2L9O0S2001": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 1.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 111.25
+  },
+  "procedural-D10G3L2O2S2002": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 1.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 97.25
+  },
+  "random-furniture-dense-train-004004-b43029cf3054": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 933.5
+  },
+  "random-furniture-dense-train-004009-04bb9ee12a93": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 911.25
+  },
+  "random-furniture-dense-train-004016-93a493d7e5f0": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 875.5
+  },
+  "random-furniture-dense-train-004017-3214d64e0e5d": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.25,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 1007.25
+  },
+  "random-furniture-dense-train-004020-48b2ec62dd60": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.25,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 1232.25
+  },
+  "random-furniture-dense-train-004023-afb45fa03324": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 734.5
+  },
+  "random-furniture-dense-train-004024-660686a26a46": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 909.5
+  },
+  "random-generic_clutter-dense-train-005016-7bd015f987b9": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.0,
+   "refused": 0.25,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 996.5
+  },
+  "random-generic_clutter-dense-train-005019-028a984a4182": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 921.75
+  },
+  "contrast-train-20260920-r0-w0.700000-narrow-eeb3b4cd0c5a": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.25,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 649.75
+  },
+  "contrast-train-20260919-r1-w0.640000-narrow-183531980162": {
+   "episodes": 4,
+   "clean": 0.5,
+   "contact": 0.5,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 533.5
+  },
+  "contrast-train-20260921-r1-w0.640000-narrow-bc060eae8294": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.25,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 612.5
+  },
+  "contrast-train-20260922-r1-w0.640000-narrow-d14ee41bb9f6": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.25,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 766.5
+  },
+  "contrast-train-20260919-r2-w0.580000-narrow-17e13781225c": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.25,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 781.5
+  },
+  "contrast-train-20260920-r2-w0.580000-narrow-bc196e7efb9d": {
+   "episodes": 4,
+   "clean": 0.25,
+   "contact": 0.25,
+   "refused": 0.5,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 891.0
+  },
+  "contrast-train-20260919-r0-w0.700000-forward_protected-eb8db12731e1": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.25,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 623.25
+  },
+  "contrast-train-20260920-r0-w0.700000-forward_protected-96a57ca86054": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 683.0
+  },
+  "contrast-train-20260920-r0-w0.700000-transition-41d1df334908": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 792.25
+  },
+  "contrast-train-20260921-r0-w0.700000-forward_protected-6c5d142ebc47": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.25,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 638.75
+  },
+  "contrast-train-20260921-r0-w0.700000-transition-448f7d3a404b": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 755.5
+  },
+  "contrast-train-20260922-r0-w0.700000-transition-f26cca655e2b": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 643.25
+  },
+  "contrast-train-20260919-r1-w0.640000-forward_protected-eb8db12731e1": {
+   "episodes": 4,
+   "clean": 0.5,
+   "contact": 0.5,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 653.25
+  },
+  "contrast-train-20260919-r1-w0.640000-transition-3a742a8d4111": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 723.5
+  },
+  "contrast-train-20260920-r1-w0.640000-transition-8c7feb867c98": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 726.25
+  },
+  "contrast-train-20260921-r1-w0.640000-forward_protected-6c5d142ebc47": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.25,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 569.0
+  },
+  "contrast-train-20260921-r1-w0.640000-transition-33d5b4e2c050": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.25,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.25,
+   "length": 733.5
+  },
+  "contrast-train-20260922-r1-w0.640000-forward_protected-3912f4985670": {
+   "episodes": 4,
+   "clean": 0.25,
+   "contact": 0.75,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.25,
+   "length": 515.5
+  },
+  "contrast-train-20260920-r2-w0.580000-forward_protected-96a57ca86054": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 732.25
+  },
+  "contrast-train-20260920-r2-w0.580000-transition-bea7ba085e0a": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.25,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 671.25
+  },
+  "contrast-train-20260921-r2-w0.580000-forward_protected-6c5d142ebc47": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 721.5
+  },
+  "contrast-train-20260921-r2-w0.580000-transition-0ce05685d093": {
+   "episodes": 4,
+   "clean": 0.5,
+   "contact": 0.25,
+   "refused": 0.25,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 736.0
+  },
+  "contrast-train-20260922-r2-w0.580000-forward_protected-3912f4985670": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 727.25
+  },
+  "contrast-train-20260923-r0-w0.736528-forward_protected-f49770df5b43": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.25,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 574.5
+  },
+  "contrast-train-20260923-r0-w0.736528-narrow-63f5d8e0eefe": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.25,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 576.5
+  },
+  "contrast-train-20260923-r0-w0.736528-open-75a895d289a7": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 704.75
+  },
+  "contrast-train-20260923-r0-w0.736528-transition-6708d6ab2239": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.25,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 598.25
+  },
+  "contrast-train-20260924-r0-w0.576504-forward_protected-20ec1e76420f": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 721.5
+  },
+  "contrast-train-20260924-r0-w0.576504-narrow-d676d98524ae": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 1.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 479.0
+  },
+  "contrast-train-20260924-r0-w0.576504-open-15d04b77d075": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 709.25
+  },
+  "contrast-train-20260924-r0-w0.576504-transition-d272275eb866": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.25,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 1234.25
+  },
+  "contrast-train-20260925-r0-w0.689842-forward_protected-de83b79a6a3f": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 744.5
+  },
+  "contrast-train-20260925-r0-w0.689842-open-155c0a65ba1d": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 720.25
+  },
+  "contrast-train-20260925-r0-w0.689842-transition-67f93e3786f1": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.25,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 626.0
+  },
+  "contrast-train-20260926-r0-w0.473465-narrow-c991de523071": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 0.25,
+   "refused": 0.75,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 3753.5
+  },
+  "contrast-train-20260926-r0-w0.473465-open-34c2f55e7faa": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 688.25
+  },
+  "contrast-train-20260926-r0-w0.473465-transition-92212fd1dd96": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 0.75,
+   "refused": 0.25,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 3165.5
+  },
+  "contrast-train-20260927-r0-w0.502115-forward_protected-b5eb36cfe1bb": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.25,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 736.75
+  },
+  "contrast-train-20260927-r0-w0.502115-narrow-e4c17b5b8cae": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 0.0,
+   "refused": 1.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 4000.0
+  },
+  "contrast-train-20260927-r0-w0.502115-open-502ac2b62317": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 697.0
+  },
+  "contrast-train-20260927-r0-w0.502115-transition-906b1bc0334e": {
+   "episodes": 4,
+   "clean": 0.25,
+   "contact": 0.0,
+   "refused": 0.75,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 3168.5
+  },
+  "contrast-train-20260928-r0-w0.737176-forward_protected-77e2cbed9467": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.25,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 587.0
+  },
+  "contrast-train-20260928-r0-w0.737176-transition-a32d26b759ec": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 721.25
+  },
+  "contrast-train-20260930-r0-w0.443949-forward_protected-1127140defcb": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.0,
+   "refused": 0.25,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 706.0
+  },
+  "contrast-train-20260930-r0-w0.443949-open-93daa5afdd84": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 705.75
+  },
+  "contrast-train-20260930-r0-w0.443949-transition-b8c268b0c3ea": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 0.25,
+   "refused": 0.75,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 3050.75
+  },
+  "contrast-train-20260931-r0-w0.491090-forward_protected-282dd727587e": {
+   "episodes": 4,
+   "clean": 0.5,
+   "contact": 0.25,
+   "refused": 0.25,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 712.75
+  },
+  "contrast-train-20260931-r0-w0.491090-narrow-8c4a35613472": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 0.25,
+   "refused": 0.75,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 3089.75
+  },
+  "contrast-train-20260931-r0-w0.491090-open-d85d76db85a5": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 707.25
+  },
+  "contrast-train-20260932-r0-w0.460051-forward_protected-95fcc18b2ebf": {
+   "episodes": 4,
+   "clean": 0.5,
+   "contact": 0.5,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 529.25
+  },
+  "contrast-train-20260932-r0-w0.460051-narrow-e52e16b20be5": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 0.0,
+   "refused": 1.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 4000.0
+  },
+  "contrast-train-20260932-r0-w0.460051-open-fde339e5a335": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 719.5
+  },
+  "contrast-train-20260932-r0-w0.460051-transition-891154c57c8c": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 0.25,
+   "refused": 0.75,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 3115.25
+  },
+  "contrast-train-20260933-r0-w0.725256-narrow-58dbbb465827": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 738.25
+  },
+  "contrast-train-20260933-r0-w0.725256-open-881b79f4d6e7": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 699.5
+  },
+  "contrast-train-20260933-r0-w0.725256-transition-785f57734885": {
+   "episodes": 4,
+   "clean": 0.5,
+   "contact": 0.5,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 497.75
+  },
+  "contrast-train-20260934-r0-w0.549963-forward_protected-8e408e385fce": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 764.0
+  },
+  "contrast-train-20260934-r0-w0.549963-narrow-774f39c1648f": {
+   "episodes": 4,
+   "clean": 0.5,
+   "contact": 0.25,
+   "refused": 0.25,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 2653.5
+  },
+  "contrast-train-20260934-r0-w0.549963-open-52f4494dbc0c": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 679.0
+  },
+  "contrast-train-20260934-r0-w0.549963-transition-5e4540ab2796": {
+   "episodes": 4,
+   "clean": 0.5,
+   "contact": 0.0,
+   "refused": 0.5,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 716.75
+  },
+  "contrast-train-20260935-r0-w0.669934-forward_protected-5a1ada3277e5": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 693.5
+  },
+  "contrast-train-20260935-r0-w0.669934-narrow-2afdf6f45e2a": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 711.75
+  },
+  "contrast-train-20260935-r0-w0.669934-transition-dcd839252472": {
+   "episodes": 4,
+   "clean": 0.5,
+   "contact": 0.25,
+   "refused": 0.25,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 544.0
+  },
+  "contrast-train-20260936-r0-w0.676583-forward_protected-cfe5a4f07804": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.0,
+   "refused": 0.25,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 625.5
+  },
+  "contrast-train-20260936-r0-w0.676583-open-556175c56331": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 677.75
+  },
+  "contrast-train-20260936-r0-w0.676583-transition-6f6ff14946cb": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.25,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 568.0
+  },
+  "contrast-train-20260937-r0-w0.425163-forward_protected-b08ed1da76b8": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 710.5
+  },
+  "contrast-train-20260937-r0-w0.425163-narrow-3f0493c03dd0": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 0.0,
+   "refused": 1.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 4000.0
+  },
+  "contrast-train-20260937-r0-w0.425163-open-cb4e67fb13ca": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 701.5
+  },
+  "contrast-train-20260937-r0-w0.425163-transition-503a8ca3e921": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 0.0,
+   "refused": 1.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 4000.0
+  },
+  "contrast-train-20260938-r0-w0.511607-open-10eeb869385c": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 662.75
+  },
+  "contrast-train-20260938-r0-w0.511607-transition-ff7632c1afc7": {
+   "episodes": 4,
+   "clean": 0.25,
+   "contact": 0.75,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 749.0
+  },
+  "contrast-train-20260939-r0-w0.713733-narrow-7f7bbce976f1": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.0,
+   "refused": 0.25,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 689.5
+  },
+  "contrast-train-20260939-r0-w0.713733-open-794479703a7f": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 714.5
+  },
+  "contrast-train-20260940-r0-w0.708851-forward_protected-e8a63e71df4f": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.25,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 612.0
+  },
+  "contrast-train-20260940-r0-w0.708851-narrow-86e41d2aa7dd": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 770.5
+  },
+  "contrast-train-20260940-r0-w0.708851-open-90707c4a6942": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 719.75
+  },
+  "contrast-train-20260941-r0-w0.531697-forward_protected-85b90fc33508": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.0,
+   "refused": 0.25,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 745.5
+  },
+  "contrast-train-20260941-r0-w0.531697-transition-e5ddd30885f2": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.0,
+   "refused": 0.25,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 2189.25
+  },
+  "contrast-train-20260942-r0-w0.555455-narrow-d62dfcda87c5": {
+   "episodes": 4,
+   "clean": 0.5,
+   "contact": 0.25,
+   "refused": 0.25,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 789.75
+  },
+  "contrast-train-20260942-r0-w0.555455-transition-b5f5aba89801": {
+   "episodes": 4,
+   "clean": 0.25,
+   "contact": 0.75,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 659.5
+  },
+  "contrast-train-20260943-r0-w0.733996-narrow-f48e5a3ffcf9": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.25,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 610.0
+  },
+  "contrast-train-20260943-r0-w0.733996-open-a3cb3e4bf2f6": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 696.75
+  },
+  "contrast-train-20260943-r0-w0.733996-transition-d8eeac66a45b": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.25,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 714.25
+  },
+  "contrast-train-20260944-r0-w0.402255-narrow-8b7b786fa96c": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 0.0,
+   "refused": 1.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 4000.0
+  },
+  "contrast-train-20260944-r0-w0.402255-open-7f7296275fbf": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 679.25
+  },
+  "contrast-train-20260944-r0-w0.402255-transition-dbc7af0bf4b6": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 0.0,
+   "refused": 1.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 4000.0
+  },
+  "contrast-train-20260945-r0-w0.489877-forward_protected-080b7989e412": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.25,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 699.25
+  },
+  "contrast-train-20260945-r0-w0.489877-open-72e519a862ae": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 701.25
+  },
+  "contrast-train-20260946-r0-w0.563578-narrow-48a4c994bc3f": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.0,
+   "refused": 0.25,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 1049.0
+  },
+  "contrast-train-20260946-r0-w0.563578-open-ff52245b6f97": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 684.0
+  },
+  "contrast-train-20260947-r0-w0.723931-narrow-f363f6566945": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.0,
+   "refused": 0.25,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 739.5
+  },
+  "contrast-train-20260947-r0-w0.723931-open-cbbde98d6f89": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 701.75
+  },
+  "contrast-train-20260947-r0-w0.723931-transition-93b61236b6a1": {
+   "episodes": 4,
+   "clean": 0.5,
+   "contact": 0.5,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 497.5
+  },
+  "contrast-train-20260948-r0-w0.560536-open-726e49be162d": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 669.0
+  },
+  "contrast-train-20260949-r0-w0.554048-narrow-2f4687f40fd9": {
+   "episodes": 4,
+   "clean": 0.25,
+   "contact": 0.75,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 1126.0
+  },
+  "contrast-train-20260949-r0-w0.554048-transition-082405d09ef6": {
+   "episodes": 4,
+   "clean": 0.25,
+   "contact": 0.75,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 669.75
+  },
+  "contrast-train-20260950-r0-w0.520597-forward_protected-46ee27d516a8": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 706.5
+  },
+  "contrast-train-20260950-r0-w0.520597-narrow-970591a2e6e6": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 0.25,
+   "refused": 0.75,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 3852.25
+  },
+  "contrast-train-20260950-r0-w0.520597-open-403f3ea68038": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 721.0
+  },
+  "contrast-train-20260951-r0-w0.683950-forward_protected-9f6e9ec3cac6": {
+   "episodes": 4,
+   "clean": 0.5,
+   "contact": 0.5,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 499.75
+  },
+  "contrast-train-20260951-r0-w0.683950-narrow-377ea201ba05": {
+   "episodes": 4,
+   "clean": 0.5,
+   "contact": 0.25,
+   "refused": 0.25,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 638.0
+  },
+  "contrast-train-20260951-r0-w0.683950-open-88b3643ee716": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 716.0
+  },
+  "contrast-train-20260951-r0-w0.683950-transition-b5eafb02e5e4": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.25,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 597.25
+  },
+  "contrast-train-20260953-r0-w0.507648-forward_protected-a5e409177afb": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.25,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 639.25
+  },
+  "contrast-train-20260953-r0-w0.507648-open-9b26ae66ca7a": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 681.5
+  },
+  "contrast-train-20260953-r0-w0.507648-transition-c7fcd8167b0c": {
+   "episodes": 4,
+   "clean": 0.5,
+   "contact": 0.5,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 1201.5
+  },
+  "contrast-train-20260954-r0-w0.559672-narrow-181ed231acda": {
+   "episodes": 4,
+   "clean": 0.5,
+   "contact": 0.5,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 1159.75
+  },
+  "contrast-train-20260954-r0-w0.559672-open-84ca5cc0de00": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 668.0
+  },
+  "contrast-train-20260955-r0-w0.489069-narrow-d06838844265": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 0.5,
+   "refused": 0.5,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 2446.25
+  },
+  "contrast-train-20260955-r0-w0.489069-open-3de74b986777": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 662.5
+  },
+  "contrast-train-20260956-r0-w0.492736-forward_protected-94c38c28e894": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 804.75
+  },
+  "contrast-train-20260956-r0-w0.492736-narrow-b687186deabb": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 0.25,
+   "refused": 0.75,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 3594.0
+  },
+  "contrast-train-20260956-r0-w0.492736-open-f2882df9aa96": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 697.25
+  },
+  "contrast-train-20260956-r0-w0.492736-transition-4de7ed21b497": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 0.25,
+   "refused": 0.75,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 2642.75
+  },
+  "contrast-train-20260957-r0-w0.503278-forward_protected-3fa01191edee": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.25,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 686.25
+  },
+  "contrast-train-20260957-r0-w0.503278-narrow-89eba38662df": {
+   "episodes": 4,
+   "clean": 0.5,
+   "contact": 0.25,
+   "refused": 0.25,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 2032.75
+  },
+  "contrast-train-20260957-r0-w0.503278-open-1c6224bbafe2": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 678.25
+  },
+  "contrast-train-20260957-r0-w0.503278-transition-b8f230334276": {
+   "episodes": 4,
+   "clean": 0.5,
+   "contact": 0.25,
+   "refused": 0.25,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 740.25
+  },
+  "contrast-train-20260958-r0-w0.543517-forward_protected-51d28b126f85": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 789.5
+  },
+  "contrast-train-20260958-r0-w0.543517-open-6f43e9091e6e": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 699.0
+  },
+  "contrast-train-20260959-r0-w0.494464-narrow-98e31e9d14ec": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 0.25,
+   "refused": 0.75,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 3958.0
+  },
+  "contrast-train-20260959-r0-w0.494464-open-a9452246b0d5": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 685.0
+  },
+  "contrast-train-20260960-r0-w0.593592-open-e442837b591c": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 712.5
+  },
+  "contrast-train-20260960-r0-w0.593592-transition-9c664fd25e4c": {
+   "episodes": 4,
+   "clean": 0.5,
+   "contact": 0.25,
+   "refused": 0.25,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 575.75
+  },
+  "contrast-train-20260961-r0-w0.589923-forward_protected-ac6cb02ce61e": {
+   "episodes": 4,
+   "clean": 0.5,
+   "contact": 0.5,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 573.25
+  },
+  "contrast-train-20260961-r0-w0.589923-narrow-fe6a1fd1d3d2": {
+   "episodes": 4,
+   "clean": 0.5,
+   "contact": 0.5,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 987.5
+  },
+  "contrast-train-20260961-r0-w0.589923-transition-fd4350ed2897": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.25,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 821.5
+  },
+  "contrast-train-20260962-r0-w0.660444-forward_protected-1f0f02192036": {
+   "episodes": 4,
+   "clean": 0.5,
+   "contact": 0.25,
+   "refused": 0.25,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 624.25
+  },
+  "contrast-train-20260962-r0-w0.660444-narrow-871e1dc4741e": {
+   "episodes": 4,
+   "clean": 0.5,
+   "contact": 0.25,
+   "refused": 0.25,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 734.5
+  },
+  "contrast-train-20260962-r0-w0.660444-open-8b352b58f481": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 717.25
+  },
+  "contrast-train-20260962-r0-w0.660444-transition-20d5a8d1a5b2": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.25,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 616.25
+  },
+  "contrast-train-20260963-r0-w0.528157-forward_protected-c11eef0fb096": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 781.5
+  },
+  "contrast-train-20260963-r0-w0.528157-open-422e4f6285af": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 662.75
+  },
+  "contrast-train-20260963-r0-w0.528157-transition-43841f357b79": {
+   "episodes": 4,
+   "clean": 0.25,
+   "contact": 0.75,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 850.5
+  },
+  "contrast-train-20260964-r0-w0.439851-forward_protected-b9af923e436a": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.25,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 690.5
+  },
+  "contrast-train-20260964-r0-w0.439851-narrow-b237b196a317": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 0.0,
+   "refused": 1.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 4000.0
+  },
+  "contrast-train-20260964-r0-w0.439851-open-2fa684084f67": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 694.5
+  },
+  "contrast-train-20260965-r0-w0.460316-forward_protected-97d3609e2091": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 760.25
+  },
+  "contrast-train-20260965-r0-w0.460316-narrow-208c1beca603": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 0.0,
+   "refused": 1.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 3640.0
+  },
+  "contrast-train-20260965-r0-w0.460316-open-d8978175ab53": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 698.5
+  },
+  "contrast-train-20260966-r0-w0.707319-narrow-f97b87684468": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 715.0
+  },
+  "contrast-train-20260966-r0-w0.707319-open-f22b3a9dfec5": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 690.75
+  },
+  "contrast-train-20260967-r0-w0.473009-forward_protected-4a2a6619643c": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 765.75
+  },
+  "contrast-train-20260967-r0-w0.473009-narrow-4e568e149f26": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 0.25,
+   "refused": 0.75,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 3074.5
+  },
+  "contrast-train-20260967-r0-w0.473009-open-68e67946092e": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 667.25
+  },
+  "contrast-train-20260967-r0-w0.473009-transition-978af2695964": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 0.0,
+   "refused": 1.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 4000.0
+  },
+  "contrast-train-20260968-r0-w0.411995-forward_protected-aa8376db69eb": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 699.75
+  },
+  "contrast-train-20260968-r0-w0.411995-narrow-3275ac16e691": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 0.0,
+   "refused": 1.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 4000.0
+  },
+  "contrast-train-20260968-r0-w0.411995-open-5bd4ccb2f706": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 674.75
+  },
+  "contrast-train-20260969-r0-w0.589063-forward_protected-cd9ef838665b": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 737.75
+  },
+  "contrast-train-20260969-r0-w0.589063-narrow-c9c7501290d1": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 1.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 407.25
+  },
+  "contrast-train-20260969-r0-w0.589063-open-07a34bff21eb": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 693.5
+  },
+  "contrast-train-20260970-r0-w0.684002-open-601fd84147b5": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 697.0
+  },
+  "contrast-train-20260970-r0-w0.684002-transition-c2a7e23b6465": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.25,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 503.75
+  },
+  "contrast-train-20260971-r0-w0.438612-forward_protected-56095aee19f6": {
+   "episodes": 4,
+   "clean": 0.5,
+   "contact": 0.5,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 523.5
+  },
+  "contrast-train-20260971-r0-w0.438612-narrow-ca4232382e08": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 0.0,
+   "refused": 1.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 4000.0
+  },
+  "contrast-train-20260971-r0-w0.438612-transition-d753dbe51ddc": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 0.0,
+   "refused": 1.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 4000.0
+  },
+  "contrast-train-20260972-r0-w0.560846-forward_protected-b8ce128ef54a": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 751.25
+  },
+  "contrast-train-20260972-r0-w0.560846-transition-f6e6ed246b7e": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.25,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 643.75
+  },
+  "random-furniture-dense-train-20261201-a4456da3f1d7": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 889.25
+  },
+  "random-furniture-dense-train-20261207-78ecc89b9e24": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 839.0
+  },
+  "random-furniture-dense-train-20261209-72b1bc76b600": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 1147.25
+  },
+  "random-furniture-dense-train-20261213-a64e30780040": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.25,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 721.25
+  },
+  "random-furniture-dense-train-20261221-dfd738fcad3b": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.25,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 1255.75
+  },
+  "random-furniture-dense-train-20261227-c289738ee2e0": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 712.75
+  },
+  "random-furniture-dense-train-20261243-149b2661d5fa": {
+   "episodes": 4,
+   "clean": 0.5,
+   "contact": 0.5,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 1050.25
+  },
+  "random-furniture-dense-train-20261247-eff2eb2c51d6": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 1068.25
+  },
+  "random-furniture-dense-train-20261249-94fc92d525b1": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 1418.5
+  },
+  "random-furniture-dense-train-20261253-cd1e982a3f90": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 1156.0
+  },
+  "random-furniture-dense-train-20261259-3ba64cc7c96d": {
+   "episodes": 4,
+   "clean": 0.5,
+   "contact": 0.5,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 904.25
+  },
+  "random-furniture-dense-train-20261263-d16e4f310132": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 1040.5
+  },
+  "random-furniture-dense-train-20261265-c97bb3302f7d": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 896.25
+  },
+  "random-furniture-dense-train-20261269-838b60f198ec": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.25,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 1468.0
+  },
+  "random-furniture-dense-train-20261275-c9af633a1352": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 820.25
+  },
+  "random-furniture-dense-train-20261279-d69211c1c0ad": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 719.75
+  },
+  "random-furniture-pilot-train-20261200-e8d8938fd3f4": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.25,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 553.0
+  },
+  "random-furniture-pilot-train-20261204-6e31c1320bbf": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.25,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 443.75
+  },
+  "random-furniture-pilot-train-20261210-da15a21719f9": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 472.75
+  },
+  "random-furniture-pilot-train-20261212-185ddd7408fc": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 401.75
+  },
+  "random-furniture-pilot-train-20261216-29718b579654": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 430.0
+  },
+  "random-furniture-pilot-train-20261222-b2dcf0b31748": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.25,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 460.25
+  },
+  "random-furniture-pilot-train-20261228-f0cee7a476fe": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 444.0
+  },
+  "random-furniture-pilot-train-20261230-47d453bdfc46": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 635.25
+  },
+  "random-furniture-pilot-train-20261238-a163e2621ca8": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 498.5
+  },
+  "random-furniture-pilot-train-20261244-f27c4ce46bca": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 532.0
+  },
+  "random-furniture-pilot-train-20261248-53709d38f46a": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 554.0
+  },
+  "random-furniture-pilot-train-20261252-1e44acae6cde": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 429.25
+  },
+  "random-furniture-pilot-train-20261256-125253a724dd": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 671.0
+  },
+  "random-furniture-pilot-train-20261260-900622656afc": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 783.5
+  },
+  "random-furniture-pilot-train-20261266-a635579667d0": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 515.5
+  },
+  "random-furniture-pilot-train-20261270-b4e61ab5ee1f": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.25,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 811.75
+  },
+  "random-furniture-pilot-train-20261276-0d12d2fa4b90": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 467.25
+  },
+  "random-generic_clutter-dense-train-20261009-92d9f34782da": {
+   "episodes": 4,
+   "clean": 0.25,
+   "contact": 0.75,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 520.25
+  },
+  "random-generic_clutter-dense-train-20261023-f28ad0deaff9": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 1869.25
+  },
+  "random-generic_clutter-dense-train-20261025-ba951ccee865": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 1060.5
+  },
+  "random-generic_clutter-dense-train-20261027-a099bd9ec3e1": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 1.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 859.25
+  },
+  "random-generic_clutter-dense-train-20261029-577496fffeb4": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 1156.25
+  },
+  "random-generic_clutter-dense-train-20261043-b3c8275c2a14": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 1287.25
+  },
+  "random-generic_clutter-dense-train-20261045-50861c5526b3": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 973.5
+  },
+  "random-generic_clutter-dense-train-20261065-ad420747d121": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 964.75
+  },
+  "random-generic_clutter-dense-train-20261067-9fa087c529ed": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 901.5
+  },
+  "random-generic_clutter-dense-train-20261087-4ce7ee930b9e": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 944.5
+  },
+  "random-generic_clutter-dense-train-20261097-2c17a101b108": {
+   "episodes": 4,
+   "clean": 0.25,
+   "contact": 0.75,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 510.25
+  },
+  "random-generic_clutter-dense-train-20261123-613d54e4c36b": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.25,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 696.5
+  },
+  "random-generic_clutter-dense-train-20261135-d0ab5a55703e": {
+   "episodes": 4,
+   "clean": 0.5,
+   "contact": 0.5,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 863.0
+  },
+  "random-generic_clutter-dense-train-20261139-5fe7babd013d": {
+   "episodes": 4,
+   "clean": 0.5,
+   "contact": 0.5,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 1040.25
+  },
+  "random-generic_clutter-dense-train-20261145-0ff90da39d8e": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 1200.25
+  },
+  "random-generic_clutter-dense-train-20261153-2d3b940d704d": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.25,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 987.5
+  },
+  "random-generic_clutter-dense-train-20261169-7b0d6ca3f61a": {
+   "episodes": 4,
+   "clean": 0.5,
+   "contact": 0.5,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 625.5
+  },
+  "random-generic_clutter-dense-train-20261177-f1259158d90f": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 882.25
+  },
+  "random-generic_clutter-dense-train-20261197-d47bf0d9e6fc": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.25,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 895.5
+  },
+  "random-generic_clutter-pilot-train-20261010-66299849a2b7": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 601.75
+  },
+  "random-generic_clutter-pilot-train-20261020-4cd97b9622c6": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 420.5
+  },
+  "random-generic_clutter-pilot-train-20261060-145855ddd3e2": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 583.75
+  },
+  "random-generic_clutter-pilot-train-20261064-eb260e94e114": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 571.5
+  },
+  "random-generic_clutter-pilot-train-20261066-0c1a04b06449": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 601.25
+  },
+  "random-generic_clutter-pilot-train-20261074-75aba81c5af4": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 494.75
+  },
+  "random-generic_clutter-pilot-train-20261076-7e2b69b78981": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 415.0
+  },
+  "random-generic_clutter-pilot-train-20261078-5baccf610fd9": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.25,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 733.0
+  },
+  "random-generic_clutter-pilot-train-20261100-45f9159afa20": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 597.25
+  },
+  "random-generic_clutter-pilot-train-20261128-d0a7e2a3e991": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 362.75
+  },
+  "random-generic_clutter-pilot-train-20261138-229c5255e435": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 415.25
+  },
+  "random-generic_clutter-pilot-train-20261140-89df7fcc63b7": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 550.25
+  },
+  "random-generic_clutter-pilot-train-20261156-73bea6d30dc7": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 451.5
+  },
+  "random-generic_clutter-pilot-train-20261164-3da8ae71264f": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 582.0
+  },
+  "random-generic_clutter-pilot-train-20261168-ff190b580a56": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 529.75
+  },
+  "random-generic_clutter-pilot-train-20261172-4824a704d5f3": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 474.5
+  },
+  "random-generic_clutter-pilot-train-20261176-45e59d5de8e0": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 550.75
+  },
+  "random-generic_clutter-pilot-train-20261184-e3ba3bbb3bf1": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 582.75
+  },
+  "random-generic_clutter-pilot-train-20261188-409166b30fe0": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 502.0
+  },
+  "sidegap2-0060-angled-w0.41": {
+   "episodes": 4,
+   "clean": 0.25,
+   "contact": 0.75,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.25,
+   "length": 320.75
+  },
+  "sidegap2-0081-angled-w0.55": {
+   "episodes": 4,
+   "clean": 0.5,
+   "contact": 0.25,
+   "refused": 0.25,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 787.5
+  },
+  "sidegap2-0088-plain-w0.53": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 1.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 120.75
+  },
+  "sidegap2-0100-corridor-w0.55": {
+   "episodes": 4,
+   "clean": 0.5,
+   "contact": 0.25,
+   "refused": 0.25,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 785.25
+  },
+  "sidegap2-0114-two_walls-w0.34": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 1.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.75,
+   "length": 95.5
+  },
+  "sidegap2-0115-angled-w0.40": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 1.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.25,
+   "length": 92.75
+  },
+  "sidegap2-0126-corridor-w0.52": {
+   "episodes": 4,
+   "clean": 0.25,
+   "contact": 0.5,
+   "refused": 0.25,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 565.5
+  },
+  "sidegap2-0127-angled-w0.43": {
+   "episodes": 4,
+   "clean": 0.5,
+   "contact": 0.5,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 595.25
+  },
+  "sidegap2-0156-plain-w0.52": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 1.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.25,
+   "length": 102.0
+  },
+  "sidegap2-0187-plain-w0.34": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 1.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.75,
+   "length": 114.0
+  },
+  "sidegap2-0227-corridor-w0.34": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 1.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.25,
+   "length": 128.5
+  },
+  "sidegap2-0231-corridor-w0.37": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 1.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 1.0,
+   "length": 100.75
+  },
+  "sidegap2-0246-plain-w0.59": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 1.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 147.25
+  },
+  "sidegap2-0251-corridor-w0.57": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 1000.0
+  },
+  "sidegap2-0255-angled-w0.51": {
+   "episodes": 4,
+   "clean": 0.5,
+   "contact": 0.5,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.25,
+   "length": 565.5
+  },
+  "sidegap2-0293-two_walls-w0.50": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 1.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.25,
+   "length": 147.25
+  },
+  "sidegap2-0304-far_offset-w0.53": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.25,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 788.25
+  },
+  "sidegap2-0313-two_walls-w0.47": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 1.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 107.25
+  },
+  "sidegap2-0326-plain-w0.51": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.0,
+   "refused": 0.25,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 1000.0
+  },
+  "sidegap2-0348-two_walls-w0.59": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 0.75,
+   "refused": 0.25,
+   "fall": 0.0,
+   "hands": 0.5,
+   "length": 305.5
+  },
+  "sidegap2-0350-corridor-w0.47": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.25,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 792.5
+  },
+  "sidegap2-0354-two_walls-w0.54": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 1.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 139.25
+  },
+  "sidegap2-0359-two_walls-w0.36": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 1.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.5,
+   "length": 188.25
+  },
+  "sidegap2-0398-angled-w0.49": {
+   "episodes": 4,
+   "clean": 0.5,
+   "contact": 0.25,
+   "refused": 0.25,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 773.5
+  },
+  "sidegap2-0408-plain-w0.39": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 0.75,
+   "refused": 0.25,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 353.75
+  },
+  "sidegap2-0430-two_walls-w0.44": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 1.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.5,
+   "length": 220.0
+  },
+  "sidegap2-0449-angled-w0.39": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 1.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 1.0,
+   "length": 92.5
+  },
+  "sidegap2-0453-two_walls-w0.52": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 1.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 144.75
+  },
+  "sidegap2-0457-far_offset-w0.52": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.25,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.25,
+   "length": 751.5
+  },
+  "sidegap2-0466-plain-w0.49": {
+   "episodes": 4,
+   "clean": 0.75,
+   "contact": 0.0,
+   "refused": 0.25,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 804.25
+  },
+  "sidegap2-0468-two_walls-w0.51": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 1.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.5,
+   "length": 364.5
+  },
+  "sidegap2-0471-corridor-w0.53": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 1000.0
+  },
+  "sidegap2-0498-far_offset-w0.55": {
+   "episodes": 4,
+   "clean": 0.5,
+   "contact": 0.25,
+   "refused": 0.25,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 561.0
+  },
+  "sidegap2-0529-plain-w0.33": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 1.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 1.0,
+   "length": 134.75
+  },
+  "sidegap2-0534-angled-w0.47": {
+   "episodes": 4,
+   "clean": 0.25,
+   "contact": 0.5,
+   "refused": 0.25,
+   "fall": 0.0,
+   "hands": 0.5,
+   "length": 557.25
+  },
+  "sidegap2-0556-plain-w0.59": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 1000.0
+  },
+  "sidegap2-0592-plain-w0.46": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 1.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 122.5
+  },
+  "sidegap2-0607-plain-w0.53": {
+   "episodes": 4,
+   "clean": 0.0,
+   "contact": 1.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 134.0
+  },
+  "sidegap2-0615-far_offset-w0.53": {
+   "episodes": 4,
+   "clean": 1.0,
+   "contact": 0.0,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.0,
+   "length": 1000.0
+  },
+  "sidegap2-0626-angled-w0.43": {
+   "episodes": 4,
+   "clean": 0.25,
+   "contact": 0.75,
+   "refused": 0.0,
+   "fall": 0.0,
+   "hands": 0.25,
+   "length": 374.25
+  }
+ }
+}

@@ -1,0 +1,143 @@
+[
+ {
+  "checkpoint": "/l/users/konstantin.smirnov/runs/eval_20261114_0045/ckpt/S2far_u550.pt",
+  "envs": 2000,
+  "steps": 800,
+  "robust": false,
+  "events": 5877,
+  "event_success": 0.6884,
+  "contact_per_event": 0.0002,
+  "retreat_m": 0.2182,
+  "success_by_bucket": {
+   "danger": 0.9913,
+   "anticipation": 0.9825,
+   "negative": 0.1028
+  },
+  "events_by_bucket": {
+   "danger": 1950,
+   "anticipation": 1943,
+   "negative": 1984
+  },
+  "threat_retreat_mean_m": 0.2515,
+  "threat_retreat_ge_15cm": 0.9016,
+  "threat_retreat_ge_25cm": 0.5204,
+  "feet_violation_per_settled_step": 0.01,
+  "feet_lift_per_settled_step": 0.0,
+  "feet_moved_mean_m": 0.0126,
+  "envs_ever_violating": 0.033,
+  "first_violation_step_median": 585.0,
+  "falls": 0,
+  "power_W": {
+   "legs": {
+    "standing": 18.5905,
+    "object_moving": 18.3352
+   },
+   "waist": {
+    "standing": 3.8335,
+    "object_moving": 3.8204
+   },
+   "arms": {
+    "standing": 8.3601,
+    "object_moving": 7.9391
+   },
+   "total": {
+    "standing": 30.78,
+    "object_moving": 30.09
+   }
+  }
+ },
+ {
+  "checkpoint": "/l/users/konstantin.smirnov/runs/eval_20261114_0045/ckpt/S2far2_u330.pt",
+  "envs": 2000,
+  "steps": 800,
+  "robust": false,
+  "events": 5862,
+  "event_success": 0.6817,
+  "contact_per_event": 0.0003,
+  "retreat_m": 0.236,
+  "success_by_bucket": {
+   "danger": 0.9928,
+   "anticipation": 0.9912,
+   "negative": 0.0704
+  },
+  "events_by_bucket": {
+   "danger": 1948,
+   "anticipation": 1940,
+   "negative": 1974
+  },
+  "threat_retreat_mean_m": 0.2682,
+  "threat_retreat_ge_15cm": 0.9334,
+  "threat_retreat_ge_25cm": 0.617,
+  "feet_violation_per_settled_step": 0.0144,
+  "feet_lift_per_settled_step": 0.0,
+  "feet_moved_mean_m": 0.0135,
+  "envs_ever_violating": 0.0575,
+  "first_violation_step_median": 610.0,
+  "falls": 0,
+  "power_W": {
+   "legs": {
+    "standing": 18.8691,
+    "object_moving": 18.7061
+   },
+   "waist": {
+    "standing": 3.8937,
+    "object_moving": 3.8615
+   },
+   "arms": {
+    "standing": 8.3168,
+    "object_moving": 7.8545
+   },
+   "total": {
+    "standing": 31.08,
+    "object_moving": 30.42
+   }
+  }
+ },
+ {
+  "checkpoint": "/l/users/konstantin.smirnov/runs/eval_20261114_0045/ckpt/T1_u130.pt",
+  "envs": 2000,
+  "steps": 800,
+  "robust": false,
+  "events": 5891,
+  "event_success": 0.6909,
+  "contact_per_event": 0.0002,
+  "retreat_m": 0.2024,
+  "success_by_bucket": {
+   "danger": 0.9881,
+   "anticipation": 0.981,
+   "negative": 0.1274
+  },
+  "events_by_bucket": {
+   "danger": 1930,
+   "anticipation": 1943,
+   "negative": 2018
+  },
+  "threat_retreat_mean_m": 0.2322,
+  "threat_retreat_ge_15cm": 0.859,
+  "threat_retreat_ge_25cm": 0.4224,
+  "feet_violation_per_settled_step": 0.0229,
+  "feet_lift_per_settled_step": 0.0,
+  "feet_moved_mean_m": 0.0155,
+  "envs_ever_violating": 0.097,
+  "first_violation_step_median": 599.0,
+  "falls": 0,
+  "power_W": {
+   "legs": {
+    "standing": 20.5876,
+    "object_moving": 20.4382
+   },
+   "waist": {
+    "standing": 4.0182,
+    "object_moving": 3.9849
+   },
+   "arms": {
+    "standing": 8.489,
+    "object_moving": 8.004
+   },
+   "total": {
+    "standing": 33.09,
+    "object_moving": 32.43
+   }
+  }
+ }
+]

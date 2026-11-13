@@ -1,0 +1,94 @@
+[
+ {
+  "checkpoint": "/l/users/konstantin.smirnov/checkpoints/stationary_hands_S2far_u200.pt",
+  "robust": false,
+  "episodes_per_scene": 8,
+  "steps": 2000,
+  "seconds": 322,
+  "all": {
+   "episodes": 155,
+   "walking_near_table_steps": 133351,
+   "sideways": 0.8876,
+   "backward": 0.0374,
+   "hand_raised": 0.3855,
+   "hands_tucked": 0.3763,
+   "goal": 0.8258,
+   "clean_goal": 0.8258,
+   "obstacle_contact": 0.1677,
+   "hand_contact": 0.0129,
+   "fall": 0.0
+  },
+  "open": {
+   "episodes": 128,
+   "walking_near_table_steps": 1875,
+   "sideways": 0.2469,
+   "backward": 0.0,
+   "hand_raised": 0.0,
+   "hands_tucked": 0.0288,
+   "goal": 1.0,
+   "clean_goal": 1.0,
+   "obstacle_contact": 0.0,
+   "hand_contact": 0.0,
+   "fall": 0.0
+  },
+  "forward_protected": {
+   "episodes": 27,
+   "walking_near_table_steps": 131476,
+   "sideways": 0.8967,
+   "backward": 0.038,
+   "hand_raised": 0.391,
+   "hands_tucked": 0.3812,
+   "goal": 0.0,
+   "clean_goal": 0.0,
+   "obstacle_contact": 0.963,
+   "hand_contact": 0.0741,
+   "fall": 0.0
+  }
+ },
+ {
+  "checkpoint": "/l/users/konstantin.smirnov/runs/eval_20261114_0045/ckpt/T1_u130.pt",
+  "robust": false,
+  "episodes_per_scene": 8,
+  "steps": 2000,
+  "seconds": 331,
+  "all": {
+   "episodes": 173,
+   "walking_near_table_steps": 116683,
+   "sideways": 0.8543,
+   "backward": 0.0367,
+   "hand_raised": 0.5195,
+   "hands_tucked": 0.3083,
+   "goal": 0.7399,
+   "clean_goal": 0.7399,
+   "obstacle_contact": 0.2601,
+   "hand_contact": 0.0058,
+   "fall": 0.0
+  },
+  "open": {
+   "episodes": 128,
+   "walking_near_table_steps": 4403,
+   "sideways": 0.0329,
+   "backward": 0.0,
+   "hand_raised": 0.0,
+   "hands_tucked": 0.0118,
+   "goal": 1.0,
+   "clean_goal": 1.0,
+   "obstacle_contact": 0.0,
+   "hand_contact": 0.0,
+   "fall": 0.0
+  },
+  "forward_protected": {
+   "episodes": 45,
+   "walking_near_table_steps": 112280,
+   "sideways": 0.8865,
+   "backward": 0.0382,
+   "hand_raised": 0.5399,
+   "hands_tucked": 0.32,
+   "goal": 0.0,
+   "clean_goal": 0.0,
+   "obstacle_contact": 1.0,
+   "hand_contact": 0.0222,
+   "fall": 0.0
+  }
+ }
+]
