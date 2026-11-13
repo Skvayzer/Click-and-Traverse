@@ -577,7 +577,7 @@ def collect_rollout(task, learner, *, unroll_length, trajectories, policy_ids):
         for key, value in sorted(per_step.items()):
             term = key.split('/', 1)[1]
             if key.startswith('telemetry/'):
-                info['metrics']['sgs/' + term[4:] if term.startswith('sgs_') else 'reactive/' + term if term.startswith('reactive_') else 'side_gap/' + term if term.startswith('side_gap') else 'posture/' + term if term in ('crouch_required', 'torso_pitch_abs') else
+                info['metrics']['sgs/' + term[4:] if term.startswith('sgs_') else 'reactive/' + term if term.startswith('reactive_') else 'table/' + term if term.startswith('table_') else 'side_gap/' + term if term.startswith('side_gap') else 'posture/' + term if term in ('crouch_required', 'torso_pitch_abs') else
                                 ('heading/' + term if term.startswith('heading_') else 'self_clearance/' + term.removeprefix('self_clearance_'))] = value
                 continue
             info['metrics']['reward_term/' + term] = value
@@ -704,7 +704,8 @@ TELEMETRY_MEANS = ('self_clearance_min_m', 'self_clearance_violation', 'crouch_r
                    'hand_contact_trunk', 'hand_contact_head', 'hand_contact_arm', 'hand_contact_hand',
                    'heading_gate', 'heading_error_abs', 'hand_room_scale', 'side_gap_stage', 'side_gap_sideways_start',
                    'sgs_config_p', 'reactive_power_w', 'reactive_standing', 'reactive_end_lift', 'reactive_end_slide',
-                   'reactive_end_drift', 'reactive_violation', 'reactive_settled', 'reactive_feet_moved_m')
+                   'reactive_end_drift', 'reactive_violation', 'reactive_settled', 'reactive_feet_moved_m', 'table_walking',
+                   'table_sideways')
 SCENE_BUCKETS = ('procedural_cat', 'original_cat', 'published_cat',
                  'clutter_dense', 'clutter_pilot', 'clutter_legacy',
                  'furniture_dense', 'furniture_pilot', 'furniture_legacy',
@@ -1060,6 +1061,8 @@ def create_task(args, *, environment_config=None, sim_class=None):
         reactive_power_weight=getattr(args, 'reactive_power_weight', None),
         reactive_feet_hold_weight=getattr(args, 'reactive_feet_hold_weight', None),
         reactive_hand_clearance=getattr(args, 'reactive_hand_clearance', None),
+        table_facing_weight=getattr(args, 'table_facing_weight', None),
+        table_leg_power_weight=getattr(args, 'table_leg_power_weight', None),
         reactive_retreat_success=getattr(args, 'reactive_retreat_success', None),
         robustness=(dict(action_latency_ms=float(args.robust_action_latency_ms or 0.),
                          pose_noise=[float(args.robust_pose_noise[0]), float(args.robust_pose_noise[1]), math.radians(float(args.robust_pose_noise[2]))]

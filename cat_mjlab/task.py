@@ -148,6 +148,9 @@ class CATTask:
         self.reactive_settled=torch.zeros(self.num_envs,dtype=torch.bool,device=self.device)
         if self.reactive_objects is not None and self.config.get('reactive_retreat_success_m') is not None:
             self.reactive_objects.retreat_success_m=float(self.config['reactive_retreat_success_m'])
+        # Table-edge passages (generator: raise the hands past a 70-72 cm tabletop) for the table_* terms.
+        self.table_scene=torch.tensor([(s.get('source') or {}).get('kind')=='table-edge-passage' for s in self.bank.manifest['scenes']],
+                                      dtype=torch.bool,device=self.device)
         self.reactive_calm=torch.zeros(self.num_envs,dtype=torch.long,device=self.device)
         self.leg_ids=torch.tensor([self.model.body(n).id for n in ('left_knee_link','left_ankle_roll_link','right_knee_link','right_ankle_roll_link')],device=self.device)
         self.hand_radii=tensor([hand_sphere(s)['radius'] for s in ('left','right')])
@@ -1391,6 +1394,22 @@ class CATTask:
             # left-spot radius. stand_still prices speed; this prices the drift it accumulates.
             radius=float(_get(self.config,'reactive_spot_radius',.3))
             rewards['spot_hold']=(self.reactive_root_displacement/radius).clamp(0.,1.).square()
+        if getattr(self,'table_scene',None) is not None and bool(self.table_scene.any()):
+            # Table-edge passages: pass forward and protect the hands with the arms (raise / tuck) instead of turning the
+            # body sideways. table_facing prices facing away from the route direction while walking (0 forward, .5
+            # sideways, 1 backward); table_leg_power prices leg + waist joint power, arms free, so moving the hands is
+            # the cheap response. Both only in table-edge scenes; table_sideways is measured always.
+            table=self.table_scene[self.scene_ids]
+            cmd=i['command'][:,1:3];norm=torch.linalg.vector_norm(cmd,dim=-1)
+            direction=cmd/norm.clamp_min(1e-6)[:,None]
+            facing=torch.stack((facing_yaw.cos(),facing_yaw.sin()),-1)
+            walking=table&(i['command'][:,0]>.5)&(norm>1e-6)
+            alignment=(facing*direction).sum(-1)
+            if 'table_facing' in scales:rewards['table_facing']=.5*(1.-alignment)*walking.float()
+            if 'table_leg_power' in scales:
+                legs=torch.nan_to_num((self.data.ctrl[:,:15]*self.data.qvel[:,6:21]).abs().sum(-1),nan=0.,posinf=0.,neginf=0.)
+                rewards['table_leg_power']=legs*table.float()
+            telemetry['table_walking']=walking.float();telemetry['table_sideways']=(walking&(alignment.abs()<.7071)).float()
         if 'reactive_feet_hold' in scales and self.reactive_objects is not None:
             # Dense companion of the feet-planted rule: squared foot travel from the settled spot in units of feet_m,
             # while the rule is active (zero before settling). Slow foot creep otherwise meets its only signal at the
@@ -1825,7 +1844,7 @@ class CATTask:
                         'hand_contact_trunk', 'hand_contact_head', 'hand_contact_arm', 'hand_contact_hand',
                         'heading_gate', 'heading_error_abs', 'hand_room_scale', 'side_gap_stage', 'side_gap_sideways_start',
                         'reactive_power_w', 'reactive_standing', 'reactive_end_lift', 'reactive_end_slide', 'reactive_end_drift',
-                        'reactive_violation', 'reactive_settled', 'reactive_feet_moved_m'):
+                        'reactive_violation', 'reactive_settled', 'reactive_feet_moved_m', 'table_walking', 'table_sideways'):
                 if key in self.telemetry: metrics[key] = self.telemetry[key].clone()
             metrics['contrast_role'] = self.contrast['role'].clone()
             metrics['contrast_unresolved'] = (~self.outcome_counted | resolved).clone()
