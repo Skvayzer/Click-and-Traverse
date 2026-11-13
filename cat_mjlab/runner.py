@@ -1059,6 +1059,8 @@ def create_task(args, *, environment_config=None, sim_class=None):
         reactive_stationary=getattr(args, 'reactive_stationary', None),
         reactive_power_weight=getattr(args, 'reactive_power_weight', None),
         reactive_feet_hold_weight=getattr(args, 'reactive_feet_hold_weight', None),
+        reactive_hand_clearance=getattr(args, 'reactive_hand_clearance', None),
+        reactive_retreat_success=getattr(args, 'reactive_retreat_success', None),
         robustness=(dict(action_latency_ms=float(args.robust_action_latency_ms or 0.),
                          pose_noise=[float(args.robust_pose_noise[0]), float(args.robust_pose_noise[1]), math.radians(float(args.robust_pose_noise[2]))]
                          if args.robust_pose_noise else [0., 0., 0.],

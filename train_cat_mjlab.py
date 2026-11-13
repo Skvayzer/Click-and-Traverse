@@ -207,6 +207,12 @@ def parser():
                                  "steps off) and within FEET_M of where they settled, the pelvis within ROOT_M (0.2), else failure")
         target.add_argument("--reactive-power-weight", type=float,
                             help="Cost per watt of joint mechanical power |tau qdot| in standing reactive episodes (negative)")
+        target.add_argument("--reactive-hand-clearance", type=float, nargs=2, metavar=("TARGET_M", "ANTICIPATION_M"),
+                            help="Standing reactive episodes: hand clearance pressure target and anticipation distance "
+                                 "(defaults 0.09 / 0.20 m): how far the hand should get from an approaching object")
+        target.add_argument("--reactive-retreat-success", type=float, metavar="M",
+                            help="Hand retreat that counts as handling a threatening object (default 0.05 m); the "
+                                 "no-flinch test for pass-by objects stays at 0.05 m")
         target.add_argument("--reactive-feet-hold-weight", type=float,
                             help="Cost (negative) on squared foot travel from the settled spot, in units of the feet-planted limit, "
                                  "while that rule is active: a dense companion of --reactive-stationary")

@@ -132,7 +132,8 @@ class StandingObjects(AnalyticObjects):
         # ordinary reset pose and aim the first object at the live hand instead of applying the
         # row's certified pose. mixed_buckets: every re-arm re-draws a row's object parameters.
         self.nominal_reset=True;self.mixed_buckets=True;self.walking_fraction=0.;self.pause_range=(.5,2.);self.episode_length=800
-        self.spot_radius=.3     # 'stayed' for event success; the task sets root_m for stationary standing
+        self.spot_radius=.3     # 'stayed' for event success (pelvis displacement during the approach)
+        self.retreat_success_m=.05   # hand retreat that handles a threatening object (config reactive_retreat_success_m)
         self.hand_velocity=None
         self.sampling_generator=torch.Generator(device=device).manual_seed(seed)
         self.state['sampling_rng']=self.sampling_generator.get_state().to(device)
@@ -238,8 +239,11 @@ class StandingObjects(AnalyticObjects):
                 # An approach is handled when the robot stayed on its spot (walking excepted), never
                 # touched the object, and moved the hand >= 5 cm away for a threatening object --
                 # or did NOT flinch for a 'negative' one that was going to pass by.
-                stayed=(s['approach_disp'][f]<=float(self.spot_radius))|s['walking'][f];reacted=retreat>=.05
-                success=stayed&~s['approach_contact'][f]&torch.where(bucket==2,~reacted,reacted)
+                # Threatening objects need retreat >= retreat_success_m; a pass-by (negative) object must not
+                # trigger a flinch of >= 5 cm whatever that threshold is.
+                stayed=(s['approach_disp'][f]<=float(self.spot_radius))|s['walking'][f]
+                reacted=retreat>=float(self.retreat_success_m);flinched=retreat>=.05
+                success=stayed&~s['approach_contact'][f]&torch.where(bucket==2,~flinched,reacted)
                 s['event_finished'][f]=True;s['event_success'][f]=success;s['event_retreat'][f]=retreat;s['event_bucket'][f]=bucket
                 self.rearm(data,f,self.sampling_generator)
         # Store start-of-robot-motion clearance after safe object movement.

@@ -33,8 +33,8 @@ def build(checkpoint, rows, device, robust):
     learner, saved = load_policy(checkpoint, device=device, policy_id=0)
     contract = saved['contract']
     env = copy.deepcopy(contract['environment_config'])
-    for key in ('sgs', 'reactive_stationary'):
-        env.pop(key, None)
+    for key in ('sgs', 'reactive_stationary', 'reactive_retreat_success_m', 'reactive_hand_clearance'):
+        env.pop(key, None)                       # same event definition (5 cm retreat) for every policy
     env['reactive_spot_radius'] = .3
     if not robust:
         env.pop('robustness', None)
@@ -65,6 +65,7 @@ def evaluate(checkpoint, rows, steps, device, robust):
     acc = dict(events=zeros(), success=zeros(), contact_events=zeros(), retreat=zeros(), settled=zeros(), violation=zeros(),
                lifted=zeros(), feet_moved=zeros(), standing=zeros(), moving=zeros(), falls=zeros(), steps=zeros())
     by_bucket = {b: dict(events=zeros(), success=zeros()) for b in range(3)}
+    far = dict(threat=zeros(), r15=zeros(), r25=zeros(), retreat=zeros())   # threatening events: retreat distance
     power = {g: dict(all=zeros(), moving=zeros()) for g in GROUPS}
     contact_open = torch.zeros(n, dtype=torch.bool, device=task.device)
     ever_violated = torch.zeros(n, dtype=torch.bool, device=task.device)
@@ -92,6 +93,12 @@ def evaluate(checkpoint, rows, steps, device, robust):
             for b in range(3):
                 by_bucket[b]['events'] += finished & (bucket == b)
                 by_bucket[b]['success'] += finished & success & (bucket == b)
+            threat = finished & (bucket < 2)
+            retreat = m['reactive/event_retreat_m']
+            far['threat'] += threat
+            far['r15'] += threat & (retreat >= .15)
+            far['r25'] += threat & (retreat >= .25)
+            far['retreat'] += retreat * threat
             contact_open &= ~finished
         acc['settled'] += t['reactive_settled']
         acc['violation'] += t['reactive_violation']
@@ -112,6 +119,9 @@ def evaluate(checkpoint, rows, steps, device, robust):
                   contact_per_event=ratio(s['contact_events'], s['events']), retreat_m=ratio(s['retreat'], s['events']),
                   success_by_bucket={BUCKETS[b]: ratio(float(v['success'].sum()), float(v['events'].sum())) for b, v in by_bucket.items()},
                   events_by_bucket={BUCKETS[b]: int(v['events'].sum()) for b, v in by_bucket.items()},
+                  threat_retreat_mean_m=ratio(float(far['retreat'].sum()), float(far['threat'].sum())),
+                  threat_retreat_ge_15cm=ratio(float(far['r15'].sum()), float(far['threat'].sum())),
+                  threat_retreat_ge_25cm=ratio(float(far['r25'].sum()), float(far['threat'].sum())),
                   feet_violation_per_settled_step=ratio(s['violation'], s['settled']),
                   feet_lift_per_settled_step=ratio(s['lifted'], s['settled']),
                   feet_moved_mean_m=ratio(s['feet_moved'], s['settled']),

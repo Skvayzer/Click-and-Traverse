@@ -146,6 +146,8 @@ class CATTask:
         # settle_wait_steps later; the rule applies after.
         self.reactive_settle_at=torch.zeros(self.num_envs,dtype=torch.long,device=self.device)
         self.reactive_settled=torch.zeros(self.num_envs,dtype=torch.bool,device=self.device)
+        if self.reactive_objects is not None and self.config.get('reactive_retreat_success_m') is not None:
+            self.reactive_objects.retreat_success_m=float(self.config['reactive_retreat_success_m'])
         self.reactive_calm=torch.zeros(self.num_envs,dtype=torch.long,device=self.device)
         self.leg_ids=torch.tensor([self.model.body(n).id for n in ('left_knee_link','left_ankle_roll_link','right_knee_link','right_ankle_roll_link')],device=self.device)
         self.hand_radii=tensor([hand_sphere(s)['radius'] for s in ('left','right')])
@@ -1278,6 +1280,14 @@ class CATTask:
             # handsdf (cost below 5 cm) shrinks with the same room: sideways in a 0.34 m gap the hands are 6 cm
             # from the walls and handsdf alone cost ~-8.7 per step, as much as the whole positive reward.
             rewards['handsdf']=tm.sdf_reward(i['sdf'][:,5:7],knee=.05*room_scale[:,0])
+        far=self.config.get('reactive_hand_clearance')
+        if far and self.reactive_objects is not None:
+            # Standing episodes: get the hand well away from an approaching object (clearance-pressure target and
+            # anticipation), not just out of contact. Traversal keeps its own tight-passage margins.
+            s=self.reactive_objects.state;standing=(s['active']&~s['walking'])[:,None]
+            as_t=lambda x:torch.as_tensor(x,dtype=torch.float32,device=self.device)
+            protection_target=torch.where(standing,float(far['target']),as_t(protection_target))
+            protection_anticipation=torch.where(standing,float(far['anticipation']),as_t(protection_anticipation))
         costs,telemetry=self.math.upper_stability_terms(i['motor_targets'][:,12:],i['previous_upper'],i['previous_previous_upper'],self.upper_home,
             i['sdf'][:,5:7],i['elbow_clearance'],dt=self.dt,velocity_scale=float(_get(self.config,'upper_velocity_cost_scale',2.)),
             acceleration_scale=float(_get(self.config,'upper_acceleration_cost_scale',20.)),posture_scale=float(_get(self.config,'upper_action_scale',.8)),
@@ -2035,6 +2045,11 @@ class CATTask:
                 from .reactive import StandingObjects
                 restored_objects=StandingObjects(bank=self.reactive_objects.path,num_envs=self.num_envs,model=self.model,device=self.device)
                 restored_objects.state=restored['analytic_object_state']
+                # Runtime settings live on the instance, not in its state: carry them over (a fresh instance has the
+                # defaults -- spot radius 0.3 m, 5 cm retreat, 0.25 reactive fraction until the balancer re-solves).
+                for name in ('spot_radius','retreat_success_m','reactive_fraction','walking_fraction','pause_range','episode_length',
+                             'mixed_buckets','nominal_reset','repeat_approaches'):
+                    if hasattr(self.reactive_objects,name):setattr(restored_objects,name,getattr(self.reactive_objects,name))
             else:restored_objects=AnalyticObjects(**restored['analytic_object_state'])
         # Validate everything before mutating the live task.
         self.generator.set_state(state['rng'].cpu())

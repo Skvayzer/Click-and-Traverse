@@ -6,6 +6,8 @@
 #          S2 energy: cost 0.02 per watt of joint power in standing episodes, old non-terminal 0.3 m spot rule
 #          S3 both;  S0 control: old rules only
 #          S1b: S1 plus a dense cost on foot travel from the settled spot (weight -10, (travel/5 cm)^2)
+#          S2far: S2 plus a far hand retreat in standing episodes (clearance target 0.20 m, anticipation 0.40 m,
+#                 threatening objects need >= 0.15 m retreat); pass STUDENT=<frozen S2 checkpoint> (warm start)
 # Data: dep-1's tree is mirrored under /l/users/$USER/cat_root and reached through CAT_PATH_MAP (cat_mjlab/pathmap.py);
 # data/furniture/<bank> and data/motion_library in the clone are symlinks into it. cat_root, runs/ and checkpoints/ are
 # pinned to healthy OSTs (13/14/10): OSTs 7 and 8 hung on writes on 2026-11-13. W&B offline (wandb sync later).
@@ -32,6 +34,7 @@ case $VARIANT in
   S2) export POWER=-0.02 ;;
   S3) export STATIONARY="0.05 5 30 0.2" POWER=-0.02 ;;
   S1b) export STATIONARY="0.05 5 30 0.2" FEET_HOLD=-10 ;;
+  S2far) export POWER=-0.02 HAND_FAR="0.20 0.40" RETREAT_SUCCESS=0.15; : "${STUDENT:?S2far needs STUDENT=<S2 checkpoint>}" ;;
   *) echo "unknown VARIANT $VARIANT"; exit 2 ;;
 esac
 if [[ -n "${SMOKE:-}" ]]; then
@@ -41,14 +44,14 @@ else
 fi
 mkdir -p $RUN
 export CAT_PATH_MAP=/home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab=$L/cat_root
-export STUDENT=$L/checkpoints/generalist_robust_delay_v1_u150.pt RUN_DIR=$RUN/run WANDB_DIR=$RUN
+export STUDENT=${STUDENT:-$L/checkpoints/generalist_robust_delay_v1_u150.pt} RUN_DIR=$RUN/run WANDB_DIR=$RUN
 export NUM_ENVS=${NUM_ENVS:-12288} BATCH_SIZE=1024    # 16384 peaked at 31.2 of 32.8 GB (bank fields ~20 GB fixed)
 export NUM_MINIBATCHES=$(( NUM_ENVS / 1024 ))          # 32768-transition minibatches, as 40960 envs / 40 on dep-1
 if [[ -f $RUN/run/status.json ]]; then export EXTRA="--resume ${EXTRA:-}" FRESH=""; fi
 { echo "== job $SLURM_JOB_ID ($SLURM_JOB_NAME) variant $VARIANT on $(hostname) at $(date -Is)"
   nvidia-smi --query-gpu=name,driver_version,memory.total --format=csv,noheader
   echo "commit $(git -C $CLONE rev-parse HEAD) $(git -C $CLONE status --porcelain --untracked-files=no | wc -l) modified tracked files (copied to $REPO)"
-  echo "STATIONARY='${STATIONARY:-}' POWER='${POWER:-}' FEET_HOLD='${FEET_HOLD:-}' NUM_ENVS=$NUM_ENVS NUM_MINIBATCHES=$NUM_MINIBATCHES EXTRA='${EXTRA:-}'"
+  echo "STATIONARY='${STATIONARY:-}' POWER='${POWER:-}' FEET_HOLD='${FEET_HOLD:-}' HAND_FAR='${HAND_FAR:-}' RETREAT_SUCCESS='${RETREAT_SUCCESS:-}' NUM_ENVS=$NUM_ENVS NUM_MINIBATCHES=$NUM_MINIBATCHES EXTRA='${EXTRA:-}'"
   echo "STUDENT=$STUDENT CAT_PATH_MAP=$CAT_PATH_MAP"
   echo "config: configs/pilots/stationary_hands_20261113.sh"; } >> $RUN/run_info.txt
 nvidia-smi --query-gpu=timestamp,memory.used,utilization.gpu --format=csv,noheader -l ${GPU_LOG_SECONDS:-60} >> $RUN/gpu.csv &
