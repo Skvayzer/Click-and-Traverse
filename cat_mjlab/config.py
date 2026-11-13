@@ -193,13 +193,13 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
         raise ValueError('route_lost_seconds requires route_recovery_speed')
     if reactive_stationary is not None:
         # Stationary standing against approaching objects: [feet_m, air_steps(, grace_steps(, root_m))]; task._termination.
+        # The standing spot radius (spot_hold, event 'stayed') stays reactive_spot_radius (0.3 m) in every variant.
         feet_m,air_steps=float(reactive_stationary[0]),int(reactive_stationary[1])
-        grace=int(reactive_stationary[2]) if len(reactive_stationary)>2 else 50
+        grace=int(reactive_stationary[2]) if len(reactive_stationary)>2 else 30
         root_m=float(reactive_stationary[3]) if len(reactive_stationary)>3 else .2
         if not (0<feet_m<=.2 and 0<=air_steps<=50 and 0<=grace<=200 and 0<root_m<=.5):raise ValueError('invalid reactive_stationary')
         config['reactive_stationary']=dict(feet_m=feet_m,air_steps=air_steps,grace_steps=grace,root_m=root_m,
-                                           push_recover_steps=25,settle_wait_steps=100)
-        config['reactive_spot_radius']=root_m          # spot_hold and event 'stayed' use the pelvis limit
+                                           push_recover_steps=25,settle_wait_steps=25)
     if reactive_power_weight is not None:
         weight=_signed('reactive_power_weight',reactive_power_weight,positive=False)
         if weight==0:scales.pop('reactive_power',None)

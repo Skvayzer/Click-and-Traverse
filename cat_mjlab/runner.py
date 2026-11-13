@@ -421,6 +421,8 @@ def collect_rollout(task, learner, *, unroll_length, trajectories, policy_ids):
                 ended_reactive = done & was_active
                 reactive_counts['ended'] = reactive_counts.get('ended', 0.) + float(ended_reactive.sum())
                 reactive_counts['left_spot'] = reactive_counts.get('left_spot', 0.) + float((ended_reactive & metrics.get('episode/reactive_left_spot', torch.zeros_like(done)).bool()).sum())
+                # Episodes whose feet broke the planted rule at least once (enforced: ended by it; shadow: measured).
+                reactive_counts['feet_violated'] = reactive_counts.get('feet_violated', 0.) + float((ended_reactive & metrics.get('episode/reactive_feet_violation', torch.zeros_like(done)).bool()).sum())
                 reactive_counts['displacement_sum'] = reactive_counts.get('displacement_sum', 0.) + float((metrics['reactive/root_displacement_m'] * active).sum())
                 # Stance quietness: how much the body moves while it is supposed to stand still
                 # (baseline recording: 0.12 m/s planar speed, 0.40 rad/s yaw rate, 2 cm shoulder sway).
@@ -590,6 +592,7 @@ def collect_rollout(task, learner, *, unroll_length, trajectories, policy_ids):
             'reactive/active_env_steps': active,
             'reactive/robot_initiated_contact_rate': reactive_counts['robot_hit'] / max(active, 1.),
             'reactive/left_spot_rate': reactive_counts.get('left_spot', 0.) / max(reactive_counts.get('ended', 0.), 1.),
+            'reactive/episode_feet_violation_rate': reactive_counts.get('feet_violated', 0.) / max(reactive_counts.get('ended', 0.), 1.),
             'reactive/event_count': reactive_counts.get('events', 0.),
             'reactive/event_success_rate': reactive_counts.get('event_success', 0.) / max(reactive_counts.get('events', 0.), 1.),
             'reactive/event_retreat_mean_m': reactive_counts.get('event_retreat_sum', 0.) / max(reactive_counts.get('events', 0.), 1.),

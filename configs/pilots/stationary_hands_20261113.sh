@@ -3,9 +3,9 @@
 # Start: generalist_robust_delay_v1_u150 in its own setup (robust v1 randomisation, waist upper-target average), plus
 # approaching-object standing episodes (reactive_standing_v2 object parameters, aimed at the live hand) as
 # REACTIVE_SHARE of all transitions. Variants (env vars):
-#   S1 stationary  STATIONARY="0.05 5 50 0.2": both feet stay on the floor (<= 5 steps off) and within 5 cm of where they
+#   S1 stationary  STATIONARY="0.05 5 30 0.2": both feet stay on the floor (<= 5 steps off) and within 5 cm of where they
 #                  settled (pelvis within 0.2 m), else the episode ends as a failure -> hands protected by the upper body.
-#   S2 energy      POWER=-0.01: cost per watt of joint mechanical power in standing episodes (old 0.3 m spot rule) --
+#   S2 energy      POWER=-0.02: cost per watt of joint mechanical power in standing episodes (old 0.3 m spot rule) --
 #                  does pricing energy alone make the robot move its light arms instead of stepping aside?
 #   S0 control     neither (old 0.3 m spot rule): reproduces "the robot steps aside".
 # Anchor to u150 everywhere except the flat background scene the standing episodes use (hpc/route_anchor_no_reactive.json),

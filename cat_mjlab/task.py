@@ -18,7 +18,7 @@ from .navigation import route_context,swept_root_clearance,hand_contrast_context
 
 HAND_BODY_REGIONS=("trunk","head","arm","hand")
 # Feet-planted thresholds measured, not enforced, in standing episodes of runs without reactive_stationary.
-SHADOW_STATIONARY=dict(feet_m=.05,air_steps=5,grace_steps=50,root_m=.2,push_recover_steps=25,settle_wait_steps=100)
+SHADOW_STATIONARY=dict(feet_m=.05,air_steps=5,grace_steps=30,root_m=.2,push_recover_steps=25,settle_wait_steps=25)
 
 
 def _get(config,path,default=None):
@@ -147,8 +147,6 @@ class CATTask:
         self.reactive_settle_at=torch.zeros(self.num_envs,dtype=torch.long,device=self.device)
         self.reactive_settled=torch.zeros(self.num_envs,dtype=torch.bool,device=self.device)
         self.reactive_calm=torch.zeros(self.num_envs,dtype=torch.long,device=self.device)
-        if self.reactive_objects is not None and self.reactive_stationary:
-            self.reactive_objects.spot_radius=float(self.reactive_stationary['root_m'])
         self.leg_ids=torch.tensor([self.model.body(n).id for n in ('left_knee_link','left_ankle_roll_link','right_knee_link','right_ankle_roll_link')],device=self.device)
         self.hand_radii=tensor([hand_sphere(s)['radius'] for s in ('left','right')])
         sensor_names=[f'{prefix}_{frame}' for frame in ('pelvis','torso') for prefix in ('upvector','global_linvel','global_angvel','local_linvel','gyro')]
@@ -827,6 +825,10 @@ class CATTask:
         quat=torch.stack(((yaw/2).cos(),torch.zeros_like(yaw),torch.zeros_like(yaw),(yaw/2).sin()),-1)
         if getattr(self,'sgs',None) is not None:
             self.sgs_env_config[ids]=-1 if sgs_config is None else sgs_config
+            if sgs_config is not None and self.reactive_objects is not None:
+                # A standing (reactive) episode replaced the drawn scene: its outcome (never a goal) must not be
+                # recorded as a failure of that CAT/room configuration.
+                self.sgs_env_config[ids]=torch.where(reactive_active,-1,sgs_config)
             if sgs_config is not None:
                 # The configuration's fixed start (same distribution as the random draw above, frozen per slot).
                 slot=sgs_config%self.sgs['K'];sc=sgs_config//self.sgs['K']
@@ -1034,7 +1036,7 @@ class CATTask:
             values=_stance(self.info['command'][ids],self.info['command_delay'][ids],self.info['stop_timestep'][ids],self.info['phase'][ids],self.info['gait'][ids],standing)
             for key,value in zip(('command','command_delay','stop_timestep','phase','gait'),values):
                 self.info[key][ids]=value
-        keys=('goal_reached','raw_goal','outside_bounds','fall','obstacle','self_contact','hand_self_contact','reactive_left_spot','numerical','hand_violation','elbow_violation','body_collision','reset_replaced',
+        keys=('goal_reached','raw_goal','outside_bounds','fall','obstacle','self_contact','hand_self_contact','reactive_left_spot','reactive_feet_violation','numerical','hand_violation','elbow_violation','body_collision','reset_replaced',
               'body_collision_feet','body_collision_legs','body_collision_trunk','body_collision_head','body_collision_arms','body_collision_hands')
         if self.config.get('route_recovery'):keys+=('route_lost',)
         if self.config.get('hand_body_contact'):keys+=('hand_body_contact',)
@@ -1129,7 +1131,7 @@ class CATTask:
             self.reactive_settled|=settling
             after=standing&self.reactive_settled&~settling
             self.reactive_feet_spot=torch.where(settling[:,None,None],i['positions'][:,3:5,:2],self.reactive_feet_spot)
-            feet_moved=torch.linalg.vector_norm(i['positions'][:,3:5,:2]-self.reactive_feet_spot,dim=-1).amax(-1)
+            feet_moved=torch.nan_to_num(torch.linalg.vector_norm(i['positions'][:,3:5,:2]-self.reactive_feet_spot,dim=-1).amax(-1),nan=0.,posinf=0.,neginf=0.)
             self.reactive_air=torch.where(contacts[:,0:2]|~after[:,None],torch.zeros_like(self.reactive_air),self.reactive_air+1)
             lifted=(self.reactive_air>int(rule['air_steps'])).any(-1)
             slid=feet_moved>float(rule['feet_m'])
@@ -1140,6 +1142,7 @@ class CATTask:
             else:
                 drifted=torch.zeros_like(slid)
             violation=after&(lifted|slid|drifted)
+            reactive_feet_violation=violation
             if stationary:
                 reactive_left_spot=violation
                 done=done|reactive_left_spot
@@ -1152,7 +1155,8 @@ class CATTask:
                                             reactive_settled=after.float(),reactive_feet_moved_m=feet_moved*after)
         else:
             reactive_left_spot=active&~walking&(self.reactive_root_displacement>float(_get(self.config,'reactive_spot_radius',.3)))
-        flags=dict(fall=fall,obstacle=obstacle,self_contact=self_contact,hand_self_contact=hand_self_contact,reactive_left_spot=reactive_left_spot,numerical=numerical,body_collision=body,
+            reactive_feet_violation=torch.zeros_like(reactive_left_spot)
+        flags=dict(reactive_feet_violation=reactive_feet_violation,fall=fall,obstacle=obstacle,self_contact=self_contact,hand_self_contact=hand_self_contact,reactive_left_spot=reactive_left_spot,numerical=numerical,body_collision=body,
                    hand_violation=(i['sdf'][:,5:7]<threshold).flatten(1).any(-1)&grace,elbow_violation=elbows)
         if route_lost is not None:flags['route_lost']=route_lost
         if self.hand_body_region is not None:flags['hand_body_contact']=contacts[:,self.hand_body_start:].any(-1)&grace
@@ -1382,7 +1386,7 @@ class CATTask:
             # cost far less to move than stepping or swaying the whole body, so pricing energy prefers hand motion.
             # Measured in every reactive run; a reward only with reactive_power in scales.
             s=self.reactive_objects.state;standing=(s['active']&~s['walking']).float()
-            power=(self.data.ctrl*self.data.qvel[:,6:]).abs().sum(-1)
+            power=torch.nan_to_num((self.data.ctrl*self.data.qvel[:,6:]).abs().sum(-1),nan=0.,posinf=0.,neginf=0.)
             if 'reactive_power' in scales:rewards['reactive_power']=power*standing
             telemetry['reactive_power_w']=power*standing;telemetry['reactive_standing']=standing
         if 'reactive_event' in scales and self.reactive_objects is not None:
