@@ -48,6 +48,8 @@ def parser():
                    help="Force this reactive-bank row (an approaching object) instead of the .25 reset coin; "
                         "needs --reactive-bank. The object trajectory is exported for the renderer.")
     p.add_argument("--no-pushes", action="store_true", help="Disable the training's random pushes (0.1-1 m/s kicks every 5-10 s)")
+    p.add_argument("--shadow-stationary", action="store_true",
+                   help="Measure the feet-planted rule instead of ending the episode on it (same conditions for every policy)")
     p.add_argument("--upper-target-average", action="store_true",
                    help="Waist/arm motors track the mean of the last two targets (the deployed waist-dither fix)")
     p.add_argument("--nominal", action="store_true",
@@ -256,6 +258,8 @@ def main(argv=None):
     environment = json.loads(json.dumps(contract["environment_config"]))
     if args.no_pushes:
         environment["push_config"]["enable"] = False
+    if args.shadow_stationary:
+        environment.pop("reactive_stationary", None)
     if args.upper_target_average:
         environment["upper_target_average"] = True
     if args.nominal:

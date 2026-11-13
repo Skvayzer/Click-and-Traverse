@@ -1,0 +1,90 @@
+[
+ {
+  "checkpoint": "/tmp/claude-1004/-home-konstantinsmirnov/b9355b37-92cb-4f44-ae4b-ebe6675dc864/scratchpad/eval/S1b_resume_0830.pt",
+  "envs": 2000,
+  "steps": 800,
+  "robust": false,
+  "events": 6488,
+  "event_success": 0.7377,
+  "contact_per_event": 0.0005,
+  "retreat_m": 0.1077,
+  "success_by_bucket": {
+   "danger": 0.9052,
+   "anticipation": 0.7618,
+   "negative": 0.582
+  },
+  "events_by_bucket": {
+   "danger": 1973,
+   "anticipation": 2070,
+   "negative": 2445
+  },
+  "feet_violation_per_settled_step": 0.0123,
+  "feet_lift_per_settled_step": 0.0,
+  "feet_moved_mean_m": 0.0151,
+  "envs_ever_violating": 0.0675,
+  "first_violation_step_median": 680.0,
+  "falls": 0,
+  "power_W": {
+   "legs": {
+    "standing": 23.6435,
+    "object_moving": 23.572
+   },
+   "waist": {
+    "standing": 4.8668,
+    "object_moving": 4.8407
+   },
+   "arms": {
+    "standing": 8.8505,
+    "object_moving": 8.4219
+   },
+   "total": {
+    "standing": 37.36,
+    "object_moving": 36.83
+   }
+  }
+ },
+ {
+  "checkpoint": "/tmp/claude-1004/-home-konstantinsmirnov/b9355b37-92cb-4f44-ae4b-ebe6675dc864/scratchpad/eval/S2_resume_0830.pt",
+  "envs": 2000,
+  "steps": 800,
+  "robust": false,
+  "events": 6290,
+  "event_success": 0.7312,
+  "contact_per_event": 0.0005,
+  "retreat_m": 0.1329,
+  "success_by_bucket": {
+   "danger": 0.9325,
+   "anticipation": 0.83,
+   "negative": 0.4743
+  },
+  "events_by_bucket": {
+   "danger": 1955,
+   "anticipation": 2024,
+   "negative": 2311
+  },
+  "feet_violation_per_settled_step": 0.0141,
+  "feet_lift_per_settled_step": 0.0,
+  "feet_moved_mean_m": 0.0137,
+  "envs_ever_violating": 0.06,
+  "first_violation_step_median": 631.0,
+  "falls": 0,
+  "power_W": {
+   "legs": {
+    "standing": 19.9805,
+    "object_moving": 19.7951
+   },
+   "waist": {
+    "standing": 4.2254,
+    "object_moving": 4.1882
+   },
+   "arms": {
+    "standing": 9.2479,
+    "object_moving": 8.6896
+   },
+   "total": {
+    "standing": 33.45,
+    "object_moving": 32.67
+   }
+  }
+ }
+]
