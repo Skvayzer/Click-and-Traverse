@@ -48,7 +48,7 @@ if [[ -f $RUN/run/status.json ]]; then export EXTRA="--resume ${EXTRA:-}" FRESH=
 { echo "== job $SLURM_JOB_ID ($SLURM_JOB_NAME) variant $VARIANT on $(hostname) at $(date -Is)"
   nvidia-smi --query-gpu=name,driver_version,memory.total --format=csv,noheader
   echo "commit $(git -C $CLONE rev-parse HEAD) $(git -C $CLONE status --porcelain --untracked-files=no | wc -l) modified tracked files (copied to $REPO)"
-  echo "STATIONARY='${STATIONARY:-}' POWER='${POWER:-}' NUM_ENVS=$NUM_ENVS NUM_MINIBATCHES=$NUM_MINIBATCHES EXTRA='${EXTRA:-}'"
+  echo "STATIONARY='${STATIONARY:-}' POWER='${POWER:-}' FEET_HOLD='${FEET_HOLD:-}' NUM_ENVS=$NUM_ENVS NUM_MINIBATCHES=$NUM_MINIBATCHES EXTRA='${EXTRA:-}'"
   echo "STUDENT=$STUDENT CAT_PATH_MAP=$CAT_PATH_MAP"
   echo "config: configs/pilots/stationary_hands_20261113.sh"; } >> $RUN/run_info.txt
 nvidia-smi --query-gpu=timestamp,memory.used,utilization.gpu --format=csv,noheader -l ${GPU_LOG_SECONDS:-60} >> $RUN/gpu.csv &
