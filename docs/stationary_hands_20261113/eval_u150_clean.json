@@ -1,0 +1,46 @@
+[
+ {
+  "checkpoint": "outputs/saved_checkpoints/generalist_robust_delay_v1_u150.pt",
+  "envs": 2000,
+  "steps": 800,
+  "robust": false,
+  "events": 6435,
+  "event_success": 0.7096,
+  "contact_per_event": 0.0002,
+  "retreat_m": 0.1056,
+  "success_by_bucket": {
+   "danger": 0.8655,
+   "anticipation": 0.7172,
+   "negative": 0.5739
+  },
+  "events_by_bucket": {
+   "danger": 1970,
+   "anticipation": 2083,
+   "negative": 2382
+  },
+  "feet_violation_per_settled_step": 0.1869,
+  "feet_lift_per_settled_step": 0.0001,
+  "feet_moved_mean_m": 0.0376,
+  "envs_ever_violating": 0.4765,
+  "first_violation_step_median": 501.0,
+  "falls": 0,
+  "power_W": {
+   "legs": {
+    "standing": 25.8892,
+    "object_moving": 25.4849
+   },
+   "waist": {
+    "standing": 7.2696,
+    "object_moving": 7.1796
+   },
+   "arms": {
+    "standing": 10.5159,
+    "object_moving": 10.0644
+   },
+   "total": {
+    "standing": 43.67,
+    "object_moving": 42.73
+   }
+  }
+ }
+]
