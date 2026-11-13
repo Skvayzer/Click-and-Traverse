@@ -1322,7 +1322,10 @@ class CATTask:
             # plane and the goal not yet reached (ANYmal Parkour / Rudin 2022 'don't wait'); goal_progress: forward
             # speed toward the goal plane, capped at 0.6 m/s; goal_bonus: once, on the step the goal is reached.
             mask=getattr(self,'joystick_mask',None)
-            cat=self.bank.crossed_is_plane[self.scene_ids]&(torch.ones_like(self.scene_ids,dtype=torch.bool) if mask is None else ~mask)
+            cat=self.bank.crossed_is_plane[self.scene_ids]
+            if self.config.get('table_progress_terms') and getattr(self,'table_scene',None) is not None:
+                cat=cat|self.table_scene[self.scene_ids]     # table-edge passages also run start -> goal along +x (+-6 deg)
+            cat=cat&(torch.ones_like(self.scene_ids,dtype=torch.bool) if mask is None else ~mask)
             vx=self._sensor('global_linvel_pelvis',self.all_ids)[:,0]
             i['progress_ema']=.98*i['progress_ema']+.02*vx
             reached=self.episode['goal_reached']
@@ -1482,7 +1485,14 @@ class CATTask:
             room_world=~self.bank.is_cat[self.scene_ids];over=group.get('room',{})
             unknown=set(over)-set(scales)
             if unknown:raise ValueError(f'reward_group_scales names unknown terms: {sorted(unknown)}')
-            scaled={k:(v*torch.where(room_world,float(over[k]),float(scales[k])) if k in over else v*float(scales[k])) for k,v in rewards.items()}
+            # Table-edge passages are room worlds, where the room group zeroes stall / goal_progress / goal_bonus: in front
+            # of a narrow two-table gap, stopping cost nothing and squeezing through cost hand clearance, so the policy
+            # stalled. With table_progress, those terms keep their CAT (global) weights in table-edge scenes.
+            progress_terms=set(self.config.get('table_progress_terms') or ())
+            table=getattr(self,'table_scene',None)
+            table_room=room_world&~table[self.scene_ids] if progress_terms and table is not None else room_world
+            scaled={k:(v*torch.where(table_room if k in progress_terms else room_world,float(over[k]),float(scales[k])) if k in over
+                       else v*float(scales[k])) for k,v in rewards.items()}
         else:
             scaled={k:v*float(scales[k]) for k,v in rewards.items()}
         if balance:scaled['flat_balance_posture_bonus']=bonus

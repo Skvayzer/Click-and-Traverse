@@ -62,6 +62,7 @@ RUN_DIR=${RUN_DIR:-outputs/stationary_hands_20261113}
   ${FEET_HOLD:+--reactive-feet-hold-weight $FEET_HOLD} \
   ${HAND_FAR:+--reactive-hand-clearance $HAND_FAR} ${RETREAT_SUCCESS:+--reactive-retreat-success $RETREAT_SUCCESS} \
   ${TABLE_FACING:+--table-facing-weight $TABLE_FACING} ${TABLE_LEG_POWER:+--table-leg-power-weight $TABLE_LEG_POWER} \
+  ${TABLE_PROGRESS:+--table-progress} \
   --sgs-slots ${SGS_SLOTS:-4} --sgs-history 100 --sgs-target 0.66 --sgs-kappa 5 --sgs-temperature 2 --sgs-epsilon 1e-8 \
   --sgs-uniform-mix ${SGS_MIX:-0.30} --sgs-prior $SGS_PRIOR --sgs-prior-count 4 \
   --style-library data/motion_library/library_v1 --style-weight 0.1 \
