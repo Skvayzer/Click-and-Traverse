@@ -51,6 +51,29 @@ Traversal retention (training metrics, noisy): original CAT ~0.31-0.37, publishe
 runs, stable over the night, about 0.05-0.1 below u150's own fine-tune at the same update counts (half the experience
 is standing). Not yet evaluated on held-out traversal.
 
+### Under training noise (deployment-like), 11:40
+
+Same 2000 rows x 16 s, deterministic actions, but with the training randomisation (20 ms latency, pose/mount error,
+friction x0.5-1.2, mass x0.9-1.1, torque offsets, kp/kd scaling) and pushes; the feet rule re-settles after a push.
+
+| | u150 | S1b @ update 290 | S2 @ update 330 |
+|---|---|---|---|
+| episodes where a foot moved > 5 cm | 44.0% | 21.0% | 29.6% |
+| settled steps with feet displaced | 12.2% | 5.6% | 7.1% |
+| mean foot travel | 2.8 cm | 1.9 cm | 2.1 cm |
+| hand-protection success | 0.60 | 0.63 | 0.62 |
+| success danger / anticipation / negative | 0.74 / 0.63 / 0.46 | 0.79 / 0.74 / 0.39 | 0.80 / 0.75 / 0.34 |
+| **robot-initiated object contact per event** | **0.0031** | **0.0072** | **0.0066** |
+| joint power: total (legs / waist / arms) | 52.0 W (33.1 / 7.8 / 11.1) | 50.4 W (34.0 / 6.7 / 9.7) | 44.8 W (29.3 / 5.3 / 10.2) |
+| falls | 0 | 1 | 0 |
+
+Reading: under noise both still roughly halve foot movement and handle threatening objects better, but far less than
+in clean conditions, and robot-initiated contacts with the object more than double (0.3% -> 0.7% of events): with the
+feet planted the arms do all the avoiding, and with latency and torque noise they hit the object more often. They also
+flinch more at objects that pass by. Not ready for a real-robot hand-protection trial: next, a stronger contact cost in
+standing episodes and/or the rule + energy combined (S3), then re-check under noise. S1b's training-condition violation
+rate plateaued at ~62% of standing episodes from update ~220.
+
 ## Measurement notes
 - Standing power, u150 clean: 26-31 W at rest (CPU trace), recovery steps after a shove 170-570 W.
 - Training metrics `reactive/*` average over all env-steps: divide by `reactive/reactive_standing` (power) or

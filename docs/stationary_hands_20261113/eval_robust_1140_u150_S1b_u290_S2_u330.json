@@ -1,0 +1,134 @@
+[
+ {
+  "checkpoint": "outputs/saved_checkpoints/generalist_robust_delay_v1_u150.pt",
+  "envs": 2000,
+  "steps": 800,
+  "robust": true,
+  "events": 6368,
+  "event_success": 0.6005,
+  "contact_per_event": 0.0031,
+  "retreat_m": 0.1182,
+  "success_by_bucket": {
+   "danger": 0.7434,
+   "anticipation": 0.6252,
+   "negative": 0.4597
+  },
+  "events_by_bucket": {
+   "danger": 1956,
+   "anticipation": 2065,
+   "negative": 2347
+  },
+  "feet_violation_per_settled_step": 0.1218,
+  "feet_lift_per_settled_step": 0.0002,
+  "feet_moved_mean_m": 0.0282,
+  "envs_ever_violating": 0.4395,
+  "first_violation_step_median": 416.0,
+  "falls": 0,
+  "power_W": {
+   "legs": {
+    "standing": 33.0882,
+    "object_moving": 32.232
+   },
+   "waist": {
+    "standing": 7.7535,
+    "object_moving": 7.6511
+   },
+   "arms": {
+    "standing": 11.1343,
+    "object_moving": 10.6613
+   },
+   "total": {
+    "standing": 51.98,
+    "object_moving": 50.54
+   }
+  }
+ },
+ {
+  "checkpoint": "/tmp/claude-1004/-home-konstantinsmirnov/b9355b37-92cb-4f44-ae4b-ebe6675dc864/scratchpad/eval/S1b_resume_1140.pt",
+  "envs": 2000,
+  "steps": 800,
+  "robust": true,
+  "events": 6248,
+  "event_success": 0.6261,
+  "contact_per_event": 0.0072,
+  "retreat_m": 0.1293,
+  "success_by_bucket": {
+   "danger": 0.7891,
+   "anticipation": 0.7389,
+   "negative": 0.3899
+  },
+  "events_by_bucket": {
+   "danger": 1939,
+   "anticipation": 2011,
+   "negative": 2298
+  },
+  "feet_violation_per_settled_step": 0.0559,
+  "feet_lift_per_settled_step": 0.0004,
+  "feet_moved_mean_m": 0.0189,
+  "envs_ever_violating": 0.21,
+  "first_violation_step_median": 534.0,
+  "falls": 1,
+  "power_W": {
+   "legs": {
+    "standing": 34.0006,
+    "object_moving": 33.1486
+   },
+   "waist": {
+    "standing": 6.6937,
+    "object_moving": 6.6272
+   },
+   "arms": {
+    "standing": 9.6805,
+    "object_moving": 9.2151
+   },
+   "total": {
+    "standing": 50.37,
+    "object_moving": 48.99
+   }
+  }
+ },
+ {
+  "checkpoint": "/tmp/claude-1004/-home-konstantinsmirnov/b9355b37-92cb-4f44-ae4b-ebe6675dc864/scratchpad/eval/S2_resume_1140.pt",
+  "envs": 2000,
+  "steps": 800,
+  "robust": true,
+  "events": 6223,
+  "event_success": 0.6192,
+  "contact_per_event": 0.0066,
+  "retreat_m": 0.1394,
+  "success_by_bucket": {
+   "danger": 0.8017,
+   "anticipation": 0.7532,
+   "negative": 0.3433
+  },
+  "events_by_bucket": {
+   "danger": 1947,
+   "anticipation": 2010,
+   "negative": 2266
+  },
+  "feet_violation_per_settled_step": 0.0708,
+  "feet_lift_per_settled_step": 0.0002,
+  "feet_moved_mean_m": 0.021,
+  "envs_ever_violating": 0.296,
+  "first_violation_step_median": 554.0,
+  "falls": 0,
+  "power_W": {
+   "legs": {
+    "standing": 29.3013,
+    "object_moving": 28.2055
+   },
+   "waist": {
+    "standing": 5.2758,
+    "object_moving": 5.1634
+   },
+   "arms": {
+    "standing": 10.2254,
+    "object_moving": 9.549
+   },
+   "total": {
+    "standing": 44.8,
+    "object_moving": 42.92
+   }
+  }
+ }
+]
