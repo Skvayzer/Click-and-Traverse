@@ -42,7 +42,7 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
                      sideways_bonus_progress=None,contact_penalty=None,stall_weight=None,goal_progress_weight=None,
                      goal_bonus_weight=None,timeout_failure=None,reward_group_room=None,commanded_blocking_map=None,
                      hand_tight_cat_only=None,sgs=None,robustness=None,upper_target_average=None,
-                     reactive_stationary=None,reactive_power_weight=None):
+                     reactive_stationary=None,reactive_power_weight=None,reactive_feet_hold_weight=None):
     from cat_ppo.furniture.generalist_config import released_config
     from .collision import PROPOSAL
     config=copy.deepcopy(released_config()['env_config'] if base_config is None else base_config)
@@ -204,6 +204,10 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
         weight=_signed('reactive_power_weight',reactive_power_weight,positive=False)
         if weight==0:scales.pop('reactive_power',None)
         else:scales['reactive_power']=weight
+    if reactive_feet_hold_weight is not None:
+        weight=_signed('reactive_feet_hold_weight',reactive_feet_hold_weight,positive=False)
+        if weight==0:scales.pop('reactive_feet_hold',None)
+        else:scales['reactive_feet_hold']=weight
     if spot_hold_weight is not None:
         weight=_signed('spot_hold_weight',spot_hold_weight,positive=False)
         if weight==0:scales.pop('spot_hold',None)

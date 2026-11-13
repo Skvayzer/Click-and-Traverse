@@ -1381,6 +1381,14 @@ class CATTask:
             # left-spot radius. stand_still prices speed; this prices the drift it accumulates.
             radius=float(_get(self.config,'reactive_spot_radius',.3))
             rewards['spot_hold']=(self.reactive_root_displacement/radius).clamp(0.,1.).square()
+        if 'reactive_feet_hold' in scales and self.reactive_objects is not None:
+            # Dense companion of the feet-planted rule: squared foot travel from the settled spot in units of feet_m,
+            # while the rule is active (zero before settling). Slow foot creep otherwise meets its only signal at the
+            # termination seconds later, and neither actor nor critic observes the distance from the spot.
+            moved=(getattr(self,'_stationary_telemetry',None) or {}).get('reactive_feet_moved_m')
+            if moved is not None:
+                rule=getattr(self,'reactive_stationary',None) or SHADOW_STATIONARY
+                rewards['reactive_feet_hold']=(moved/float(rule['feet_m'])).clamp(0.,1.).square()
         if self.reactive_objects is not None:
             # Mechanical power of all 29 joints (W, |torque x velocity|) in standing reactive episodes: the light arms
             # cost far less to move than stepping or swaying the whole body, so pricing energy prefers hand motion.

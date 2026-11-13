@@ -5,6 +5,7 @@
 # VARIANT  S1 stationary: feet planted (<= 5 cm, <= 5 steps off the floor) after settling, pelvis <= 0.2 m, else failure
 #          S2 energy: cost 0.02 per watt of joint power in standing episodes, old non-terminal 0.3 m spot rule
 #          S3 both;  S0 control: old rules only
+#          S1b: S1 plus a dense cost on foot travel from the settled spot (weight -10, (travel/5 cm)^2)
 # Data: dep-1's tree is mirrored under /l/users/$USER/cat_root and reached through CAT_PATH_MAP (cat_mjlab/pathmap.py);
 # data/furniture/<bank> and data/motion_library in the clone are symlinks into it. cat_root, runs/ and checkpoints/ are
 # pinned to healthy OSTs (13/14/10): OSTs 7 and 8 hung on writes on 2026-11-13. W&B offline (wandb sync later).
@@ -30,6 +31,7 @@ case $VARIANT in
   S1) export STATIONARY="0.05 5 30 0.2" ;;
   S2) export POWER=-0.02 ;;
   S3) export STATIONARY="0.05 5 30 0.2" POWER=-0.02 ;;
+  S1b) export STATIONARY="0.05 5 30 0.2" FEET_HOLD=-10 ;;
   *) echo "unknown VARIANT $VARIANT"; exit 2 ;;
 esac
 if [[ -n "${SMOKE:-}" ]]; then

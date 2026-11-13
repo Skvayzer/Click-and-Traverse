@@ -1058,6 +1058,7 @@ def create_task(args, *, environment_config=None, sim_class=None):
         upper_target_average=getattr(args, 'upper_target_average', None),
         reactive_stationary=getattr(args, 'reactive_stationary', None),
         reactive_power_weight=getattr(args, 'reactive_power_weight', None),
+        reactive_feet_hold_weight=getattr(args, 'reactive_feet_hold_weight', None),
         robustness=(dict(action_latency_ms=float(args.robust_action_latency_ms or 0.),
                          pose_noise=[float(args.robust_pose_noise[0]), float(args.robust_pose_noise[1]), math.radians(float(args.robust_pose_noise[2]))]
                          if args.robust_pose_noise else [0., 0., 0.],

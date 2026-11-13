@@ -59,6 +59,7 @@ RUN_DIR=${RUN_DIR:-outputs/stationary_hands_20261113}
   --reactive-bank data/furniture/reactive_standing_v2_20260923/manifest.json --experience-reactive-share ${REACTIVE_SHARE:-0.5} \
   --reactive-episode-length 800 --reactive-hand-guidance --reactive-event-weight ${EVENT_WEIGHT:-10} \
   ${STATIONARY:+--reactive-stationary $STATIONARY} ${POWER:+--reactive-power-weight $POWER} \
+  ${FEET_HOLD:+--reactive-feet-hold-weight $FEET_HOLD} \
   --sgs-slots ${SGS_SLOTS:-4} --sgs-history 100 --sgs-target 0.66 --sgs-kappa 5 --sgs-temperature 2 --sgs-epsilon 1e-8 \
   --sgs-uniform-mix ${SGS_MIX:-0.30} --sgs-prior $SGS_PRIOR --sgs-prior-count 4 \
   --style-library data/motion_library/library_v1 --style-weight 0.1 \
