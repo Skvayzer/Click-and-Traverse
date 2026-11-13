@@ -8,6 +8,7 @@
 #          S1b: S1 plus a dense cost on foot travel from the settled spot (weight -10, (travel/5 cm)^2)
 #          S2far: S2 plus a far hand retreat in standing episodes (clearance target 0.20 m, anticipation 0.40 m,
 #                 threatening objects need >= 0.15 m retreat); pass STUDENT=<frozen S2 checkpoint> (warm start)
+#          S2far2: stronger still (target 0.30 m, anticipation 0.50 m, >= 0.25 m retreat); STUDENT=<frozen S2far checkpoint>
 # Data: dep-1's tree is mirrored under /l/users/$USER/cat_root and reached through CAT_PATH_MAP (cat_mjlab/pathmap.py);
 # data/furniture/<bank> and data/motion_library in the clone are symlinks into it. cat_root, runs/ and checkpoints/ are
 # pinned to healthy OSTs (13/14/10): OSTs 7 and 8 hung on writes on 2026-11-13. W&B offline (wandb sync later).
@@ -35,6 +36,7 @@ case $VARIANT in
   S3) export STATIONARY="0.05 5 30 0.2" POWER=-0.02 ;;
   S1b) export STATIONARY="0.05 5 30 0.2" FEET_HOLD=-10 ;;
   S2far) export POWER=-0.02 HAND_FAR="0.20 0.40" RETREAT_SUCCESS=0.15; : "${STUDENT:?S2far needs STUDENT=<S2 checkpoint>}" ;;
+  S2far2) export POWER=-0.02 HAND_FAR="0.30 0.50" RETREAT_SUCCESS=0.25; : "${STUDENT:?S2far2 needs STUDENT=<S2far checkpoint>}" ;;
   *) echo "unknown VARIANT $VARIANT"; exit 2 ;;
 esac
 if [[ -n "${SMOKE:-}" ]]; then
