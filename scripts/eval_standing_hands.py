@@ -67,6 +67,9 @@ def evaluate(checkpoint, rows, steps, device, robust):
     by_bucket = {b: dict(events=zeros(), success=zeros()) for b in range(3)}
     power = {g: dict(all=zeros(), moving=zeros()) for g in GROUPS}
     contact_open = torch.zeros(n, dtype=torch.bool, device=task.device)
+    ever_violated = torch.zeros(n, dtype=torch.bool, device=task.device)
+    first_violation = torch.full((n,), float(steps), device=task.device)
+    step = 0
     for _ in range(steps):
         out = task.step(learner.act(task.obs, policy_ids=0, deterministic=True)['action'])
         m, t = out['metrics'], task.telemetry
@@ -92,6 +95,10 @@ def evaluate(checkpoint, rows, steps, device, robust):
             contact_open &= ~finished
         acc['settled'] += t['reactive_settled']
         acc['violation'] += t['reactive_violation']
+        new = (t['reactive_violation'] > 0) & ~ever_violated
+        first_violation = torch.where(new, float(step), first_violation)
+        ever_violated |= new
+        step += 1
         acc['lifted'] += t['reactive_end_lift']
         acc['feet_moved'] += t['reactive_feet_moved_m']
         acc['standing'] += standing
@@ -108,6 +115,8 @@ def evaluate(checkpoint, rows, steps, device, robust):
                   feet_violation_per_settled_step=ratio(s['violation'], s['settled']),
                   feet_lift_per_settled_step=ratio(s['lifted'], s['settled']),
                   feet_moved_mean_m=ratio(s['feet_moved'], s['settled']),
+                  envs_ever_violating=round(float(ever_violated.float().mean()), 4),
+                  first_violation_step_median=float(first_violation[ever_violated].median()) if bool(ever_violated.any()) else None,
                   falls=int(s['falls']),
                   power_W={g: dict(standing=ratio(float(v['all'].sum()), s['standing']), object_moving=ratio(float(v['moving'].sum()), s['moving']))
                            for g, v in power.items()})
