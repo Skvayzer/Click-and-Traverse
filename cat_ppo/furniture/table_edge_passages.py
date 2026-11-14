@@ -69,13 +69,18 @@ def module_cross_section_openings(scene, module, height):
     return free
 
 
-def generate_table_edge_pair(seed, split="train", *, certify=True):
-    """Return a matched open / protected pair with table-height obstacles."""
+def generate_table_edge_pair(seed, split="train", *, certify=True, gap_range=(.430, .444)):
+    """Return a matched open / protected pair with table-height obstacles.
+
+    gap_range: the forward_protected table gap (m) is drawn uniformly from it. The default is the original narrow band
+    (0.430-0.444 m, ~4 cm body clearance with raised hands); wider ranges give intermediate gaps for a width curriculum.
+    The draw consumes one random number either way, so the default reproduces the original scenes exactly.
+    """
     if type(seed) is not int or seed < 0 or split not in SPLITS:
         raise ValueError("Expected a nonnegative integer seed and a known split")
     rng = random.Random(int(_digest([GENERATOR, split, seed]), 16))
     height = rng.uniform(.700, .720)
-    gap = rng.uniform(.430, .444)
+    gap = rng.uniform(float(gap_range[0]), float(gap_range[1]))
     group = f"table-contrast-{split}-{seed:06d}"
     scenes = generate_contrastive_group(seed, split, certify=False)[:2]
     for scene in scenes:
@@ -131,12 +136,12 @@ def generate_table_edge_pair(seed, split="train", *, certify=True):
         scene["case_feasibility"] = [copy.deepcopy(scene["feasibility"])]
         validate_scene(scene)
         if certify:
-            contrast["certificate"] = certify_table_edge_scene(scene)
+            contrast["certificate"] = certify_table_edge_scene(scene, curriculum=tuple(gap_range) != (.430, .444))
         scene["source"] = dict(hand_contrast=copy.deepcopy(contrast))
     return scenes
 
 
-def certify_table_edge_scene(scene):
+def certify_table_edge_scene(scene, curriculum=False):
     """Certify a sampled protected route and complete swept hand-target region."""
     validate_scene(scene)
     contrast = scene["hand_contrast"]
@@ -188,7 +193,15 @@ def certify_table_edge_scene(scene):
                    tucked_forward_body_min_m=float(tucked["body"].min()), tucked_forward_hand_min_m=float(tucked["hands"].min()),
                    above_top_clearance_m=(raised["hand_centers"][0, :, 2] - raised["hand_radii"] - height).tolist(),
                    raised_hand_sphere_lateral_overhang_m=(np.abs(_hands("raised", .95)[0][:, 1]) + _hands("raised", .95)[1] - module["width_m"] / 2).tolist())
-        if role == "forward_protected" and not (row["nominal_forward_hand_min_m"] < -.002 and row["tucked_forward_hand_min_m"] < -.002 and row["raised_forward_body_min_m"] > .03 and min(row["above_top_clearance_m"]) > .08 and min(row["raised_hand_sphere_lateral_overhang_m"]) > .004):
+        raised_clear = row["raised_forward_body_min_m"] > .03 and min(row["above_top_clearance_m"]) > .08
+        if curriculum:
+            # Width curriculum (intermediate gaps): the hanging (nominal) hands must still hit the tables, and a
+            # protective posture -- raised above the tabletop or tucked -- must clear. Tucking may suffice here.
+            protected_ok = row["nominal_forward_hand_min_m"] < -.002 and (raised_clear or row["tucked_forward_body_min_m"] > .03)
+        else:
+            protected_ok = (row["nominal_forward_hand_min_m"] < -.002 and row["tucked_forward_hand_min_m"] < -.002 and raised_clear
+                            and min(row["raised_hand_sphere_lateral_overhang_m"]) > .004)
+        if role == "forward_protected" and not protected_ok:
             raise ValueError(f"Protected table must intersect nominal hands and clear raised hand spheres: {row}")
         if role == "open" and row["nominal_forward_body_min_m"] <= .06:
             raise ValueError("Open table pair does not admit nominal forward posture")
@@ -217,7 +230,7 @@ def certify_table_edge_scene(scene):
         raise ValueError("Sampled floor-referenced stances lower hands too close to tabletop")
     if not _navigation_report(scene["route"], scene["boxes"], contrast["navigation_radius_m"])["root_route_validated"]:
         raise ValueError("Unvalidated navigation radius")
-    return dict(schema="hand-contrast-certificate-v1", primitive_count=35,
+    return dict(schema="hand-contrast-certificate-v1", primitive_count=35, width_curriculum=bool(curriculum),
         body_proxy_sha256=hashlib.sha256(PROPOSAL.read_bytes()).hexdigest(),
         geometry_hash=scene["geometry_hash"], route_hash=_digest(scene["route"]),
         navigation_radius_m=contrast["navigation_radius_m"], route_transition_validated=True,

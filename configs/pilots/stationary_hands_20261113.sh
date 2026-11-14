@@ -26,9 +26,9 @@ RUN_DIR=${RUN_DIR:-outputs/stationary_hands_20261113}
   --num-minibatches ${NUM_MINIBATCHES:-40} --unroll-length 32 \
   --checkpoint-native "$STUDENT" \
   ${FRESH---fresh-optimizer} --init-action-std 0.10 --max-action-std ${MAX_STD:-0.10} \
-  --bank-manifest data/furniture/sidegap_v2_packed/manifest.json \
-  --body-collision-bank data/furniture/sidegap_v2_collision/manifest.json \
-  --body-collision-resets data/furniture/sidegap_v2_resets/manifest.json \
+  --bank-manifest ${BANK:-data/furniture/sidegap_v2}_packed/manifest.json \
+  --body-collision-bank ${BANK:-data/furniture/sidegap_v2}_collision/manifest.json \
+  --body-collision-resets ${BANK:-data/furniture/sidegap_v2}_resets/manifest.json \
   --experience-masses ${MASSES:-0.15 0.35 0.08 0.14 0.12 0.03 0.10 0.03} \
   --scene-group-override table_edges=6 --scene-group-override side_gap=4 \
   --scene-group-override protected_passage=7 --scene-group-override transition_passage=7 \
