@@ -1064,6 +1064,7 @@ def create_task(args, *, environment_config=None, sim_class=None):
         table_facing_weight=getattr(args, 'table_facing_weight', None),
         table_leg_power_weight=getattr(args, 'table_leg_power_weight', None),
         table_progress=getattr(args, 'table_progress', None),
+        table_hands_up_weight=getattr(args, 'table_hands_up_weight', None),
         reactive_retreat_success=getattr(args, 'reactive_retreat_success', None),
         robustness=(dict(action_latency_ms=float(args.robust_action_latency_ms or 0.),
                          pose_noise=[float(args.robust_pose_noise[0]), float(args.robust_pose_noise[1]), math.radians(float(args.robust_pose_noise[2]))]

@@ -1412,6 +1412,12 @@ class CATTask:
             if 'table_leg_power' in scales:
                 legs=torch.nan_to_num((self.data.ctrl[:,:15]*self.data.qvel[:,6:21]).abs().sum(-1),nan=0.,posinf=0.,neginf=0.)
                 rewards['table_leg_power']=legs*table.float()
+            if 'table_hands_up' in scales:
+                # Exploration guide for the forward pass between table pairs (0.44 m gap at the 0.70-0.72 m tabletops):
+                # a hand within 0.30 m of a table earns credit for being above the tabletop band (palm z 0.78 -> 0.86 m).
+                near=(i['sdf'][:,5:7,0]<.30).float()
+                lift=((i['positions'][:,5:7,2]-.78)/.08).clamp(0.,1.)
+                rewards['table_hands_up']=(near*lift).mean(-1)*table.float()
             telemetry['table_walking']=walking.float();telemetry['table_sideways']=(walking&(alignment.abs()<.7071)).float()
         if 'reactive_feet_hold' in scales and self.reactive_objects is not None:
             # Dense companion of the feet-planted rule: squared foot travel from the settled spot in units of feet_m,

@@ -44,7 +44,7 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
                      hand_tight_cat_only=None,sgs=None,robustness=None,upper_target_average=None,
                      reactive_stationary=None,reactive_power_weight=None,reactive_feet_hold_weight=None,
                      reactive_hand_clearance=None,reactive_retreat_success=None,table_facing_weight=None,
-                     table_leg_power_weight=None,table_progress=None):
+                     table_leg_power_weight=None,table_progress=None,table_hands_up_weight=None):
     from cat_ppo.furniture.generalist_config import released_config
     from .collision import PROPOSAL
     config=copy.deepcopy(released_config()['env_config'] if base_config is None else base_config)
@@ -214,6 +214,10 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
     if reactive_retreat_success is not None:
         if not 0<float(reactive_retreat_success)<=.4:raise ValueError('reactive_retreat_success must be in (0, 0.4] m')
         config['reactive_retreat_success_m']=float(reactive_retreat_success)
+    if table_hands_up_weight is not None:
+        weight=_signed('table_hands_up_weight',table_hands_up_weight,positive=True)
+        if weight==0:scales.pop('table_hands_up',None)
+        else:scales['table_hands_up']=weight
     if table_progress:
         # Table-edge passages keep the CAT weights of the progress terms the room group zeroes (task._rewards).
         config['table_progress_terms']=['stall','goal_progress','goal_bonus']
