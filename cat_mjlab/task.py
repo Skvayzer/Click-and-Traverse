@@ -1420,11 +1420,12 @@ class CATTask:
                 near=(i['sdf'][:,5:7,0]<.30).float()
                 lift=((i['positions'][:,5:7,2]-low)/(high-low)).clamp(0.,1.)
                 rewards['table_hands_up']=(near*lift).mean(-1)*table.float()
-            # Between a table pair: the hand-contrast zone of a module along the certified route (start_m..end_m incl.
-            # the 0.15 m fades). The narrow pairs leave the raised-hand body ~4 cm per side: keep the pelvis on the
-            # route line (cross-track, saturating at 10 cm) and the body facing along the route there.
+            # Between a protected table pair: the hand-contrast zone of a forward_protected module along the certified
+            # route (start_m..end_m incl. the 0.15 m fades; open pairs, ~1.5 m apart, are left free). The narrow pairs
+            # leave the raised-hand body ~4 cm per side: keep the pelvis on the route line (cross-track, saturating at
+            # 10 cm) and the body facing along the route there.
             # torch.where, not a mask product: scenes without a route (CAT) can carry non-finite route geometry.
-            zone=table&self.contrast['enabled']
+            zone=table&self.contrast['enabled']&(self.contrast['role']==1)
             cross=torch.where(zone,self.navigation['cross_track'],0.)
             if 'table_center' in scales:
                 rewards['table_center']=(cross/.05).clamp(max=2.).square()
