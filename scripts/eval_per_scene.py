@@ -10,7 +10,9 @@ at reset; once the queue is empty, extra episodes are ignored). Field-driven (no
 follow their route. Environment = the checkpoint's own training config (side-gap curriculum and pushes off), or
 --env-from another checkpoint's (e.g. the student env).
 
-Per scene: episodes, clean (goal and no touch), contact, refused (no goal, no touch, no fall), fall, hands.
+Per scene: episodes, clean (goal and no touch), contact, refused (no goal, no touch, no fall), fall, hands, and the
+energy used: joint mechanical work sum_j |tau_j qdot_j| dt per episode (J, the training's energy term), the root's path
+length (m), mean power (W) and cost of transport (energy / (robot mass * g * path length), episodes that moved >= 0.5 m).
 Usage: eval_per_scene.py CHECKPOINT --scenes cat|room|all [--episodes 16] [--num-envs 16384] --out FILE.json
 """
 from __future__ import annotations
@@ -88,15 +90,26 @@ def main():
     task.reset = queued
     task.reset()
     learner, _ = load_policy(args.checkpoint, device=dev, policy_id=0)
-    cols = ("episodes", "clean", "contact", "refused", "fall", "hands", "length")
+    cols = ("episodes", "clean", "contact", "refused", "fall", "hands", "length", "energy_j", "path_m", "cot", "cot_episodes")
     stats = torch.zeros((len(scenes), len(cols)), dtype=torch.float64, device=dev)
+    energy = torch.zeros(task.num_envs, dtype=torch.float64, device=dev); path = torch.zeros_like(energy)
+    try:
+        mass = float(task.model.body_subtreemass[task.pelvis_body])      # whole robot (pelvis = root of its tree)
+    except Exception:
+        mass = float("nan")
     target = S * args.episodes
     start = time.time()
     for t in range(args.max_steps):
-        before = env_scene.clone()
+        before = env_scene.clone(); root0 = task.data.qpos[:, :2].clone()
         with torch.no_grad():
             out = task.step(learner.act(task.obs, policy_ids=0, deterministic=not args.stochastic)["action"])
         done = out["done"].bool() & (before >= 0)
+        # Energy as the training prices it (PD torque of the last substep x joint velocity); a finished env has already
+        # been reset (ctrl holds reset targets), so its terminal step is left out of both sums.
+        moving = (before >= 0) & ~done
+        power = (task.data.ctrl * task.data.qvel[:, 6:]).abs().sum(-1).double()
+        energy += torch.where(moving, power * task.dt, 0.)
+        path += torch.where(moving, torch.linalg.vector_norm(task.data.qpos[:, :2] - root0, dim=-1).double(), 0.)
         if bool(done.any()):
             m = out["metrics"]; zero = torch.zeros_like(done)
             goal = m.get("episode/goal_reached", m["successful"]).bool()
@@ -107,6 +120,11 @@ def main():
             for c, f in enumerate(flags):
                 stats[:, c].index_add_(0, sc, f[d].double())
             stats[:, 6].index_add_(0, sc, m["episode_length"][d].double())
+            stats[:, 7].index_add_(0, sc, energy[d]); stats[:, 8].index_add_(0, sc, path[d])
+            far = path[d] >= .5
+            stats[:, 9].index_add_(0, sc, torch.where(far, energy[d] / (mass * 9.81 * path[d].clamp_min(1e-6)), 0.))
+            stats[:, 10].index_add_(0, sc, far.double())
+        energy = torch.where(done, 0., energy); path = torch.where(done, 0., path)
         finished = int(stats[:, 0].sum())
         if t % 500 == 0:
             print(f"step {t}: {finished}/{target} episodes, {time.time() - start:.0f}s", flush=True)
@@ -117,9 +135,15 @@ def main():
         e = float(stats[i, 0])
         if e == 0:
             continue
-        result[scenes[i]["scene_id"]] = dict(episodes=int(e), **{c: round(float(stats[i, k]) / e, 4) for k, c in enumerate(cols) if k},)
+        row = dict(episodes=int(e), **{c: round(float(stats[i, k]) / e, 4) for k, c in enumerate(cols) if 0 < k < 9},)
+        row["power_w"] = round(float(stats[i, 7] / (stats[i, 6] * task.dt).clamp_min(1e-9)), 2)
+        row["cot"] = round(float(stats[i, 9] / stats[i, 10]), 4) if float(stats[i, 10]) else None
+        result[scenes[i]["scene_id"]] = row
     E = stats[ids, 0].sum().clamp_min(1)
-    summary = {c: round(float(stats[ids, k].sum() / E), 4) for k, c in enumerate(cols) if k}
+    summary = {c: round(float(stats[ids, k].sum() / E), 4) for k, c in enumerate(cols) if 0 < k < 9}
+    summary["power_w"] = round(float(stats[ids, 7].sum() / (stats[ids, 6].sum() * task.dt).clamp_min(1e-9)), 2)
+    summary["cot"] = round(float(stats[ids, 9].sum() / stats[ids, 10].sum().clamp_min(1)), 4)
+    summary["robot_mass_kg"] = round(mass, 2)
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(dict(checkpoint=str(args.checkpoint), env_from=args.env_from, scenes=args.scenes, episodes_per_scene=args.episodes,
                                         deterministic=not args.stochastic, finished=int(stats[:, 0].sum()), target=target,

@@ -65,7 +65,7 @@ def evaluate(checkpoint, episodes, robust, bank, seed, max_steps):
     pelvis_site = 1
     live = torch.ones(n_envs, dtype=torch.bool, device=dev)             # first episode of each env still running
     z = lambda: torch.zeros(n_envs, device=dev)
-    acc = dict(walk_near=z(), sideways=z(), raised=z(), tucked=z(), backward=z())
+    acc = dict(walk_near=z(), sideways=z(), raised=z(), tucked=z(), backward=z(), power=z(), live_steps=z())
     REGIONS = ('feet', 'legs', 'trunk', 'head', 'arms', 'hands')
     ENDS = ('hand_violation', 'elbow_violation', 'body_collision') + tuple('body_collision_' + r for r in REGIONS)
     out_flags = {k: torch.zeros(n_envs, dtype=torch.bool, device=dev) for k in ('done', 'goal', 'obstacle', 'hands', 'fall') + ENDS}
@@ -92,6 +92,9 @@ def evaluate(checkpoint, episodes, robust, bank, seed, max_steps):
         acc['backward'] += walk_near & (angle >= 3 * math.pi / 4)
         acc['raised'] += walk_near & raised
         acc['tucked'] += walk_near & tucked
+        # joint mechanical power (W) while the first episode runs, as the training's energy term prices it
+        acc['power'] += torch.where(live, (d.ctrl * d.qvel[:, 6:]).abs().sum(-1), 0.)
+        acc['live_steps'] += live
         done = out['done'].bool() & live
         if bool(done.any()):
             m = out['metrics']; zero = torch.zeros_like(done)
@@ -116,6 +119,7 @@ def evaluate(checkpoint, episodes, robust, bank, seed, max_steps):
                     walking_near_table_steps=int(w), sideways=f('sideways'), backward=f('backward'),
                     hand_raised=f('raised'), hands_tucked=f('tucked'), goal=g('goal'), clean_goal=round(float((out_flags['goal'] & ~out_flags['obstacle'])[mask].sum()) / e, 4) if e else None,
                     obstacle_contact=g('obstacle'), hand_contact=g('hands'), fall=g('fall'),
+                    power_w=round(float(acc['power'][mask].sum()) / max(float(acc['live_steps'][mask].sum()), 1.), 2),
                     ends={k.replace('body_collision_', 'touch_'): g(k) for k in ENDS})
     role = torch.tensor([0 if roles[int(s)] == 'open' else 1 for s in job], device=dev)
     gap = torch.tensor([gaps[int(s)] for s in job], device=dev)
