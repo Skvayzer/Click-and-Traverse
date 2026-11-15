@@ -219,6 +219,14 @@ def parser():
         target.add_argument("--table-hands-up-weight", type=float,
                             help="Table-edge passages: bonus (positive) for a hand within 0.30 m of a table being above the "
                                  "tabletop band (palm z 0.78 -> 0.86 m)")
+        target.add_argument("--table-hands-up-band", type=float, nargs=2, metavar=("LOW_M", "HIGH_M"),
+                            help="Palm height band of --table-hands-up-weight (default 0.78 0.86 m): credit rises from LOW to HIGH")
+        target.add_argument("--table-center-weight", type=float,
+                            help="Table-edge passages, between a table pair: cost (negative) on the pelvis cross-track "
+                                 "distance from the certified route, (d / 5 cm)^2 saturating at 10 cm")
+        target.add_argument("--table-zone-facing-weight", type=float,
+                            help="Table-edge passages, between a table pair: cost (negative) on the yaw error from the route "
+                                 "tangent, (sin err / sin 10 deg)^2 saturating at 4 (20 deg or facing backward), walking or not")
         target.add_argument("--table-progress", action="store_true",
                             help="Table-edge passages keep the CAT weights of stall / goal_progress / goal_bonus (the room "
                                  "reward group zeroes them, so stalling in front of a narrow table gap cost nothing)")

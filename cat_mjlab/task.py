@@ -1414,11 +1414,30 @@ class CATTask:
                 rewards['table_leg_power']=legs*table.float()
             if 'table_hands_up' in scales:
                 # Exploration guide for the forward pass between table pairs (0.44 m gap at the 0.70-0.72 m tabletops):
-                # a hand within 0.30 m of a table earns credit for being above the tabletop band (palm z 0.78 -> 0.86 m).
+                # a hand within 0.30 m of a table earns credit for being above the tabletop band (palm z low -> high,
+                # default 0.78 -> 0.86 m; the certified raised posture holds the palms at ~0.94 m).
+                low,high=self.config.get('table_hands_up_band',(.78,.86))
                 near=(i['sdf'][:,5:7,0]<.30).float()
-                lift=((i['positions'][:,5:7,2]-.78)/.08).clamp(0.,1.)
+                lift=((i['positions'][:,5:7,2]-low)/(high-low)).clamp(0.,1.)
                 rewards['table_hands_up']=(near*lift).mean(-1)*table.float()
+            # Between a table pair: the hand-contrast zone of a module along the certified route (start_m..end_m incl.
+            # the 0.15 m fades). The narrow pairs leave the raised-hand body ~4 cm per side: keep the pelvis on the
+            # route line (cross-track, saturating at 10 cm) and the body facing along the route there.
+            # torch.where, not a mask product: scenes without a route (CAT) can carry non-finite route geometry.
+            zone=table&self.contrast['enabled']
+            cross=torch.where(zone,self.navigation['cross_track'],0.)
+            if 'table_center' in scales:
+                rewards['table_center']=(cross/.05).clamp(max=2.).square()
+            if 'table_zone_facing' in scales:
+                # Yaw error from the route tangent, (sin err / sin 10 deg)^2 saturating at 4 (20 deg; any backward
+                # facing). 1 - cos is too flat here: 10-15 deg swings the forward-held hands 7-11 cm sideways and
+                # widens the body ~1.5-2 cm per side, half of the clearance the 0.44 m pairs leave.
+                tangent=self.navigation['tangent']/torch.linalg.vector_norm(self.navigation['tangent'],dim=-1,keepdim=True).clamp_min(1e-6)
+                along=(facing*tangent).sum(-1);across=facing[:,0]*tangent[:,1]-facing[:,1]*tangent[:,0]
+                error=torch.where(along>0,(across/.17365).square().clamp(max=4.),4.)
+                rewards['table_zone_facing']=torch.where(zone,error,0.)
             telemetry['table_walking']=walking.float();telemetry['table_sideways']=(walking&(alignment.abs()<.7071)).float()
+            telemetry['table_zone']=zone.float();telemetry['table_cross_track_m']=cross
         if 'reactive_feet_hold' in scales and self.reactive_objects is not None:
             # Dense companion of the feet-planted rule: squared foot travel from the settled spot in units of feet_m,
             # while the rule is active (zero before settling). Slow foot creep otherwise meets its only signal at the

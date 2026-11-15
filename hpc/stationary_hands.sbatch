@@ -15,6 +15,8 @@
 #          T1c: T1b + facing -6 + hands-up bonus 2 (a hand near a table above the tabletop band)
 #          T2: T1c on bank tablegap_v1 = sidegap_v2 + 64 table pairs with intermediate gaps 0.46-0.70 m (width curriculum)
 #          T3: T2 + arm exploration (arm sigma 0.25 initial and ceiling; legs/waist stay 0.10)
+#          T4: T2 + between a table pair: pelvis cross-track cost -2 ((d/5 cm)^2) and yaw cost -2 ((sin err/sin 10 deg)^2),
+#              hands-up band 0.80 -> 0.92 m (narrow-pair failures: 4 cm off the route line, 9-15 deg yaw, palms sagging)
 # CLONE=<git worktree pinned to a commit> runs that code instead of the live clone (a requeued job resumes only with the
 # code it started with). On the gpu partition: sbatch -p gpu --time=08:00:00 --mem=64000M ...
 # Data: dep-1's tree is mirrored under /l/users/$USER/cat_root and reached through CAT_PATH_MAP (cat_mjlab/pathmap.py);
@@ -62,6 +64,11 @@ case $VARIANT in
         TABLE_LEG_POWER=-0.005 TABLE_PROGRESS=1 TABLE_HANDS_UP=2 MASSES="0.15 0.35 0.08 0.14 0.12 0.03 0.25 0.03" \
         REACTIVE_SHARE=0.3 RAISED=0.3 ROUTE_FILE=hpc/route_anchor_no_reactive_no_tables_v2.json ARM_STD=0.25
       : "${STUDENT:?T3 needs STUDENT=<T1c checkpoint>}" ;;
+  T4) export BANK=data/furniture/tablegap_v1 POWER=-0.02 HAND_FAR="0.20 0.40" RETREAT_SUCCESS=0.15 TABLE_FACING=-6 \
+        TABLE_LEG_POWER=-0.005 TABLE_PROGRESS=1 TABLE_HANDS_UP=2 TABLE_HANDS_UP_BAND="0.80 0.92" TABLE_CENTER=-2 \
+        TABLE_ZONE_FACING=-2 MASSES="0.15 0.35 0.08 0.14 0.12 0.03 0.25 0.03" REACTIVE_SHARE=0.3 RAISED=0.3 \
+        ROUTE_FILE=hpc/route_anchor_no_reactive_no_tables_v2.json
+      : "${STUDENT:?T4 needs STUDENT=<T2 checkpoint>}" ;;
   *) echo "unknown VARIANT $VARIANT"; exit 2 ;;
 esac
 if [[ -n "${SMOKE:-}" ]]; then
