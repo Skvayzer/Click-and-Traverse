@@ -29,6 +29,9 @@ from torch import nn
 from torch.nn import functional as F
 
 
+# First arm joint in the 29-action layout (legs 0-11, waist 12-14, arms 15-28).
+ARM_START = 15
+
 @dataclass(frozen=True)
 class LearnerConfig:
     algorithm: str = "sapg"
@@ -51,6 +54,7 @@ class LearnerConfig:
     num_updates_per_batch: int = 4
     prepare_chunk_size: int = 64
     max_action_std: float | None = None
+    max_action_std_arms: float | None = None   # separate sigma ceiling for the arm joints (actions 15-28); legs+waist keep max_action_std
     style_critic: bool = False     # second value head for the motion-prior style reward
 
     def __post_init__(self):
@@ -68,6 +72,9 @@ class LearnerConfig:
             raise ValueError("Learning and reward coefficients must be finite and nonnegative")
         if self.max_action_std is not None and (not math.isfinite(self.max_action_std) or self.max_action_std <= .001):
             raise ValueError("max_action_std must exceed the distribution floor .001 or be None")
+        if self.max_action_std_arms is not None and (not math.isfinite(self.max_action_std_arms) or self.max_action_std_arms <= .001
+                                                     or self.max_action_std is None or self.action_size <= ARM_START):
+            raise ValueError("max_action_std_arms needs max_action_std and must exceed the floor .001")
         if self.max_grad_norm is not None and (not math.isfinite(self.max_grad_norm) or self.max_grad_norm <= 0):
             raise ValueError("max_grad_norm must be positive or None")
 
@@ -119,7 +126,13 @@ class ActorCritic(nn.Module):
         # Capping this monotone head is equivalent to capping log(sigma).
         mean, raw_scale = logits.chunk(2, dim=-1)
         maximum = math.log(math.expm1(self.config.max_action_std - .001))
-        return torch.cat((mean, raw_scale.clamp_max(maximum)), dim=-1)
+        arms = getattr(self.config, 'max_action_std_arms', None)
+        if arms is None:
+            return torch.cat((mean, raw_scale.clamp_max(maximum)), dim=-1)
+        # Arm joints (actions 15-28) get their own ceiling: explore protective arm postures, keep the gait as it is.
+        ceiling = torch.full((raw_scale.shape[-1],), maximum, device=raw_scale.device, dtype=raw_scale.dtype)
+        ceiling[ARM_START:] = math.log(math.expm1(arms - .001))
+        return torch.cat((mean, torch.minimum(raw_scale, ceiling)), dim=-1)
 
     def value(self, privileged_state, policy_ids=0):
         return self.critic(self.condition(privileged_state, policy_ids)).squeeze(-1)
@@ -417,14 +430,19 @@ class Learner:
         self.actor_frozen = False    # critic warm-up: only the value losses are optimised
 
     @torch.no_grad()
-    def reset_action_std(self, sigma):
+    def reset_action_std(self, sigma, arms=None):
         if not math.isfinite(sigma) or sigma <= .001 or (self.config.max_action_std is not None and sigma > self.config.max_action_std):
             raise ValueError("Initial sigma must exceed .001 and not exceed its ceiling")
+        arm_ceiling = getattr(self.config, 'max_action_std_arms', None)
+        if arms is not None and (not math.isfinite(arms) or arms <= .001 or (arm_ceiling is not None and arms > arm_ceiling)):
+            raise ValueError("Initial arm sigma must exceed .001 and not exceed its ceiling")
         if self.optimizer.state:
             raise ValueError("Resetting sigma requires a fresh optimizer")
         layer = self.model.actor.layers[-1]
         layer.weight[self.config.action_size:].zero_()
         layer.bias[self.config.action_size:].fill_(math.log(math.expm1(sigma - .001)))
+        if arms is not None:
+            layer.bias[self.config.action_size + ARM_START:].fill_(math.log(math.expm1(arms - .001)))
 
     @torch.no_grad()
     def act(self, state, privileged_state=None, policy_ids=None, *, deterministic=False):

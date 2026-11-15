@@ -250,6 +250,10 @@ def parser():
         target.add_argument("--hand-raised-reset-fraction", type=float,
                             help="Fraction of forward-protected resets seeded at certified raised poses, in [0,1]; default 0 (opt-in on each launch)")
         target.add_argument("--max-action-std", type=float, help="Optional sigma ceiling; 0 disables; default inherited/off")
+        target.add_argument("--max-action-std-arms", type=float,
+                            help="Separate sigma ceiling for the arm joints (actions 15-28); legs and waist keep --max-action-std")
+        target.add_argument("--init-action-std-arms", type=float,
+                            help="Initial arm sigma with --init-action-std on a fresh run (more arm exploration, same gait)")
         target.add_argument("--init-action-std", type=float, help="Reset the scale head on a fresh run; requires --fresh-optimizer")
         target.add_argument("--discounting", type=float, help="Override source gamma; default inherited (CAT .98)")
         target.add_argument("--hand-curriculum-success-threshold", type=float,

@@ -26,6 +26,7 @@ RUN_DIR=${RUN_DIR:-outputs/stationary_hands_20261113}
   --num-minibatches ${NUM_MINIBATCHES:-40} --unroll-length 32 \
   --checkpoint-native "$STUDENT" \
   ${FRESH---fresh-optimizer} --init-action-std 0.10 --max-action-std ${MAX_STD:-0.10} \
+  ${ARM_STD:+--max-action-std-arms $ARM_STD --init-action-std-arms $ARM_STD} \
   --bank-manifest ${BANK:-data/furniture/sidegap_v2}_packed/manifest.json \
   --body-collision-bank ${BANK:-data/furniture/sidegap_v2}_collision/manifest.json \
   --body-collision-resets ${BANK:-data/furniture/sidegap_v2}_resets/manifest.json \

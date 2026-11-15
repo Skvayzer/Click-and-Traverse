@@ -1241,7 +1241,7 @@ def run(args):
     if (config.actor_obs, config.critic_obs, config.action_size) != (actor_size(sdf_rate), CRITIC_SIZE, 29):
         raise ValueError('Native training requires actor 222 / critic 310 and 29 actions. '
                          'Use --from-scratch; obsolete observation contracts are not converted.')
-    overrides = {name: getattr(args, name) for name in ("max_action_std", "discounting", "num_minibatches")
+    overrides = {name: getattr(args, name) for name in ("max_action_std", "max_action_std_arms", "discounting", "num_minibatches")
                  if getattr(args, name, None) is not None}
     if overrides.get("max_action_std") == 0:
         overrides["max_action_std"] = None
@@ -1284,8 +1284,10 @@ def run(args):
     else:
         migration = load_array_archive(learner, args.checkpoint_npz, restore_optimizer=not args.fresh_optimizer)
     if not args.resume and initial_std is not None:
-        learner.reset_action_std(initial_std)
+        learner.reset_action_std(initial_std, arms=getattr(args, "init_action_std_arms", None))
         migration["initial_action_std"] = initial_std
+        if getattr(args, "init_action_std_arms", None) is not None:
+            migration["initial_action_std_arms"] = args.init_action_std_arms
     task, sim, environment_config = create_task(args, environment_config=config_source)
     _configure_reactive(task, args)
     style_schedule = None
@@ -1328,6 +1330,8 @@ def run(args):
         contract["initial_checkpoint_format"] = "native_weights_only"
     if initial_std is not None:
         contract["initial_action_std"] = initial_std
+    if getattr(args, "init_action_std_arms", None) is not None:
+        contract["initial_action_std_arms"] = args.init_action_std_arms
     if getattr(args, "passage_rewards", None) is not None:
         contract["passage_rewards_sha256"] = _file_hash(args.passage_rewards)
     contract = json.loads(json.dumps(contract))  # tuples -> JSON lists consistently
