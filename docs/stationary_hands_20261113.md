@@ -223,6 +223,21 @@ T5 snapshots (table goal over all episodes / sideways near tables; cabinet passa
 Refusals in the narrow passages are coming down and the tables hold; the wider cabinet passages and scaffolds dipped at
 u100 -- watching the next snapshots (`~/jobs/summarize_snapshots.py T5` on the cluster prints this table).
 
+### E1: energy only at the tables (2026-11-15 20:00, ws-ia job 300873)
+
+Hypothesis (from the 2026-11-13 framing "moving the hands is cheaper than moving the body"): an energy price alone,
+without posture terms, makes the robot pass table gaps facing forward with raised or tucked hands. E1 starts from S2far
+u200 (before any table stage; also its anchor outside the table scenes) on the width curriculum `tablegap_v1` with the
+anti-refusal terms, and prices the mechanical power of all 29 joints in table scenes, `--table-power-weight -0.02`
+(the standing price): no facing cost, no hands-up bonus, no leg-power price, no passage progress. Snapshots every 50
+updates, evaluated like T5.
+
+The energy term: per control step the reward carries -lambda * sum_j |tau_j * qdot_j| * dt, i.e. -lambda per joule of
+absolute mechanical work; tau = the PD torque the simulation applies (kp/kd from the training contract, gravity
+feedforward, robustness noise, clipped to the G1 limits 139/88/50/25/5 Nm), qdot from MuJoCo; sampled once per 50 Hz
+step (the last of 10 substeps). It is mechanical, not electrical: holding a pose (raised arms) costs nothing, where a
+real motor dissipates R (tau/K)^2 -- a Joule term needs the per-motor constants K, R (not in the MJCF).
+
 ## Measurement notes
 - Standing power, u150 clean: 26-31 W at rest (CPU trace), recovery steps after a shove 170-570 W.
 - Training metrics `reactive/*` average over all env-steps: divide by `reactive/reactive_standing` (power) or
