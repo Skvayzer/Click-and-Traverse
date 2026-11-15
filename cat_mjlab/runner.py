@@ -1564,6 +1564,15 @@ def run(args):
                 logger.log(learner.env_steps, values)
                 if local_updates % args.checkpoint_interval_updates == 0:
                     save_runtime()
+                    every = int(getattr(args, 'snapshot_interval_updates', 0) or 0)
+                    if every and learner.updates % every == 0:
+                        # Model selection: training is not monotonic (T2's narrow table gaps peaked near update 410 and
+                        # had fallen by 650), so keep every Nth committed checkpoint -- a hard link to the resume.pt just
+                        # written atomically; the next save replaces resume.pt's name, not this inode.
+                        (directory / "snapshots").mkdir(exist_ok=True)
+                        target = directory / "snapshots" / f"update_{learner.updates:04d}.pt"
+                        if not target.exists():
+                            os.link(directory / "resume.pt", target)
             status = "stopped_by_request" if should_stop() else "bounded_verification_complete" if args.command == "verify" else "completed_requested_updates"
         save_runtime()
     except BaseException as error:

@@ -329,6 +329,9 @@ def parser():
         target.add_argument("--max-updates", type=int, default=1 if command == "verify" else 0,
                             help="Updates this invocation; 0 is continuous (run only)")
         target.add_argument("--checkpoint-interval-updates", type=int, default=10)
+        target.add_argument("--snapshot-interval-updates", type=int, default=0,
+                            help="Also keep snapshots/update_NNNN.pt every N learner updates (a multiple of the checkpoint "
+                                 "interval; 0 = off) for picking the best checkpoint afterwards")
         target.add_argument("--wandb-mode", choices=("online", "offline", "disabled"),
                             default="disabled" if command == "verify" else "online")
         target.add_argument("--wandb-project", default="CAT-wholebody")
