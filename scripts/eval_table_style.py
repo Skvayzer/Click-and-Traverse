@@ -7,7 +7,8 @@ deterministic actions, no pushes, nominal conditions unless --robust. Style is m
   sideways   the body faces 45-135 deg away from where it is moving (turned to sidle past)
   raised     a hand above the tabletop band (palm z > 0.80 m; tabletops are 0.70-0.72 m)
   tucked     neither hand raised, both palms within 0.22 m of the pelvis axis laterally (body frame)
-Outcomes per episode as eval_per_scene: clean goal, obstacle contact, hand contact, fall.
+Outcomes per episode as eval_per_scene: clean goal, obstacle contact, hand contact, fall; `ends` gives the share of
+episodes whose body touched (or came within the clearance limits of) an obstacle, per body region.
 
   eval_table_style.py CKPT [CKPT ...] --episodes 8 --out result.json
 """
@@ -64,7 +65,9 @@ def evaluate(checkpoint, episodes, robust, bank, seed, max_steps):
     live = torch.ones(n_envs, dtype=torch.bool, device=dev)             # first episode of each env still running
     z = lambda: torch.zeros(n_envs, device=dev)
     acc = dict(walk_near=z(), sideways=z(), raised=z(), tucked=z(), backward=z())
-    out_flags = {k: torch.zeros(n_envs, dtype=torch.bool, device=dev) for k in ('done', 'goal', 'obstacle', 'hands', 'fall')}
+    REGIONS = ('feet', 'legs', 'trunk', 'head', 'arms', 'hands')
+    ENDS = ('hand_violation', 'elbow_violation', 'body_collision') + tuple('body_collision_' + r for r in REGIONS)
+    out_flags = {k: torch.zeros(n_envs, dtype=torch.bool, device=dev) for k in ('done', 'goal', 'obstacle', 'hands', 'fall') + ENDS}
     start = time.time()
     for t in range(max_steps):
         with torch.no_grad():
@@ -96,6 +99,8 @@ def evaluate(checkpoint, episodes, robust, bank, seed, max_steps):
             out_flags['obstacle'] |= done & m.get('episode/obstacle', zero).bool()
             out_flags['hands'] |= done & m.get('episode/body_collision_hands', zero).bool()
             out_flags['fall'] |= done & m.get('episode/fall', zero).bool()
+            for k in ENDS:                                               # which body region touched (episode flags)
+                out_flags[k] |= done & m.get('episode/' + k, zero).bool()
             live &= ~done
         if not bool(live.any()):
             break
@@ -106,7 +111,8 @@ def evaluate(checkpoint, episodes, robust, bank, seed, max_steps):
         g = lambda k: round(float((out_flags[k] & out_flags['done'])[mask].sum()) / e, 4) if e else None
         return dict(episodes=int(e), walking_near_table_steps=int(w), sideways=f('sideways'), backward=f('backward'),
                     hand_raised=f('raised'), hands_tucked=f('tucked'), goal=g('goal'), clean_goal=round(float((out_flags['goal'] & ~out_flags['obstacle'])[mask].sum()) / e, 4) if e else None,
-                    obstacle_contact=g('obstacle'), hand_contact=g('hands'), fall=g('fall'))
+                    obstacle_contact=g('obstacle'), hand_contact=g('hands'), fall=g('fall'),
+                    ends={k.replace('body_collision_', 'touch_'): g(k) for k in ENDS})
     role = torch.tensor([0 if roles[int(s)] == 'open' else 1 for s in job], device=dev)
     gap = torch.tensor([gaps[int(s)] for s in job], device=dev)
     bins = {'gap_0.43-0.45 (original narrow)': (gap <= .45), 'gap_0.46-0.54': (gap > .45) & (gap <= .54),
