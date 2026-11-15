@@ -1487,6 +1487,16 @@ class CATTask:
             power=torch.nan_to_num((self.data.ctrl*self.data.qvel[:,6:]).abs().sum(-1),nan=0.,posinf=0.,neginf=0.)
             if 'reactive_power' in scales:rewards['reactive_power']=power*standing
             telemetry['reactive_power_w']=power*standing;telemetry['reactive_standing']=standing
+        # Mechanical power of all 29 joints in every environment (telemetry), and the energy price outside the standing
+        # episodes and the table scenes (E2: global_power), which carry their own price (reactive_power, table_power):
+        # with it, efficient whole-body motion is paid for everywhere, traversal included.
+        power_all=torch.nan_to_num((self.data.ctrl*self.data.qvel[:,6:]).abs().sum(-1),nan=0.,posinf=0.,neginf=0.)
+        priced=torch.ones_like(power_all,dtype=torch.bool)
+        if getattr(self,'table_scene',None) is not None:priced&=~self.table_scene[self.scene_ids]
+        if self.reactive_objects is not None:
+            s=self.reactive_objects.state;priced&=~(s['active']&~s['walking'])
+        if 'global_power' in scales:rewards['global_power']=power_all*priced.float()
+        telemetry['energy_power_w']=power_all;telemetry['energy_priced_w']=power_all*priced.float()
         if 'reactive_event' in scales and self.reactive_objects is not None:
             # Sparse, paid once per finished approach: +1 handled, -1 unhandled for a threatening
             # object (buckets 0/1), 0 for an unneeded flinch. Dense shaping (hand_clearance,
@@ -1918,7 +1928,7 @@ class CATTask:
                         'heading_gate', 'heading_error_abs', 'hand_room_scale', 'side_gap_stage', 'side_gap_sideways_start',
                         'reactive_power_w', 'reactive_standing', 'reactive_end_lift', 'reactive_end_slide', 'reactive_end_drift',
                         'reactive_violation', 'reactive_settled', 'reactive_feet_moved_m', 'table_walking', 'table_sideways',
-                        'table_zone', 'table_cross_track_m', 'table_power_w'):
+                        'table_zone', 'table_cross_track_m', 'table_power_w', 'energy_power_w', 'energy_priced_w'):
                 if key in self.telemetry: metrics[key] = self.telemetry[key].clone()
             metrics['contrast_role'] = self.contrast['role'].clone()
             metrics['contrast_unresolved'] = (~self.outcome_counted | resolved).clone()

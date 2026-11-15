@@ -20,6 +20,8 @@
 #          E1: energy only -- from S2far u200 (before any table stage) on the width curriculum with the anti-refusal terms,
 #              an energy price on all 29 joints in table scenes (-0.02/W, as standing) and NO facing cost, hands-up bonus
 #              or leg-power price: does pricing energy alone make the robot pass tables facing forward with raised hands?
+#          E2: E1 + an energy price everywhere else (-0.01/W: traversal, walking; standing and tables keep -0.02):
+#              does an energy objective in every environment give natural, efficient traversal without losing skills?
 #          T5: T2 + non-table scenes anchored to S2far u200 (the last policy before the table stages; ANCHOR) instead of the
 #              start checkpoint + anti-refusal terms in the room passages (PASSAGE_PROGRESS): after T1-T2 the robot stopped
 #              in front of narrow cabinet passages (< 0.60 m: refusals 10-33% -> 88-98%) instead of turning sideways
@@ -84,6 +86,10 @@ case $VARIANT in
         TABLE_PROGRESS=1 MASSES="0.15 0.35 0.08 0.14 0.12 0.03 0.25 0.03" REACTIVE_SHARE=0.3 RAISED=0.3 \
         ROUTE_FILE=hpc/route_anchor_no_reactive_no_tables_v2.json SNAPSHOT_EVERY=50
       : "${STUDENT:?E1 needs STUDENT=<S2far u200, the pre-table policy>}" ;;
+  E2) export BANK=data/furniture/tablegap_v1 POWER=-0.02 HAND_FAR="0.20 0.40" RETREAT_SUCCESS=0.15 TABLE_POWER=-0.02 \
+        GLOBAL_POWER=-0.01 TABLE_PROGRESS=1 MASSES="0.15 0.35 0.08 0.14 0.12 0.03 0.25 0.03" REACTIVE_SHARE=0.3 RAISED=0.3 \
+        ROUTE_FILE=hpc/route_anchor_no_reactive_no_tables_v2.json SNAPSHOT_EVERY=50
+      : "${STUDENT:?E2 needs STUDENT=<S2far u200, the pre-table policy>}" ;;
   *) echo "unknown VARIANT $VARIANT"; exit 2 ;;
 esac
 if [[ -n "${SMOKE:-}" ]]; then
@@ -100,7 +106,7 @@ if [[ -f $RUN/run/status.json ]]; then export EXTRA="--resume ${EXTRA:-}" FRESH=
 { echo "== job $SLURM_JOB_ID ($SLURM_JOB_NAME) variant $VARIANT on $(hostname) at $(date -Is)"
   nvidia-smi --query-gpu=name,driver_version,memory.total --format=csv,noheader
   echo "commit $(git -C $CLONE rev-parse HEAD) $(git -C $CLONE status --porcelain --untracked-files=no | wc -l) modified tracked files (copied to $REPO)"
-  echo "STATIONARY='${STATIONARY:-}' POWER='${POWER:-}' FEET_HOLD='${FEET_HOLD:-}' BANK='${BANK:-}' ARM_STD='${ARM_STD:-}' HAND_FAR='${HAND_FAR:-}' RETREAT_SUCCESS='${RETREAT_SUCCESS:-}' TABLE_FACING='${TABLE_FACING:-}' TABLE_LEG_POWER='${TABLE_LEG_POWER:-}' TABLE_PROGRESS='${TABLE_PROGRESS:-}' TABLE_HANDS_UP='${TABLE_HANDS_UP:-}' TABLE_HANDS_UP_BAND='${TABLE_HANDS_UP_BAND:-}' TABLE_CENTER='${TABLE_CENTER:-}' TABLE_ZONE_FACING='${TABLE_ZONE_FACING:-}' PASSAGE_PROGRESS='${PASSAGE_PROGRESS:-}' TABLE_POWER='${TABLE_POWER:-}' ANCHOR='${ANCHOR:-}' SNAPSHOT_EVERY='${SNAPSHOT_EVERY:-}' MASSES='${MASSES:-}' REACTIVE_SHARE='${REACTIVE_SHARE:-}' RAISED='${RAISED:-}' ROUTE_FILE='${ROUTE_FILE:-}' NUM_ENVS=$NUM_ENVS NUM_MINIBATCHES=$NUM_MINIBATCHES EXTRA='${EXTRA:-}'"
+  echo "STATIONARY='${STATIONARY:-}' POWER='${POWER:-}' FEET_HOLD='${FEET_HOLD:-}' BANK='${BANK:-}' ARM_STD='${ARM_STD:-}' HAND_FAR='${HAND_FAR:-}' RETREAT_SUCCESS='${RETREAT_SUCCESS:-}' TABLE_FACING='${TABLE_FACING:-}' TABLE_LEG_POWER='${TABLE_LEG_POWER:-}' TABLE_PROGRESS='${TABLE_PROGRESS:-}' TABLE_HANDS_UP='${TABLE_HANDS_UP:-}' TABLE_HANDS_UP_BAND='${TABLE_HANDS_UP_BAND:-}' TABLE_CENTER='${TABLE_CENTER:-}' TABLE_ZONE_FACING='${TABLE_ZONE_FACING:-}' PASSAGE_PROGRESS='${PASSAGE_PROGRESS:-}' TABLE_POWER='${TABLE_POWER:-}' GLOBAL_POWER='${GLOBAL_POWER:-}' ANCHOR='${ANCHOR:-}' SNAPSHOT_EVERY='${SNAPSHOT_EVERY:-}' MASSES='${MASSES:-}' REACTIVE_SHARE='${REACTIVE_SHARE:-}' RAISED='${RAISED:-}' ROUTE_FILE='${ROUTE_FILE:-}' NUM_ENVS=$NUM_ENVS NUM_MINIBATCHES=$NUM_MINIBATCHES EXTRA='${EXTRA:-}'"
   echo "STUDENT=$STUDENT CAT_PATH_MAP=$CAT_PATH_MAP"
   echo "config: configs/pilots/stationary_hands_20261113.sh"; } >> $RUN/run_info.txt
 nvidia-smi --query-gpu=timestamp,memory.used,utilization.gpu --format=csv,noheader -l ${GPU_LOG_SECONDS:-60} >> $RUN/gpu.csv &
