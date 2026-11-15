@@ -187,9 +187,29 @@ passage the robot stands at the entrance for 60 s, yaw 0-43 deg from the route, 
 of the table stages generalised to cabinet passages that look alike to the policy; room worlds zero stall / goal
 progress / goal bonus (stopping is free there); each stage was anchored to the previous stage, so the drift added up.
 
-T5 (from T2 u650, 2026-11-15 ~15:50, ws-ia job 300518): T2's recipe, but the non-table scenes are anchored to S2far
+T5 (first started from T2 u650, 2026-11-15 ~15:50, ws-ia job 300518; see below): T2's recipe, but the non-table scenes are anchored to S2far
 u200 (the last policy before the table stages) instead of the start checkpoint, and the hand-contrast passages and width
 scaffolds get the anti-refusal terms at CAT weights (`--passage-progress`). T3 was stopped at u610 to free the slot.
+
+### T2 final vs T4, and T5 restarted from T2 u410 (2026-11-15 16:30)
+
+Same table protocol (goal / stalled over all episodes; sideways / raised over walking-near-table steps):
+
+| gap | T2 u410 | T2 u650 (final) | T4 u170 (T2 u450 + pair terms) |
+|---|---|---|---|
+| 0.62-0.70 m: sideways / raised / goal / stalled | 4 / 61 / 99 / 0% | 9 / 47 / 98 / 0% | 8 / 34 / 98 / 0% |
+| 0.54-0.62 m | 10 / 68 / 95 / 0% | 18 / 54 / 85 / 0% | 37 / 31 / 82 / 4% |
+| 0.46-0.54 m | 29 / 61 / 51 / 0% | 42 / 43 / 32 / 0% | 69 / 18 / 23 / 26% |
+| original 0.44 m | 46 / 55 / 2 / 2% | 60 / 37 / 1 / 2% | 81 / 14 / 0 / 25% |
+
+T2 peaked near u410 and drifted back towards sideways passing at the narrow end (between the tables its yaw grew from
+8-15 to 19-27 deg). T4's pair terms did tighten the passage itself (yaw 7-14 deg, 3 cm off the line) but it now stops
+in front of a quarter of the narrow pairs and reaches fewer goals -- stopped (job 300255). Retention (384 x 4): T2 u650
+clean 0.578 / refused 0.14 (narrow cabinet passages still 0.24 / 68% refused), T4 0.565 / 0.16. Videos T2 u650 vs T4
+u170 at 0.44 and 0.50 m: runs/eval_T2final_T4_1115_1445/videos (cluster).
+
+T5 restarted from T2 u410 (16:40, job 300639; the first start from u650 was stopped after ~45 updates), with snapshots
+every 50 updates (`--snapshot-interval-updates`) so the best checkpoint can be picked instead of the last.
 
 ## Measurement notes
 - Standing power, u150 clean: 26-31 W at rest (CPU trace), recovery steps after a shove 170-570 W.
