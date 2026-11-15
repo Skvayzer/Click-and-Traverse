@@ -169,6 +169,28 @@ after it, a yaw cost -2 x (sin err / sin 10 deg)^2 saturating at 20 deg; and the
 13 and 11 updates: they also priced the open pairs, then the whole hand-contrast zones (1.65 m around each 0.65 m
 pair), where the mean cross-track was ~10 cm (the approach) and the cost saturated.
 
+### Regression found: narrow room passages (2026-11-15 afternoon)
+
+The overall retention number hid it (S2far u200 0.60 -> T2 u120 0.57 clean). Per passage type (same 384 scenes x 4,
+clean success / refused = stopped in front until the time limit):
+
+| narrow cabinet passages ("narrow" role) | S2far u200 (before tables) | T1 u130 | T1c u640 | T2 u120 |
+|---|---|---|---|---|
+| < 0.50 m (52 episodes) | 0.02 / 33% | 0.00 / 87% | 0.00 / 100% | 0.00 / 98% |
+| 0.50-0.60 m (52) | 0.35 / 10% | 0.35 / 25% | 0.04 / 90% | 0.06 / 88% |
+| 0.60-0.70 m (24) | 0.50 / 4% | 0.67 / 8% | 0.79 / 4% | 0.58 / 0% |
+| >= 0.70 m (32) | 0.78 / 6% | 0.84 / 6% | 0.91 / 0% | 0.75 / 0% |
+
+Transition passages the same (0.50-0.60 m: 0.57 / 5% -> 0.23 / 62%); CAT wall gaps that need sideways walking are
+unchanged (side gaps 0.31 -> 0.34, published "side" scenes 0.31 -> 0.41). In the T2 u650 video of a 0.55 m cabinet
+passage the robot stands at the entrance for 60 s, yaw 0-43 deg from the route, never sideways. Cause: the facing lesson
+of the table stages generalised to cabinet passages that look alike to the policy; room worlds zero stall / goal
+progress / goal bonus (stopping is free there); each stage was anchored to the previous stage, so the drift added up.
+
+T5 (from T2 u650, 2026-11-15 ~15:50, ws-ia job 300518): T2's recipe, but the non-table scenes are anchored to S2far
+u200 (the last policy before the table stages) instead of the start checkpoint, and the hand-contrast passages and width
+scaffolds get the anti-refusal terms at CAT weights (`--passage-progress`). T3 was stopped at u610 to free the slot.
+
 ## Measurement notes
 - Standing power, u150 clean: 26-31 W at rest (CPU trace), recovery steps after a shove 170-570 W.
 - Training metrics `reactive/*` average over all env-steps: divide by `reactive/reactive_standing` (power) or
