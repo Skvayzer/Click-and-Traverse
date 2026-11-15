@@ -227,6 +227,9 @@ def parser():
         target.add_argument("--table-zone-facing-weight", type=float,
                             help="Table-edge passages, between a table pair: cost (negative) on the yaw error from the route "
                                  "tangent, (sin err / sin 10 deg)^2 saturating at 4 (20 deg or facing backward), walking or not")
+        target.add_argument("--passage-progress", action="store_true",
+                            help="Room passages (hand-contrast passages, width scaffolds) also keep the CAT weights of stall / "
+                                 "goal_progress / goal_bonus, like --table-progress for the table-edge passages")
         target.add_argument("--table-progress", action="store_true",
                             help="Table-edge passages keep the CAT weights of stall / goal_progress / goal_bonus (the room "
                                  "reward group zeroes them, so stalling in front of a narrow table gap cost nothing)")

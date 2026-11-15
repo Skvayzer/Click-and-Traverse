@@ -17,6 +17,9 @@
 #          T3: T2 + arm exploration (arm sigma 0.25 initial and ceiling; legs/waist stay 0.10)
 #          T4: T2 + between a table pair: pelvis cross-track cost -2 ((d/5 cm)^2) and yaw cost -2 ((sin err/sin 10 deg)^2),
 #              hands-up band 0.80 -> 0.92 m (narrow-pair failures: 4 cm off the route line, 9-15 deg yaw, palms sagging)
+#          T5: T2 + non-table scenes anchored to S2far u200 (the last policy before the table stages; ANCHOR) instead of the
+#              start checkpoint + anti-refusal terms in the room passages (PASSAGE_PROGRESS): after T1-T2 the robot stopped
+#              in front of narrow cabinet passages (< 0.60 m: refusals 10-33% -> 88-98%) instead of turning sideways
 # CLONE=<git worktree pinned to a commit> runs that code instead of the live clone (a requeued job resumes only with the
 # code it started with). On the gpu partition: sbatch -p gpu --time=08:00:00 --mem=64000M ...
 # Data: dep-1's tree is mirrored under /l/users/$USER/cat_root and reached through CAT_PATH_MAP (cat_mjlab/pathmap.py);
@@ -69,6 +72,11 @@ case $VARIANT in
         TABLE_ZONE_FACING=-2 MASSES="0.15 0.35 0.08 0.14 0.12 0.03 0.25 0.03" REACTIVE_SHARE=0.3 RAISED=0.3 \
         ROUTE_FILE=hpc/route_anchor_no_reactive_no_tables_v2.json
       : "${STUDENT:?T4 needs STUDENT=<T2 checkpoint>}" ;;
+  T5) export BANK=data/furniture/tablegap_v1 POWER=-0.02 HAND_FAR="0.20 0.40" RETREAT_SUCCESS=0.15 TABLE_FACING=-6 \
+        TABLE_LEG_POWER=-0.005 TABLE_PROGRESS=1 TABLE_HANDS_UP=2 PASSAGE_PROGRESS=1 MASSES="0.15 0.35 0.08 0.14 0.12 0.03 0.25 0.03" \
+        REACTIVE_SHARE=0.3 RAISED=0.3 ROUTE_FILE=hpc/route_anchor_no_reactive_no_tables_v2.json \
+        ANCHOR=${ANCHOR:-$L/checkpoints/stationary_hands_S2far_u200.pt}
+      : "${STUDENT:?T5 needs STUDENT=<T2 checkpoint>}" ;;
   *) echo "unknown VARIANT $VARIANT"; exit 2 ;;
 esac
 if [[ -n "${SMOKE:-}" ]]; then
@@ -85,7 +93,7 @@ if [[ -f $RUN/run/status.json ]]; then export EXTRA="--resume ${EXTRA:-}" FRESH=
 { echo "== job $SLURM_JOB_ID ($SLURM_JOB_NAME) variant $VARIANT on $(hostname) at $(date -Is)"
   nvidia-smi --query-gpu=name,driver_version,memory.total --format=csv,noheader
   echo "commit $(git -C $CLONE rev-parse HEAD) $(git -C $CLONE status --porcelain --untracked-files=no | wc -l) modified tracked files (copied to $REPO)"
-  echo "STATIONARY='${STATIONARY:-}' POWER='${POWER:-}' FEET_HOLD='${FEET_HOLD:-}' BANK='${BANK:-}' ARM_STD='${ARM_STD:-}' HAND_FAR='${HAND_FAR:-}' RETREAT_SUCCESS='${RETREAT_SUCCESS:-}' TABLE_FACING='${TABLE_FACING:-}' TABLE_LEG_POWER='${TABLE_LEG_POWER:-}' TABLE_PROGRESS='${TABLE_PROGRESS:-}' TABLE_HANDS_UP='${TABLE_HANDS_UP:-}' TABLE_HANDS_UP_BAND='${TABLE_HANDS_UP_BAND:-}' TABLE_CENTER='${TABLE_CENTER:-}' TABLE_ZONE_FACING='${TABLE_ZONE_FACING:-}' MASSES='${MASSES:-}' REACTIVE_SHARE='${REACTIVE_SHARE:-}' RAISED='${RAISED:-}' ROUTE_FILE='${ROUTE_FILE:-}' NUM_ENVS=$NUM_ENVS NUM_MINIBATCHES=$NUM_MINIBATCHES EXTRA='${EXTRA:-}'"
+  echo "STATIONARY='${STATIONARY:-}' POWER='${POWER:-}' FEET_HOLD='${FEET_HOLD:-}' BANK='${BANK:-}' ARM_STD='${ARM_STD:-}' HAND_FAR='${HAND_FAR:-}' RETREAT_SUCCESS='${RETREAT_SUCCESS:-}' TABLE_FACING='${TABLE_FACING:-}' TABLE_LEG_POWER='${TABLE_LEG_POWER:-}' TABLE_PROGRESS='${TABLE_PROGRESS:-}' TABLE_HANDS_UP='${TABLE_HANDS_UP:-}' TABLE_HANDS_UP_BAND='${TABLE_HANDS_UP_BAND:-}' TABLE_CENTER='${TABLE_CENTER:-}' TABLE_ZONE_FACING='${TABLE_ZONE_FACING:-}' PASSAGE_PROGRESS='${PASSAGE_PROGRESS:-}' ANCHOR='${ANCHOR:-}' MASSES='${MASSES:-}' REACTIVE_SHARE='${REACTIVE_SHARE:-}' RAISED='${RAISED:-}' ROUTE_FILE='${ROUTE_FILE:-}' NUM_ENVS=$NUM_ENVS NUM_MINIBATCHES=$NUM_MINIBATCHES EXTRA='${EXTRA:-}'"
   echo "STUDENT=$STUDENT CAT_PATH_MAP=$CAT_PATH_MAP"
   echo "config: configs/pilots/stationary_hands_20261113.sh"; } >> $RUN/run_info.txt
 nvidia-smi --query-gpu=timestamp,memory.used,utilization.gpu --format=csv,noheader -l ${GPU_LOG_SECONDS:-60} >> $RUN/gpu.csv &

@@ -8,6 +8,7 @@
 #   S2 energy      POWER=-0.02: cost per watt of joint mechanical power in standing episodes (old 0.3 m spot rule) --
 #                  does pricing energy alone make the robot move its light arms instead of stepping aside?
 #   S0 control     neither (old 0.3 m spot rule): reproduces "the robot steps aside".
+# ANCHOR=<checkpoint> anchors to that policy instead of STUDENT (T5: the pre-table S2far u200).
 # Anchor to u150 everywhere except the flat background scene the standing episodes use (hpc/route_anchor_no_reactive.json),
 # so new arm behaviour there is free while traversal skills stay anchored. 10 critic warm-up updates (new terms).
 set -euo pipefail
@@ -53,7 +54,7 @@ RUN_DIR=${RUN_DIR:-outputs/stationary_hands_20261113}
   --commanded-blocking-map off \
   --reward-group-room wholebody_hand_clearance=-40 heading_align=1.0 body_motion=-1.5 sideways_bonus=0 stall=0 goal_progress=0 goal_bonus=0 \
   --sdf-rate-obs \
-  --distill-expert self="$STUDENT" --distill-route _default=self --distill-route-file "${ROUTE_FILE:-hpc/route_anchor_no_reactive.json}" \
+  --distill-expert self="${ANCHOR:-$STUDENT}" --distill-route _default=self --distill-route-file "${ROUTE_FILE:-hpc/route_anchor_no_reactive.json}" \
   --distill-regularize ${REG:-0.5 0.3 100} --critic-warmup-updates ${WARMUP:-10} \
   --robust-action-latency-ms 20 --robust-pose-noise 0.01 0.005 0.6 --robust-pose-period 3 8 \
   --robust-mount 1.5 1.0 0.015 --robust-friction 0.5 1.2 --robust-mass 0.9 1.1 --robust-ramp-steps ${RAMP:-0} --upper-target-average \
@@ -65,7 +66,7 @@ RUN_DIR=${RUN_DIR:-outputs/stationary_hands_20261113}
   ${TABLE_FACING:+--table-facing-weight $TABLE_FACING} ${TABLE_LEG_POWER:+--table-leg-power-weight $TABLE_LEG_POWER} \
   ${TABLE_PROGRESS:+--table-progress} ${TABLE_HANDS_UP:+--table-hands-up-weight $TABLE_HANDS_UP} \
   ${TABLE_HANDS_UP_BAND:+--table-hands-up-band $TABLE_HANDS_UP_BAND} ${TABLE_CENTER:+--table-center-weight $TABLE_CENTER} \
-  ${TABLE_ZONE_FACING:+--table-zone-facing-weight $TABLE_ZONE_FACING} \
+  ${TABLE_ZONE_FACING:+--table-zone-facing-weight $TABLE_ZONE_FACING} ${PASSAGE_PROGRESS:+--passage-progress} \
   --sgs-slots ${SGS_SLOTS:-4} --sgs-history 100 --sgs-target 0.66 --sgs-kappa 5 --sgs-temperature 2 --sgs-epsilon 1e-8 \
   --sgs-uniform-mix ${SGS_MIX:-0.30} --sgs-prior $SGS_PRIOR --sgs-prior-count 4 \
   --style-library data/motion_library/library_v1 --style-weight 0.1 \

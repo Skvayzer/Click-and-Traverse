@@ -151,6 +151,12 @@ class CATTask:
         # Table-edge passages (generator: raise the hands past a 70-72 cm tabletop) for the table_* terms.
         self.table_scene=torch.tensor([(s.get('source') or {}).get('kind')=='table-edge-passage' for s in self.bank.manifest['scenes']],
                                       dtype=torch.bool,device=self.device)
+        # Room passages that also get the anti-refusal terms (config passage_progress: hand-contrast passages and width
+        # scaffolds, start -> goal along +x within 6 deg). Without them, stopping in front of a narrow cabinet passage
+        # cost nothing in a room world, and after the table stages the policy stopped there instead of turning sideways.
+        kinds=set(self.config.get('progress_passage_kinds') or ())
+        self.passage_scene=torch.tensor([(s.get('source') or {}).get('kind') in kinds for s in self.bank.manifest['scenes']],
+                                        dtype=torch.bool,device=self.device)
         # Protected table pairs: progress intervals of each pair along the certified route (module centre = half the
         # start-goal length + center_local_x_m, +-length_m / 2; the hand-contrast zones reach 0.6 m before / 0.4 m
         # after a pair) and the gap at tabletop height. NaN where a scene has no protected pair.
@@ -1337,6 +1343,8 @@ class CATTask:
             cat=self.bank.crossed_is_plane[self.scene_ids]
             if self.config.get('table_progress_terms') and getattr(self,'table_scene',None) is not None:
                 cat=cat|self.table_scene[self.scene_ids]     # table-edge passages also run start -> goal along +x (+-6 deg)
+            if getattr(self,'passage_scene',None) is not None and bool(self.passage_scene.any()):
+                cat=cat|self.passage_scene[self.scene_ids]   # hand-contrast / width-scaffold passages: also along +x (+-6 deg)
             cat=cat&(torch.ones_like(self.scene_ids,dtype=torch.bool) if mask is None else ~mask)
             vx=self._sensor('global_linvel_pelvis',self.all_ids)[:,0]
             i['progress_ema']=.98*i['progress_ema']+.02*vx
@@ -1533,7 +1541,12 @@ class CATTask:
             # stalled. With table_progress, those terms keep their CAT (global) weights in table-edge scenes.
             progress_terms=set(self.config.get('table_progress_terms') or ())
             table=getattr(self,'table_scene',None)
-            table_room=room_world&~table[self.scene_ids] if progress_terms and table is not None else room_world
+            if progress_terms and table is not None:
+                passage=getattr(self,'passage_scene',None)
+                exempt=table|passage if passage is not None else table   # passage_progress: room passages keep them too
+                table_room=room_world&~exempt[self.scene_ids]
+            else:
+                table_room=room_world
             scaled={k:(v*torch.where(table_room if k in progress_terms else room_world,float(over[k]),float(scales[k])) if k in over
                        else v*float(scales[k])) for k,v in rewards.items()}
         else:
