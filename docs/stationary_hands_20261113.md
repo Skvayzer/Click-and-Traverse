@@ -113,6 +113,41 @@ T1 start 0.60 -> T1 u130 0.59 overall; per type within +-0.03 (furniture 0.90/0.
 
 Videos: outputs/stationary_hands_20261113/videos_S2_vs_S2far, videos_0045 (S2far vs S2far2; table start vs T1).
 
+### Table passages: width curriculum (T2) and arm exploration (T3), 2026-11-15
+
+T1, T1b and T1c (progress terms in table scenes, facing cost -6, hands-up bonus 2) never passed the 0.44 m
+forward_protected pairs: their certificate leaves the body 4 cm at the tightest point and only the raised posture
+clears (tucked hands still hit), with no intermediate widths to learn from. T2 (from T1c u640, 2026-11-15 02:04, job
+299749) trains on bank `tablegap_v1` = sidegap_v2 + 64 protected table pairs with gaps 0.46-0.70 m (hanging hands hit,
+a raised or tucked posture clears; `scripts/generate_table_gaps.py`), with the table scenes dropped from the anchor
+(`hpc/route_anchor_no_reactive_no_tables_v2.json`). T3 = T2 + arm exploration sigma 0.25 (legs/waist stay 0.10;
+2026-11-15 04:24, job 299888).
+
+`scripts/eval_table_style.py --bank data/furniture/tablegap_v1`, 8 deterministic episodes per scene (one per env, up to
+60 s), clean. Sideways / raised are shares of walking-near-table steps; goal and stalled (still in front of or inside
+the passage at 60 s) are shares of all episodes (the script's own `goal` divides by finished episodes only, which
+flatters runs that stall):
+
+| gap (episodes) | T1c u640 (start) | T2 u120 | **T2 u410** | T3 u280 |
+|---|---|---|---|---|
+| open table scenes: sideways / goal | 2% / 100% | 1% / 100% | 1% / 100% | 0% / 100% |
+| 0.62-0.70 m (168): sideways / raised / goal / stalled | 53 / 20 / 84 / 6% | 25 / 27 / 96 / 0% | **4 / 61 / 99 / 0%** | 19 / 38 / 98 / 0% |
+| 0.54-0.62 m (168) | 73 / 19 / 37 / 49% | 51 / 27 / 64 / 8% | **10 / 68 / 95 / 0%** | 43 / 40 / 72 / 4% |
+| 0.46-0.54 m (176) | 79 / 19 / 5 / 44% | 71 / 17 / 15 / 28% | **29 / 61 / 51 / 0%** | 61 / 35 / 15 / 7% |
+| original 0.44 m (128) | 83 / 18 / 0 / 42% | 77 / 14 / 0 / 26% | **46 / 55 / 2 / 2%** | 57 / 46 / 0 / 2% |
+
+What ends the narrow passages (share of episodes; the hand violation is a palm 4 cm inside a table, the regions are the
+body-collision proxies): T2 u410 at 0.44 m -- legs 57%, hand violation 36%, feet 3%, hands 2%; at 0.46-0.54 m -- hand
+violation 32%, legs 14%. T3 u280 at 0.46-0.54 m: hand violation 70%, legs 9%.
+
+Retention (eval_per_scene, 384 fixed non-table scenes x 4): T1c u640 clean 0.576 (contact 0.28, refused 0.14) vs T2
+u120 0.571 (0.29, 0.14).
+
+Reading: the width curriculum works -- T2 walks forward with the hands raised wherever the gap leaves a few centimetres
+(0.54-0.70 m: 95-99% goal, 4-10% sideways) and is still improving at the narrow end (0.46-0.54 m goal 15% -> 51%
+between u120 and u410); it no longer stalls in front of the gaps. T3's arm exploration shows no benefit at its update count (behind T2's trajectory). Videos (T1c
+vs T2 u200 at 0.66 / 0.58 / 0.50 / 0.44 m): outputs/stationary_hands_20261113/videos_T2.
+
 ## Measurement notes
 - Standing power, u150 clean: 26-31 W at rest (CPU trace), recovery steps after a shove 170-570 W.
 - Training metrics `reactive/*` average over all env-steps: divide by `reactive/reactive_standing` (power) or

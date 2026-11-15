@@ -7,7 +7,8 @@ deterministic actions, no pushes, nominal conditions unless --robust. Style is m
   sideways   the body faces 45-135 deg away from where it is moving (turned to sidle past)
   raised     a hand above the tabletop band (palm z > 0.80 m; tabletops are 0.70-0.72 m)
   tucked     neither hand raised, both palms within 0.22 m of the pelvis axis laterally (body frame)
-Outcomes per episode as eval_per_scene: clean goal, obstacle contact, hand contact, fall; `ends` gives the share of
+Outcomes per episode as eval_per_scene: clean goal, obstacle contact, hand contact, fall -- shares of FINISHED episodes;
+`goal_of_all` and `stalled` (still running at --max-steps) are shares of all episodes; `ends` gives the share of
 episodes whose body touched (or came within the clearance limits of) an obstacle, per body region.
 
   eval_table_style.py CKPT [CKPT ...] --episodes 8 --out result.json
@@ -109,7 +110,10 @@ def evaluate(checkpoint, episodes, robust, bank, seed, max_steps):
         e = float(out_flags['done'][mask].sum())
         f = lambda k: round(float(acc[k][mask].sum()) / w, 4) if w else None
         g = lambda k: round(float((out_flags[k] & out_flags['done'])[mask].sum()) / e, 4) if e else None
-        return dict(episodes=int(e), walking_near_table_steps=int(w), sideways=f('sideways'), backward=f('backward'),
+        n = float(mask.sum())                                             # all episodes, finished or not
+        return dict(episodes=int(e), envs=int(n), stalled=round(1. - e / n, 4) if n else None,
+                    goal_of_all=round(float((out_flags['goal'] & out_flags['done'])[mask].sum()) / n, 4) if n else None,
+                    walking_near_table_steps=int(w), sideways=f('sideways'), backward=f('backward'),
                     hand_raised=f('raised'), hands_tucked=f('tucked'), goal=g('goal'), clean_goal=round(float((out_flags['goal'] & ~out_flags['obstacle'])[mask].sum()) / e, 4) if e else None,
                     obstacle_contact=g('obstacle'), hand_contact=g('hands'), fall=g('fall'),
                     ends={k.replace('body_collision_', 'touch_'): g(k) for k in ENDS})
