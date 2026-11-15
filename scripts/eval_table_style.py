@@ -43,6 +43,12 @@ def evaluate(checkpoint, episodes, robust, bank, seed, max_steps):
     scenes_manifest = json.load(open(str(B) + '_packed/manifest.json'))['scenes']
     ids = [i for i, s in enumerate(scenes_manifest) if (s.get('source') or {}).get('kind') == 'table-edge-passage']
     roles = {i: ((scenes_manifest[i]['source'].get('hand_contrast') or {}).get('role')) for i in ids}
+    def gap_of(i):    # table gap of the scene's modules (curriculum scenes record it; originals: module width)
+        src = scenes_manifest[i]['source']
+        if src.get('table_gap_curriculum'): return float(src['table_gap_curriculum']['gap_m'])
+        modules = (src.get('hand_contrast') or {}).get('modules') or [{}]
+        return float(modules[0].get('width_m', float('nan')))
+    gaps = {i: gap_of(i) for i in ids}
     n_envs = len(ids) * episodes
     ns = SimpleNamespace(bank_manifest=Path(str(B) + '_packed/manifest.json'), body_collision_bank=Path(str(B) + '_collision/manifest.json'),
                          body_collision_resets=Path(str(B) + '_resets/manifest.json'), device=dev, seed=seed, num_envs=n_envs,
@@ -102,8 +108,12 @@ def evaluate(checkpoint, episodes, robust, bank, seed, max_steps):
                     hand_raised=f('raised'), hands_tucked=f('tucked'), goal=g('goal'), clean_goal=round(float((out_flags['goal'] & ~out_flags['obstacle'])[mask].sum()) / e, 4) if e else None,
                     obstacle_contact=g('obstacle'), hand_contact=g('hands'), fall=g('fall'))
     role = torch.tensor([0 if roles[int(s)] == 'open' else 1 for s in job], device=dev)
+    gap = torch.tensor([gaps[int(s)] for s in job], device=dev)
+    bins = {'gap_0.43-0.45 (original narrow)': (gap <= .45), 'gap_0.46-0.54': (gap > .45) & (gap <= .54),
+            'gap_0.54-0.62': (gap > .54) & (gap <= .62), 'gap_0.62-0.70': (gap > .62) & (gap <= .71)}
+    by_gap = {name: summarise((role == 1) & mask) for name, mask in bins.items() if bool(((role == 1) & mask).any())}
     return dict(checkpoint=str(checkpoint), robust=robust, episodes_per_scene=episodes, steps=t + 1, seconds=round(time.time() - start),
-                all=summarise(torch.ones_like(live)), open=summarise(role == 0), forward_protected=summarise(role == 1))
+                all=summarise(torch.ones_like(live)), open=summarise(role == 0), forward_protected=summarise(role == 1), by_gap=by_gap)
 
 
 def main():
