@@ -151,6 +151,18 @@ class CATTask:
         # Table-edge passages (generator: raise the hands past a 70-72 cm tabletop) for the table_* terms.
         self.table_scene=torch.tensor([(s.get('source') or {}).get('kind')=='table-edge-passage' for s in self.bank.manifest['scenes']],
                                       dtype=torch.bool,device=self.device)
+        # Protected table pairs: progress intervals of each pair along the certified route (module centre = half the
+        # start-goal length + center_local_x_m, +-length_m / 2; the hand-contrast zones reach 0.6 m before / 0.4 m
+        # after a pair) and the gap at tabletop height. NaN where a scene has no protected pair.
+        spans=np.full((self.bank.count,3,2),np.nan,dtype=np.float32);gaps=np.full(self.bank.count,np.nan,dtype=np.float32)
+        for k,record in enumerate(self.bank.manifest['scenes']):
+            source=record.get('source') or {}
+            if source.get('kind')!='table-edge-passage' or source['hand_contrast'].get('role')!='forward_protected':continue
+            contrast=source['hand_contrast'];half=.5*float(np.linalg.norm(np.subtract(record['goal'][:2],record['start'][:2])))
+            gaps[k]=float(contrast['table_gap_m'])
+            for j,module in enumerate(contrast['modules'][:3]):
+                centre=half+float(module['center_local_x_m']);spans[k,j]=(centre-.5*float(module['length_m']),centre+.5*float(module['length_m']))
+        self.table_spans=torch.as_tensor(spans,device=self.device);self.table_gap=torch.as_tensor(gaps,device=self.device)
         self.reactive_calm=torch.zeros(self.num_envs,dtype=torch.long,device=self.device)
         self.leg_ids=torch.tensor([self.model.body(n).id for n in ('left_knee_link','left_ankle_roll_link','right_knee_link','right_ankle_roll_link')],device=self.device)
         self.hand_radii=tensor([hand_sphere(s)['radius'] for s in ('left','right')])
@@ -1420,15 +1432,20 @@ class CATTask:
                 near=(i['sdf'][:,5:7,0]<.30).float()
                 lift=((i['positions'][:,5:7,2]-low)/(high-low)).clamp(0.,1.)
                 rewards['table_hands_up']=(near*lift).mean(-1)*table.float()
-            # Between a protected table pair: the hand-contrast zone of a forward_protected module along the certified
-            # route (start_m..end_m incl. the 0.15 m fades; open pairs, ~1.5 m apart, are left free). The narrow pairs
-            # leave the raised-hand body ~4 cm per side: keep the pelvis on the route line (cross-track, saturating at
-            # 10 cm) and the body facing along the route there.
+            # Protected table pairs (open pairs, ~1.5 m apart, are left free). The 0.44 m pairs leave the raised-hand
+            # body ~4 cm per side. With the pelvis between the tables (+-0.10 m of a pair along the route), price the
+            # cross-track distance from the route line beyond the slack a wider gap adds, (gap - 0.437) / 2, in units
+            # of 5 cm, saturating at 10 cm; from 0.45 m before a pair (the hands are held ~0.43 m forward) to 0.15 m
+            # after it, price the yaw error from the route tangent.
             # torch.where, not a mask product: scenes without a route (CAT) can carry non-finite route geometry.
-            zone=table&self.contrast['enabled']&(self.contrast['role']==1)
+            progress=self.navigation['progress_m'][:,None];spans=self.table_spans[self.scene_ids]
+            near_pair=lambda before,after:((progress>=spans[...,0]-before)&(progress<=spans[...,1]+after)).any(-1)   # NaN -> False
+            zone=table&near_pair(.10,.10)
+            hand_zone=table&near_pair(.45,.15)
+            slack=torch.nan_to_num(.5*(self.table_gap[self.scene_ids]-.437),nan=0.).clamp_min(0.)
             cross=torch.where(zone,self.navigation['cross_track'],0.)
             if 'table_center' in scales:
-                rewards['table_center']=(cross/.05).clamp(max=2.).square()
+                rewards['table_center']=torch.where(zone,((cross-slack).clamp_min(0.)/.05).clamp(max=2.).square(),0.)
             if 'table_zone_facing' in scales:
                 # Yaw error from the route tangent, (sin err / sin 10 deg)^2 saturating at 4 (20 deg; any backward
                 # facing). 1 - cos is too flat here: 10-15 deg swings the forward-held hands 7-11 cm sideways and
@@ -1436,7 +1453,7 @@ class CATTask:
                 tangent=self.navigation['tangent']/torch.linalg.vector_norm(self.navigation['tangent'],dim=-1,keepdim=True).clamp_min(1e-6)
                 along=(facing*tangent).sum(-1);across=facing[:,0]*tangent[:,1]-facing[:,1]*tangent[:,0]
                 error=torch.where(along>0,(across/.17365).square().clamp(max=4.),4.)
-                rewards['table_zone_facing']=torch.where(zone,error,0.)
+                rewards['table_zone_facing']=torch.where(hand_zone,error,0.)
             telemetry['table_walking']=walking.float();telemetry['table_sideways']=(walking&(alignment.abs()<.7071)).float()
             telemetry['table_zone']=zone.float();telemetry['table_cross_track_m']=cross
         if 'reactive_feet_hold' in scales and self.reactive_objects is not None:
