@@ -148,6 +148,23 @@ Reading: the width curriculum works -- T2 walks forward with the hands raised wh
 between u120 and u410); it no longer stalls in front of the gaps. T3's arm exploration shows no benefit at its update count (behind T2's trajectory). Videos (T1c
 vs T2 u200 at 0.66 / 0.58 / 0.50 / 0.44 m): outputs/stationary_hands_20261113/videos_T2.
 
+Where the narrow passages fail (`scripts/diagnose_table_failures.py`, T2 u410, 8 deterministic episodes per scene;
+"between" = pelvis within 0.40 m of an obstacle while walking; palms "above" = more than 8 cm over the tabletop):
+
+| gap | goal | failures touch (share of failed episodes) | at failure: yaw / off route line / lowest palm | between the tables, successes vs failures: off line / yaw / both palms above |
+|---|---|---|---|---|
+| original 0.44 m | 2% | legs 62%, hand 33%, feet 6% | 7 deg / 3.7 cm / 0.83 m | 2.4 vs 4.2 cm / 9 vs 9 deg / 81 vs 87% |
+| 0.46-0.50 m | 27% | hand 50%, legs 40% | 9 deg / 4.9 cm / 0.78 m | 2.8 vs 4.5 cm / 8 vs 11 deg / 72 vs 73% |
+| 0.50-0.54 m | 67% | hand 66% (left 72%), legs 25% | 15 deg / 4.9 cm / 0.73 m | 3.1 vs 4.8 cm / 9 vs 15 deg / 66 vs 59% |
+
+Between the tables T2 already does the asked-for thing -- it never turns sideways there (the sideways share above comes
+from the approach) and holds both palms over the tabletop -- and fails on precision: 4-5 cm off the route line where
+the raised-hand body has 4 cm per side at 0.44 m, 9-15 deg of yaw (which swings the forward-held hands 7-11 cm
+sideways), and sagging palms at 0.50-0.54 m. T4 (from T2 u450, 2026-11-15 10:48, gpu partition job 300226, 8 h) adds,
+between a table pair (the hand-contrast module zones of the certified route): a pelvis cross-track cost -2 x
+(d / 5 cm)^2 (saturating at 10 cm), a yaw cost -2 x (sin err / sin 10 deg)^2 (saturating at 20 deg), and moves the
+hands-up band to palm z 0.80 -> 0.92 m (the certified raised posture holds the palms at ~0.94 m).
+
 ## Measurement notes
 - Standing power, u150 clean: 26-31 W at rest (CPU trace), recovery steps after a shove 170-570 W.
 - Training metrics `reactive/*` average over all env-steps: divide by `reactive/reactive_standing` (power) or
