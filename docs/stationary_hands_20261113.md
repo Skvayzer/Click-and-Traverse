@@ -160,11 +160,14 @@ Where the narrow passages fail (`scripts/diagnose_table_failures.py`, T2 u410, 8
 Between the tables T2 already does the asked-for thing -- it never turns sideways there (the sideways share above comes
 from the approach) and holds both palms over the tabletop -- and fails on precision: 4-5 cm off the route line where
 the raised-hand body has 4 cm per side at 0.44 m, 9-15 deg of yaw (which swings the forward-held hands 7-11 cm
-sideways), and sagging palms at 0.50-0.54 m. T4 (from T2 u450, 2026-11-15 11:00, gpu partition job 300239, 8 h) adds,
-between a protected table pair (the hand-contrast zones of the forward_protected modules along the certified route; a
-first start that also priced the open pairs was stopped after 13 updates): a pelvis cross-track cost -2 x
-(d / 5 cm)^2 (saturating at 10 cm), a yaw cost -2 x (sin err / sin 10 deg)^2 (saturating at 20 deg), and moves the
-hands-up band to palm z 0.80 -> 0.92 m (the certified raised posture holds the palms at ~0.94 m).
+sideways), and sagging palms at 0.50-0.54 m. T4 (from T2 u450, 2026-11-15 11:28, gpu partition job 300255, 8 h)
+adds, at the protected pairs only: with the pelvis between the tables (+-0.10 m of a pair along the route), a
+cross-track cost -2 x (excess / 5 cm)^2 on the distance from the route line beyond the slack a wider gap adds,
+(gap - 0.437 m) / 2, saturating at 10 cm; from 0.45 m before a pair (the hands are held ~0.43 m forward) to 0.15 m
+after it, a yaw cost -2 x (sin err / sin 10 deg)^2 saturating at 20 deg; and the hands-up band moves to palm z
+0.80 -> 0.92 m (the certified raised posture holds the palms at ~0.94 m). Two earlier starts were stopped after
+13 and 11 updates: they also priced the open pairs, then the whole hand-contrast zones (1.65 m around each 0.65 m
+pair), where the mean cross-track was ~10 cm (the approach) and the cost saturated.
 
 ## Measurement notes
 - Standing power, u150 clean: 26-31 W at rest (CPU trace), recovery steps after a shove 170-570 W.
