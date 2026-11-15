@@ -1432,6 +1432,13 @@ class CATTask:
             if 'table_leg_power' in scales:
                 legs=torch.nan_to_num((self.data.ctrl[:,:15]*self.data.qvel[:,6:21]).abs().sum(-1),nan=0.,posinf=0.,neginf=0.)
                 rewards['table_leg_power']=legs*table.float()
+            # Mechanical power of all 29 joints (W, |torque x velocity|) in table-edge scenes, as the standing price.
+            # table_power is the energy-only alternative to the facing / hands-up terms (E1): moving an arm costs less
+            # than turning or side-stepping the whole body, so if energy is what makes arm-first protection natural,
+            # pricing it alone should produce raised or tucked hands where the gap allows. Measured always.
+            power=torch.nan_to_num((self.data.ctrl*self.data.qvel[:,6:]).abs().sum(-1),nan=0.,posinf=0.,neginf=0.)
+            if 'table_power' in scales:rewards['table_power']=power*table.float()
+            telemetry['table_power_w']=power*table.float()
             if 'table_hands_up' in scales:
                 # Exploration guide for the forward pass between table pairs (0.44 m gap at the 0.70-0.72 m tabletops):
                 # a hand within 0.30 m of a table earns credit for being above the tabletop band (palm z low -> high,
@@ -1911,7 +1918,7 @@ class CATTask:
                         'heading_gate', 'heading_error_abs', 'hand_room_scale', 'side_gap_stage', 'side_gap_sideways_start',
                         'reactive_power_w', 'reactive_standing', 'reactive_end_lift', 'reactive_end_slide', 'reactive_end_drift',
                         'reactive_violation', 'reactive_settled', 'reactive_feet_moved_m', 'table_walking', 'table_sideways',
-                        'table_zone', 'table_cross_track_m'):
+                        'table_zone', 'table_cross_track_m', 'table_power_w'):
                 if key in self.telemetry: metrics[key] = self.telemetry[key].clone()
             metrics['contrast_role'] = self.contrast['role'].clone()
             metrics['contrast_unresolved'] = (~self.outcome_counted | resolved).clone()

@@ -233,6 +233,9 @@ def parser():
         target.add_argument("--table-progress", action="store_true",
                             help="Table-edge passages keep the CAT weights of stall / goal_progress / goal_bonus (the room "
                                  "reward group zeroes them, so stalling in front of a narrow table gap cost nothing)")
+        target.add_argument("--table-power-weight", type=float,
+                            help="Table-edge passages: cost (negative) per watt of mechanical power of all 29 joints -- the "
+                                 "energy-only alternative to the facing and hands-up terms")
         target.add_argument("--table-leg-power-weight", type=float,
                             help="Table-edge passages: cost (negative) per watt of leg + waist joint power (arms free)")
         target.add_argument("--reactive-feet-hold-weight", type=float,

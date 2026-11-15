@@ -45,7 +45,8 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
                      reactive_stationary=None,reactive_power_weight=None,reactive_feet_hold_weight=None,
                      reactive_hand_clearance=None,reactive_retreat_success=None,table_facing_weight=None,
                      table_leg_power_weight=None,table_progress=None,table_hands_up_weight=None,
-                     table_hands_up_band=None,table_center_weight=None,table_zone_facing_weight=None,passage_progress=None):
+                     table_hands_up_band=None,table_center_weight=None,table_zone_facing_weight=None,passage_progress=None,
+                     table_power_weight=None):
     from cat_ppo.furniture.generalist_config import released_config
     from .collision import PROPOSAL
     config=copy.deepcopy(released_config()['env_config'] if base_config is None else base_config)
@@ -232,7 +233,8 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
     for name,key,weight in (('table_facing_weight','table_facing',table_facing_weight),
                             ('table_leg_power_weight','table_leg_power',table_leg_power_weight),
                             ('table_center_weight','table_center',table_center_weight),
-                            ('table_zone_facing_weight','table_zone_facing',table_zone_facing_weight)):
+                            ('table_zone_facing_weight','table_zone_facing',table_zone_facing_weight),
+                            ('table_power_weight','table_power',table_power_weight)):
         if weight is not None:
             # Table-edge passages only (task._rewards): face the route while walking; price leg + waist power;
             # between a table pair, stay on the route line and face along it.
