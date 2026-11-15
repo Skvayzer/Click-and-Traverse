@@ -160,8 +160,9 @@ Where the narrow passages fail (`scripts/diagnose_table_failures.py`, T2 u410, 8
 Between the tables T2 already does the asked-for thing -- it never turns sideways there (the sideways share above comes
 from the approach) and holds both palms over the tabletop -- and fails on precision: 4-5 cm off the route line where
 the raised-hand body has 4 cm per side at 0.44 m, 9-15 deg of yaw (which swings the forward-held hands 7-11 cm
-sideways), and sagging palms at 0.50-0.54 m. T4 (from T2 u450, 2026-11-15 10:48, gpu partition job 300226, 8 h) adds,
-between a table pair (the hand-contrast module zones of the certified route): a pelvis cross-track cost -2 x
+sideways), and sagging palms at 0.50-0.54 m. T4 (from T2 u450, 2026-11-15 11:00, gpu partition job 300239, 8 h) adds,
+between a protected table pair (the hand-contrast zones of the forward_protected modules along the certified route; a
+first start that also priced the open pairs was stopped after 13 updates): a pelvis cross-track cost -2 x
 (d / 5 cm)^2 (saturating at 10 cm), a yaw cost -2 x (sin err / sin 10 deg)^2 (saturating at 20 deg), and moves the
 hands-up band to palm z 0.80 -> 0.92 m (the certified raised posture holds the palms at ~0.94 m).
 
