@@ -211,6 +211,18 @@ u170 at 0.44 and 0.50 m: runs/eval_T2final_T4_1115_1445/videos (cluster).
 T5 restarted from T2 u410 (16:40, job 300639; the first start from u650 was stopped after ~45 updates), with snapshots
 every 50 updates (`--snapshot-interval-updates`) so the best checkpoint can be picked instead of the last.
 
+T5 snapshots (table goal over all episodes / sideways near tables; cabinet passages clean / refused; all 384 scenes):
+
+| | tables 0.46-0.54 | tables 0.54-0.62 | narrow < 0.60 m | narrow >= 0.60 m | transition < 0.60 m | width scaffolds | all |
+|---|---|---|---|---|---|---|---|
+| S2far u200 (before tables) | - | - | 0.17 / 22% | 0.78 / 2% | 0.42 / 10% | 0.72 / 4% | 0.602 / 5% |
+| T2 u410 (T5 start) | 51% / 29% | 95% / 10% | 0.00 / 98% | 0.75 / 0% | 0.05 / 90% | 0.68 / 5% | 0.591 / 15% |
+| T5 u50 | 62% / 24% | 95% / 8% | 0.01 / 95% | 0.78 / 0% | 0.14 / 81% | 0.77 / 7% | 0.587 / 13% |
+| T5 u100 | 55% / 11% | 85% / 7% | 0.06 / 79% | 0.55 / 0% | 0.24 / 64% | 0.58 / 7% | 0.589 / 12% |
+
+Refusals in the narrow passages are coming down and the tables hold; the wider cabinet passages and scaffolds dipped at
+u100 -- watching the next snapshots (`~/jobs/summarize_snapshots.py T5` on the cluster prints this table).
+
 ## Measurement notes
 - Standing power, u150 clean: 26-31 W at rest (CPU trace), recovery steps after a shove 170-570 W.
 - Training metrics `reactive/*` average over all env-steps: divide by `reactive/reactive_standing` (power) or
