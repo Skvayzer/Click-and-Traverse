@@ -309,6 +309,25 @@ says go and the robot is not advancing (the stall test), no positive term is pai
 (not a large negative that would make ending the episode pay) and entering (~+13 per step) wins even if a touch later
 ends it. Telemetry `passage/passage_stalled`.
 
+J1 (2026-11-16, commit 0ea44b6; starts in E2c's slot after the E4/E2c update-200 evaluation, by the user's choice):
+E4 with energy priced per metre instead of per second. `--route-energy -0.01 234 0.6 2` replaces table_power +
+global_power: under a go command the price is P - q*v (v = pelvis speed along the commanded world-frame direction,
+capped at 0.6 m/s; q = 234 J/m, E2's clutter-room energy per metre), under a stop command P alone; table steps x2 as
+in E2/E4, standing episodes keep reactive_power. Dinkelbach form of a ratio objective: at q = the policy's own energy
+per metre it minimises energy per metre, so standing under a go command costs its full power and walking at that ratio
+costs about nothing. Hypothesis: the per-second price's preference for standing still is gone, so hesitation at tables
+and passages falls further than with the gate alone, at equal or lower energy per metre and with the arm-first
+standing behaviour unchanged. Expected effect is modest at 0.01/J (the progress credit is ~1.4 reward units/s at
+cruise against ~9/s of posture terms); a null result would mean the currency matters only at stronger prices, the next
+test (per-second against per-metre at ~5x the price). Telemetry: energy/energy_progress_mps, energy/energy_go.
+Measured vs E4 and E2c (same start, E2 u340) at matched updates: narrow / transition passages (refused, contact,
+clean), table forward success, 384-scene retention, energy per metre and COT, stalled share, standing foot motion.
+
+Evaluation of E4 at update 200 (`~/jobs/eval_e4.sh`) also runs the stalling diagnostic on the anchor (S2far u200) and
+on the start (E2 u340): the self-anchor covers every cabinet passage (route_anchor_no_reactive_no_tables_v2 drops only
+tables and reactive scenes), so if the anchor itself refuses, it holds the stall in place (Wolczyk et al. 2024) and
+the next arm (J2) masks it off the passages.
+
 ## Measurement notes
 - Standing power, u150 clean: 26-31 W at rest (CPU trace), recovery steps after a shove 170-570 W.
 - Training metrics `reactive/*` average over all env-steps: divide by `reactive/reactive_standing` (power) or
