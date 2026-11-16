@@ -22,6 +22,8 @@
 #              or leg-power price: does pricing energy alone make the robot pass tables facing forward with raised hands?
 #          E2: E1 + an energy price everywhere else (-0.01/W: traversal, walking; standing and tables keep -0.02):
 #              does an energy objective in every environment give natural, efficient traversal without losing skills?
+#          E2c: E2 continued from a checkpoint with a fresh optimizer (E2 could not resume: the old resume-contract path
+#              bug), anchored to S2far u200 as E2 was -- the control for the stalling fix
 #          E1np / E1nc: RQ2 ablations of E1 -- without the anti-refusal terms (np) / without the width curriculum, on the
 #              original 0.44 m and open table pairs only (nc)
 #          T5: T2 + non-table scenes anchored to S2far u200 (the last policy before the table stages; ANCHOR) instead of the
@@ -100,6 +102,11 @@ case $VARIANT in
         TABLE_PROGRESS=1 MASSES="0.15 0.35 0.08 0.14 0.12 0.03 0.25 0.03" REACTIVE_SHARE=0.3 RAISED=0.3 \
         ROUTE_FILE=hpc/route_anchor_no_reactive_no_tables.json SNAPSHOT_EVERY=50
       : "${STUDENT:?E1nc needs STUDENT=<S2far u200>}" ;;
+  E2c) export BANK=data/furniture/tablegap_v1 POWER=-0.02 HAND_FAR="0.20 0.40" RETREAT_SUCCESS=0.15 TABLE_POWER=-0.02 \
+        GLOBAL_POWER=-0.01 TABLE_PROGRESS=1 MASSES="0.15 0.35 0.08 0.14 0.12 0.03 0.25 0.03" REACTIVE_SHARE=0.3 RAISED=0.3 \
+        ROUTE_FILE=hpc/route_anchor_no_reactive_no_tables_v2.json SNAPSHOT_EVERY=50 \
+        ANCHOR=${ANCHOR:-$L/checkpoints/stationary_hands_S2far_u200.pt}
+      : "${STUDENT:?E2c needs STUDENT=<E2 checkpoint to continue from>}" ;;
   *) echo "unknown VARIANT $VARIANT"; exit 2 ;;
 esac
 if [[ -n "${SMOKE:-}" ]]; then
