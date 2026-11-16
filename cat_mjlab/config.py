@@ -18,6 +18,19 @@ def hand_curriculum_threshold(config, manifest=None):
     return float(value)
 
 
+def _portable(path):
+    """A repository file as a path relative to the repository root, so the recorded configuration (part of the resume
+    contract) does not depend on where the code runs: jobs run a private copy under /tmp/slurm-<job id>/code, whose
+    absolute path changed on every resubmission and refused every resume (E1, E2 on 2026-11-16). Only recorded --
+    the collision checker resolves its own proposal path."""
+    from .collision import ROOT
+    path=Path(path).resolve()
+    try:
+        return str(path.relative_to(Path(ROOT).resolve()))
+    except ValueError:
+        return str(path)
+
+
 def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
                      hand_protection=True,hand_contrast=False,collision_manifest=None,
                      reset_manifest=None,proposal_path=None,hand_curriculum_success_threshold=None,
@@ -85,7 +98,7 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
     config['wholebody']={'body_collision':dict(enabled=collision_manifest is not None,
         bank_manifest='' if collision_manifest is None else str(Path(collision_manifest).resolve()),
         reset_manifest='' if reset_manifest is None else str(Path(reset_manifest).resolve()),
-        proposal=str(Path(proposal_path or PROPOSAL).resolve()),event_penalty=1.)}
+        proposal=_portable(proposal_path or PROPOSAL),event_penalty=1.)}
     if bank_manifest is not None:
         config['pf_config']['bank_manifest']=str(Path(bank_manifest).resolve())
         config['pf_config']['sampling_alpha']=1.
