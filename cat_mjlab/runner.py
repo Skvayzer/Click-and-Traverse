@@ -1073,6 +1073,7 @@ def create_task(args, *, environment_config=None, sim_class=None):
         global_power_weight=getattr(args, 'global_power_weight', None),
         hand_tight_passages=getattr(args, 'hand_tight_passages', None),
         passage_stall_factor=getattr(args, 'passage_stall_factor', None),
+        passage_soft_contact=getattr(args, 'passage_soft_contact', None),
         reactive_retreat_success=getattr(args, 'reactive_retreat_success', None),
         robustness=(dict(action_latency_ms=float(args.robust_action_latency_ms or 0.),
                          pose_noise=[float(args.robust_pose_noise[0]), float(args.robust_pose_noise[1]), math.radians(float(args.robust_pose_noise[2]))]

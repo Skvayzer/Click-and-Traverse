@@ -160,6 +160,9 @@ class CATTask:
         # Room passages whose hand / elbow margins shrink with the room like CAT side gaps (hand_clearance_tight.passages):
         # between full-height cabinets the certified best hand clearance is ~11 cm, so the rooms' 9 cm / 20 cm margins
         # made every step inside a penalty the robot could not avoid, and stopping in front of the passage cost less.
+        soft_kinds={'contrastive-hand-passage','width-curriculum-scaffold'} if self.config.get('passage_soft_contact') is not None else set()
+        self.soft_passage_scene=torch.tensor([(s.get('source') or {}).get('kind') in soft_kinds for s in self.bank.manifest['scenes']],
+                                             dtype=torch.bool,device=self.device)
         tight_kinds={'contrastive-hand-passage','width-curriculum-scaffold'} if (self.config.get('hand_clearance_tight') or {}).get('passages') else set()
         self.tight_passage_scene=torch.tensor([(s.get('source') or {}).get('kind') in tight_kinds for s in self.bank.manifest['scenes']],
                                               dtype=torch.bool,device=self.device)
@@ -1127,6 +1130,16 @@ class CATTask:
             hands=regions[:,5]|((i['sdf'][:,5:7]<threshold).flatten(1).any(-1)&grace)
             done=fall|self_contact|numerical|hands
             self._soft_contact=obstacle&~hands
+        elif self.config.get('passage_soft_contact') is not None and bool(self.soft_passage_scene.any()):
+            # Room passages (E3): only a hand contact, or the root leaving the navigation corridor (which would also stop
+            # the route command for good), ends the episode; any other touch costs passage_soft_contact per step. With
+            # every touch terminal and ~+9 per step earned standing still, the policies learned never to enter narrow
+            # cabinet passages (refused 90%) although being inside paid more per step (13.5 vs 9.3): one touch forfeited
+            # the stream. Episode flags still record the touch, so success stays strict.
+            passage=self.soft_passage_scene[self.scene_ids]
+            hands=regions[:,5]|((i['sdf'][:,5:7]<threshold).flatten(1).any(-1)&grace)
+            done=torch.where(passage,fall|self_contact|numerical|hands|root,done)
+            self._soft_contact=passage&(fields|elbows|body)&~hands&~root
         if _get(self.config,'terminate_on_hand_self_contact',False):done=done|hand_self_contact
         recovery=self.config.get('route_recovery')
         route_lost=None
@@ -1849,7 +1862,8 @@ class CATTask:
         reward,components=self._rewards(action,contacts)
         penalty=-float(_get(self.config,'wholebody.body_collision.event_penalty',1.))*regions.any(-1)
         if getattr(self,'_soft_contact',None) is not None:
-            penalty=penalty-float(self.config['contact_penalty'])*self._soft_contact
+            weight=self.config['contact_penalty'] if self.config.get('contact_penalty') is not None else self.config['passage_soft_contact']
+            penalty=penalty-float(weight)*self._soft_contact
         if self.collision is not None:reward+=penalty;components['body_collision_event']=penalty
         i['wrapper_steps']+=1
         lengths=self.bank.episode_lengths[self.scene_ids]
