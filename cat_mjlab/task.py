@@ -1525,6 +1525,27 @@ class CATTask:
             s=self.reactive_objects.state;priced&=~(s['active']&~s['walking'])
         if 'global_power' in scales:rewards['global_power']=power_all*priced.float()
         telemetry['energy_power_w']=power_all;telemetry['energy_priced_w']=power_all*priced.float()
+        if 'route_energy' in scales:
+            # Energy per metre (J1; docs/stationary_hands_20261113.md, "Energy per metre, not per second"), in place of
+            # table_power + global_power. While the command says go, the price is P - q*v: joint power less the value
+            # of progress, q joules per metre at v = pelvis speed along the commanded (world-frame) direction, capped
+            # at the cruise speed. Minimising energy - q*distance minimises energy per metre when q is the policy's
+            # own ratio (Dinkelbach 1967), so standing under a go command costs its full power while walking at that
+            # ratio costs about nothing; a per-second price instead makes standing still the cheapest choice. While
+            # the command says stop, the price is P alone. Standing episodes keep reactive_power. Table steps weigh
+            # table_factor times more (E2: 0.02 at tables against 0.01 elsewhere), so the price per joule matches E4.
+            spec=self.config['route_energy'];cmd=i['command'];c=cmd[:,1:3];norm=torch.linalg.vector_norm(c,dim=-1)
+            go=((cmd[:,0]>.5)&(norm>.1)).float()
+            v=(self._sensor('global_linvel_pelvis',self.all_ids)[:,:2]*c).sum(-1)/norm.clamp_min(1e-6)
+            v=v.clamp(-float(spec['cap']),float(spec['cap']))*go
+            routed=torch.ones_like(power_all)
+            if self.reactive_objects is not None:
+                s=self.reactive_objects.state;routed=(~(s['active']&~s['walking'])).float()
+            weight=routed
+            if getattr(self,'table_scene',None) is not None and float(spec.get('table_factor',1.))!=1.:
+                weight=weight*torch.where(self.table_scene[self.scene_ids],float(spec['table_factor']),1.)
+            rewards['route_energy']=(power_all-float(spec['q'])*v)*weight
+            telemetry['energy_progress_mps']=v*routed;telemetry['energy_go']=go*routed
         if 'reactive_event' in scales and self.reactive_objects is not None:
             # Sparse, paid once per finished approach: +1 handled, -1 unhandled for a threatening
             # object (buckets 0/1), 0 for an unneeded flinch. Dense shaping (hand_clearance,
@@ -1971,7 +1992,8 @@ class CATTask:
                         'heading_gate', 'heading_error_abs', 'hand_room_scale', 'side_gap_stage', 'side_gap_sideways_start',
                         'reactive_power_w', 'reactive_standing', 'reactive_end_lift', 'reactive_end_slide', 'reactive_end_drift',
                         'reactive_violation', 'reactive_settled', 'reactive_feet_moved_m', 'table_walking', 'table_sideways',
-                        'table_zone', 'table_cross_track_m', 'table_power_w', 'energy_power_w', 'energy_priced_w', 'passage_stalled'):
+                        'table_zone', 'table_cross_track_m', 'table_power_w', 'energy_power_w', 'energy_priced_w', 'passage_stalled',
+                        'energy_progress_mps', 'energy_go'):
                 if key in self.telemetry: metrics[key] = self.telemetry[key].clone()
             metrics['contrast_role'] = self.contrast['role'].clone()
             metrics['contrast_unresolved'] = (~self.outcome_counted | resolved).clone()

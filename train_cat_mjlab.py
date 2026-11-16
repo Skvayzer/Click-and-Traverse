@@ -83,6 +83,10 @@ def parser():
         target.add_argument("--hand-tight-passages", action="store_true",
                             help="With --hand-tight-cat-only: room passages (hand-contrast passages, width scaffolds) also get "
                                  "the room-scaled hand / elbow margins (between full-height walls only with --hand-tight-walls-only)")
+        target.add_argument("--route-energy", type=float, nargs=4, metavar=("WEIGHT", "Q_J_PER_M", "CRUISE_MPS", "TABLE_FACTOR"),
+                            help="Energy per metre in place of --table/--global-power-weight: price per joule (negative) "
+                                 "times P - q*v under a go command (v = speed along the command, capped at the cruise "
+                                 "speed), P alone under a stop command; table steps weigh TABLE_FACTOR times more")
         target.add_argument("--passage-stall-gate", action="store_true",
                             help="Room passages: no positive reward term is paid while the robot stalls under a go command")
         target.add_argument("--passage-soft-contact", type=float,
