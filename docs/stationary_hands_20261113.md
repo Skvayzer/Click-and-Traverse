@@ -328,6 +328,30 @@ on the start (E2 u340): the self-anchor covers every cabinet passage (route_anch
 tables and reactive scenes), so if the anchor itself refuses, it holds the stall in place (Wolczyk et al. 2024) and
 the next arm (J2) masks it off the passages.
 
+E4 at update 200 (`runs/eval_E4_vs_E2c_u200`, 2026-11-17 01:18-02:29; E2c stopped for good at that point, its
+snapshots to update 650 remain the control):
+
+| narrow cabinet passages < 0.60 m | clean | contact | refused | stalled share of steps |
+| --- | --- | --- | --- | --- |
+| E2 u340 (start of E4, E2c, J1) | 0.000 | 0.090 | 0.910 | 0.94 |
+| E2c u200 (control) | 0.035 | 0.076 | 0.889 | 0.94 |
+| E4 u200 (stall gate) | 0.028 | 0.104 | 0.868 | 0.92 |
+| S2far u200 (the anchor) | 0.222 | 0.639 | 0.139 | 0.61 |
+
+- The gate works as designed: while stalled, E4's positive terms are zero and the step pays about -3.6/s (energy,
+  self-clearance, guidance fields), against about +19/s inside (feetgf 6.2, headgf 4.1, handsgf 3.3, posture). The
+  command says go throughout (command_stop 0, speed 0.6 m/s, route never blocked). Still, by update 200 the policy has
+  not learned to enter: refusals 87% against 89%. With a 1-s horizon even certain contact after 0.5 s inside would be
+  worth about +7 against -3.6 for stalling, so a converged critic should enter; the policy rarely tries (0.7% of steps
+  inside), which points at exploration rather than incentives. Later snapshots (update 400, 600) are evaluated next.
+- The anchor does not refuse: S2far enters (refused 14%) and touches (64%). The self-anchor on passages pulls toward
+  entering, so it does not hold the stall; masking it there (planned J2) is not indicated.
+- Retention (384 scenes): E2c 0.606 clean / 16% refused, 98.7 W, COT 0.84; E4 0.589 / 14%, 106 W, 0.85. Transition
+  passages < 0.60 m improve with the gate (clean 0.08 -> 0.14, refused 86% -> 76%); clutter and furniture lose 4-5
+  points (0.96 -> 0.91, 0.95 -> 0.91).
+- J1's first start (job 302895) stopped at config time: the student's inherited global_power/table_power tripped the
+  conflict check; fixed (c6f3ad2, inherited per-second prices are dropped), resubmitted as job 302978 (03:55).
+
 ## Measurement notes
 - Standing power, u150 clean: 26-31 W at rest (CPU trace), recovery steps after a shove 170-570 W.
 - Training metrics `reactive/*` average over all env-steps: divide by `reactive/reactive_standing` (power) or
