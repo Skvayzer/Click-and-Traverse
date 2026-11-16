@@ -60,7 +60,7 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
                      table_leg_power_weight=None,table_progress=None,table_hands_up_weight=None,
                      table_hands_up_band=None,table_center_weight=None,table_zone_facing_weight=None,passage_progress=None,
                      table_power_weight=None,global_power_weight=None,hand_tight_passages=None,passage_stall_factor=None,
-                     passage_soft_contact=None):
+                     passage_soft_contact=None,passage_stall_gate=None):
     from cat_ppo.furniture.generalist_config import released_config
     from .collision import PROPOSAL
     config=copy.deepcopy(released_config()['env_config'] if base_config is None else base_config)
@@ -390,6 +390,9 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
     if hand_tight_passages:
         if not config.get('hand_clearance_tight'):raise ValueError('hand_tight_passages requires hand_clearance_tight')
         config['hand_clearance_tight']['passages']=True
+    if passage_stall_gate:
+        # Room passages: no positive reward while stalled under a go command (task._rewards).
+        config['passage_stall_gate']=True
     if passage_soft_contact is not None:
         if not float(passage_soft_contact)>0:raise ValueError('passage_soft_contact must be > 0')
         if contact_penalty is not None:raise ValueError('passage_soft_contact and contact_penalty are exclusive')

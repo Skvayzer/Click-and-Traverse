@@ -83,6 +83,8 @@ def parser():
         target.add_argument("--hand-tight-passages", action="store_true",
                             help="With --hand-tight-cat-only: room passages (hand-contrast passages, width scaffolds) also get "
                                  "the room-scaled hand / elbow margins (between full-height walls only with --hand-tight-walls-only)")
+        target.add_argument("--passage-stall-gate", action="store_true",
+                            help="Room passages: no positive reward term is paid while the robot stalls under a go command")
         target.add_argument("--passage-soft-contact", type=float,
                             help="Room passages: only hand contact or leaving the navigation corridor ends the episode; any "
                                  "other touch costs this much per step instead (success stays strict)")

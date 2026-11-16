@@ -160,6 +160,9 @@ class CATTask:
         # Room passages whose hand / elbow margins shrink with the room like CAT side gaps (hand_clearance_tight.passages):
         # between full-height cabinets the certified best hand clearance is ~11 cm, so the rooms' 9 cm / 20 cm margins
         # made every step inside a penalty the robot could not avoid, and stopping in front of the passage cost less.
+        gate_kinds={'contrastive-hand-passage','width-curriculum-scaffold'} if self.config.get('passage_stall_gate') else set()
+        self.stall_gate_scene=torch.tensor([(s.get('source') or {}).get('kind') in gate_kinds for s in self.bank.manifest['scenes']],
+                                           dtype=torch.bool,device=self.device)
         soft_kinds={'contrastive-hand-passage','width-curriculum-scaffold'} if self.config.get('passage_soft_contact') is not None else set()
         self.soft_passage_scene=torch.tensor([(s.get('source') or {}).get('kind') in soft_kinds for s in self.bank.manifest['scenes']],
                                              dtype=torch.bool,device=self.device)
@@ -1596,6 +1599,20 @@ class CATTask:
         if balance:scaled['flat_balance_posture_bonus']=bonus
         for name in ('wholebody_hand_contrast_region','wholebody_hand_contrast_heading','flat_balance_posture_bonus'):
             if name in scaled:scaled[name]=torch.zeros_like(scaled[name])
+        if bool(self.stall_gate_scene.any()):
+            # Stall gate (E4): in a room passage, while the route says go and the robot is not moving forward (the stall
+            # test of the anti-refusal terms), no positive term is paid. Standing in front of a narrow cabinet passage had
+            # earned ~+9 per step (upright, stand_tall, tracking_orientation, feetgf) while any touch inside ended the
+            # episode, so fine-tuning learned never to enter (refused ~90%) although being inside paid more per step.
+            # Costs stay, so stalling now earns about nothing -- no large negative that would make ending the episode
+            # on purpose pay -- and entering (~+13 per step) wins even when a touch later ends it.
+            cmd=i['command'];go=(cmd[:,0]>.5)&(torch.linalg.vector_norm(cmd[:,1:3],dim=-1)>.1)
+            ahead=self.bank.goals[self.scene_ids,0]-self.data.qpos[:,0]
+            stalled=(self.stall_gate_scene[self.scene_ids]&go&(i['progress_ema']<.1)&(ahead>.5)&(i['step']>25)
+                     &~self.episode['goal_reached'])
+            keep=(~stalled).float()
+            scaled={k:torch.where(v>0,v*keep,v) for k,v in scaled.items()}
+            self.telemetry['passage_stalled']=stalled.float()
         clearance=scaled['wholebody_hand_clearance']*self.dt
         pre = sum(scaled.values())*self.dt-clearance
         from .reward_floor import hand_reward_floor
@@ -1954,7 +1971,7 @@ class CATTask:
                         'heading_gate', 'heading_error_abs', 'hand_room_scale', 'side_gap_stage', 'side_gap_sideways_start',
                         'reactive_power_w', 'reactive_standing', 'reactive_end_lift', 'reactive_end_slide', 'reactive_end_drift',
                         'reactive_violation', 'reactive_settled', 'reactive_feet_moved_m', 'table_walking', 'table_sideways',
-                        'table_zone', 'table_cross_track_m', 'table_power_w', 'energy_power_w', 'energy_priced_w'):
+                        'table_zone', 'table_cross_track_m', 'table_power_w', 'energy_power_w', 'energy_priced_w', 'passage_stalled'):
                 if key in self.telemetry: metrics[key] = self.telemetry[key].clone()
             metrics['contrast_role'] = self.contrast['role'].clone()
             metrics['contrast_unresolved'] = (~self.outcome_counted | resolved).clone()
