@@ -59,7 +59,7 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
                      reactive_hand_clearance=None,reactive_retreat_success=None,table_facing_weight=None,
                      table_leg_power_weight=None,table_progress=None,table_hands_up_weight=None,
                      table_hands_up_band=None,table_center_weight=None,table_zone_facing_weight=None,passage_progress=None,
-                     table_power_weight=None,global_power_weight=None):
+                     table_power_weight=None,global_power_weight=None,hand_tight_passages=None,passage_stall_factor=None):
     from cat_ppo.furniture.generalist_config import released_config
     from .collision import PROPOSAL
     config=copy.deepcopy(released_config()['env_config'] if base_config is None else base_config)
@@ -386,6 +386,13 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
     if hand_tight_cat_only:
         if not config.get('hand_clearance_tight'):raise ValueError('hand_tight_cat_only requires hand_clearance_tight')
         config['hand_clearance_tight']['cat_only']=True
+    if hand_tight_passages:
+        if not config.get('hand_clearance_tight'):raise ValueError('hand_tight_passages requires hand_clearance_tight')
+        config['hand_clearance_tight']['passages']=True
+    if passage_stall_factor is not None:
+        if not config.get('progress_passage_kinds'):raise ValueError('passage_stall_factor requires passage_progress')
+        if not 1<=float(passage_stall_factor)<=20:raise ValueError('passage_stall_factor must be in [1, 20]')
+        config['passage_stall_factor']=float(passage_stall_factor)
     if sgs:
         # Success-Guided Sampling (task._init_sgs): paper defaults for locomotion are history 100, target .66,
         # kappa 5, temperature 2, epsilon 1e-8.

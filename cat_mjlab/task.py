@@ -157,6 +157,12 @@ class CATTask:
         kinds=set(self.config.get('progress_passage_kinds') or ())
         self.passage_scene=torch.tensor([(s.get('source') or {}).get('kind') in kinds for s in self.bank.manifest['scenes']],
                                         dtype=torch.bool,device=self.device)
+        # Room passages whose hand / elbow margins shrink with the room like CAT side gaps (hand_clearance_tight.passages):
+        # between full-height cabinets the certified best hand clearance is ~11 cm, so the rooms' 9 cm / 20 cm margins
+        # made every step inside a penalty the robot could not avoid, and stopping in front of the passage cost less.
+        tight_kinds={'contrastive-hand-passage','width-curriculum-scaffold'} if (self.config.get('hand_clearance_tight') or {}).get('passages') else set()
+        self.tight_passage_scene=torch.tensor([(s.get('source') or {}).get('kind') in tight_kinds for s in self.bank.manifest['scenes']],
+                                              dtype=torch.bool,device=self.device)
         # Protected table pairs: progress intervals of each pair along the certified route (module centre = half the
         # start-goal length + center_local_x_m, +-length_m / 2; the hand-contrast zones reach 0.6 m before / 0.4 m
         # after a pair) and the gap at tabletop height. NaN where a scene has no protected pair.
@@ -1294,8 +1300,11 @@ class CATTask:
                 room,_=self._blocking().sample(i['positions'][:,1:2,:2],self.scene_ids)
             room_scale=((room[:,0]-float(tight['low']))/(float(tight['high'])-float(tight['low']))).clamp(float(tight['floor']),1.)[:,None]
             if tight.get('cat_only'):
-                # Rooms keep the rooms expert's full margins (it never had the relaxation).
-                room_scale=torch.where(self.bank.is_cat[self.scene_ids][:,None],room_scale,torch.ones_like(room_scale))
+                # Rooms keep the rooms expert's full margins (it never had the relaxation) -- except, with
+                # tight.passages, the room passages, where those margins cannot be kept (walls_only: between full-height
+                # cabinets the margins relax, tabletops keep them).
+                relaxed=self.bank.is_cat[self.scene_ids]|self.tight_passage_scene[self.scene_ids]
+                room_scale=torch.where(relaxed[:,None],room_scale,torch.ones_like(room_scale))
             protection_target=protection_target*room_scale;protection_anticipation=protection_anticipation*room_scale
             arm_margin=arm_margin*room_scale
             # handsdf (cost below 5 cm) shrinks with the same room: sideways in a 0.34 m gap the hands are 6 cm
@@ -1350,7 +1359,10 @@ class CATTask:
             i['progress_ema']=.98*i['progress_ema']+.02*vx
             reached=self.episode['goal_reached']
             ahead=self.bank.goals[self.scene_ids,0]-self.data.qpos[:,0]
-            terms=dict(stall=lambda:(cat&~reached&(ahead>.5)&(i['progress_ema']<.1)&(i['step']>25)).float(),
+            # passage_stall_factor: stopping in front of a room passage costs this many times the CAT stall weight.
+            factor=float(self.config.get('passage_stall_factor',1.))
+            stall_weight=torch.where(self.passage_scene[self.scene_ids],factor,1.) if factor!=1. else 1.
+            terms=dict(stall=lambda:(cat&~reached&(ahead>.5)&(i['progress_ema']<.1)&(i['step']>25)).float()*stall_weight,
                        goal_progress=lambda:(vx.clamp(0.,.6)/.6)*(cat&~reached),
                        goal_bonus=lambda:(cat&reached&~i['goal_prev']).float())
             for name,term in terms.items():

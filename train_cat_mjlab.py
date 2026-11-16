@@ -80,6 +80,11 @@ def parser():
                                  "wholebody_hand_clearance=-40 heading_align=1.0")
         target.add_argument("--commanded-blocking-map", choices=("on", "off"),
                             help="Blocking map for commanded (room/keyboard) worlds' inputs; off = the rooms expert's inputs")
+        target.add_argument("--hand-tight-passages", action="store_true",
+                            help="With --hand-tight-cat-only: room passages (hand-contrast passages, width scaffolds) also get "
+                                 "the room-scaled hand / elbow margins (between full-height walls only with --hand-tight-walls-only)")
+        target.add_argument("--passage-stall-factor", type=float,
+                            help="With --passage-progress: the stall cost in room passages is this many times the stall weight")
         target.add_argument("--hand-tight-cat-only", action="store_true",
                             help="--hand-clearance-tight relaxes margins in CAT worlds only")
         target.add_argument("--robust-action-latency-ms", type=float,
