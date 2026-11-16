@@ -299,6 +299,16 @@ Also fixed: no run could resume -- the environment config recorded the collision
 job's private code copy (/tmp/slurm-<job id>/code), different on every resubmission (now repository-relative). E1 and E2
 died on resume this morning; their checkpoints are kept (`checkpoints/stationary_hands_E1_u510.pt`, `_E2_u340.pt`).
 
+E3 made it worse (narrow cabinet passages < 0.60 m at update 200, `runs/diag_fix_u0200`): E2c clean 0.035 / contact
+0.076 / refused 0.889, E3 0.000 / 0.014 / 0.986 (mean furthest progress 1.03 vs 0.80 m). With body touches soft, the
+existing collision-event penalty (1 per step) plus the soft penalty (0.5) is paid on every step of a touch -- 6-8x the
+whole positive per-step reward -- so a sustained brush cost more than ending the episode had. E3 stopped at u240.
+
+E4 (from E2 u340, 2026-11-16 ~17:00, job 302277; control E2c): `--passage-stall-gate` -- in room passages, while the route
+says go and the robot is not advancing (the stall test), no positive term is paid; costs stay, so stalling earns ~0
+(not a large negative that would make ending the episode pay) and entering (~+13 per step) wins even if a touch later
+ends it. Telemetry `passage/passage_stalled`.
+
 ## Measurement notes
 - Standing power, u150 clean: 26-31 W at rest (CPU trace), recovery steps after a shove 170-570 W.
 - Training metrics `reactive/*` average over all env-steps: divide by `reactive/reactive_standing` (power) or
