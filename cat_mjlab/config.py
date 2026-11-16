@@ -397,8 +397,10 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
         weight=_signed('route_energy_weight',weight,positive=False)
         if not (q>0 and cap>0 and table_factor>0):
             raise ValueError(f"route_energy needs q, cruise speed and table factor > 0, got {route_energy}")
-        if 'global_power' in scales or 'table_power' in scales:
+        if global_power_weight is not None or table_power_weight is not None:
             raise ValueError("route_energy replaces global_power and table_power; leave those unset")
+        # A fine-tune inherits the student's scales (E2: global_power, table_power): the per-metre price replaces them.
+        scales.pop('global_power',None);scales.pop('table_power',None)
         scales['route_energy']=weight
         config['route_energy']=dict(q=q,cap=cap,table_factor=table_factor)
     if passage_stall_gate:
