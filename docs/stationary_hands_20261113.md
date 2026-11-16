@@ -238,6 +238,38 @@ feedforward, robustness noise, clipped to the G1 limits 139/88/50/25/5 Nm), qdot
 step (the last of 10 substeps). It is mechanical, not electrical: holding a pose (raised arms) costs nothing, where a
 real motor dissipates R (tau/K)^2 -- a Joule term needs the per-motor constants K, R (not in the MJCF).
 
+### Overnight 15-16 Nov: energy price at the tables (E1) and everywhere (E2) -- morning evaluation
+
+E2 = E1 + -0.01/W in every other environment (from S2far u200, 23:10, ws-ia; two starts on the gpu partition died of
+OOM: its GPUs were filled by processes outside Slurm). T5 paused at u360 for E2's slot. At 05:30 E1 and E2 were paused
+for two evaluation jobs (`~/jobs/morning_*.sh`, results `runs/morning_eval_1116`, local copy
+`outputs/stationary_hands_20261113/videos_morning_1116`), then resumed (jobs 301589, 301590). Evaluations now measure
+energy (joint work per episode, mean power, cost of transport; commit 33ebff2).
+
+Table passages (goal over all episodes / sideways near tables / hands raised; mean power at the tables):
+
+| | 0.44 m | 0.46-0.54 m | 0.54-0.62 m | 0.62-0.70 m |
+|---|---|---|---|---|
+| S2far u200 (no table training) | 1 / 90 / 38%, 105 W | 12 / 87 / 20%, 108 W | 61 / 77 / 10%, 131 W | 81 / 67 / 5%, 145 W |
+| E1 u500 (energy price at the tables only) | 0 / 75 / 13%, 92 W | 37 / 68 / 21%, 96 W | 62 / 57 / 26%, 118 W | 93 / 42 / 22%, 126 W |
+| E2 u300 (energy price everywhere) | 0 / 51 / 50%, 101 W | 26 / 44 / 50%, 109 W | 77 / 38 / 49%, 123 W | 96 / 37 / 36%, 124 W |
+| T5 u350 (facing cost + hands-up bonus) | 3 / 29 / 62%, 132 W | 49 / 17 / 65%, 155 W | 82 / 7 / 71%, 168 W | 92 / 4 / 64%, 165 W |
+
+Retention, 384 non-table scenes x 4 (clean / refused, mean power, cost of transport): E1 u500 0.562 / 15%, 107 W, 0.891;
+E2 u300 **0.617** / 13%, 108 W, **0.875**; T5 u350 0.553 / 13%, 118 W, 0.893 (S2far u200 0.602 / 5%; T2 u410 0.591 /
+15%, no energy measured). E2 is best on cabinet passages >= 0.60 m (0.95), protected passages (0.88-0.91), scaffolds
+(0.87), furniture (0.89). Narrow cabinet passages < 0.60 m, refused: E1 96%, E2 86%, T5 u350 91% (T5 u250: 61%).
+
+Reading: (1) an energy price alone at the tables improves passage over no table training (0.46-0.54 m: 12% -> 37%) at
+the lowest power, but the robot mostly still turns sideways (68%) and seldom raises the hands (21%); the facing cost
+gives forward passage with raised hands at ~60% more power at the tables (155 vs 96 W). With mechanical work as the
+price, turning costs little and raising the arms is not rewarded. (2) The price everywhere (E2) raises the hands at the
+tables 2.4x as often as E1, has the best retention of all policies and the lowest cost of transport. (3) Every
+table-trained policy now refuses the narrow cabinet passages, with or without the facing cost: the regression is not
+the facing lesson spreading but the refusal equilibrium of the room passages (stopping is free there, per-step rewards
+keep flowing while standing) winning over the anchor during long fine-tunes; T5's anti-refusal terms helped at u250 and
+relapsed by u350.
+
 ## Measurement notes
 - Standing power, u150 clean: 26-31 W at rest (CPU trace), recovery steps after a shove 170-570 W.
 - Training metrics `reactive/*` average over all env-steps: divide by `reactive/reactive_standing` (power) or
