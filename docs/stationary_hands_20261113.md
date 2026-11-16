@@ -270,6 +270,35 @@ the facing lesson spreading but the refusal equilibrium of the room passages (st
 keep flowing while standing) winning over the anchor during long fine-tunes; T5's anti-refusal terms helped at u250 and
 relapsed by u350.
 
+### Why the robot stops in front of narrow room passages (2026-11-16) and the fix (E3)
+
+`scripts/diagnose_stalling.py` (narrow cabinet passages < 0.60 m, 36 scenes x 4 deterministic episodes; per phase the
+scaled reward terms, the route command and the clearances):
+
+| | outcome clean / contact / refused | standing in front: share of steps, reward/step | inside the passage: reward/step |
+|---|---|---|---|
+| S2far u200 (before the table stages) | 0.17 / 0.69 / 0.14 | 61%, 7.4 | 11.7 |
+| T2 u410 | 0.02 / 0.06 / 0.92 | 94%, 9.3 | 13.5 |
+| E2 u300 | 0.05 / 0.05 / 0.90 | 91%, 8.4 | 12.1 |
+
+The route command says go (0.6 m/s, route never blocked) in every phase, and being inside pays MORE per step than
+standing in front (guidance terms feetgf / headgf / handsgf outweigh the clearance costs there). The refusal is risk
+aversion: ~+9 per step is earned standing still (upright, stand_tall, tracking_orientation, feetgf), any touch ends the
+episode and forfeits that stream, and with discount 0.98 the policy weighs ~1 s ahead. S2far still attempted (69%
+contact); fine-tuning taught every later policy, with or without table or energy terms, that entering usually ends
+the episode -- and a policy that stops entering never practises the passage. In room passages stopping was also free
+(the room group zeroes stall / progress / goal bonus; room timeouts are truncations, not failures).
+
+E3 (from E2 u340, 2026-11-16 ~12:40, job 302057; control E2c = E2 continued from the same checkpoint, job 302043):
+`--passage-soft-contact 0.5` (in hand-contrast passages and width scaffolds only a hand contact, or the root leaving the
+navigation corridor, ends the episode; other touches cost 0.5 per step; success stays strict), `--passage-progress`
+with `--passage-stall-factor 1.5` (stalling stays net-positive, so ending the episode on purpose never pays), and
+`--hand-tight-passages` (room-scaled hand / elbow margins between full-height cabinets; tabletops keep them).
+
+Also fixed: no run could resume -- the environment config recorded the collision proposal's absolute path inside the
+job's private code copy (/tmp/slurm-<job id>/code), different on every resubmission (now repository-relative). E1 and E2
+died on resume this morning; their checkpoints are kept (`checkpoints/stationary_hands_E1_u510.pt`, `_E2_u340.pt`).
+
 ## Measurement notes
 - Standing power, u150 clean: 26-31 W at rest (CPU trace), recovery steps after a shove 170-570 W.
 - Training metrics `reactive/*` average over all env-steps: divide by `reactive/reactive_standing` (power) or
