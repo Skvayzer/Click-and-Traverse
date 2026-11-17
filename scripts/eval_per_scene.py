@@ -97,6 +97,9 @@ def main():
     task.reset()
     learner, _ = load_policy(args.checkpoint, device=dev, policy_id=0)
     cols = ("episodes", "clean", "contact", "refused", "fall", "hands", "length", "energy_j", "path_m", "cot", "cot_episodes")
+    # Near obstacles (any body point within 15 cm): actual vs commanded pelvis speed, both feet off the ground.
+    near_steps = torch.zeros(len(scenes), dtype=torch.float64, device=dev); near_v = torch.zeros_like(near_steps)
+    near_cmd = torch.zeros_like(near_steps); near_flight = torch.zeros_like(near_steps); overspeed = torch.zeros_like(near_steps)
     stats = torch.zeros((len(scenes), len(cols)), dtype=torch.float64, device=dev)
     energy = torch.zeros(task.num_envs, dtype=torch.float64, device=dev); path = torch.zeros_like(energy)
     try:
@@ -116,6 +119,15 @@ def main():
         power = (task.data.ctrl * task.data.qvel[:, 6:]).abs().sum(-1).double()
         energy += torch.where(moving, power * task.dt, 0.)
         path += torch.where(moving, torch.linalg.vector_norm(task.data.qpos[:, :2] - root0, dim=-1).double(), 0.)
+        near = moving & (task.info['sdf'][:, :11, 0].amin(-1) < .15)
+        if bool(near.any()):
+            sc_ = before.clamp_min(0); w_ = near.double()
+            v_ = torch.linalg.vector_norm(task.data.qvel[:, :2], dim=-1).double()
+            c_ = torch.linalg.vector_norm(task.info['command'][:, 1:3], dim=-1).double()
+            feet = task.sim.contact_flags(task.contact_pairs)[:, :2]
+            near_steps.index_add_(0, sc_, w_); near_v.index_add_(0, sc_, w_ * v_); near_cmd.index_add_(0, sc_, w_ * c_)
+            near_flight.index_add_(0, sc_, w_ * (~feet.any(-1)).double())
+            overspeed.index_add_(0, sc_, w_ * ((c_ > 1e-3) & (v_ > 1.5 * c_)).double())
         if bool(done.any()):
             m = out["metrics"]; zero = torch.zeros_like(done)
             goal = m.get("episode/goal_reached", m["successful"]).bool()
@@ -150,6 +162,13 @@ def main():
     summary["power_w"] = round(float(stats[ids, 7].sum() / (stats[ids, 6].sum() * task.dt).clamp_min(1e-9)), 2)
     summary["cot"] = round(float(stats[ids, 9].sum() / stats[ids, 10].sum().clamp_min(1)), 4)
     summary["robot_mass_kg"] = round(mass, 2)
+    n_ = near_steps[ids].sum().clamp_min(1)
+    summary["near_obstacle"] = dict(steps=int(near_steps[ids].sum()), speed_ratio=round(float(near_v[ids].sum() / near_cmd[ids].sum().clamp_min(1e-9)), 3),
+                                    mean_speed=round(float(near_v[ids].sum() / n_), 3), flight_fraction=round(float(near_flight[ids].sum() / n_), 4),
+                                    overspeed_1p5x_fraction=round(float(overspeed[ids].sum() / n_), 4))
+    for i in ids:
+        if scenes[i]["scene_id"] in result and float(near_steps[i]) > 0:
+            result[scenes[i]["scene_id"]]["near_speed_ratio"] = round(float(near_v[i] / near_cmd[i].clamp_min(1e-9)), 3)
     args.out.parent.mkdir(parents=True, exist_ok=True)
     args.out.write_text(json.dumps(dict(checkpoint=str(args.checkpoint), env_from=args.env_from, scenes=args.scenes, episodes_per_scene=args.episodes,
                                         deterministic=not args.stochastic, finished=int(stats[:, 0].sum()), target=target,

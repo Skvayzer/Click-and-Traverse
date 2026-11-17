@@ -61,7 +61,7 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
                      table_hands_up_band=None,table_center_weight=None,table_zone_facing_weight=None,passage_progress=None,
                      table_power_weight=None,global_power_weight=None,hand_tight_passages=None,passage_stall_factor=None,
                      passage_soft_contact=None,passage_stall_gate=None,route_energy=None,operator_speed=None,
-                     operator_rest_starts=None):
+                     operator_rest_starts=None,operator_v2=None,overspeed_weight=None):
     from cat_ppo.furniture.generalist_config import released_config
     from .collision import PROPOSAL
     config=copy.deepcopy(released_config()['env_config'] if base_config is None else base_config)
@@ -403,6 +403,15 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
         config['operator_speed']=dict(min=lo,max=hi,nominal=.525,cutout=.05,near_sdf=.35,near_share=0. if fixed else .6,
             resample=None if fixed else [4.,10.,.3],length_scale_max=.525/.1,anchor_free_below=.4,stall_fraction=.2,
             rest_start_share=float(operator_rest_starts or 0.))
+        if operator_v2:
+            # V2: 35% of episodes near nominal speed (anchored), rest starts inside only where a sideways body fits and
+            # in the nominal pose.
+            config['operator_speed'].update(nominal_share=0. if fixed else .35,rest_fix=True)
+    if overspeed_weight is not None:
+        if not operator_speed:raise ValueError('overspeed_weight needs operator_speed')
+        weight=_signed('overspeed_weight',overspeed_weight,positive=False)
+        if weight==0:scales.pop('overspeed',None)
+        else:scales['overspeed']=weight
     if route_energy is not None:
         # Energy per metre in place of the per-second table/global price (task._rewards): [weight, q_J_per_m,
         # cruise_mps, table_factor]; weight < 0 is the price per joule, as global_power's.

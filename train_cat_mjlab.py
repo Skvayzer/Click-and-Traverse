@@ -90,6 +90,11 @@ def parser():
         target.add_argument("--operator-speed", type=float, nargs=2, metavar=("MIN", "MAX"),
                             help="Slow traversal: field direction at an operator speed drawn per episode in [MIN, MAX] m/s "
                                  "(MIN = MAX: fixed, for evaluation); see config.operator_speed")
+        target.add_argument("--operator-v2", action="store_true",
+                            help="With --operator-speed: 35%% near-nominal (anchored) episodes, safer rest starts in narrow gaps")
+        target.add_argument("--overspeed-weight", type=float,
+                            help="Cost (negative, per second) on pelvis speed above 1.2x the commanded speed, relative to it; "
+                                 "outside the reward clip so it can outweigh the goal bonus's early-arrival premium")
         target.add_argument("--operator-rest-starts", type=float,
                             help="Share of side-gap episodes that start at rest at or inside the gap (with --operator-speed)")
         target.add_argument("--passage-stall-gate", action="store_true",

@@ -49,7 +49,7 @@ RUN_DIR=${RUN_DIR:-outputs/stationary_hands_20261113}
   --teleop-fraction 0.5 --teleop-heading-commands --heading-track-weight 0.4 \
   --body-motion-weight -0.5 --style-free-near-obstacles \
   --hand-clearance-tight 0.10 0.40 0.3 --hand-tight-walls-only --hand-tight-cat-only \
-  --stall-weight -5 --goal-progress-weight 5 --goal-bonus-weight 2000 --timeout-failure \
+  --stall-weight -5 --goal-progress-weight 5 --goal-bonus-weight ${GOAL_BONUS:-2000} --timeout-failure \
   --heading-lookaheads 0.3 0.6 1.0 --heading-blocking-probes --sideways-bonus-weight 1.0 \
   --commanded-blocking-map off \
   --reward-group-room wholebody_hand_clearance=-40 heading_align=1.0 body_motion=-1.5 sideways_bonus=0 stall=0 goal_progress=0 goal_bonus=0 \
@@ -71,7 +71,7 @@ RUN_DIR=${RUN_DIR:-outputs/stationary_hands_20261113}
   ${TIGHT_PASSAGES:+--hand-tight-passages} ${PASSAGE_STALL:+--passage-stall-factor $PASSAGE_STALL} \
   ${PASSAGE_SOFT:+--passage-soft-contact $PASSAGE_SOFT} ${PASSAGE_GATE:+--passage-stall-gate} \
   ${ROUTE_ENERGY:+--route-energy $ROUTE_ENERGY} ${OPERATOR_SPEED:+--operator-speed $OPERATOR_SPEED} \
-  ${REST_STARTS:+--operator-rest-starts $REST_STARTS} \
+  ${REST_STARTS:+--operator-rest-starts $REST_STARTS} ${OPERATOR_V2:+--operator-v2} ${OVERSPEED:+--overspeed-weight $OVERSPEED} \
   --sgs-slots ${SGS_SLOTS:-4} --sgs-history 100 --sgs-target 0.66 --sgs-kappa 5 --sgs-temperature 2 --sgs-epsilon 1e-8 \
   --sgs-uniform-mix ${SGS_MIX:-0.30} --sgs-prior $SGS_PRIOR --sgs-prior-count 4 \
   --style-library data/motion_library/library_v1 --style-weight 0.1 \

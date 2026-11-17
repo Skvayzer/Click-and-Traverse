@@ -233,6 +233,7 @@ class CATTask:
             self.op_use_near=torch.zeros(n_,dtype=torch.bool,device=self.device);self.op_timer=torch.zeros(n_,device=self.device)
             self.op_length_scale=torch.ones(n_,device=self.device);self.op_rest=torch.zeros(n_,dtype=torch.bool,device=self.device)
             self.anchor_free=torch.zeros(n_,dtype=torch.bool,device=self.device)
+            self.op_speed_ema=self.op_far.clone()
         if config.get('hand_speed_curriculum'):
             if config.get('hand_tolerance_curriculum'):
                 raise ValueError('Run speed and tolerance curricula separately')
@@ -370,16 +371,18 @@ class CATTask:
         import json as _json
         from cat_ppo.furniture.generalist_fields import scene_directory
         count=self.bank.count;levels=np.full(count,-1,dtype=np.int64);place=np.zeros((count,4),dtype=np.float32)
+        widths=np.zeros(count,dtype=np.float32)
         for k,record in enumerate(self.bank.manifest['scenes']):
             info=(record.get('source') or {}).get('side_gap')
             if record.get('source',{}).get('kind')!='side-gap' or not info:
                 continue
-            width=min(info['gap_m'],info.get('gap2_m',9.))
+            width=min(info['gap_m'],info.get('gap2_m',9.));widths[k]=width
             levels[k]=next(l for l,t in enumerate(sg['thresholds']) if width>=t)
             spec=_json.loads((scene_directory(self.bank.manifest,self.bank.path,record)/'scene.json').read_text())
             a=[b for b in spec['boxes'] if b['name']=='w1_a'][0];b=[b for b in spec['boxes'] if b['name']=='w1_b'][0]
             place[k]=((a['center'][0]+b['center'][0])/2,(a['center'][1]+b['center'][1])/2,a['yaw'],a['half_size'][0])
         self.side_levels=torch.as_tensor(levels,device=self.device);self.side_place=torch.as_tensor(place,device=self.device)
+        self.side_width=torch.as_tensor(widths,device=self.device)
         self.side_stage=0;self.side_counts=[0,0]
         self.side_placed=torch.zeros(self.num_envs,dtype=torch.bool,device=self.device)
         self.probabilities=self.bank.probabilities(self.bank.weights*(self.bank.weights>0)*((self.side_levels<0)|(self.side_levels<=0)),
@@ -693,6 +696,7 @@ class CATTask:
                 self.op_timer=torch.where(due,self._rand((self.num_envs,),lo,hi),self.op_timer)
         near=self.info['sdf'][:,:11,0].amin(-1)<float(op['near_sdf'])
         self.op_speed=torch.where(self.op_use_near&near,self.op_near,self.op_far)
+        self.op_speed_ema=.98*self.op_speed_ema+.02*self.op_speed      # ~1 s: the overspeed allowance while slowing down
         self.anchor_free=torch.where(self.op_use_near,self.op_near,self.op_far)<float(op['anchor_free_below'])
 
     def _operator_command(self,gf,bf,ids):
@@ -946,7 +950,12 @@ class CATTask:
         if self.operator_speed:
             op=self.operator_speed;nominal=float(op['nominal'])
             far=self._op_sample(n);near=torch.minimum(self._op_sample(n),far);use=self._rand((n,))<float(op['near_share'])
-            self.op_far[ids]=far;self.op_near[ids]=near;self.op_use_near[ids]=use;self.op_speed[ids]=far
+            if float(op.get('nominal_share',0.))>0:
+                # A share of episodes at near-nominal speed (anchored), so the other skills keep their teacher.
+                nominal_=self._rand((n,))<float(op['nominal_share'])
+                far=torch.where(nominal_,self._rand((n,),max(.45,float(op['min'])),float(op['max'])),far)
+                near=torch.where(nominal_,far,near);use=use&~nominal_
+            self.op_far[ids]=far;self.op_near[ids]=near;self.op_use_near[ids]=use;self.op_speed[ids]=far;self.op_speed_ema[ids]=far
             if op.get('resample'):self.op_timer[ids]=self._rand((n,),float(op['resample'][0]),float(op['resample'][1]))
             slowest=torch.where(use,near,far)
             self.op_length_scale[ids]=(nominal/slowest).clamp(1.,float(op['length_scale_max']))
@@ -959,12 +968,18 @@ class CATTask:
                 if bool(rest.any()):
                     c=self.side_place[scenes];normal=torch.stack((c[:,2].cos(),c[:,2].sin()),-1)
                     inside=self._rand((n,))<.5
+                    if op.get('rest_fix'):
+                        # Inside only where a sideways body clears both walls; the nominal pose (no joint scaling), so the
+                        # hands hang clear at the mouth of a narrow gap instead of colliding and being replaced.
+                        inside=inside&(self.side_width[scenes]>=.5)
                     back=torch.where(inside,c[:,3]*self._rand((n,),-.5,.5),c[:,3]+self._rand((n,),.05,.3))
                     xy=c[:,:2]-back[:,None]*normal
                     sideways=inside|(self._rand((n,))<.5);side=torch.where(self._rand((n,))<.5,-1.,1.)
                     yaw=c[:,2]+torch.where(sideways,side*np.pi/2,0.)+self._rand((n,),-np.pi/36,np.pi/36)
                     quat=torch.stack(((yaw/2).cos(),torch.zeros_like(yaw),torch.zeros_like(yaw),(yaw/2).sin()),-1)
                     qpos[:,:2]=torch.where(rest[:,None],xy,qpos[:,:2]);qpos[:,3:7]=torch.where(rest[:,None],quat,qpos[:,3:7])
+                    if op.get('rest_fix'):
+                        qpos[:,7:]=torch.where(rest[:,None],self.init_q[7:].expand(n,-1),qpos[:,7:])
             self.op_rest[ids]=rest
         seeded=torch.zeros(n,dtype=torch.bool,device=self.device)
         if self.raised_reset_fraction:
@@ -1696,6 +1711,12 @@ class CATTask:
                 scale_=torch.where(c_>1e-3,(nominal/c_.clamp_min(float(self.operator_speed['min']))).square(),torch.ones_like(c_))
                 rewards['tracking_root_field']=torch.exp(-4*(cmd_-v_).square().sum(-1)*scale_)
             telemetry['op_speed']=self.op_speed;telemetry['op_rest']=self.op_rest.float();telemetry['op_anchor_free']=self.anchor_free.float()
+            v_xy=torch.linalg.vector_norm(self._sensor('global_linvel_pelvis',self.all_ids)[:,:2],dim=-1)
+            go_=(i['command'][:,0]>.5)&(torch.linalg.vector_norm(i['command'][:,1:3],dim=-1)>1e-3)&~standing_
+            allowed=1.2*torch.maximum(self.op_speed,self.op_speed_ema)
+            excess=(v_xy-allowed).clamp_min(0.)/self.op_speed.clamp_min(float(self.operator_speed['min']))*go_.float()
+            if 'overspeed' in scales:rewards['overspeed']=excess
+            telemetry['op_speed_ratio']=torch.where(go_,v_xy/self.op_speed.clamp_min(1e-3),torch.zeros_like(v_xy))
         if group:
             # Per scene group (the teacher's own weights): 'room' overrides apply in room worlds, the global scales
             # in CAT worlds. One weight set for all scenes rebuilt the compromise the experts escaped (hand clearance
@@ -1736,6 +1757,10 @@ class CATTask:
             scaled={k:torch.where(v>0,v*keep,v) for k,v in scaled.items()}
             self.telemetry['passage_stalled']=stalled.float()
         clearance=scaled['wholebody_hand_clearance']*self.dt
+        if 'overspeed' in scaled:
+            # Outside the clip at 0 like hand clearance: one step of 2x overspeed must cost more than the ~0.8 a goal
+            # bonus pays for arriving a step earlier, which a clipped term (at most the step's positive reward) cannot.
+            clearance=clearance+scaled['overspeed']*self.dt
         pre = sum(scaled.values())*self.dt-clearance
         from .reward_floor import hand_reward_floor
         reward, clipped, lift, slope = hand_reward_floor(
@@ -2102,7 +2127,7 @@ class CATTask:
                         'reactive_power_w', 'reactive_standing', 'reactive_end_lift', 'reactive_end_slide', 'reactive_end_drift',
                         'reactive_violation', 'reactive_settled', 'reactive_feet_moved_m', 'table_walking', 'table_sideways',
                         'table_zone', 'table_cross_track_m', 'table_power_w', 'energy_power_w', 'energy_priced_w', 'passage_stalled',
-                        'energy_progress_mps', 'energy_go', 'op_speed', 'op_rest', 'op_anchor_free'):
+                        'energy_progress_mps', 'energy_go', 'op_speed', 'op_rest', 'op_anchor_free', 'op_speed_ratio'):
                 if key in self.telemetry: metrics[key] = self.telemetry[key].clone()
             metrics['contrast_role'] = self.contrast['role'].clone()
             metrics['contrast_unresolved'] = (~self.outcome_counted | resolved).clone()
