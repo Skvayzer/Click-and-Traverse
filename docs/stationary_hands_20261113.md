@@ -381,6 +381,23 @@ training randomisation are identical to `generalist_robust_delay_v1_u150`, the b
 matches PyTorch to <= 1.0e-6. Not yet done: evaluation under the training randomisation, and the moving-object
 field latency for standing ball trials.
 
+V1, slow traversal (2026-11-17 ~20:30, commit 62ac46a, job 304204, from E2 u300 = the all-round bundle on the robot
+branch; anchor E2 u300 except in episodes slower than 0.4 m/s). The robot was repelled at narrow obstacles and passed
+only with momentum. Causes in code: the field command (compute_cmd_from_rtf) brakes near obstacles and is zero below
+0.2 m/s, a zero command latched the robot for the rest of the episode, the speed was always ~0.525 m/s, and the
+reward made slow passage worse than none (clearance costs per second, progress capped in absolute speed, tracking
+kernel barely charging a stop at low commands). V1 changes:
+1. operator speed: field direction (the same limb projection) at an operator speed, log-uniform 0.1-0.6 m/s per
+   episode, a slower speed within 0.35 m of obstacles in 60% of episodes, re-drawn every 4-10 s; stop only below 0.05
+   m/s of projected command, no latch; room routes at the same speed; episode time x 0.525/speed;
+2. 25% of side-gap episodes start at rest just before or inside the gap;
+3. clearance costs per metre (x commanded/0.525), tracking, goal progress and the stall test relative to the
+   commanded speed; no gate.
+Hypothesis: success no longer depends on speed (the speed sweep is flat from 0.1 to 0.525 m/s) at no more contacts.
+Test: `~/jobs/eval_sweep.sh` (eval_per_scene --operator-speed S on 303 side-gap / passage / CAT / scaffold scenes, 2
+episodes each) for E2 u300 (baseline, job 304207) and V1 snapshots; CPU check of the code passed (commanded speed =
+operator speed, rest starts at zero velocity, no stops, finite rewards).
+
 ## Measurement notes
 - Standing power, u150 clean: 26-31 W at rest (CPU trace), recovery steps after a shove 170-570 W.
 - Training metrics `reactive/*` average over all env-steps: divide by `reactive/reactive_standing` (power) or
