@@ -352,6 +352,28 @@ snapshots to update 650 remain the control):
 - J1's first start (job 302895) stopped at config time: the student's inherited global_power/table_power tripped the
   conflict check; fixed (c6f3ad2, inherited per-second prices are dropped), resubmitted as job 302978 (03:55).
 
+E4 against E2c later in training (`runs/eval_E4_vs_E2c_late`, E4 ended at its 12 h limit at update 640):
+
+| narrow cabinet passages < 0.60 m | u200 refused / clean | u400 refused / clean | u600 refused / clean |
+| --- | --- | --- | --- |
+| E2c (control, no gate) | 0.889 / 0.035 | 0.451 / 0.410 | 0.701 / 0.181 |
+| E4 (stall gate) | 0.868 / 0.028 | 0.993 / 0.000 | 0.965 / 0.014 |
+
+- Negative result for the gate as built: the control learned on its own to enter (refusals 89% -> 45% by update 400,
+  then 70% at 600), the gated run did not (99%, 97%). At u400 E4's stalled steps pay -6.6/s and its steps inside
+  +15.2/s, against +7.8 and +10.8 for E2c, yet E4 enters 0.2% of steps against 4.5%.
+- Retention at u600 (384 scenes): E2c 0.594 clean / 12% refused, COT 0.81; E4 0.573 / 15%, COT 0.83. Transition
+  passages < 0.60 m 0.35 vs 0.06, scaffolds 0.78 vs 0.66; clutter and furniture slightly better with the gate.
+- Likely mechanism: the gate zeroes every positive term while progress is slow, including the guidance-field terms
+  (feetgf/headgf/handsgf: +2.4 to +6.6/s) that reward each small step along the field. The slow preparation before an
+  entry (aligning, raising the hands) then earns exactly what stalling earns, so nothing in the immediate reward
+  separates preparing from stalling, and with a ~1 s horizon the payoff of the entry seconds later is discounted
+  away. The gate flattened the approach gradient instead of removing the stall payoff (Miller: the approach gradient is
+  what has to win). Candidate fix (E5, not run): subtract a constant opportunity cost while stalled (average-reward
+  view, Niv et al. 2007) instead of zeroing, so that every difference between actions survives.
+- J1 (gate + energy per metre) inherits the gate; it still isolates the energy currency against E4.
+- Learning curve over the snapshots (E2c and E4 at u250-u500, E2c u650): `runs/eval_narrow_curve`.
+
 ## Measurement notes
 - Standing power, u150 clean: 26-31 W at rest (CPU trace), recovery steps after a shove 170-570 W.
 - Training metrics `reactive/*` average over all env-steps: divide by `reactive/reactive_standing` (power) or
