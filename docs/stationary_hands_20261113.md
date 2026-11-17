@@ -403,6 +403,23 @@ Correction (2026-11-17): the step reward is clamp(sum of scaled terms x dt, 0) p
 clip; the stalled steps of E4 earned about 0. The E4 reading stands, sharper: the gate turned the approach zone into a
 flat zero-reward plateau with no gradient toward the passage.
 
+Baseline speed sweep, E2 u300 with the operator-speed command (`runs/speed_sweep/E2_u300`, 303 obstacle scenes, 2
+episodes each): clean 0.53 / 0.53 / 0.54 / 0.54 at commanded 0.1 / 0.2 / 0.35 / 0.525 m/s, contacts ~0.29, refusals
+0.16-0.19 -- but the mean speed is 0.22 m/s when told 0.1 (it ignores slow commands). The command change alone (no
+latch, 0.05 m/s cut-out, constant speed) lifts narrow cabinet passages from 0.11 to 0.55 clean.
+
+V2 (2026-11-18 00:20, commit 6246f42, job 304806, from E2 u300), after the review of 2026-11-17: V1 + overspeed cost
+(-60/s on speed above 1.2x the command, relative, outside the reward clip so it can outweigh the goal bonus's
+early-arrival premium), goal bonus 500 (was 2000), relative progress / stall in room passages, 35% of episodes at
+0.45-0.6 m/s (anchored), rest starts inside a gap only where >= 0.5 m wide and in the nominal pose. Speed sweeps of
+E2 (with gap metrics: speed ratio and flight fraction within 15 cm of obstacles), V1 and V2 at u200 / u400 run
+overnight on the gpu partition (`~/jobs/eval_sweep.sh`).
+
+Robot side (humanoid_navigation `feature/g1-slow-traversal`, e555064 / e31ba19): `--speed` on the executor and in
+wholebody_sim for policies whose contract records the operator-speed rule; `command_from_fields(speed=...)` matches
+`task._operator_command` on 400 recorded field samples; no stop latch; arrival stop within 0.25 m of the final goal /
+hold point (release 0.45 m), because the field no longer slows the robot at its goal.
+
 ## Measurement notes
 - Standing power, u150 clean: 26-31 W at rest (CPU trace), recovery steps after a shove 170-570 W.
 - Training metrics `reactive/*` average over all env-steps: divide by `reactive/reactive_standing` (power) or
