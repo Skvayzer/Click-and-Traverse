@@ -44,6 +44,8 @@ def main():
     p.add_argument("--seed", type=int, default=1)
     p.add_argument("--no-compile", action="store_true", help="Skip torch.compile of the task (about 4x slower at 16k envs)")
     p.add_argument("--nominal", action="store_true", help="Drop the robustness perturbations (delay, pose/mount error, friction/mass/COM/torque DR): skill only")
+    p.add_argument("--operator-speed", type=float, help="Fixed operator speed (m/s): field direction at this speed, no stop latch, "
+                   "cut-out 0.05 m/s, episode time scaled by 0.525/speed (the slow-traversal command; works for any checkpoint)")
     p.add_argument("--out", type=Path, required=True)
     args = p.parse_args()
     from record_mjlab_rollout import load_policy
@@ -54,6 +56,10 @@ def main():
     env.pop("side_gap_curriculum", None)                 # standard CAT starts, every width
     env["push_config"]["enable"] = False
     env.pop("sgs", None)                                 # every scene gets its K jobs, no success-guided resampling
+    if args.operator_speed is not None:
+        speed = float(args.operator_speed)
+        env["operator_speed"] = dict(min=speed, max=speed, nominal=.525, cutout=.05, near_sdf=.35, near_share=0., resample=None,
+                                     length_scale_max=.525 / .1, anchor_free_below=0., stall_fraction=.2, rest_start_share=0.)
     if args.nominal:
         env.pop("robustness", None)
     if "teleop" in env:

@@ -224,6 +224,15 @@ class CATTask:
         self.policy_ids=torch.zeros(self.num_envs,dtype=torch.long,device=self.device)
         self.role_counts=torch.zeros((4,2),dtype=torch.long,device=self.device)
         self.zone_steps=torch.zeros((self.num_envs,6,3),dtype=torch.long,device=self.device)
+        # Operator speed (slow-traversal fine-tune, docs/stationary_hands_20261113.md): the fields give the direction,
+        # the operator the speed; per-episode cruise speed, a slower speed near obstacles, resets at rest in side gaps.
+        self.operator_speed=config.get('operator_speed')
+        if self.operator_speed:
+            n_=self.num_envs;nominal_=float(self.operator_speed['nominal'])
+            self.op_far=torch.full((n_,),nominal_,device=self.device);self.op_near=self.op_far.clone();self.op_speed=self.op_far.clone()
+            self.op_use_near=torch.zeros(n_,dtype=torch.bool,device=self.device);self.op_timer=torch.zeros(n_,device=self.device)
+            self.op_length_scale=torch.ones(n_,device=self.device);self.op_rest=torch.zeros(n_,dtype=torch.bool,device=self.device)
+            self.anchor_free=torch.zeros(n_,dtype=torch.bool,device=self.device)
         if config.get('hand_speed_curriculum'):
             if config.get('hand_tolerance_curriculum'):
                 raise ValueError('Run speed and tolerance curricula separately')
@@ -664,6 +673,44 @@ class CATTask:
             replacement[:,0,2]=torch.where(sdf[:,0,0]<float(near),replacement[:,0,2],torch.zeros_like(replacement[:,0,2]))
         return replacement
 
+    def _op_sample(self,n):
+        op=self.operator_speed;lo,hi=float(op['min']),float(op['max'])
+        if lo==hi:return torch.full((n,),lo,device=self.device)
+        return torch.exp(np.log(lo)+self._rand((n,))*(np.log(hi)-np.log(lo)))
+
+    def _operator_speed_step(self):
+        """Current operator speed: the cruise speed, or the episode's slower speed while any body point is within near_sdf
+        of an obstacle (approach fast, slow down at the gap); the cruise speed is re-drawn now and then."""
+        op=self.operator_speed;nominal=float(op['nominal'])
+        if op.get('resample'):
+            lo,hi,p=(float(x) for x in op['resample'])
+            self.op_timer-=self.dt;due=self.op_timer<=0
+            if bool(due.any()):
+                change=due&(self._rand((self.num_envs,))<p)
+                self.op_far=torch.where(change,self._op_sample(self.num_envs),self.op_far)
+                self.op_near=torch.minimum(self.op_near,self.op_far)
+                self.op_length_scale=torch.maximum(self.op_length_scale,(nominal/self.op_far).clamp(1.,float(op['length_scale_max'])))
+                self.op_timer=torch.where(due,self._rand((self.num_envs,),lo,hi),self.op_timer)
+        near=self.info['sdf'][:,:11,0].amin(-1)<float(op['near_sdf'])
+        self.op_speed=torch.where(self.op_use_near&near,self.op_near,self.op_far)
+        self.anchor_free=torch.where(self.op_use_near,self.op_near,self.op_far)<float(op['anchor_free_below'])
+
+    def _operator_command(self,gf,bf,ids):
+        """compute_cmd_from_rtf's direction (root guidance, projected so no limb moves into its obstacle) at the operator's
+        speed. Stops only where that projection (nominal scale) leaves less than `cutout` m/s, instead of 0.2 m/s."""
+        rtf,cgf,cbf=gf[:,1],gf[:,[0,3,4,5,6]],bf[:,[0,3,4,5,6]]
+        v=rtf[:,:2]*.7
+        bhat=cbf[:,:,:2]/(torch.linalg.vector_norm(cbf[:,:,:2],dim=-1,keepdim=True)+1e-9)
+        limits=(bhat*cgf[:,:,:2]).sum(-1);projected=(bhat*v[:,None]).sum(-1)
+        diff=(limits-projected)/(bhat.square().sum(-1)+1e-9)
+        delta=torch.where((limits>projected)[:,:,None],diff[:,:,None]*bhat,0.)
+        velocity=(v+delta.mean(1))*.75
+        magnitude=torch.linalg.vector_norm(velocity,dim=-1)
+        go=magnitude>=float(self.operator_speed['cutout'])
+        direction=velocity/magnitude.clamp_min(1e-6)[:,None]
+        speed=self.op_speed[ids]*go
+        return torch.cat(((go.float()*.75)[:,None],direction*speed[:,None],torch.zeros_like(speed)[:,None]),-1)
+
     def _fields(self,positions,root_xy,ids,store=False):
         scenes=self.scene_ids[ids]
         gf,bf,sdf=(self.bank.sample(k,positions,scenes) for k in ('gf','bf','sdf'))
@@ -697,6 +744,9 @@ class CATTask:
             teleop=torch.ones_like(joy_speed,dtype=torch.bool) if mask is None else mask[ids]
             direction=torch.where((teleop&(joy_speed>1e-3))[:,None],joy/joy_speed.clamp_min(1e-6)[:,None],direction)
             speed=torch.where(teleop,joy_speed,speed);active=torch.where(teleop,joy_speed>1e-3,active)
+        if self.operator_speed:
+            route=torch.ones_like(active) if teleop is None else ~teleop
+            speed=torch.where(route,self.op_speed[ids],speed)
         if hasattr(self, 'speed_state'):
             from .speed_curriculum import speed_limit
             scoped, cap, hold=speed_limit(self.speed_state,{k:v[ids] for k,v in self.contrast.items()},ids,self.dt)
@@ -750,6 +800,7 @@ class CATTask:
         commanded=self._commanded(ids)
         gf=torch.where(commanded[:,None,None],replacement,gf)
         cmd=self.math.compute_cmd_from_rtf(gf[:,1],gf[:,[0,3,4,5,6]],bf[:,[0,3,4,5,6]])
+        if self.operator_speed:cmd=self._operator_command(gf,bf,ids)
         cmd=torch.where(commanded[:,None],room_command,cmd)
         if self.reactive_objects is not None:
             active=self.reactive_objects.state['active'][ids]
@@ -892,6 +943,29 @@ class CATTask:
                 quat=torch.stack(((yaw/2).cos(),torch.zeros_like(yaw),torch.zeros_like(yaw),(yaw/2).sin()),-1)
                 qpos[:,:2]=torch.where(place[:,None],xy,qpos[:,:2]);qpos[:,3:7]=torch.where(place[:,None],quat,qpos[:,3:7])
             self.side_placed[ids]=place
+        if self.operator_speed:
+            op=self.operator_speed;nominal=float(op['nominal'])
+            far=self._op_sample(n);near=torch.minimum(self._op_sample(n),far);use=self._rand((n,))<float(op['near_share'])
+            self.op_far[ids]=far;self.op_near[ids]=near;self.op_use_near[ids]=use;self.op_speed[ids]=far
+            if op.get('resample'):self.op_timer[ids]=self._rand((n,),float(op['resample'][0]),float(op['resample'][1]))
+            slowest=torch.where(use,near,far)
+            self.op_length_scale[ids]=(nominal/slowest).clamp(1.,float(op['length_scale_max']))
+            self.anchor_free[ids]=slowest<float(op['anchor_free_below'])
+            rest=torch.zeros(n,dtype=torch.bool,device=self.device)
+            if float(op['rest_start_share'])>0 and getattr(self,'side_levels',None) is not None:
+                # At rest at the gap: half just before the entrance (facing it or sideways), half inside (sideways),
+                # so entering does not depend on momentum. A colliding pose is replaced by the reset bank below.
+                rest=(self.side_levels[scenes]>=0)&(self._rand((n,))<float(op['rest_start_share']))
+                if bool(rest.any()):
+                    c=self.side_place[scenes];normal=torch.stack((c[:,2].cos(),c[:,2].sin()),-1)
+                    inside=self._rand((n,))<.5
+                    back=torch.where(inside,c[:,3]*self._rand((n,),-.5,.5),c[:,3]+self._rand((n,),.05,.3))
+                    xy=c[:,:2]-back[:,None]*normal
+                    sideways=inside|(self._rand((n,))<.5);side=torch.where(self._rand((n,))<.5,-1.,1.)
+                    yaw=c[:,2]+torch.where(sideways,side*np.pi/2,0.)+self._rand((n,),-np.pi/36,np.pi/36)
+                    quat=torch.stack(((yaw/2).cos(),torch.zeros_like(yaw),torch.zeros_like(yaw),(yaw/2).sin()),-1)
+                    qpos[:,:2]=torch.where(rest[:,None],xy,qpos[:,:2]);qpos[:,3:7]=torch.where(rest[:,None],quat,qpos[:,3:7])
+            self.op_rest[ids]=rest
         seeded=torch.zeros(n,dtype=torch.bool,device=self.device)
         if self.raised_reset_fraction:
             seeded=self.raised_reset_eligible[scenes]&(self._rand((n,))<self.raised_reset_fraction)
@@ -908,6 +982,8 @@ class CATTask:
         self.data.qpos[ids]=qpos;self.data.qvel[ids]=0.;self.data.qvel[ids,:6]=self._rand((n,6),-.5,.5)
         if self.raised_reset_fraction:
             self.data.qvel[ids]=torch.where(seeded[:,None],0.,self.data.qvel[ids])
+        if self.operator_speed:
+            self.data.qvel[ids]=torch.where(self.op_rest[ids][:,None],0.,self.data.qvel[ids])
         if self.reactive_objects is not None:
             self.data.qvel[ids]=torch.where(reactive_active[:,None],0.,self.data.qvel[ids])
         self.data.ctrl[ids]=qpos[:,7:];self.sim.forward(ids)
@@ -1054,6 +1130,7 @@ class CATTask:
         gf=gf/(torch.linalg.vector_norm(gf,dim=-1,keepdim=True)+1e-6)
         bf=bf/(torch.linalg.vector_norm(bf,dim=-1,keepdim=True)+1e-6)
         normalized_command=self.math.compute_cmd_from_rtf(gf[:,1],gf[:,[0,3,4,5,6]],bf[:,[0,3,4,5,6]])
+        if self.operator_speed:normalized_command=self._operator_command(gf,bf,ids)
         command=torch.where(self.navigation['enabled'][ids,None],command,normalized_command)
         for k,v in dict(gf=gf,bf=bf,sdf=sdf,gf_delay=gf,bf_delay=bf,sdf_delay=sdf,positions=positions,
                         velocities=torch.zeros_like(positions),command=command,command_delay=command,last_command=torch.zeros_like(command)).items():
@@ -1378,8 +1455,16 @@ class CATTask:
             # passage_stall_factor: stopping in front of a room passage costs this many times the CAT stall weight.
             factor=float(self.config.get('passage_stall_factor',1.))
             stall_weight=torch.where(self.passage_scene[self.scene_ids],factor,1.) if factor!=1. else 1.
-            terms=dict(stall=lambda:(cat&~reached&(ahead>.5)&(i['progress_ema']<.1)&(i['step']>25)).float()*stall_weight,
-                       goal_progress=lambda:(vx.clamp(0.,.6)/.6)*(cat&~reached),
+            if self.operator_speed:
+                # Relative to the commanded speed: a slow pass earns full progress and is not a stall; a stop the
+                # command asks for is not a stall either.
+                s_=self.op_speed;go_=(i['command'][:,0]>.5)&(torch.linalg.vector_norm(i['command'][:,1:3],dim=-1)>1e-3)
+                stalled_=i['progress_ema']<float(self.operator_speed['stall_fraction'])*s_
+                progress_=torch.minimum(vx.clamp_min(0.),s_)/s_
+            else:
+                go_=torch.ones_like(cat);stalled_=i['progress_ema']<.1;progress_=vx.clamp(0.,.6)/.6
+            terms=dict(stall=lambda:(cat&~reached&(ahead>.5)&stalled_&go_&(i['step']>25)).float()*stall_weight,
+                       goal_progress=lambda:progress_*(cat&~reached),
                        goal_bonus=lambda:(cat&reached&~i['goal_prev']).float())
             for name,term in terms.items():
                 if name in scales:rewards[name]=term()
@@ -1595,6 +1680,22 @@ class CATTask:
         missing=set(rewards)-set(scales)
         if missing:raise ValueError(f'Missing preserved reward scales: {sorted(missing)}')
         group=self.config.get('reward_group_scales')
+        if self.operator_speed:
+            # Same reward for a slow and a fast pass: clearance costs per metre (scaled by commanded / nominal speed, so
+            # lingering still pays at the commanded rate) and velocity tracking relative to the commanded speed.
+            nominal=float(self.operator_speed['nominal'])
+            standing_=torch.zeros(self.num_envs,dtype=torch.bool,device=self.device)
+            if self.reactive_objects is not None:
+                st_=self.reactive_objects.state;standing_=st_['active']&~st_['walking']
+            factor=torch.where(standing_,1.,self.op_speed/nominal)
+            for name in ('wholebody_hand_clearance','wholebody_arm_clearance','handsdf','feetdf','headdf','kneesdf','shldsdf'):
+                if name in rewards:rewards[name]=rewards[name]*factor
+            if 'tracking_root_field' in rewards:
+                cmd_=reward_command[:,1:3];c_=torch.linalg.vector_norm(cmd_,dim=-1)
+                v_=self._sensor('global_linvel_pelvis',self.all_ids)[:,:2]
+                scale_=torch.where(c_>1e-3,(nominal/c_.clamp_min(float(self.operator_speed['min']))).square(),torch.ones_like(c_))
+                rewards['tracking_root_field']=torch.exp(-4*(cmd_-v_).square().sum(-1)*scale_)
+            telemetry['op_speed']=self.op_speed;telemetry['op_rest']=self.op_rest.float();telemetry['op_anchor_free']=self.anchor_free.float()
         if group:
             # Per scene group (the teacher's own weights): 'room' overrides apply in room worlds, the global scales
             # in CAT worlds. One weight set for all scenes rebuilt the compromise the experts escaped (hand clearance
@@ -1842,6 +1943,7 @@ class CATTask:
         # The original stores finite-difference velocities only for head/feet/hands.
         velocities[:,[1,2,7,8,9,10]]=0.
         self._navigation(ids)
+        if self.operator_speed:self._operator_speed_step()
         gf,bf,sdf,command=self._fields(positions,d.qpos[:,:2],ids,store=True)
         if getattr(self,'robust',None):
             self._robust_steps+=1
@@ -1864,9 +1966,14 @@ class CATTask:
         eligible=self._commanded(ids)
         if hasattr(self, 'speed_state'):
             eligible=eligible|(self.contrast['role']==1)|(self.contrast['role']==3)
+        restart=self._commanded(ids)
+        if self.operator_speed:
+            # No permanent stop latch: a stop lasts while the command is zero and walking resumes when it returns
+            # (the robot executor re-arms on new fields).
+            restart=torch.ones_like(restart);eligible=torch.ones_like(eligible)
         phase_input=restart_phase(i['phase'],i['last_command'],command,eligible)
         command,stop,phase,gait=self.math.update_phase(command,i['last_command'],i['stop_timestep'],phase_input,i['phase_dt'],
-            float(_get(self.config,'gait_config.gait_bound',.6)),self._commanded(ids))
+            float(_get(self.config,'gait_config.gait_bound',.6)),restart)
         if hasattr(self, 'speed_state'):
             from .speed_curriculum import speed_limit, standing_phase
             _,_,hold=speed_limit(self.speed_state,self.contrast,ids,self.dt)
@@ -1885,6 +1992,7 @@ class CATTask:
         # the delayed command AFTER normalization and the current move gate.
         # Room guidance is an explicit override independent of this projection.
         native_delayed=self.math.compute_cmd_from_rtf(normalized_gfd[:,1],normalized_gfd[:,[0,3,4,5,6]],normalized_bfd[:,[0,3,4,5,6]])
+        if self.operator_speed:native_delayed=self._operator_command(normalized_gfd,normalized_bfd,ids)
         command_delay=torch.where(self._commanded(ids)[:,None],command_delay,native_delayed)
         i.update(gf=normalize(gf)*move,bf=normalize(bf),sdf=sdf,gf_delay=normalized_gfd,bf_delay=normalized_bfd,sdf_delay=sdfd,
                  command=command,command_delay=command_delay,odom_delay=odom,stop_timestep=stop,phase=phase,gait=gait,
@@ -1905,6 +2013,7 @@ class CATTask:
         if self.collision is not None:reward+=penalty;components['body_collision_event']=penalty
         i['wrapper_steps']+=1
         lengths=self.bank.episode_lengths[self.scene_ids]
+        if self.operator_speed:lengths=(lengths.float()*self.op_length_scale).long()   # slow episodes get the time they need
         if self.reactive_objects is not None:
             lengths=torch.where(self.reactive_objects.state['active'],int(self.reactive_objects.episode_length),lengths)
         if self.config.get('teleop') and getattr(self,'joystick_mask',None) is not None:
@@ -1993,7 +2102,7 @@ class CATTask:
                         'reactive_power_w', 'reactive_standing', 'reactive_end_lift', 'reactive_end_slide', 'reactive_end_drift',
                         'reactive_violation', 'reactive_settled', 'reactive_feet_moved_m', 'table_walking', 'table_sideways',
                         'table_zone', 'table_cross_track_m', 'table_power_w', 'energy_power_w', 'energy_priced_w', 'passage_stalled',
-                        'energy_progress_mps', 'energy_go'):
+                        'energy_progress_mps', 'energy_go', 'op_speed', 'op_rest', 'op_anchor_free'):
                 if key in self.telemetry: metrics[key] = self.telemetry[key].clone()
             metrics['contrast_role'] = self.contrast['role'].clone()
             metrics['contrast_unresolved'] = (~self.outcome_counted | resolved).clone()

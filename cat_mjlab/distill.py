@@ -116,6 +116,9 @@ class DistillController:
     # ---------------------------------------------------------------- rollout side
     def _expert_means(self, state):
         owner = self.owner_of_scene[self.task.scene_ids]
+        free = getattr(self.task, 'anchor_free', None)
+        if free is not None:
+            owner = torch.where(free, -1, owner)   # slow episodes: the anchor never learned them, so no pull toward it
         label = torch.zeros((len(state), self.config.action_size), device=self.device)
         for k, model in enumerate(self.experts):
             rows = owner == k   # owner -1 (no competent teacher): label stays 0, masked out

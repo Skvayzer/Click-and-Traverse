@@ -87,6 +87,11 @@ def parser():
                             help="Energy per metre in place of --table/--global-power-weight: price per joule (negative) "
                                  "times P - q*v under a go command (v = speed along the command, capped at the cruise "
                                  "speed), P alone under a stop command; table steps weigh TABLE_FACTOR times more")
+        target.add_argument("--operator-speed", type=float, nargs=2, metavar=("MIN", "MAX"),
+                            help="Slow traversal: field direction at an operator speed drawn per episode in [MIN, MAX] m/s "
+                                 "(MIN = MAX: fixed, for evaluation); see config.operator_speed")
+        target.add_argument("--operator-rest-starts", type=float,
+                            help="Share of side-gap episodes that start at rest at or inside the gap (with --operator-speed)")
         target.add_argument("--passage-stall-gate", action="store_true",
                             help="Room passages: no positive reward term is paid while the robot stalls under a go command")
         target.add_argument("--passage-soft-contact", type=float,

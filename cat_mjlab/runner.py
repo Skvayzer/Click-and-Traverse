@@ -577,7 +577,7 @@ def collect_rollout(task, learner, *, unroll_length, trajectories, policy_ids):
         for key, value in sorted(per_step.items()):
             term = key.split('/', 1)[1]
             if key.startswith('telemetry/'):
-                info['metrics']['sgs/' + term[4:] if term.startswith('sgs_') else 'reactive/' + term if term.startswith('reactive_') else 'table/' + term if term.startswith('table_') else 'energy/' + term if term.startswith('energy_') else 'passage/' + term if term.startswith('passage_') else 'side_gap/' + term if term.startswith('side_gap') else 'posture/' + term if term in ('crouch_required', 'torso_pitch_abs') else
+                info['metrics']['sgs/' + term[4:] if term.startswith('sgs_') else 'reactive/' + term if term.startswith('reactive_') else 'table/' + term if term.startswith('table_') else 'energy/' + term if term.startswith('energy_') else 'speed/' + term if term.startswith('op_') else 'passage/' + term if term.startswith('passage_') else 'side_gap/' + term if term.startswith('side_gap') else 'posture/' + term if term in ('crouch_required', 'torso_pitch_abs') else
                                 ('heading/' + term if term.startswith('heading_') else 'self_clearance/' + term.removeprefix('self_clearance_'))] = value
                 continue
             info['metrics']['reward_term/' + term] = value
@@ -706,7 +706,7 @@ TELEMETRY_MEANS = ('self_clearance_min_m', 'self_clearance_violation', 'crouch_r
                    'sgs_config_p', 'reactive_power_w', 'reactive_standing', 'reactive_end_lift', 'reactive_end_slide',
                    'reactive_end_drift', 'reactive_violation', 'reactive_settled', 'reactive_feet_moved_m', 'table_walking',
                    'table_sideways', 'table_zone', 'table_cross_track_m', 'table_power_w', 'energy_power_w', 'energy_priced_w',
-                   'passage_stalled', 'energy_progress_mps', 'energy_go')
+                   'passage_stalled', 'energy_progress_mps', 'energy_go', 'op_speed', 'op_rest', 'op_anchor_free')
 SCENE_BUCKETS = ('procedural_cat', 'original_cat', 'published_cat',
                  'clutter_dense', 'clutter_pilot', 'clutter_legacy',
                  'furniture_dense', 'furniture_pilot', 'furniture_legacy',
@@ -1077,6 +1077,7 @@ def create_task(args, *, environment_config=None, sim_class=None):
         passage_soft_contact=getattr(args, 'passage_soft_contact', None),
         passage_stall_gate=getattr(args, 'passage_stall_gate', None),
         route_energy=getattr(args, 'route_energy', None),
+        operator_speed=getattr(args, 'operator_speed', None),operator_rest_starts=getattr(args, 'operator_rest_starts', None),
         reactive_retreat_success=getattr(args, 'reactive_retreat_success', None),
         robustness=(dict(action_latency_ms=float(args.robust_action_latency_ms or 0.),
                          pose_noise=[float(args.robust_pose_noise[0]), float(args.robust_pose_noise[1]), math.radians(float(args.robust_pose_noise[2]))]

@@ -30,6 +30,8 @@
 #              (E3's soft contacts made touching cost more per step than ending the episode and raised refusals to 99%)
 #          J1: E4 with energy priced per metre instead of per second (--route-energy: P - q*v under a go command,
 #              q = 234 J/m = E2's clutter-room energy per metre, cruise 0.6 m/s, tables x2 as in E2/E4)
+#          V1: slow traversal from E2 u300 -- operator speed 0.1-0.6 m/s (fields give direction), slower near obstacles,
+#              no stop latch, cut-out 0.05 m/s, rest starts in side gaps, clearance per metre, relative tracking/progress
 #          E1np / E1nc: RQ2 ablations of E1 -- without the anti-refusal terms (np) / without the width curriculum, on the
 #              original 0.44 m and open table pairs only (nc)
 #          T5: T2 + non-table scenes anchored to S2far u200 (the last policy before the table stages; ANCHOR) instead of the
@@ -129,6 +131,11 @@ case $VARIANT in
         RAISED=0.3 ROUTE_FILE=hpc/route_anchor_no_reactive_no_tables_v2.json SNAPSHOT_EVERY=50 PASSAGE_GATE=1 \
         ANCHOR=${ANCHOR:-$L/checkpoints/stationary_hands_S2far_u200.pt}
       : "${STUDENT:?J1 needs STUDENT=<E2 checkpoint, the same as E4 and E2c>}" ;;
+  V1) export BANK=data/furniture/tablegap_v1 POWER=-0.02 HAND_FAR="0.20 0.40" RETREAT_SUCCESS=0.15 TABLE_POWER=-0.02 \
+        GLOBAL_POWER=-0.01 TABLE_PROGRESS=1 MASSES="0.15 0.35 0.08 0.14 0.12 0.03 0.25 0.03" REACTIVE_SHARE=0.3 RAISED=0.3 \
+        ROUTE_FILE=hpc/route_anchor_no_reactive_no_tables_v2.json SNAPSHOT_EVERY=50 OPERATOR_SPEED="0.1 0.6" REST_STARTS=0.25 \
+        ANCHOR=${ANCHOR:-$STUDENT}
+      : "${STUDENT:?V1 needs STUDENT=<E2 u300>}" ;;
   *) echo "unknown VARIANT $VARIANT"; exit 2 ;;
 esac
 if [[ -n "${SMOKE:-}" ]]; then
@@ -145,7 +152,7 @@ if [[ -f $RUN/run/status.json ]]; then export EXTRA="--resume ${EXTRA:-}" FRESH=
 { echo "== job $SLURM_JOB_ID ($SLURM_JOB_NAME) variant $VARIANT on $(hostname) at $(date -Is)"
   nvidia-smi --query-gpu=name,driver_version,memory.total --format=csv,noheader
   echo "commit $(git -C $CLONE rev-parse HEAD) $(git -C $CLONE status --porcelain --untracked-files=no | wc -l) modified tracked files (copied to $REPO)"
-  echo "STATIONARY='${STATIONARY:-}' POWER='${POWER:-}' FEET_HOLD='${FEET_HOLD:-}' BANK='${BANK:-}' ARM_STD='${ARM_STD:-}' HAND_FAR='${HAND_FAR:-}' RETREAT_SUCCESS='${RETREAT_SUCCESS:-}' TABLE_FACING='${TABLE_FACING:-}' TABLE_LEG_POWER='${TABLE_LEG_POWER:-}' TABLE_PROGRESS='${TABLE_PROGRESS:-}' TABLE_HANDS_UP='${TABLE_HANDS_UP:-}' TABLE_HANDS_UP_BAND='${TABLE_HANDS_UP_BAND:-}' TABLE_CENTER='${TABLE_CENTER:-}' TABLE_ZONE_FACING='${TABLE_ZONE_FACING:-}' PASSAGE_PROGRESS='${PASSAGE_PROGRESS:-}' TABLE_POWER='${TABLE_POWER:-}' GLOBAL_POWER='${GLOBAL_POWER:-}' PASSAGE_STALL='${PASSAGE_STALL:-}' PASSAGE_SOFT='${PASSAGE_SOFT:-}' PASSAGE_GATE='${PASSAGE_GATE:-}' ROUTE_ENERGY='${ROUTE_ENERGY:-}' TIGHT_PASSAGES='${TIGHT_PASSAGES:-}' ANCHOR='${ANCHOR:-}' SNAPSHOT_EVERY='${SNAPSHOT_EVERY:-}' MASSES='${MASSES:-}' REACTIVE_SHARE='${REACTIVE_SHARE:-}' RAISED='${RAISED:-}' ROUTE_FILE='${ROUTE_FILE:-}' NUM_ENVS=$NUM_ENVS NUM_MINIBATCHES=$NUM_MINIBATCHES EXTRA='${EXTRA:-}'"
+  echo "STATIONARY='${STATIONARY:-}' POWER='${POWER:-}' FEET_HOLD='${FEET_HOLD:-}' BANK='${BANK:-}' ARM_STD='${ARM_STD:-}' HAND_FAR='${HAND_FAR:-}' RETREAT_SUCCESS='${RETREAT_SUCCESS:-}' TABLE_FACING='${TABLE_FACING:-}' TABLE_LEG_POWER='${TABLE_LEG_POWER:-}' TABLE_PROGRESS='${TABLE_PROGRESS:-}' TABLE_HANDS_UP='${TABLE_HANDS_UP:-}' TABLE_HANDS_UP_BAND='${TABLE_HANDS_UP_BAND:-}' TABLE_CENTER='${TABLE_CENTER:-}' TABLE_ZONE_FACING='${TABLE_ZONE_FACING:-}' PASSAGE_PROGRESS='${PASSAGE_PROGRESS:-}' TABLE_POWER='${TABLE_POWER:-}' GLOBAL_POWER='${GLOBAL_POWER:-}' PASSAGE_STALL='${PASSAGE_STALL:-}' PASSAGE_SOFT='${PASSAGE_SOFT:-}' PASSAGE_GATE='${PASSAGE_GATE:-}' ROUTE_ENERGY='${ROUTE_ENERGY:-}' OPERATOR_SPEED='${OPERATOR_SPEED:-}' REST_STARTS='${REST_STARTS:-}' TIGHT_PASSAGES='${TIGHT_PASSAGES:-}' ANCHOR='${ANCHOR:-}' SNAPSHOT_EVERY='${SNAPSHOT_EVERY:-}' MASSES='${MASSES:-}' REACTIVE_SHARE='${REACTIVE_SHARE:-}' RAISED='${RAISED:-}' ROUTE_FILE='${ROUTE_FILE:-}' NUM_ENVS=$NUM_ENVS NUM_MINIBATCHES=$NUM_MINIBATCHES EXTRA='${EXTRA:-}'"
   echo "STUDENT=$STUDENT CAT_PATH_MAP=$CAT_PATH_MAP"
   echo "config: configs/pilots/stationary_hands_20261113.sh"; } >> $RUN/run_info.txt
 nvidia-smi --query-gpu=timestamp,memory.used,utilization.gpu --format=csv,noheader -l ${GPU_LOG_SECONDS:-60} >> $RUN/gpu.csv &
