@@ -374,6 +374,13 @@ E4 against E2c later in training (`runs/eval_E4_vs_E2c_late`, E4 ended at its 12
 - J1 (gate + energy per metre) inherits the gate; it still isolates the energy currency against E4.
 - Learning curve over the snapshots (E2c and E4 at u250-u500, E2c u650): `runs/eval_narrow_curve`.
 
+Deploy bundles (2026-11-17, `scripts/export_deploy_bundle.py`, CPU, on dep-1): `outputs/deploy/hands_S2far_u200`,
+`hands_T2_u410`, `hands_E2_u300` (checkpoints in `outputs/saved_checkpoints/stationary_hands_*.pt`, sha256 d29faa3f,
+966c5892, 5933b120). Policy I/O, timing, joints, action rule, actuation, observation layout, fields, gait clock and
+training randomisation are identical to `generalist_robust_delay_v1_u150`, the bundle already run on the G1; ONNX
+matches PyTorch to <= 1.0e-6. Not yet done: evaluation under the training randomisation, and the moving-object
+field latency for standing ball trials.
+
 ## Measurement notes
 - Standing power, u150 clean: 26-31 W at rest (CPU trace), recovery steps after a shove 170-570 W.
 - Training metrics `reactive/*` average over all env-steps: divide by `reactive/reactive_standing` (power) or
