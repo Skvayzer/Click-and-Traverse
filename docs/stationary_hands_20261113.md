@@ -338,7 +338,7 @@ snapshots to update 650 remain the control):
 | E4 u200 (stall gate) | 0.028 | 0.104 | 0.868 | 0.92 |
 | S2far u200 (the anchor) | 0.222 | 0.639 | 0.139 | 0.61 |
 
-- The gate works as designed: while stalled, E4's positive terms are zero and the step pays about -3.6/s (energy,
+- The gate works as designed: while stalled, E4's positive terms are zero and the scaled terms sum to about -3.6/s (energy,
   self-clearance, guidance fields), against about +19/s inside (feetgf 6.2, headgf 4.1, handsgf 3.3, posture). The
   command says go throughout (command_stop 0, speed 0.6 m/s, route never blocked). Still, by update 200 the policy has
   not learned to enter: refusals 87% against 89%. With a 1-s horizon even certain contact after 0.5 s inside would be
@@ -360,7 +360,7 @@ E4 against E2c later in training (`runs/eval_E4_vs_E2c_late`, E4 ended at its 12
 | E4 (stall gate) | 0.868 / 0.028 | 0.993 / 0.000 | 0.965 / 0.014 |
 
 - Negative result for the gate as built: the control learned on its own to enter (refusals 89% -> 45% by update 400,
-  then 70% at 600), the gated run did not (99%, 97%). At u400 E4's stalled steps pay -6.6/s and its steps inside
+  then 70% at 600), the gated run did not (99%, 97%). At u400 E4's stalled scaled terms sum to -6.6/s (the step reward is clipped at 0 apart from hand clearance, so a stalled step earns about 0, not a negative amount) and its steps inside
   +15.2/s, against +7.8 and +10.8 for E2c, yet E4 enters 0.2% of steps against 4.5%.
 - Retention at u600 (384 scenes): E2c 0.594 clean / 12% refused, COT 0.81; E4 0.573 / 15%, COT 0.83. Transition
   passages < 0.60 m 0.35 vs 0.06, scaffolds 0.78 vs 0.66; clutter and furniture slightly better with the gate.
@@ -397,6 +397,11 @@ Hypothesis: success no longer depends on speed (the speed sweep is flat from 0.1
 Test: `~/jobs/eval_sweep.sh` (eval_per_scene --operator-speed S on 303 side-gap / passage / CAT / scaffold scenes, 2
 episodes each) for E2 u300 (baseline, job 304207) and V1 snapshots; CPU check of the code passed (commanded speed =
 operator speed, rest starts at zero velocity, no stops, finite rewards).
+
+Correction (2026-11-17): the step reward is clamp(sum of scaled terms x dt, 0) plus the hand clearance term
+(`reward_floor.py`, end of `task._rewards`), so the "-3.6/s" and "-6.6/s" stalled figures above are sums before that
+clip; the stalled steps of E4 earned about 0. The E4 reading stands, sharper: the gate turned the approach zone into a
+flat zero-reward plateau with no gradient toward the passage.
 
 ## Measurement notes
 - Standing power, u150 clean: 26-31 W at rest (CPU trace), recovery steps after a shove 170-570 W.
