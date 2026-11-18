@@ -61,7 +61,7 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
                      table_hands_up_band=None,table_center_weight=None,table_zone_facing_weight=None,passage_progress=None,
                      table_power_weight=None,global_power_weight=None,hand_tight_passages=None,passage_stall_factor=None,
                      passage_soft_contact=None,passage_stall_gate=None,route_energy=None,operator_speed=None,
-                     operator_rest_starts=None,operator_v2=None,operator_v3=None,operator_v4=None,operator_v5=None,overspeed_weight=None):
+                     operator_rest_starts=None,operator_v2=None,operator_v3=None,operator_v4=None,operator_v5=None,operator_v6=None,overspeed_weight=None):
     from cat_ppo.furniture.generalist_config import released_config
     from .collision import PROPOSAL
     config=copy.deepcopy(released_config()['env_config'] if base_config is None else base_config)
@@ -429,6 +429,12 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
             if not operator_v4:raise ValueError('operator_v5 builds on operator_v4')
             if not overspeed_weight:raise ValueError('operator_v5 needs the overspeed limit (--overspeed-weight)')
             config['operator_speed'].update(goal_compliance=.25)
+        if operator_v6:
+            # V6 = V5 + the guidance terms' constant for points past the goal line (4 each, x > 1.5 m in CAT scenes: ~+16/s
+            # for being across, ~0 just before) scaled by the same speed-compliance factor, and every goal-line (CAT) scene
+            # anchor-free (E2 sprints for the line in all of them).
+            if not operator_v5:raise ValueError('operator_v6 builds on operator_v5')
+            config['operator_speed'].update(crossed_gate=True,cat_anchor_free=True)
     if overspeed_weight is not None:
         if not operator_speed:raise ValueError('overspeed_weight needs operator_speed')
         weight=_signed('overspeed_weight',overspeed_weight,positive=False)

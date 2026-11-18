@@ -240,6 +240,9 @@ class CATTask:
             gap_kinds={'side-gap','contrastive-hand-passage','width-curriculum-scaffold'} if self.operator_speed.get('gap_anchor_free') else set()
             self.op_gap_scene=torch.tensor([(s_.get('source') or {}).get('kind') in gap_kinds for s_ in self.bank.manifest['scenes']],
                                            dtype=torch.bool,device=self.device)
+            if self.operator_speed.get('cat_anchor_free'):
+                # V6: every goal-line (CAT) scene too: E2 sprints for the goal line in all of them.
+                self.op_gap_scene|=self.bank.crossed_is_plane.to(self.device)
         if config.get('hand_speed_curriculum'):
             if config.get('hand_tolerance_curriculum'):
                 raise ValueError('Run speed and tolerance curricula separately')
@@ -1376,10 +1379,15 @@ class CATTask:
                 scope=scope&mask           # route worlds follow a certified route; repulsion is for the joystick
             reward_command[:,1:3]=torch.where(scope[:,None],target,reward_command[:,1:3])
             self._safe_target=target
-        gf_speed=None
+        gf_speed=None;crossed_value=None
         if self.operator_speed and self.operator_speed.get('gf_along'):
             gf_speed=self.op_speed.clamp_min(float(self.operator_speed['min']))
-        rewards=self.math.native_rewards(gf_speed=gf_speed,facing_yaw=facing_yaw,stand_still='stand_still' in _get(self.config,'reward_config.scales',{}),
+        if self.operator_speed and self.operator_speed.get('crossed_gate'):
+            # V6: the head / hand / foot guidance terms pay a constant 4 per point past the goal line (x > 1.5 m in CAT
+            # scenes, right at the gap exit) and ~0 in the open just before it: +16/s for being across sooner. Paid in
+            # full only within the speed limit, like the goal bonus (V5).
+            crossed_value=4.*(1.-self.op_over_ema/float(self.operator_speed['goal_compliance'])).clamp(0.,1.)
+        rewards=self.math.native_rewards(gf_speed=gf_speed,crossed_value=crossed_value,facing_yaw=facing_yaw,stand_still='stand_still' in _get(self.config,'reward_config.scales',{}),
             stillness_speed=_get(self.config,'standing_requires_stillness_speed',None),heading_sdf=heading_sdf,heading_margins=heading_margins,standing_gf=float(_get(self.config,'standing_gf_bonus',4.)),sdf_knee=sdf_knee,action=action,last_action=i['last_act'],last_last_action=i['last_last_act'],
             joint_pos=d.qpos[:,7:],joint_vel=d.qvel[:,6:],last_joint_vel=i['last_joint_vel'],lower=self.lower,upper=self.upper,
             actuator_force=d.actuator_force,command=reward_command,pelvis_rpy=i['pelvis_rpy'],torso_rpy=i['torso_rpy'],
