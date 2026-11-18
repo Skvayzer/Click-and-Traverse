@@ -420,6 +420,44 @@ wholebody_sim for policies whose contract records the operator-speed rule; `comm
 `task._operator_command` on 400 recorded field samples; no stop latch; arrival stop within 0.25 m of the final goal /
 hold point (release 0.45 m), because the field no longer slows the robot at its goal.
 
+Speed sweeps, 2026-11-18 (`runs/speed_sweep/<label>`, 303 obstacle scenes x 2 episodes, `~/jobs/summarize_sweep.py`;
+"near" = steps with any body point within 15 cm of an obstacle, ratio = mean planar pelvis speed / commanded):
+
+| policy | command m/s | clean | contact | refused | near-obstacle speed (ratio) |
+|---|---|---|---|---|---|
+| E2 u300 | 0.1 / 0.2 / 0.35 / 0.525 | 0.53 / 0.53 / 0.54 / 0.53 | 0.28-0.32 | 0.15-0.19 | 0.43 / 0.45 / 0.46 / 0.47 m/s (4.31 / 2.26 / 1.32 / 0.89) |
+| V1 u200 | same | 0.47 / 0.47 / 0.46 / 0.49 | 0.37-0.38 | 0.13-0.17 | ratio 3.83 / 2.15 / 1.33 / 0.95 |
+| V1 u400 | same | 0.48 / 0.48 / 0.46 / 0.47 | 0.38-0.41 | 0.12-0.14 | ratio 4.59 / 2.43 / 1.42 / 0.97 |
+| V2 u200 | 0.1 / 0.2 | 0.12 / 0.09 | 0.48 / 0.55 | 0.40 / 0.36 | 0.15 / 0.15 m/s (1.49 / 0.77) |
+
+Every policy except V2 crosses within 15 cm of an obstacle at 0.43-0.47 m/s whatever it is told (the momentum
+passage seen on the robot), and V1's training did not change that. V2 slows down but collapsed: training success 0.29
+(update 34) -> 0.05 (u200), flat to u490; stopped at u490 (2026-11-18 08:50). Why V2 collapsed: its overspeed cost
+read the instantaneous pelvis speed with 20% headroom over the command, and at 0.1 m/s the gait's own sideways sway
+exceeds 0.12 m/s, so every walking step paid it, outside the clip at 0. Walking slowly then paid less per step than
+standing (V2 vs V1 at ~u390: stall -1.14 vs -0.03 /s, headgf 0.32 vs 1.62, handsgf 0.47 vs 1.99, steps clipped at 0
+27% vs 3%), and ending the episode on a touch paid most (contacts 0.48-0.55).
+
+Why E2 / V1 rush near obstacles (found 2026-11-18): headgf / handsgf / feetgf (scales 1 / 1 / 2, up to 5 per point)
+score the cosine between the instantaneous head / hand / swing-foot velocity and the guidance field, and act only
+within tau = 0.5 / 0.5 / 0.3 m of an obstacle. A slow pass reads as misaligned because sideways sway is a large part
+of a slow velocity: 0.1 m/s forward with 0.15 m/s sway scores 2.77 of 5, a 0.45 m/s pass with the same sway 4.74
+(`gf_reward` on these vectors). Near obstacles these terms outweigh the relative tracking term (~0.5/s) by 10x, so the
+fastest pass scores best exactly where speed matters.
+
+V3 (2026-11-18 08:50, commit 9a0054f, from E2 u300, anchor E2 u300 except episodes slower than 0.4 m/s; V3a job
+306164, V3b job 306165, ws-ia), `--operator-v3` = V2's episode settings (35% anchored near-nominal episodes, safe rest
+starts, passage progress) plus:
+1. headgf / handsgf / feetgf score velocity along the field relative to the operator speed, capped at +-1 (both
+   passes above score 5.0; at the nominal speed close to the cosine: 4.76 vs 4.79);
+2. tracking (relative, as V1) on the 0.4 s mean pelvis velocity, so sway is not tracking error;
+3. goal bonus back to 2000;
+4. V3b only: overspeed -10/s on the 0.4 s mean speed above 1.25x the command + 0.05 m/s, relative to
+   max(command, 0.2 m/s), inside the clip (it can take a step's reward to 0, never below).
+Hypotheses: (H1, V3a) removing the speed premium in the guidance terms alone brings the near-obstacle speed close to
+the command; (H2, V3b) a bounded speed cost does it without V2's collapse. Pass: near-obstacle ratio <= 1.5 at 0.1 and
+0.2 m/s with clean >= 0.45 and contacts <= 0.35 (E2: 0.53 / 0.28-0.32).
+
 ## Measurement notes
 - Standing power, u150 clean: 26-31 W at rest (CPU trace), recovery steps after a shove 170-570 W.
 - Training metrics `reactive/*` average over all env-steps: divide by `reactive/reactive_standing` (power) or
