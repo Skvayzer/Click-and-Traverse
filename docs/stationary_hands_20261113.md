@@ -581,6 +581,32 @@ Robot-side simulator bug and near-wall goals (2026-11-18 evening).
   So the stand-off is learned hand clearance, not field repulsion: reaching those goals in its posture means touching.
 - E2 with the goal inside sidegap_plain_047 arrived, stood in the gap and fell 3 s later (1 run; walls non-colliding).
 
+Real-robot logs, 17 Nov 2026 (Artem's archive /l/users/artem.voronov/g1_real_robot_data, checksums OK; unpacked under
+runs/real_g1 on the cluster; scripts ~/jobs/real_g1_analysis.py, real_g1_extra.py). u150 sessions A-D, S2far2 session E,
+executor = humanoid_navigation feature/g1-real-robot (19 commits beyond feature/g1-slow-traversal's merge base).
+52,030 of 54,351 POLICY steps matched exactly to the 1 kHz motor log (identical q / targets).
+- Timing: step 20.0 ms (p99 23.4, 226 steps > 25 ms); executor compute 4.7 ms median (p99 12); LowState -> /lowcmd at the
+  logger 7.0 ms median (p95 12, p99 16, max 45); /lowcmd period 19.9 ms (p05 15.5, p95 24). Command -> torque: the motors'
+  PD law on the logged commands explains the estimated torque with a 5 ms lag (legs rms 0.98 vs 7.6 Nm signal).
+  Sensor-to-torque ~12 ms median, ~20 ms p99: inside the trained 0-20 ms action delay.
+- Gains exactly the contract's. Estimated / PD-model torque slope: legs 0.98, arms 0.94, waist 0.82. Saturation ~0.
+- SLAM: new poses 48-50 Hz, yaw 30 ms behind the pelvis IMU at the executor; stamps on a clock 1294.07 s (A, B) /
+  1294.46 s (C-E) away from the robot's. 5 relocalisation steps of 3.6-5.8 cm while walking (one 1.6 s before the
+  episode-3 palm contact / hip-roll DAMP).
+- Upper body: the robot filters waist/arm motor targets with EMA alpha 0.30 (reconstructed exactly). Training: u150 no
+  filter; E2 / S2far2 / T2 / V7 the mean of the last two targets (--upper-target-average); the robot branch offers
+  'avg2'. feature/g1-slow-traversal applies no filter at all. The 2 rad/s upper rate limit binds on 26-36% of joint
+  steps on the robot and 31-35% in the training rollouts: the step-to-step dithering is the policy's, not sim-to-real.
+- Guidance-speed "fix" on the robot branch (|gf| 0.6, (d/0.3)^3 within 0.3 m) feeds only the stop latch; our training
+  banks (sidegap_v2_packed for u150, tablegap_v1_packed for E2/V*) store unit directions, so in training the latch
+  command was 0.525 m/s nominal, never slowed at goals. Robot latch stops at goals: 0.17-0.42 m away after the change.
+  Risk: the latch now fires after a 37% field-command cut near obstacles instead of 62%.
+- Walking (1 s windows): median 0.20-0.28 m/s, p90 0.38-0.55, max 0.54-0.95 (short goals, turns, obstacles, gantry);
+  robot-side sim, u150, 2 m open-floor goal: mean 0.59, p90 0.99 -- possibly 2x slower in reality, needs a matched replay.
+  Gait (knee) 1.40-1.42 Hz.
+- Both right-hip-roll DAMPs (episodes 3, 10): hip roll -0.54 / -0.56 rad past the -0.436 limit, pelvis 0.73-0.81 m/s in
+  the last second, right after a palm reached a box: the no-contact training showing.
+
 ## Measurement notes
 - Standing power, u150 clean: 26-31 W at rest (CPU trace), recovery steps after a shove 170-570 W.
 - Training metrics `reactive/*` average over all env-steps: divide by `reactive/reactive_standing` (power) or
