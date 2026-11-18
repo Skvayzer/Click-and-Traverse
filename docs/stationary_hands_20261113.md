@@ -607,6 +607,27 @@ executor = humanoid_navigation feature/g1-real-robot (19 commits beyond feature/
 - Both right-hip-roll DAMPs (episodes 3, 10): hip roll -0.54 / -0.56 rad past the -0.436 limit, pelvis 0.73-0.81 m/s in
   the last second, right after a palm reached a box: the no-contact training showing.
 
+Narrow-passage retention, V7 vs V6 vs E2 (2026-11-18, `~/jobs/eval_narrow.sh`, `runs/speed_sweep/narrow_*`, the 384
+fixed scenes x 2 episodes, deterministic, `~/jobs/narrow_summary.py`). Clean / contact / refused told 0.15 m/s (all-scenes
+clean at 0.3 m/s in brackets). V7 is scored under its own rule (ground goal, within 0.30 m after a 2 s hold); V6 under
+its own easier rule (past the goal line) and under V7's (`env_from` V7 u150); E2 under its own rule only.
+
+| scenes | V7 u150 | V6 u300 | V6 u300, V7 rule | E2 u300 |
+|---|---|---|---|---|
+| side gaps 0.3-0.6 m (40) | 0.38 / 0.51 / 0.11 | 0.38 / 0.60 / 0.03 | 0.10 / 0.84 / 0.06 | 0.44 / 0.55 / 0.01 |
+| cabinet passages < 0.60 m (103) | **0.78 / 0.03 / 0.18** | 0.57 / 0.01 / 0.41 | 0.53 / 0.12 / 0.35 | 0.52 / 0.03 / 0.45 |
+| cabinet passages >= 0.60 m (57) | 0.98 / 0.00 / 0.02 | 0.96 / 0.04 / 0.00 | 0.89 / 0.08 / 0.03 | 0.94 / 0.01 / 0.05 |
+| CAT courses (104) | 0.17 / 0.75 / 0.07 | 0.25 / 0.66 / 0.07 | 0.04 / 0.88 / 0.08 | 0.36 / 0.55 / 0.08 |
+| rooms (80) | 0.88 / 0.12 / 0.00 | 0.94 / 0.06 / 0.00 | 0.89 / 0.10 / 0.01 | 0.87 / 0.13 / 0.00 |
+| all 384 | 0.62 / 0.29 / 0.08 (0.61) | 0.60 / 0.26 / 0.13 (0.61) | 0.48 / 0.39 / 0.13 (0.51) | 0.60 / 0.24 / 0.15 (0.61) |
+
+Under the same (V7) rule V7 beats V6 by 14 points overall, most in side gaps (0.38 vs 0.10), narrow cabinet passages
+(0.78 vs 0.53) and CAT courses (0.17 vs 0.04). V7's clearest gain over every policy is narrow cabinet passages: 0.78
+clean with 18% refused, against 0.52-0.57 with 35-45% refused. The rule change alone costs V6 12 points overall and 21
+on CAT courses, so V7's CAT-course gap to E2 (0.17 vs 0.36) is at least partly the stricter rule; E2 under V7's rule has
+not been run. Told 0.3 m/s, V7's side gaps drop to 0.21 clean (contact 0.70), against 0.26-0.34 for E2 and V6 under their
+own rules.
+
 ## Measurement notes
 - Standing power, u150 clean: 26-31 W at rest (CPU trace), recovery steps after a shove 170-570 W.
 - Training metrics `reactive/*` average over all env-steps: divide by `reactive/reactive_standing` (power) or
