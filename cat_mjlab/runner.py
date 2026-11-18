@@ -1017,8 +1017,10 @@ def create_task(args, *, environment_config=None, sim_class=None):
         from .model import assemble_training_xml
         model = mujoco.MjModel.from_xml_string(assemble_training_xml(hand_body_collision=True))
     sim = (sim_class or CATSimulation)(args.num_envs, device=args.device, nconmax=args.nconmax, njmax=args.njmax, model=model)
+    goal_cache = getattr(args, 'goal_seed_cache', None) or ((environment_config or {}).get('goal_seed') or {}).get('cache')
     bank = SceneBank(args.bank_manifest, device=args.device, reset_manifest=args.body_collision_resets,
-                     collision_manifest=args.body_collision_bank, passage_rewards=getattr(args, "passage_rewards", None))
+                     collision_manifest=args.body_collision_bank, passage_rewards=getattr(args, "passage_rewards", None),
+                     goal_seed_cache=goal_cache)
     collision = CollisionChecker(sim.model, args.body_collision_bank, field_manifest=args.bank_manifest, device=args.device)
     _rebalance_bank(bank, args)
     config = wholebody_config(environment_config, stabilization=True, hand_protection=True, hand_contrast=bank.has_contrast,
@@ -1081,6 +1083,7 @@ def create_task(args, *, environment_config=None, sim_class=None):
         operator_speed=getattr(args, 'operator_speed', None),operator_rest_starts=getattr(args, 'operator_rest_starts', None),
         operator_v2=getattr(args, 'operator_v2', None),operator_v3=getattr(args, 'operator_v3', None),
         operator_v4=getattr(args, 'operator_v4', None),operator_v5=getattr(args, 'operator_v5', None),
+        goal_seed_cache=getattr(args, 'goal_seed_cache', None),goal_ground=getattr(args, 'goal_ground', None),
         operator_v6=getattr(args, 'operator_v6', None),
         overspeed_weight=getattr(args, 'overspeed_weight', None),
         reactive_retreat_success=getattr(args, 'reactive_retreat_success', None),

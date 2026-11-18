@@ -17,7 +17,7 @@ from .fields import sample_ragged_field
 
 class SceneBank:
     def __init__(self,manifest,*,device='cuda',reset_manifest=None,collision_manifest=None,
-                 proposal_path=None,verify_files=True,hand_protection=True,passage_rewards=None):
+                 proposal_path=None,verify_files=True,hand_protection=True,passage_rewards=None,goal_seed_cache=None):
         from cat_ppo.furniture.generalist_fields import load_generalist_manifest,sampling_groups,scene_directory
         from cat_ppo.furniture.room_navigation import pack_room_scenes
         from cat_ppo.furniture.contrastive_rewards import pack_hand_contrast
@@ -61,6 +61,25 @@ class SceneBank:
             self.fields[name]=torch.as_tensor(values,device=self.device)
             del values
         self.packed_fields=packed_names
+        self.goal_seed_cache=None
+        if goal_seed_cache:
+            # Ground-projected goal (cat_mjlab/goal_seed.py): the column-seed guidance replaces the stored ball-seed gf,
+            # scene by scene, from a cache pinned to this bank's manifest hash. SDF, normals and geometry are unchanged.
+            from .goal_seed import load_cache
+            from .packing.field_packing import unpack_direction
+            cache=Path(goal_seed_cache)
+            meta=load_cache(cache,self.manifest['manifest_sha256'],[r['scene_id'] for r in records])
+            gf=self.fields['gf']
+            for scene,offset,size in zip(records,offsets,sizes):
+                codes=np.load(cache/scene['scene_id']/'gf.npy',allow_pickle=False)
+                if 'gf' in packed_names:
+                    values=codes.reshape(-1,2)
+                else:
+                    values=unpack_direction(codes,np.load(cache/scene['scene_id']/'gf_valid.npy'),tuple(scene['shape'])).reshape(-1,3)
+                if values.shape[0]!=size:
+                    raise ValueError(f"goal-seed cache field size differs for {scene['scene_id']}")
+                gf[offset:offset+size]=torch.as_tensor(values,device=gf.device,dtype=gf.dtype)
+            self.goal_seed_cache=dict(path=str(cache),cache_sha256=meta['cache_sha256'],kept_ball=len(meta['kept_ball']))
         self.offsets=tensor(offsets,torch.long)
         self.shapes=tensor([s['shape'] for s in records],torch.long)
         self.origins=tensor([s['origin'] for s in records],torch.float32)

@@ -4,6 +4,7 @@ from __future__ import annotations
 from .observation_contract import ACTOR_SIZE, CRITIC_SIZE
 
 import copy
+import json
 import math
 from pathlib import Path
 
@@ -61,7 +62,7 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
                      table_hands_up_band=None,table_center_weight=None,table_zone_facing_weight=None,passage_progress=None,
                      table_power_weight=None,global_power_weight=None,hand_tight_passages=None,passage_stall_factor=None,
                      passage_soft_contact=None,passage_stall_gate=None,route_energy=None,operator_speed=None,
-                     operator_rest_starts=None,operator_v2=None,operator_v3=None,operator_v4=None,operator_v5=None,operator_v6=None,overspeed_weight=None):
+                     operator_rest_starts=None,operator_v2=None,operator_v3=None,operator_v4=None,operator_v5=None,operator_v6=None,overspeed_weight=None,goal_seed_cache=None,goal_ground=None):
     from cat_ppo.furniture.generalist_config import released_config
     from .collision import PROPOSAL
     config=copy.deepcopy(released_config()['env_config'] if base_config is None else base_config)
@@ -435,6 +436,18 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
             # anchor-free (E2 sprints for the line in all of them).
             if not operator_v5:raise ValueError('operator_v6 builds on operator_v5')
             config['operator_speed'].update(crossed_gate=True,cat_anchor_free=True)
+    if goal_seed_cache is not None:
+        # Ground-projected goal: column-seed guidance from a cache pinned to the bank (cat_mjlab/goal_seed.py).
+        meta=json.loads((Path(goal_seed_cache)/'cache.json').read_text())
+        config['goal_seed']=dict(mode='column',cache=str(goal_seed_cache),cache_sha256=meta['cache_sha256'],
+                                 seed_radius_m=meta['seed_radius_m'],column_z_m=meta['column_z_m'])
+    if goal_ground:
+        # Success at the goal on the ground instead of past the x = 1.5 m line (0.35-0.40 m before the goal point, where
+        # the policies learned to stop): a body point counts as across within cross_radius of the goal xy; the operator
+        # command stops within arrive m of the goal (released beyond release m), as the robot executor does; CAT-type
+        # episodes end hold_seconds after success (truncation), as route worlds do.
+        if not goal_seed_cache:raise ValueError('goal_ground needs the ground-projected goal (goal_seed_cache)')
+        config['goal_ground']=dict(cross_radius=.30,arrive=.25,release=.45,hold_seconds=2.)
     if overspeed_weight is not None:
         if not operator_speed:raise ValueError('overspeed_weight needs operator_speed')
         weight=_signed('overspeed_weight',overspeed_weight,positive=False)

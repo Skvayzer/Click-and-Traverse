@@ -103,6 +103,12 @@ def parser():
         target.add_argument("--operator-v6", action="store_true",
                             help="With --operator-v5: the goal-line constant of the guidance terms gated like the goal bonus, "
                                  "CAT (goal-line) scenes anchor-free")
+        target.add_argument("--goal-seed-cache", type=str,
+                            help="Ground-projected goal: column-seed guidance cache for the bank "
+                                 "(scripts/build_goal_seed_cache.py); replaces the stored ball-seed gf at load time")
+        target.add_argument("--goal-ground", action="store_true",
+                            help="With --goal-seed-cache: success within 0.3 m of the goal on the ground (not past x = 1.5 m), "
+                                 "arrival stop 0.25 / 0.45 m as on the robot, CAT episodes end 2 s after success")
         target.add_argument("--overspeed-weight", type=float,
                             help="Cost (negative, per second) on pelvis speed above 1.2x the commanded speed, relative to it; "
                                  "outside the reward clip so it can outweigh the goal bonus's early-arrival premium")

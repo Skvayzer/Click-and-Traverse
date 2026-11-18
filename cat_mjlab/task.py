@@ -720,6 +720,15 @@ class CATTask:
         velocity=(v+delta.mean(1))*.75
         magnitude=torch.linalg.vector_norm(velocity,dim=-1)
         go=magnitude>=float(self.operator_speed['cutout'])
+        ground=self.config.get('goal_ground')
+        if ground:
+            # Arrival stop, as the robot executor: command zero within `arrive` m of the goal, re-armed beyond `release`.
+            if getattr(self,'op_arrived',None) is None:
+                self.op_arrived=torch.zeros(self.num_envs,dtype=torch.bool,device=self.device)
+            distance=torch.linalg.vector_norm(self.data.qpos[ids,:2]-self.bank.goals[self.scene_ids[ids],:2],dim=-1)
+            arrived=torch.where(self.op_arrived[ids],distance<float(ground['release']),distance<float(ground['arrive']))
+            self.op_arrived[ids]=arrived
+            go=go&~arrived
         direction=velocity/magnitude.clamp_min(1e-6)[:,None]
         speed=self.op_speed[ids]*go
         return torch.cat(((go.float()*.75)[:,None],direction*speed[:,None],torch.zeros_like(speed)[:,None]),-1)
@@ -966,6 +975,7 @@ class CATTask:
                 near=torch.where(nominal_,far,near);use=use&~nominal_
             self.op_far[ids]=far;self.op_near[ids]=near;self.op_use_near[ids]=use;self.op_speed[ids]=far;self.op_speed_ema[ids]=far
             self.op_vel_ema[ids]=0.;self.op_over_ema[ids]=0.
+            if getattr(self,'op_arrived',None) is not None:self.op_arrived[ids]=False
             if op.get('resample'):self.op_timer[ids]=self._rand((n,),float(op['resample'][0]),float(op['resample'][1]))
             slowest=torch.where(use,near,far)
             self.op_length_scale[ids]=(nominal/slowest).clamp(1.,float(op['length_scale_max']))
@@ -1197,6 +1207,10 @@ class CATTask:
     def _crossed(self,positions,ids):
         scenes=self.scene_ids[ids]
         plane=positions[...,0]>1.5
+        ground=self.config.get('goal_ground')
+        if ground:
+            # Ground-projected goal: across = within cross_radius of the goal xy (pelvis and feet for success).
+            plane=torch.linalg.vector_norm(positions[...,:2]-self.bank.goals[scenes,None,:2],dim=-1)<=float(ground['cross_radius'])
         goal=torch.linalg.vector_norm(positions[...,:2]-self.bank.goals[scenes,None,:2],dim=-1)<=.5
         crossed=torch.where(self.bank.crossed_is_plane[scenes,None],plane,goal)
         navigation=~self.navigation['enabled'][ids]|(self.navigation['route_complete'][ids]&~self.navigation['violation'][ids])
@@ -2105,6 +2119,14 @@ class CATTask:
             # by losing the future standing reward.
             i['goal_steps']=torch.where(self.episode['goal_reached']&self.navigation['enabled'],i['goal_steps']+1,0)
             timeout=timeout|(i['goal_steps']*self.dt>=float(hold))
+        ground=self.config.get('goal_ground')
+        if ground:
+            # CAT-type episodes also end after a short stand at the goal (before: they ran to the 20 s limit past the line).
+            if 'ground_goal_steps' not in i:
+                i['ground_goal_steps']=torch.zeros(self.num_envs,dtype=torch.long,device=self.device)
+            plane_=self.bank.crossed_is_plane[self.scene_ids]
+            i['ground_goal_steps']=torch.where(self.episode['goal_reached']&plane_,i['ground_goal_steps']+1,0)
+            timeout=timeout|(i['ground_goal_steps']*self.dt>=float(ground['hold_seconds']))
         if self.config.get('timeout_failure'):
             # A CAT-type episode that runs out of time without reaching the goal is a FAILURE (terminal, no bootstrap):
             # the task is "cross within the time limit" (Pardo et al. 2018). Bootstrapping it valued refusing as if the
