@@ -1080,6 +1080,7 @@ def create_task(args, *, environment_config=None, sim_class=None):
         route_energy=getattr(args, 'route_energy', None),
         operator_speed=getattr(args, 'operator_speed', None),operator_rest_starts=getattr(args, 'operator_rest_starts', None),
         operator_v2=getattr(args, 'operator_v2', None),operator_v3=getattr(args, 'operator_v3', None),
+        operator_v4=getattr(args, 'operator_v4', None),
         overspeed_weight=getattr(args, 'overspeed_weight', None),
         reactive_retreat_success=getattr(args, 'reactive_retreat_success', None),
         robustness=(dict(action_latency_ms=float(args.robust_action_latency_ms or 0.),

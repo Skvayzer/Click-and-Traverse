@@ -235,6 +235,10 @@ class CATTask:
             self.anchor_free=torch.zeros(n_,dtype=torch.bool,device=self.device)
             self.op_speed_ema=self.op_far.clone()
             self.op_vel_ema=torch.zeros((n_,2),device=self.device)   # V3: mean pelvis velocity over smooth_tau
+            # V4: gaps and passages never pulled toward the anchor (E2 crosses them in a lunge at any command).
+            gap_kinds={'side-gap','contrastive-hand-passage','width-curriculum-scaffold'} if self.operator_speed.get('gap_anchor_free') else set()
+            self.op_gap_scene=torch.tensor([(s_.get('source') or {}).get('kind') in gap_kinds for s_ in self.bank.manifest['scenes']],
+                                           dtype=torch.bool,device=self.device)
         if config.get('hand_speed_curriculum'):
             if config.get('hand_tolerance_curriculum'):
                 raise ValueError('Run speed and tolerance curricula separately')
@@ -698,7 +702,7 @@ class CATTask:
         near=self.info['sdf'][:,:11,0].amin(-1)<float(op['near_sdf'])
         self.op_speed=torch.where(self.op_use_near&near,self.op_near,self.op_far)
         self.op_speed_ema=.98*self.op_speed_ema+.02*self.op_speed      # ~1 s: the overspeed allowance while slowing down
-        self.anchor_free=torch.where(self.op_use_near,self.op_near,self.op_far)<float(op['anchor_free_below'])
+        self.anchor_free=(torch.where(self.op_use_near,self.op_near,self.op_far)<float(op['anchor_free_below']))|self.op_gap_scene[self.scene_ids]
 
     def _operator_command(self,gf,bf,ids):
         """compute_cmd_from_rtf's direction (root guidance, projected so no limb moves into its obstacle) at the operator's
@@ -961,7 +965,7 @@ class CATTask:
             if op.get('resample'):self.op_timer[ids]=self._rand((n,),float(op['resample'][0]),float(op['resample'][1]))
             slowest=torch.where(use,near,far)
             self.op_length_scale[ids]=(nominal/slowest).clamp(1.,float(op['length_scale_max']))
-            self.anchor_free[ids]=slowest<float(op['anchor_free_below'])
+            self.anchor_free[ids]=(slowest<float(op['anchor_free_below']))|self.op_gap_scene[scenes]
             rest=torch.zeros(n,dtype=torch.bool,device=self.device)
             if float(op['rest_start_share'])>0 and getattr(self,'side_levels',None) is not None:
                 # At rest at the gap: half just before the entrance (facing it or sideways), half inside (sideways),
@@ -1707,9 +1711,6 @@ class CATTask:
             standing_=torch.zeros(self.num_envs,dtype=torch.bool,device=self.device)
             if self.reactive_objects is not None:
                 st_=self.reactive_objects.state;standing_=st_['active']&~st_['walking']
-            factor=torch.where(standing_,1.,self.op_speed/nominal)
-            for name in ('wholebody_hand_clearance','wholebody_arm_clearance','handsdf','feetdf','headdf','kneesdf','shldsdf'):
-                if name in rewards:rewards[name]=rewards[name]*factor
             op_=self.operator_speed;v_pelvis=self._sensor('global_linvel_pelvis',self.all_ids)[:,:2]
             if op_.get('smooth_tau'):
                 # V3: tracking and overspeed read the mean velocity over ~smooth_tau, so the gait's sideways sway (a large
@@ -1718,6 +1719,16 @@ class CATTask:
                 v_mean=self.op_vel_ema
             else:
                 v_mean=v_pelvis
+            rate=self.op_speed
+            if op_.get('clearance_per_metre'):
+                # V4: at the larger of the commanded and the actual (0.4 s mean) speed. Scaled by the command alone, the
+                # cost of a gap still fell with the time spent in it, so crossing faster than told paid (E2 / V3: told
+                # 0.15 m/s, out of a 0.44 m gap at ~1 m/s); now a pass costs the same per metre at any speed above the
+                # command, and lingering below it pays at the commanded rate.
+                rate=torch.maximum(self.op_speed,torch.linalg.vector_norm(v_mean,dim=-1))
+            factor=torch.where(standing_,1.,rate/nominal)
+            for name in ('wholebody_hand_clearance','wholebody_arm_clearance','handsdf','feetdf','headdf','kneesdf','shldsdf'):
+                if name in rewards:rewards[name]=rewards[name]*factor
             if 'tracking_root_field' in rewards:
                 cmd_=reward_command[:,1:3];c_=torch.linalg.vector_norm(cmd_,dim=-1)
                 scale_=torch.where(c_>1e-3,(nominal/c_.clamp_min(float(op_['min']))).square(),torch.ones_like(c_))
