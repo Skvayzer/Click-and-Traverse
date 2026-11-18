@@ -463,6 +463,9 @@ shipped E2 u300 bundle; near = any body point within 15 cm in the policy's SDF o
 pelvis velocity): told 0.15 or 0.25 m/s, E2 u300 crosses gap_044_exact / sidegap_plain_047 / sidegap_corridor_048 in
 4.1-5.9 s without contact, at 0.4 s mean speed 0.67-0.73 m/s near the walls (peaks 0.99-1.24 m/s; 0.48-0.52 m/s
 over the whole run): it lunges through the gap whatever it is told, the momentum passage seen on the robot.
+V2 u450 in the same harness: 0.02 m/s average told 0.15 or 0.25 m/s, never reaches the goal in 80 s (one fall at
+0.25 in gap_044): the collapse is a robot that has stopped walking. (Snapshots are stripped to schema / contract /
+learner without the optimizer, 9.4 MB, with `scripts/strip_snapshot.py` on the cluster, then exported here on CPU.)
 
 ## Measurement notes
 - Standing power, u150 clean: 26-31 W at rest (CPU trace), recovery steps after a shove 170-570 W.
