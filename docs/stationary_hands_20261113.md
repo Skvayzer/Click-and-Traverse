@@ -495,6 +495,25 @@ V4 continues as the ablation): V4 + goal bonus x clamp(1 - f / 0.25, 0, 1), f = 
 after 0.5 s, nothing after a 1 s sprint. Prediction: V4 still sprints at the gap exit (H3: the goal premium dominates),
 V5 does not.
 
+Robot-side check, told 0.15 / 0.25 m/s (0.4 s mean within 15 cm of the walls / over the run / peak, m/s):
+
+| policy | near the walls | whole run | peak |
+|---|---|---|---|
+| E2 u300 | 0.67-0.73 | 0.48-0.52 | 0.99-1.24 |
+| V3a / V3b u50 | 0.61-0.66 / 0.57-0.67 | 0.43-0.49 / 0.40-0.47 | 0.88-1.21 / 0.92-1.16 |
+| V4 u50 / u100 | 0.59-0.73 / 0.51-0.61 | 0.42-0.47 / 0.40-0.45 | 0.89-1.24 / 0.94-1.13 |
+| V5 u50 / u100 | 0.46-0.63 / 0.45-0.59 | 0.34-0.40 / 0.34-0.42 | 0.91-1.21 / 0.81-1.05 |
+
+All reach the goal without contact. Along the course every policy speeds up toward the goal line: ~0.2 m/s in the
+first 0.5 m, 0.7-1.1 m/s in the last, peak at x = 1.4-1.96 m. V5's gate works in training (goal-bonus term 0.03-0.04
+vs V4's 0.29-0.35: most arrivals still forfeit it) but the sprint is unlearned slowly. One goal attraction it left:
+gf_reward pays a constant 4 per head / hand / foot point past the goal line (`task._crossed`: x > 1.5 m in CAT scenes,
+right at the gap exit) and ~0 in the open just before it, ~+16/s for being across sooner. The anchor touches only 8.5%
+of samples, but there the policy equals E2 (action MSE 0.002); the AMP style term is off near obstacles.
+V6 (2026-11-18 12:30, commit 85e694f, job 306586, replaces V4 at u120; warm start V5 u100, anchor E2 u300): V5 +
+that constant x the V5 compliance factor (stance feet keep 4), every goal-line (CAT) scene anchor-free (the anchor
+keeps rooms), overspeed -30/s (inside the clip).
+
 ## Measurement notes
 - Standing power, u150 clean: 26-31 W at rest (CPU trace), recovery steps after a shove 170-570 W.
 - Training metrics `reactive/*` average over all env-steps: divide by `reactive/reactive_standing` (power) or
