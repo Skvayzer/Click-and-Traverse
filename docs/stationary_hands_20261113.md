@@ -458,6 +458,12 @@ Hypotheses: (H1, V3a) removing the speed premium in the guidance terms alone bri
 the command; (H2, V3b) a bounded speed cost does it without V2's collapse. Pass: near-obstacle ratio <= 1.5 at 0.1 and
 0.2 m/s with clean >= 0.45 and contacts <= 0.35 (E2: 0.53 / 0.28-0.32).
 
+Robot-side baseline (humanoid_navigation `cat/wholebody_sim.py`, plain MuJoCo, `--speed`, `--robot-perception`, the
+shipped E2 u300 bundle; near = any body point within 15 cm in the policy's SDF observation; mean = 0.4 s EMA of the
+pelvis velocity): told 0.15 or 0.25 m/s, E2 u300 crosses gap_044_exact / sidegap_plain_047 / sidegap_corridor_048 in
+4.1-5.9 s without contact, at 0.4 s mean speed 0.67-0.73 m/s near the walls (peaks 0.99-1.24 m/s; 0.48-0.52 m/s
+over the whole run): it lunges through the gap whatever it is told, the momentum passage seen on the robot.
+
 ## Measurement notes
 - Standing power, u150 clean: 26-31 W at rest (CPU trace), recovery steps after a shove 170-570 W.
 - Training metrics `reactive/*` average over all env-steps: divide by `reactive/reactive_standing` (power) or
