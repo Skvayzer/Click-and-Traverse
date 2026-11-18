@@ -546,6 +546,21 @@ Slow-passage tests, 2026-11-18 afternoon (robot-side sim, `--speed`, `--robot-pe
   position-only force balance; learned policies rush wherever time near danger is priced; remaining per-second
   pressures in V6: contact termination, pushes 0.1-1.0 m/s every 5-10 s in gaps too, gamma 0.98).
 
+Ground-projected goal (2026-11-18 afternoon). The guidance was seeded from a 12 cm ball at the goal point, z = 0.75
+m: head arrows tilt down and foot arrows up by angles that depend only on the distance to the goal (open floor: -17 /
++24 deg at 1.5 m, -50 / +60 deg at 0.4 m), a hidden distance gauge; with success counted past x = 1.5 m (0.35-0.40 m
+before the ball) the policies learned to stop ~0.4 m before any goal and to sprint the last metre. Column seed = goal
+projected onto the ground (free voxels within 12 cm of the goal xy, 0.10-1.40 m). Robot side: humanoid_navigation
+a7deccf (`--goal-seed`, contract "goal_seed"). Robot-side simulator, told 0.15 m/s, no retraining: E2 u300 gap speed
+0.75-0.94 -> 0.23-0.36 m/s, peaks 1.01-1.24 -> 0.47-0.60 m/s, wall zone 0.5-1.3 -> 2.7-3.7 s, open-floor goals reached
+(0.15-0.23 m), goals within 0.35 m of an opening still 0.28-0.34 m short; V5 u200 / V6 u100 reach worse with it (trained
+on the ball). Training side 781ce07: cache `data/furniture/tablegap_v1_goal_column` built on the cluster (3591 scenes,
+685 s, 1 scene keeps the ball: no free voxel in its column; cache_sha256 23148ab5...), SceneBank check: SDF and normals
+identical, 85.2% of guidance entries change (mostly their vertical part). V7 (sbatch) = V6 + cache + `--goal-ground`,
+from V6 u100, waiting for a training slot. The command rule (task._operator_command / compute_cmd_from_rtf) adds no
+braking on the way into a gap and a 15-33% speed-up after it (limbs past the wall add forward corrections: 0.60 m/s
+inside sideways, 0.70 m/s just past it); the operator rule keeps only the direction.
+
 ## Measurement notes
 - Standing power, u150 clean: 26-31 W at rest (CPU trace), recovery steps after a shove 170-570 W.
 - Training metrics `reactive/*` average over all env-steps: divide by `reactive/reactive_standing` (power) or
