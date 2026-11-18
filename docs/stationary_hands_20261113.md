@@ -473,7 +473,8 @@ V2 u450 in the same harness: 0.02 m/s average told 0.15 or 0.25 m/s, never reach
 learner without the optimizer, 9.4 MB, with `scripts/strip_snapshot.py` on the cluster, then exported here on CPU.)
 
 V3 at update 50, same harness: V3a / V3b still approach at 0.3-0.4 m/s and leave the gap at 1.1-1.4 m/s when told 0.15
-(0.4 s mean within 15 cm of the walls 0.61-0.66 / 0.57-0.67 m/s, E2 0.67-0.73), no contacts; training success 0.31
+(0.4 s mean within 15 cm of the walls 0.61-0.66 / 0.57-0.67 m/s, E2 0.67-0.73), no contacts registered (robot-side sim walls
+never collide, see 2026-11-18 sim bug below); training success 0.31
 (V1 0.32, V2 0.29 and falling). The traces show the lunge is the passage itself: the robot turns sideways at the mouth
 and bursts out, while the command stays at 0.15 m/s. Two incentives V3 left in place:
 1. inside a narrow room passage, hand / arm clearance (outside the clip, -40/s in rooms, pressure 0.27 at 5 cm) and the
@@ -519,7 +520,7 @@ that constant x the V5 compliance factor (stance feet keep 4), every goal-line (
 keeps rooms), overspeed -30/s (inside the clip).
 
 Slow-passage tests, 2026-11-18 afternoon (robot-side sim, `--speed`, `--robot-perception`; 0.4 s mean speed):
-- Told 0.1-0.2 m/s in three 0.47-0.48 m gaps (27 runs, no contacts): E2 u300 approach 0.10-0.28, at the gap
+- Told 0.1-0.2 m/s in three 0.47-0.48 m gaps (27 runs, no contacts registered; see the sim bug below): E2 u300 approach 0.10-0.28, at the gap
   0.65-0.86, peak 0.93-1.31 m/s, 0.5-1.3 s from 0.3 m before to 0.3 m after the wall; V5 u150 0.43-0.56 / 0.73-0.93,
   0.9-2.4 s; V6 u50 approach 0.10-0.18, gap 0.39-0.58, peak 0.64-0.94 m/s, 0.9-2.7 s. Later checkpoints near the
   walls (told 0.15 / 0.25): V5 u200 0.30-0.41 (peaks 0.64-0.89), V6 u100 0.33-0.42 (peaks 0.69-0.97) m/s.
@@ -560,6 +561,21 @@ identical, 85.2% of guidance entries change (mostly their vertical part). V7 (sb
 from V6 u100, waiting for a training slot. The command rule (task._operator_command / compute_cmd_from_rtf) adds no
 braking on the way into a gap and a 15-33% speed-up after it (limbs past the wall add forward corrections: 0.60 m/s
 inside sideways, 0.70 m/s just past it); the operator rule keeps only the direction.
+
+Robot-side simulator bug and near-wall goals (2026-11-18 evening).
+- humanoid_navigation cat/wholebody_sim.build_model sets geom_contype on the robot geoms AFTER compiling; MuJoCo 3.16
+  filters collisions by body_contype / body_conaffinity, computed at compile time. Only `debug_axis` has the flag, so every
+  robot link passes through the walls and contact_steps is always 0 (pelvis placed inside a wall: 0 contacts; 67 after
+  recomputing the body flags). Every robot-side "no contacts" so far is void. Tracked-point distances instead: a palm's
+  10.3 cm sphere overlapped a wall in 9/9 ground-goal passages (0.4-7.9 cm; E2 up to 3.5 cm) and 2/9 ball-goal ones.
+  Fix (not yet applied): recompute body flags after the patch, or set contype in the XML before compiling.
+- Near-wall goals, E2 u300, ground goal, 0.15 m/s, 30 s (no early stop; the sim's stop-when-reached rule had cut the
+  earlier runs): closest 0.27-0.35 m, then backs off to 0.40-0.51 m, never inside the 0.25 m arrival zone; open-floor
+  control 0.18 m. The nearest body part at the closest point is always a palm, 0.10-0.18 m from the wall surface.
+  Wall inputs blanked (distance 0.5, normal 0, rates 0; guidance and command unchanged; slowtest/sim_full.py BLIND=1):
+  reaches 0.17-0.25 m in 2-4 s and stays (7/8), but the palm spheres then sit 0-7 cm from the wall (overlap up to 12 cm).
+  So the stand-off is learned hand clearance, not field repulsion: reaching those goals in its posture means touching.
+- E2 with the goal inside sidegap_plain_047 arrived, stood in the gap and fell 3 s later (1 run; walls non-colliding).
 
 ## Measurement notes
 - Standing power, u150 clean: 26-31 W at rest (CPU trace), recovery steps after a shove 170-570 W.
