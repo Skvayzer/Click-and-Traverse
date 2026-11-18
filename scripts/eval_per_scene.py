@@ -14,6 +14,8 @@ Per scene: episodes, clean (goal and no touch), contact, refused (no goal, no to
 energy used: joint mechanical work sum_j |tau_j qdot_j| dt per episode (J, the training's energy term), the root's path
 length (m), mean power (W) and cost of transport (energy / (robot mass * g * path length), episodes that moved >= 0.5 m).
 Usage: eval_per_scene.py CHECKPOINT --scenes cat|room|all [--episodes 16] [--num-envs 16384] --out FILE.json
+Speed sweep in one run: --operator-speeds 0.1 0.2 0.35 0.525 --out-dir DIR (every scene gets --episodes episodes at each
+speed, DIR/speed_<s>.json per speed, same format as --operator-speed S --out FILE.json).
 """
 from __future__ import annotations
 
@@ -46,8 +48,15 @@ def main():
     p.add_argument("--nominal", action="store_true", help="Drop the robustness perturbations (delay, pose/mount error, friction/mass/COM/torque DR): skill only")
     p.add_argument("--operator-speed", type=float, help="Fixed operator speed (m/s): field direction at this speed, no stop latch, "
                    "cut-out 0.05 m/s, episode time scaled by 0.525/speed (the slow-traversal command; works for any checkpoint)")
-    p.add_argument("--out", type=Path, required=True)
+    p.add_argument("--operator-speeds", type=float, nargs="+", metavar="S",
+                   help="Several fixed operator speeds in one run (needs --out-dir): episodes at every speed in parallel")
+    p.add_argument("--out", type=Path)
+    p.add_argument("--out-dir", type=Path)
     args = p.parse_args()
+    if args.operator_speeds and (args.operator_speed is not None or args.out_dir is None or args.out is not None):
+        p.error("--operator-speeds needs --out-dir (and neither --operator-speed nor --out)")
+    if not args.operator_speeds and args.out is None:
+        p.error("--out is required")
     from record_mjlab_rollout import load_policy
     from cat_mjlab.runner import create_task
     dev = "cuda:0"
@@ -56,10 +65,13 @@ def main():
     env.pop("side_gap_curriculum", None)                 # standard CAT starts, every width
     env["push_config"]["enable"] = False
     env.pop("sgs", None)                                 # every scene gets its K jobs, no success-guided resampling
-    if args.operator_speed is not None:
-        speed = float(args.operator_speed)
-        env["operator_speed"] = dict(min=speed, max=speed, nominal=.525, cutout=.05, near_sdf=.35, near_share=0., resample=None,
-                                     length_scale_max=.525 / .1, anchor_free_below=0., stall_fraction=.2, rest_start_share=0.)
+    speeds = [float(x) for x in args.operator_speeds] if args.operator_speeds else (
+        [float(args.operator_speed)] if args.operator_speed is not None else [None])
+    if speeds[0] is not None:
+        # One operator dict for the process; with several speeds each episode's speed is set at its reset (queued below).
+        env["operator_speed"] = dict(min=min(speeds), max=max(speeds), nominal=.525, cutout=.05, near_sdf=.35, near_share=0.,
+                                     resample=None, length_scale_max=.525 / .1, anchor_free_below=0., stall_fraction=.2,
+                                     rest_start_share=0.)
     if args.nominal:
         env.pop("robustness", None)
     if "teleop" in env:
@@ -75,8 +87,10 @@ def main():
         ids = [i for i, s in enumerate(scenes) if s["scene_id"] in wanted]
     else:
         ids = [i for i, s in enumerate(scenes) if args.scenes == "all" or s.get("task_kind") == args.scenes]
-    S = len(ids)
-    jobs = torch.tensor(ids, device=dev).repeat(args.episodes)
+    S = len(ids); NS = len(scenes); K = len(speeds)
+    # A job is scene + NS * (speed index); statistics are kept per job id.
+    jobs = torch.tensor([i + NS * k for k in range(K) for i in ids], device=dev).repeat(args.episodes)
+    speed_of = torch.tensor([x if x is not None else 0. for x in speeds], device=dev)
     jobs = jobs[torch.randperm(len(jobs), device=dev, generator=torch.Generator(device=dev).manual_seed(args.seed))]
     cursor = [0]
     env_scene = torch.full((task.num_envs,), -1, dtype=torch.long, device=dev)      # -1: no job (ignored)
@@ -91,22 +105,32 @@ def main():
             chosen[:take] = jobs[cursor[0]:cursor[0] + take]; cursor[0] += take
         env_scene[env_ids] = chosen
         filler = torch.tensor(ids, device=dev)[torch.randint(S, (n,), device=dev)]
-        return original_reset(env_ids, torch.where(chosen >= 0, chosen, filler))
+        out_ = original_reset(env_ids, torch.where(chosen >= 0, chosen % NS, filler))
+        if K > 1:
+            s_ = speed_of[torch.where(chosen >= 0, chosen // NS, 0)]
+            for name in ("op_far", "op_near", "op_speed", "op_speed_ema"):
+                getattr(task, name)[env_ids] = s_
+            task.op_use_near[env_ids] = False; task.anchor_free[env_ids] = False
+            task.op_length_scale[env_ids] = (.525 / s_).clamp(1., .525 / .1)
+        return out_
 
     task.reset = queued
     task.reset()
     learner, _ = load_policy(args.checkpoint, device=dev, policy_id=0)
     cols = ("episodes", "clean", "contact", "refused", "fall", "hands", "length", "energy_j", "path_m", "cot", "cot_episodes")
     # Near obstacles (any body point within 15 cm): actual vs commanded pelvis speed, both feet off the ground.
-    near_steps = torch.zeros(len(scenes), dtype=torch.float64, device=dev); near_v = torch.zeros_like(near_steps)
+    near_steps = torch.zeros(NS * K, dtype=torch.float64, device=dev); near_v = torch.zeros_like(near_steps)
     near_cmd = torch.zeros_like(near_steps); near_flight = torch.zeros_like(near_steps); overspeed = torch.zeros_like(near_steps)
-    stats = torch.zeros((len(scenes), len(cols)), dtype=torch.float64, device=dev)
+    # The same on the 0.4 s mean pelvis velocity (the gait's sideways sway, large at 0.1 m/s, averages out).
+    near_vbar = torch.zeros_like(near_steps); overspeed_bar = torch.zeros_like(near_steps)
+    v_bar = torch.zeros((task.num_envs, 2), device=dev)
+    stats = torch.zeros((NS * K, len(cols)), dtype=torch.float64, device=dev)
     energy = torch.zeros(task.num_envs, dtype=torch.float64, device=dev); path = torch.zeros_like(energy)
     try:
         mass = float(task.model.body_subtreemass[task.pelvis_body])      # whole robot (pelvis = root of its tree)
     except Exception:
         mass = float("nan")
-    target = S * args.episodes
+    target = S * args.episodes * K
     start = time.time()
     for t in range(args.max_steps):
         before = env_scene.clone(); root0 = task.data.qpos[:, :2].clone()
@@ -116,6 +140,7 @@ def main():
         # Energy as the training prices it (PD torque of the last substep x joint velocity); a finished env has already
         # been reset (ctrl holds reset targets), so its terminal step is left out of both sums.
         moving = (before >= 0) & ~done
+        v_bar = torch.where(done[:, None], 0., .95 * v_bar + .05 * task.data.qvel[:, :2])
         power = (task.data.ctrl * task.data.qvel[:, 6:]).abs().sum(-1).double()
         energy += torch.where(moving, power * task.dt, 0.)
         path += torch.where(moving, torch.linalg.vector_norm(task.data.qpos[:, :2] - root0, dim=-1).double(), 0.)
@@ -128,6 +153,8 @@ def main():
             near_steps.index_add_(0, sc_, w_); near_v.index_add_(0, sc_, w_ * v_); near_cmd.index_add_(0, sc_, w_ * c_)
             near_flight.index_add_(0, sc_, w_ * (~feet.any(-1)).double())
             overspeed.index_add_(0, sc_, w_ * ((c_ > 1e-3) & (v_ > 1.5 * c_)).double())
+            vb_ = torch.linalg.vector_norm(v_bar, dim=-1).double()
+            near_vbar.index_add_(0, sc_, w_ * vb_); overspeed_bar.index_add_(0, sc_, w_ * ((c_ > 1e-3) & (vb_ > 1.5 * c_)).double())
         if bool(done.any()):
             m = out["metrics"]; zero = torch.zeros_like(done)
             goal = m.get("episode/goal_reached", m["successful"]).bool()
@@ -148,33 +175,39 @@ def main():
             print(f"step {t}: {finished}/{target} episodes, {time.time() - start:.0f}s", flush=True)
         if finished >= target:
             break
-    result = {}
-    for i in ids:
-        e = float(stats[i, 0])
-        if e == 0:
-            continue
-        row = dict(episodes=int(e), **{c: round(float(stats[i, k]) / e, 4) for k, c in enumerate(cols) if 0 < k < 9},)
-        row["power_w"] = round(float(stats[i, 7] / (stats[i, 6] * task.dt).clamp_min(1e-9)), 2)
-        row["cot"] = round(float(stats[i, 9] / stats[i, 10]), 4) if float(stats[i, 10]) else None
-        result[scenes[i]["scene_id"]] = row
-    E = stats[ids, 0].sum().clamp_min(1)
-    summary = {c: round(float(stats[ids, k].sum() / E), 4) for k, c in enumerate(cols) if 0 < k < 9}
-    summary["power_w"] = round(float(stats[ids, 7].sum() / (stats[ids, 6].sum() * task.dt).clamp_min(1e-9)), 2)
-    summary["cot"] = round(float(stats[ids, 9].sum() / stats[ids, 10].sum().clamp_min(1)), 4)
-    summary["robot_mass_kg"] = round(mass, 2)
-    n_ = near_steps[ids].sum().clamp_min(1)
-    summary["near_obstacle"] = dict(steps=int(near_steps[ids].sum()), speed_ratio=round(float(near_v[ids].sum() / near_cmd[ids].sum().clamp_min(1e-9)), 3),
-                                    mean_speed=round(float(near_v[ids].sum() / n_), 3), flight_fraction=round(float(near_flight[ids].sum() / n_), 4),
-                                    overspeed_1p5x_fraction=round(float(overspeed[ids].sum() / n_), 4))
-    for i in ids:
-        if scenes[i]["scene_id"] in result and float(near_steps[i]) > 0:
-            result[scenes[i]["scene_id"]]["near_speed_ratio"] = round(float(near_v[i] / near_cmd[i].clamp_min(1e-9)), 3)
-    args.out.parent.mkdir(parents=True, exist_ok=True)
-    args.out.write_text(json.dumps(dict(checkpoint=str(args.checkpoint), env_from=args.env_from, scenes=args.scenes, episodes_per_scene=args.episodes,
-                                        deterministic=not args.stochastic, finished=int(stats[:, 0].sum()), target=target,
-                                        seconds=round(time.time() - start), summary=summary, per_scene=result), indent=1) + "\n")
-    print(json.dumps(dict(out=str(args.out), finished=int(stats[:, 0].sum()), target=target, summary=summary)))
-
+    for k, speed in enumerate(speeds):
+        jid = [i + NS * k for i in ids]
+        result = {}
+        for i, j in zip(ids, jid):
+            e = float(stats[j, 0])
+            if e == 0:
+                continue
+            row = dict(episodes=int(e), **{c: round(float(stats[j, c_]) / e, 4) for c_, c in enumerate(cols) if 0 < c_ < 9},)
+            row["power_w"] = round(float(stats[j, 7] / (stats[j, 6] * task.dt).clamp_min(1e-9)), 2)
+            row["cot"] = round(float(stats[j, 9] / stats[j, 10]), 4) if float(stats[j, 10]) else None
+            if float(near_steps[j]) > 0:
+                row["near_speed_ratio"] = round(float(near_v[j] / near_cmd[j].clamp_min(1e-9)), 3)
+                row["near_mean_speed_ratio"] = round(float(near_vbar[j] / near_cmd[j].clamp_min(1e-9)), 3)
+            result[scenes[i]["scene_id"]] = row
+        E = stats[jid, 0].sum().clamp_min(1)
+        summary = {c: round(float(stats[jid, c_].sum() / E), 4) for c_, c in enumerate(cols) if 0 < c_ < 9}
+        summary["power_w"] = round(float(stats[jid, 7].sum() / (stats[jid, 6].sum() * task.dt).clamp_min(1e-9)), 2)
+        summary["cot"] = round(float(stats[jid, 9].sum() / stats[jid, 10].sum().clamp_min(1)), 4)
+        summary["robot_mass_kg"] = round(mass, 2)
+        n_ = near_steps[jid].sum().clamp_min(1); c_sum = near_cmd[jid].sum().clamp_min(1e-9)
+        summary["near_obstacle"] = dict(steps=int(near_steps[jid].sum()), speed_ratio=round(float(near_v[jid].sum() / c_sum), 3),
+                                        mean_speed=round(float(near_v[jid].sum() / n_), 3), flight_fraction=round(float(near_flight[jid].sum() / n_), 4),
+                                        overspeed_1p5x_fraction=round(float(overspeed[jid].sum() / n_), 4),
+                                        smoothed_speed_ratio=round(float(near_vbar[jid].sum() / c_sum), 3),
+                                        smoothed_mean_speed=round(float(near_vbar[jid].sum() / n_), 3),
+                                        smoothed_overspeed_1p5x_fraction=round(float(overspeed_bar[jid].sum() / n_), 4))
+        out = args.out if args.out is not None else args.out_dir / f"speed_{speed:g}.json"
+        out.parent.mkdir(parents=True, exist_ok=True)
+        out.write_text(json.dumps(dict(checkpoint=str(args.checkpoint), env_from=args.env_from, scenes=args.scenes, episodes_per_scene=args.episodes,
+                                       operator_speed=speed, deterministic=not args.stochastic, finished=int(stats[jid, 0].sum()),
+                                       target=S * args.episodes, seconds=round(time.time() - start), summary=summary, per_scene=result),
+                                  indent=1) + "\n")
+        print(json.dumps(dict(out=str(out), finished=int(stats[jid, 0].sum()), target=S * args.episodes, summary=summary)))
 
 if __name__ == "__main__":
     main()
