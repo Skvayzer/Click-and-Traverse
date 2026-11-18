@@ -85,6 +85,13 @@ def main():
     deploy_env["dm_rand_config"].update(enable_pd=False, enable_rfi=False)
     for key in ("sgs", "teleop", "side_gap_curriculum"):
         deploy_env.pop(key, None)
+    # The ground-goal guidance cache lives next to the bank on the cluster only. The reference rollouts check the
+    # exported network, not the fields, so they use the bank's own guidance when the cache is absent; the recorded
+    # environment_config (deploy_spec.json) keeps the trained goal seed.
+    cache = (deploy_env.get("goal_seed") or {}).get("cache")
+    if cache and not (ROOT / cache / "cache.json").exists():
+        deploy_env["goal_seed"] = dict(deploy_env["goal_seed"], cache=None)
+        print(f"goal-seed cache {cache} not found: reference rollouts use the bank guidance")
     B = ROOT / args.bank
     ns = SimpleNamespace(bank_manifest=Path(str(B) + "_packed/manifest.json"), body_collision_bank=Path(str(B) + "_collision/manifest.json"),
                          body_collision_resets=Path(str(B) + "_resets/manifest.json"), device="cpu", seed=0, num_envs=1, compile_task=False,
