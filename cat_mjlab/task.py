@@ -235,6 +235,7 @@ class CATTask:
             self.anchor_free=torch.zeros(n_,dtype=torch.bool,device=self.device)
             self.op_speed_ema=self.op_far.clone()
             self.op_vel_ema=torch.zeros((n_,2),device=self.device)   # V3: mean pelvis velocity over smooth_tau
+            self.op_over_ema=torch.zeros(n_,device=self.device)       # V5: share of the last ~2 s above the speed limit
             # V4: gaps and passages never pulled toward the anchor (E2 crosses them in a lunge at any command).
             gap_kinds={'side-gap','contrastive-hand-passage','width-curriculum-scaffold'} if self.operator_speed.get('gap_anchor_free') else set()
             self.op_gap_scene=torch.tensor([(s_.get('source') or {}).get('kind') in gap_kinds for s_ in self.bank.manifest['scenes']],
@@ -961,7 +962,7 @@ class CATTask:
                 far=torch.where(nominal_,self._rand((n,),max(.45,float(op['min'])),float(op['max'])),far)
                 near=torch.where(nominal_,far,near);use=use&~nominal_
             self.op_far[ids]=far;self.op_near[ids]=near;self.op_use_near[ids]=use;self.op_speed[ids]=far;self.op_speed_ema[ids]=far
-            self.op_vel_ema[ids]=0.
+            self.op_vel_ema[ids]=0.;self.op_over_ema[ids]=0.
             if op.get('resample'):self.op_timer[ids]=self._rand((n,),float(op['resample'][0]),float(op['resample'][1]))
             slowest=torch.where(use,near,far)
             self.op_length_scale[ids]=(nominal/slowest).clamp(1.,float(op['length_scale_max']))
@@ -1487,9 +1488,16 @@ class CATTask:
                 progress_=torch.minimum(vx.clamp_min(0.),s_)/s_
             else:
                 go_=torch.ones_like(cat);stalled_=i['progress_ema']<.1;progress_=vx.clamp(0.,.6)/.6
+            gate=1.
+            if self.operator_speed and self.operator_speed.get('goal_compliance'):
+                # V5: the goal bonus is paid in full only for an arrival within the speed limit. Paid once at the goal
+                # plane and discounted (0.98 per step), 2000 is worth ~730 one second out and ~35 four seconds out, and
+                # every CAT / side-gap goal plane is 0.4-1.4 m past the obstacle: sprinting through the gap paid more
+                # than any per-step cost could charge. Lost entirely after ~0.5 s above the limit within ~2 s.
+                gate=(1.-self.op_over_ema/float(self.operator_speed['goal_compliance'])).clamp(0.,1.)
             terms=dict(stall=lambda:(cat&~reached&(ahead>.5)&stalled_&go_&(i['step']>25)).float()*stall_weight,
                        goal_progress=lambda:progress_*(cat&~reached),
-                       goal_bonus=lambda:(cat&reached&~i['goal_prev']).float())
+                       goal_bonus=lambda:(cat&reached&~i['goal_prev']).float()*gate)
             for name,term in terms.items():
                 if name in scales:rewards[name]=term()
             i['goal_prev']=reached.clone()
@@ -1745,6 +1753,10 @@ class CATTask:
                 allowed=1.2*torch.maximum(self.op_speed,self.op_speed_ema)
                 excess=(v_xy-allowed).clamp_min(0.)/self.op_speed.clamp_min(float(op_['min']))*go_.float()
             if 'overspeed' in scales:rewards['overspeed']=excess
+            if op_.get('goal_compliance'):
+                over_=(go_&(torch.linalg.vector_norm(v_mean,dim=-1)>allowed)).float()
+                self.op_over_ema=(1-self.dt/2.)*self.op_over_ema+self.dt/2.*over_
+                telemetry['op_over_frac']=self.op_over_ema
             telemetry['op_speed_ratio']=torch.where(go_,v_xy/self.op_speed.clamp_min(1e-3),torch.zeros_like(v_xy))
             telemetry['op_mean_speed_ratio']=torch.where(go_,torch.linalg.vector_norm(v_mean,dim=-1)/self.op_speed.clamp_min(1e-3),
                                                          torch.zeros_like(v_xy))
@@ -2160,7 +2172,7 @@ class CATTask:
                         'reactive_violation', 'reactive_settled', 'reactive_feet_moved_m', 'table_walking', 'table_sideways',
                         'table_zone', 'table_cross_track_m', 'table_power_w', 'energy_power_w', 'energy_priced_w', 'passage_stalled',
                         'energy_progress_mps', 'energy_go', 'op_speed', 'op_rest', 'op_anchor_free', 'op_speed_ratio',
-                        'op_mean_speed_ratio'):
+                        'op_mean_speed_ratio', 'op_over_frac'):
                 if key in self.telemetry: metrics[key] = self.telemetry[key].clone()
             metrics['contrast_role'] = self.contrast['role'].clone()
             metrics['contrast_unresolved'] = (~self.outcome_counted | resolved).clone()

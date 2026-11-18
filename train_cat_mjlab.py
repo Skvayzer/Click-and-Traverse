@@ -98,6 +98,8 @@ def parser():
         target.add_argument("--operator-v4", action="store_true",
                             help="With --operator-v3: clearance / SDF costs per metre of actual travel when faster than "
                                  "commanded, side gaps and room passages free of the anchor")
+        target.add_argument("--operator-v5", action="store_true",
+                            help="With --operator-v4: the goal bonus only in full for an arrival within the speed limit")
         target.add_argument("--overspeed-weight", type=float,
                             help="Cost (negative, per second) on pelvis speed above 1.2x the commanded speed, relative to it; "
                                  "outside the reward clip so it can outweigh the goal bonus's early-arrival premium")

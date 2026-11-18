@@ -42,6 +42,9 @@
 #          V4: V3b + clearance / SDF costs at max(commanded, actual 0.4 s mean speed) (per metre when faster than told) +
 #              side gaps / room passages free of the anchor: at u50 V3a / V3b still crossed the robot-side gap scenes at
 #              ~0.6 m/s told 0.15 (E2 ~0.7) -- leaving a gap sooner cut its per-second costs, and the anchor is E2's lunge
+#          V5: V4 + goal bonus x (1 - share of the last ~2 s above the speed limit / 0.25): with 0.98 discounting the
+#              bonus paid ~20x more for arriving 1 s out than 4 s out, and every CAT / side-gap goal plane is 0.4-1.4 m
+#              past its obstacle, so the policy sprinted through the gap for it
 #          E1np / E1nc: RQ2 ablations of E1 -- without the anti-refusal terms (np) / without the width curriculum, on the
 #              original 0.44 m and open table pairs only (nc)
 #          T5: T2 + non-table scenes anchored to S2far u200 (the last policy before the table stages; ANCHOR) instead of the
@@ -166,6 +169,11 @@ case $VARIANT in
         ROUTE_FILE=hpc/route_anchor_no_reactive_no_tables_v2.json SNAPSHOT_EVERY=50 OPERATOR_SPEED="0.1 0.6" REST_STARTS=0.25 \
         OPERATOR_V3=1 OPERATOR_V4=1 OVERSPEED=-10 PASSAGE_PROGRESS=1 ANCHOR=${ANCHOR:-$STUDENT}
       : "${STUDENT:?V4 needs STUDENT=<E2 u300>}" ;;
+  V5) export BANK=data/furniture/tablegap_v1 POWER=-0.02 HAND_FAR="0.20 0.40" RETREAT_SUCCESS=0.15 TABLE_POWER=-0.02 \
+        GLOBAL_POWER=-0.01 TABLE_PROGRESS=1 MASSES="0.15 0.35 0.08 0.14 0.12 0.03 0.25 0.03" REACTIVE_SHARE=0.3 RAISED=0.3 \
+        ROUTE_FILE=hpc/route_anchor_no_reactive_no_tables_v2.json SNAPSHOT_EVERY=50 OPERATOR_SPEED="0.1 0.6" REST_STARTS=0.25 \
+        OPERATOR_V3=1 OPERATOR_V4=1 OPERATOR_V5=1 OVERSPEED=-10 PASSAGE_PROGRESS=1 ANCHOR=${ANCHOR:-$STUDENT}
+      : "${STUDENT:?V5 needs STUDENT=<E2 u300>}" ;;
   *) echo "unknown VARIANT $VARIANT"; exit 2 ;;
 esac
 if [[ -n "${SMOKE:-}" ]]; then
@@ -182,7 +190,7 @@ if [[ -f $RUN/run/status.json ]]; then export EXTRA="--resume ${EXTRA:-}" FRESH=
 { echo "== job $SLURM_JOB_ID ($SLURM_JOB_NAME) variant $VARIANT on $(hostname) at $(date -Is)"
   nvidia-smi --query-gpu=name,driver_version,memory.total --format=csv,noheader
   echo "commit $(git -C $CLONE rev-parse HEAD) $(git -C $CLONE status --porcelain --untracked-files=no | wc -l) modified tracked files (copied to $REPO)"
-  echo "STATIONARY='${STATIONARY:-}' POWER='${POWER:-}' FEET_HOLD='${FEET_HOLD:-}' BANK='${BANK:-}' ARM_STD='${ARM_STD:-}' HAND_FAR='${HAND_FAR:-}' RETREAT_SUCCESS='${RETREAT_SUCCESS:-}' TABLE_FACING='${TABLE_FACING:-}' TABLE_LEG_POWER='${TABLE_LEG_POWER:-}' TABLE_PROGRESS='${TABLE_PROGRESS:-}' TABLE_HANDS_UP='${TABLE_HANDS_UP:-}' TABLE_HANDS_UP_BAND='${TABLE_HANDS_UP_BAND:-}' TABLE_CENTER='${TABLE_CENTER:-}' TABLE_ZONE_FACING='${TABLE_ZONE_FACING:-}' PASSAGE_PROGRESS='${PASSAGE_PROGRESS:-}' TABLE_POWER='${TABLE_POWER:-}' GLOBAL_POWER='${GLOBAL_POWER:-}' PASSAGE_STALL='${PASSAGE_STALL:-}' PASSAGE_SOFT='${PASSAGE_SOFT:-}' PASSAGE_GATE='${PASSAGE_GATE:-}' ROUTE_ENERGY='${ROUTE_ENERGY:-}' OPERATOR_SPEED='${OPERATOR_SPEED:-}' REST_STARTS='${REST_STARTS:-}' OPERATOR_V2='${OPERATOR_V2:-}' OPERATOR_V3='${OPERATOR_V3:-}' OPERATOR_V4='${OPERATOR_V4:-}' OVERSPEED='${OVERSPEED:-}' GOAL_BONUS='${GOAL_BONUS:-}' TIGHT_PASSAGES='${TIGHT_PASSAGES:-}' ANCHOR='${ANCHOR:-}' SNAPSHOT_EVERY='${SNAPSHOT_EVERY:-}' MASSES='${MASSES:-}' REACTIVE_SHARE='${REACTIVE_SHARE:-}' RAISED='${RAISED:-}' ROUTE_FILE='${ROUTE_FILE:-}' NUM_ENVS=$NUM_ENVS NUM_MINIBATCHES=$NUM_MINIBATCHES EXTRA='${EXTRA:-}'"
+  echo "STATIONARY='${STATIONARY:-}' POWER='${POWER:-}' FEET_HOLD='${FEET_HOLD:-}' BANK='${BANK:-}' ARM_STD='${ARM_STD:-}' HAND_FAR='${HAND_FAR:-}' RETREAT_SUCCESS='${RETREAT_SUCCESS:-}' TABLE_FACING='${TABLE_FACING:-}' TABLE_LEG_POWER='${TABLE_LEG_POWER:-}' TABLE_PROGRESS='${TABLE_PROGRESS:-}' TABLE_HANDS_UP='${TABLE_HANDS_UP:-}' TABLE_HANDS_UP_BAND='${TABLE_HANDS_UP_BAND:-}' TABLE_CENTER='${TABLE_CENTER:-}' TABLE_ZONE_FACING='${TABLE_ZONE_FACING:-}' PASSAGE_PROGRESS='${PASSAGE_PROGRESS:-}' TABLE_POWER='${TABLE_POWER:-}' GLOBAL_POWER='${GLOBAL_POWER:-}' PASSAGE_STALL='${PASSAGE_STALL:-}' PASSAGE_SOFT='${PASSAGE_SOFT:-}' PASSAGE_GATE='${PASSAGE_GATE:-}' ROUTE_ENERGY='${ROUTE_ENERGY:-}' OPERATOR_SPEED='${OPERATOR_SPEED:-}' REST_STARTS='${REST_STARTS:-}' OPERATOR_V2='${OPERATOR_V2:-}' OPERATOR_V3='${OPERATOR_V3:-}' OPERATOR_V4='${OPERATOR_V4:-}' OPERATOR_V5='${OPERATOR_V5:-}' OVERSPEED='${OVERSPEED:-}' GOAL_BONUS='${GOAL_BONUS:-}' TIGHT_PASSAGES='${TIGHT_PASSAGES:-}' ANCHOR='${ANCHOR:-}' SNAPSHOT_EVERY='${SNAPSHOT_EVERY:-}' MASSES='${MASSES:-}' REACTIVE_SHARE='${REACTIVE_SHARE:-}' RAISED='${RAISED:-}' ROUTE_FILE='${ROUTE_FILE:-}' NUM_ENVS=$NUM_ENVS NUM_MINIBATCHES=$NUM_MINIBATCHES EXTRA='${EXTRA:-}'"
   echo "STUDENT=$STUDENT CAT_PATH_MAP=$CAT_PATH_MAP"
   echo "config: configs/pilots/stationary_hands_20261113.sh"; } >> $RUN/run_info.txt
 nvidia-smi --query-gpu=timestamp,memory.used,utilization.gpu --format=csv,noheader -l ${GPU_LOG_SECONDS:-60} >> $RUN/gpu.csv &

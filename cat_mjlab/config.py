@@ -61,7 +61,7 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
                      table_hands_up_band=None,table_center_weight=None,table_zone_facing_weight=None,passage_progress=None,
                      table_power_weight=None,global_power_weight=None,hand_tight_passages=None,passage_stall_factor=None,
                      passage_soft_contact=None,passage_stall_gate=None,route_energy=None,operator_speed=None,
-                     operator_rest_starts=None,operator_v2=None,operator_v3=None,operator_v4=None,overspeed_weight=None):
+                     operator_rest_starts=None,operator_v2=None,operator_v3=None,operator_v4=None,operator_v5=None,overspeed_weight=None):
     from cat_ppo.furniture.generalist_config import released_config
     from .collision import PROPOSAL
     config=copy.deepcopy(released_config()['env_config'] if base_config is None else base_config)
@@ -422,6 +422,13 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
             # passages free of the anchor (E2 u300, which lunges through them at ~1 m/s whatever it is told).
             if not operator_v3:raise ValueError('operator_v4 builds on operator_v3')
             config['operator_speed'].update(clearance_per_metre=True,gap_anchor_free=True)
+        if operator_v5:
+            # V5 = V4 + the goal bonus scaled by 1 - (share of the last ~2 s with the 0.4 s mean speed above 1.25x the
+            # command + 0.05 m/s) / 0.25: discounted at 0.98 per step, the bonus paid ~20x more for arriving 1 s out than
+            # 4 s out, and every CAT / side-gap goal plane lies 0.4-1.4 m past its obstacle -- a sprint through the gap.
+            if not operator_v4:raise ValueError('operator_v5 builds on operator_v4')
+            if not overspeed_weight:raise ValueError('operator_v5 needs the overspeed limit (--overspeed-weight)')
+            config['operator_speed'].update(goal_compliance=.25)
     if overspeed_weight is not None:
         if not operator_speed:raise ValueError('overspeed_weight needs operator_speed')
         weight=_signed('overspeed_weight',overspeed_weight,positive=False)
