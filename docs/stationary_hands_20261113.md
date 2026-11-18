@@ -429,6 +429,11 @@ Speed sweeps, 2026-11-18 (`runs/speed_sweep/<label>`, 303 obstacle scenes x 2 ep
 | V1 u200 | same | 0.47 / 0.47 / 0.46 / 0.49 | 0.37-0.38 | 0.13-0.17 | ratio 3.83 / 2.15 / 1.33 / 0.95 |
 | V1 u400 | same | 0.48 / 0.48 / 0.46 / 0.47 | 0.38-0.41 | 0.12-0.14 | ratio 4.59 / 2.43 / 1.42 / 0.97 |
 | V2 u200 | 0.1 / 0.2 | 0.12 / 0.09 | 0.48 / 0.55 | 0.40 / 0.36 | 0.15 / 0.15 m/s (1.49 / 0.77) |
+| E2 u300, one-process sweep (`E2s`, `--operator-speeds`) | 0.1 / 0.2 / 0.35 / 0.525 | 0.52 / 0.51 / 0.53 / 0.52 | 0.28-0.30 | 0.17-0.20 | 0.4 s mean 0.32 / 0.34 / 0.36 / 0.37 m/s (3.19 / 1.71 / 1.03 / 0.70) |
+
+The one-process sweep (all speeds in parallel, 2560 envs) reproduces the per-speed runs within 0.02 and adds the 0.4 s
+mean speed, which leaves out the gait's sway: E2 travels at 0.32-0.37 m/s within 15 cm of obstacles at any command.
+It took 1 h 50 min on one GPU, mostly a tail of 0.1 m/s room episodes (length x 5.25).
 
 Every policy except V2 crosses within 15 cm of an obstacle at 0.43-0.47 m/s whatever it is told (the momentum
 passage seen on the robot), and V1's training did not change that. V2 slows down but collapsed: training success 0.29
