@@ -701,6 +701,7 @@ def environment_config_from_archive(metadata):
 GOALLESS_BUCKETS = ('reactive_standing', 'reactive_walking', 'flat_balance', 'teleop')
 # Per-step task telemetry averaged over the update: posture/* and self_clearance/*.
 TELEMETRY_MEANS = ('self_clearance_min_m', 'self_clearance_violation', 'crouch_required', 'torso_pitch_abs',
+                   'track_error_m', 'track_valid', 'track_lost',
                    'hand_contact_trunk', 'hand_contact_head', 'hand_contact_arm', 'hand_contact_hand',
                    'heading_gate', 'heading_error_abs', 'hand_room_scale', 'side_gap_stage', 'side_gap_sideways_start',
                    'sgs_config_p', 'reactive_power_w', 'reactive_standing', 'reactive_end_lift', 'reactive_end_slide',
@@ -873,6 +874,32 @@ def _adapt_experience_masses(bank, step_count, length_sum, length_count, info, r
     for index, mass in enumerate(resolved):
         info['metrics'][f'balance/group{index}_episode_length'] = bank.experience_lengths[index]
         info['metrics'][f'balance/group{index}_reset_mass'] = mass
+
+
+def _expand_critic_input(weights, critic_obs):
+    """Function-preserving widening of the value inputs (the tracker's reference block): zero weights for new columns."""
+    widened = dict(weights)
+    for key in ('critic.layers.0.weight', 'style_critic.layers.0.weight'):
+        first = widened.get(key)
+        if first is not None and first.shape[1] < critic_obs:
+            widened[key] = torch.cat((first, torch.zeros((first.shape[0], critic_obs - first.shape[1]), dtype=first.dtype, device=first.device)), 1)
+    return widened
+
+
+def tracker_spec(args):
+    """--tracker (tracker v1, cat_mjlab/tracking.py) as the config builder's dict, or None."""
+    if not getattr(args, 'tracker', False):
+        return None
+    spec = {}
+    mix = getattr(args, 'tracker_mix', None)
+    if mix:
+        spec['mix'] = [(name, float(weight)) for name, weight in (item.split('=', 1) for item in mix.split(','))]
+    scales = getattr(args, 'tracker_scales', None)
+    if scales:
+        spec['scales'] = {name: float(value) for name, value in (item.split('=', 1) for item in scales.split(','))}
+    if getattr(args, 'tracker_sigma', None) is not None:
+        spec['sigma'] = float(args.tracker_sigma)
+    return spec
 
 
 def _expand_actor_input(weights, actor_obs):
@@ -1084,6 +1111,7 @@ def create_task(args, *, environment_config=None, sim_class=None):
         operator_v2=getattr(args, 'operator_v2', None),operator_v3=getattr(args, 'operator_v3', None),
         operator_v4=getattr(args, 'operator_v4', None),operator_v5=getattr(args, 'operator_v5', None),
         goal_seed_cache=getattr(args, 'goal_seed_cache', None),goal_ground=getattr(args, 'goal_ground', None),
+        tracker=tracker_spec(args),
         operator_v6=getattr(args, 'operator_v6', None),
         overspeed_weight=getattr(args, 'overspeed_weight', None),
         reactive_retreat_success=getattr(args, 'reactive_retreat_success', None),
@@ -1199,8 +1227,9 @@ def native_initialization(path):
     snapshot = torch.load(path, map_location="cpu", weights_only=True, mmap=True)
     from .checkpoint_upgrade import validate_upgrade
     validate_upgrade(snapshot)
-    from cat_ppo.furniture.control import mjlab_observation_contract
-    expected_contract = mjlab_observation_contract(bool(snapshot['contract']['environment_config'].get('sdf_rate_obs', False)))
+    from .observation_contract import observation_contract
+    env = snapshot['contract']['environment_config']
+    expected_contract = observation_contract(bool(env.get('sdf_rate_obs', False)), bool(env.get('tracker')))
     if snapshot.get('observation_contract', expected_contract) != expected_contract:
         raise ValueError('Native checkpoint observation contract differs; use --from-scratch, no conversion is performed')
     if snapshot.get("schema") == "cat-mjlab-runtime-v1":
@@ -1254,12 +1283,13 @@ def run(args):
         config = learner_config_from_archive(metadata, algorithm=args.algorithm)
         source = metadata.get("contract", {})
         config_source = environment_config_from_archive(metadata)
-    from .observation_contract import ACTOR_SIZE, CRITIC_SIZE, actor_size
+    from .observation_contract import ACTOR_SIZE, CRITIC_SIZE, actor_size, critic_size
+    tracker = bool(tracker_spec(args) or (config_source or {}).get('tracker'))
     sdf_rate = bool(getattr(args, 'sdf_rate_obs', None) if getattr(args, 'sdf_rate_obs', None) is not None
                     else (config_source or {}).get('sdf_rate_obs', False))
-    if config.actor_obs != actor_size(sdf_rate):
-        config = replace(config, actor_obs=actor_size(sdf_rate))
-    if (config.actor_obs, config.critic_obs, config.action_size) != (actor_size(sdf_rate), CRITIC_SIZE, 29):
+    if (config.actor_obs, config.critic_obs) != (actor_size(sdf_rate, tracker), critic_size(tracker)):
+        config = replace(config, actor_obs=actor_size(sdf_rate, tracker), critic_obs=critic_size(tracker))
+    if (config.actor_obs, config.critic_obs, config.action_size) != (actor_size(sdf_rate, tracker), critic_size(tracker), 29):
         raise ValueError('Native training requires actor 222 / critic 310 and 29 actions. '
                          'Use --from-scratch; obsolete observation contracts are not converted.')
     overrides = {name: getattr(args, name) for name in ("max_action_std", "max_action_std_arms", "discounting", "num_minibatches")
@@ -1289,6 +1319,7 @@ def run(args):
         if any(not bool(torch.isfinite(value).all()) for value in native_weights.values()):
             raise ValueError("Native source has nonfinite model weights")
         native_weights = _expand_actor_input(native_weights, config.actor_obs)
+        native_weights = _expand_critic_input(native_weights, config.critic_obs)
         fresh = learner.model.state_dict()
         # New heads (the style critic) start from their fresh initialisation; everything else is loaded.
         native_weights = dict(native_weights, **{k: v for k, v in fresh.items() if k.startswith('style_critic.') and k not in native_weights})

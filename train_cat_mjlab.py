@@ -106,6 +106,13 @@ def parser():
         target.add_argument("--goal-seed-cache", type=str,
                             help="Ground-projected goal: column-seed guidance cache for the bank "
                                  "(scripts/build_goal_seed_cache.py); replaces the stored ball-seed gf at load time")
+        target.add_argument("--tracker", action="store_true",
+                            help="Tracker v1 (cat_mjlab/tracking.py): a time-indexed reference block in the observations, tracking "
+                                 "terms, the command from the reference while one is active; the potential-field inputs stay")
+        target.add_argument("--tracker-mix", help="reference sources per episode, e.g. field=0.5,random=0.3,none=0.2 (default)")
+        target.add_argument("--tracker-scales", help="tracking reward scales, e.g. track_pos=4,track_lead=-8,track_heading=1,"
+                                                     "track_height=1,track_upper=1 (default)")
+        target.add_argument("--tracker-sigma", type=float, help="position tracking width, m (default 0.15)")
         target.add_argument("--goal-ground", action="store_true",
                             help="With --goal-seed-cache: success within 0.3 m of the goal on the ground (not past x = 1.5 m), "
                                  "arrival stop 0.25 / 0.45 m as on the robot, CAT episodes end 2 s after success")

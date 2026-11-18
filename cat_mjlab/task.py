@@ -95,14 +95,23 @@ class CATTask:
         hand_curriculum_threshold(config, getattr(bank, 'manifest', None))
         self.stabilization=bool(_get(config,'wholebody_stabilization',False))
         self.sdf_rate=bool(config.get('sdf_rate_obs',False))
-        self.contract=mjlab_observation_contract(self.sdf_rate)
+        from .observation_contract import observation_contract
+        self.contract=observation_contract(self.sdf_rate,bool(config.get('tracker')))
         self.observation_size=len(self.contract['actor_features'])
+        self.privileged_observation_size=len(self.contract['critic_features'])
         elbow_block=[n for n in self.contract['actor_features'] if n.startswith('pf.elbows.') and '.dfrate.' not in n]
         self.elbow_df_index=torch.tensor([i for i,n in enumerate(elbow_block) if n.startswith('pf.elbows.df.')],device=self.device)
         self.generator=torch.Generator(device=self.device).manual_seed(seed)
         self.all_ids=torch.arange(self.num_envs,device=self.device)
         tensor=lambda x:torch.as_tensor(np.asarray(x),dtype=torch.float32,device=self.device)
         self.init_q=tensor(const.DEFAULT_QPOS);self.nominal=self.init_q[7:]
+        self.tracker=None;self.track_info=None
+        if config.get('tracker'):
+            from .tracking import ReferenceTracker
+            tc=config['tracker']
+            self.tracker=ReferenceTracker(self.num_envs,self.device,mix=[tuple(m) for m in tc['mix']],nominal_upper=self.nominal[12:],
+                                          generator=self.generator)
+            self.track_sigma=float(tc.get('sigma',.15))
         # Home pose for the upper-body posture cost only (observations and the action
         # nominal are untouched, so the warm start is unaffected). The default hangs the
         # hands 3 cm from the thigh capsules; shoulder pitch -0.3 puts them 24 cm in
@@ -733,6 +742,30 @@ class CATTask:
         speed=self.op_speed[ids]*go
         return torch.cat(((go.float()*.75)[:,None],direction*speed[:,None],torch.zeros_like(speed)[:,None]),-1)
 
+    def _root_yaw(self,ids):
+        q=self.data.qpos[ids,3:7];w,x,y,z=q.unbind(-1)
+        return torch.atan2(2*(w*z+x*y),1-2*(y*y+z*z))
+
+    def _track_dir(self,xy,ids):
+        """Unit horizontal guidance at pelvis height (0.75 m) of each world's scene at xy [n, 2]; zero where it vanishes."""
+        pos=torch.cat((xy,torch.full_like(xy[:,:1],.75)),-1)[:,None]
+        g=self.bank.sample('gf',pos,self.scene_ids[ids])[:,0,:2]
+        m=torch.linalg.vector_norm(g,dim=-1,keepdim=True)
+        return torch.where(m>1e-3,g/m.clamp_min(1e-6),torch.zeros_like(g))
+
+    def _track_command(self,command,command_delay,root_xy,odom_xy):
+        """While a reference is active the operator command points at the reference 0.3 s ahead, at its speed (the
+        delayed command from the pose the actor observes). Same layout as _operator_command: (0.75 go, v_xy, 0)."""
+        t=self.tracker;valid=t.valid
+        if not bool(valid.any()):return command,command_delay
+        target,_=t.targets(self.all_ids,.3)
+        def make(xy):
+            d=target-xy;dist=torch.linalg.vector_norm(d,dim=-1);go=(t.speed>.05)&(dist>.05)
+            v=d/dist.clamp_min(1e-6)[:,None]*(t.speed*go)[:,None]
+            return torch.cat(((go.float()*.75)[:,None],v,torch.zeros_like(dist)[:,None]),-1)
+        m=valid[:,None]
+        return torch.where(m,make(root_xy),command),torch.where(m,make(odom_xy),command_delay)
+
     def _fields(self,positions,root_xy,ids,store=False):
         scenes=self.scene_ids[ids]
         gf,bf,sdf=(self.bank.sample(k,positions,scenes) for k in ('gf','bf','sdf'))
@@ -906,6 +939,14 @@ class CATTask:
             gf=info['gf'],bf=info['bf'],sdf=info['sdf'],gf_delay=info['gf_delay'],bf_delay=info['bf_delay'],sdf_delay=info['sdf_delay'],
             positions=info['positions'],velocities=info['velocities'],torso_rpy=info['torso_rpy'],gait=info['gait'],contacts=contacts,
             kp=info['kp'],kd=info['kd'],rfi=info['rfi'],elbow_true=elbow_true,elbow_actor=torch.nan_to_num(elbow_actor))
+        if self.tracker is not None:
+            # Reference block: the actor's from the pose it observes (held estimate, its heading frame), the critic's
+            # from the true pose.
+            navi_a=info['navi_actor'] if getattr(self,'robust',None) else info['navi']
+            est=info['odom_delay'][:,:2] if 'odom_delay' in info else self.data.qpos[ids,:2]
+            fa=self.tracker.features(ids,est,torch.atan2(navi_a[:,1,0],navi_a[:,0,0]),navi_a)
+            ft=self.tracker.features(ids,self.data.qpos[ids,:2],self._root_yaw(ids),info['navi'])
+            result=dict(result,state=torch.cat((result['state'],fa),-1),privileged_state=torch.cat((result['privileged_state'],ft),-1))
         if result['state'].shape[-1]!=self.observation_size or result['privileged_state'].shape[-1]!=self.privileged_observation_size:
             raise RuntimeError('Observation feature contract changed')
         for k,v in result.items():self.obs[k][ids]=v
@@ -1201,6 +1242,10 @@ class CATTask:
             self.tolerance_zone_steps[ids]=0
         self.outcome_counted[ids]=False;self.zone_steps[ids]=0;self.episode_reward[ids]=0
         if getattr(self,'balance_settings',None) is not None:self.balance_streak[ids]=0
+        if self.tracker is not None:
+            op=self.op_speed[ids] if self.operator_speed else torch.full((n,),.525,device=self.device)
+            self.tracker.reset(ids,self.data.qpos[ids,:2],self._root_yaw(ids),sample_dir=self._track_dir,op_speed=op,
+                               room_scene=~self.bank.is_cat[self.scene_ids[ids]])
         self._observe(ids,self.sim.contact_flags(self.contact_pairs)[ids,:2])
         return self.obs
 
@@ -1474,6 +1519,10 @@ class CATTask:
         rewards['wholebody_hand_clearance']=(telemetry['hand_clearance_pressure'] if self.hand_protection else
             (float(_get(self.config,'hand_clearance_margin',.12))-i['sdf'][:,5:7]).clamp_min(0).square().flatten(1).mean(-1))*enabled
         rewards['wholebody_arm_clearance']=(arm_margin-i['elbow_clearance']).clamp_min(0).square().mean(-1)*enabled
+        if self.tracker is not None and self.track_info is not None:
+            terms,tel=self.tracker.rewards(d.qpos[:,:2],self._root_yaw(self.all_ids),d.qpos[:,2],d.qpos[:,19:36],self.track_info,
+                                           sigma=self.track_sigma)
+            rewards.update(terms);telemetry.update(tel)
         if room_scale is not None:
             telemetry['hand_room_scale']=room_scale[:,0]
         if getattr(self,'side_levels',None) is not None:
@@ -2035,6 +2084,11 @@ class CATTask:
         velocities[:,[1,2,7,8,9,10]]=0.
         self._navigation(ids)
         if self.operator_speed:self._operator_speed_step()
+        if self.tracker is not None:
+            # Tracker v1: advance the reference clock (it waits for a lagging robot) and re-anchor lost references.
+            self.track_info=self.tracker.step(d.qpos[:,:2],self.dt,sample_dir=self._track_dir,op_speed=self.op_speed)
+            lost=torch.nonzero(self.tracker.lost,as_tuple=False)[:,0]
+            if len(lost):self.tracker.reanchor(lost,d.qpos[lost,:2],self._root_yaw(lost),sample_dir=self._track_dir,op_speed=self.op_speed[lost])
         gf,bf,sdf,command=self._fields(positions,d.qpos[:,:2],ids,store=True)
         if getattr(self,'robust',None):
             self._robust_steps+=1
@@ -2049,6 +2103,8 @@ class CATTask:
             odom=torch.where(update[:,None],d.qpos[:,:7],i['odom_delay'])
         delayed=self.math.delay_body_pos(d.qpos,odom,positions)
         gfd,bfd,sdfd,command_delay=self._fields(delayed,odom[:,:2],ids)
+        if self.tracker is not None:
+            command,command_delay=self._track_command(command,command_delay,d.qpos[:,:2],odom[:,:2])
         # Standing sets both foot phases to 0; walking resumed from there commanded a synchronized
         # hop (gait [1,1]/[-1,-1]) and the policy stayed in place: measured on the flat scene, a
         # 0.5 m/s command after a 2 s stand gave ~0.01 m/s. Restore anti-phase stepping on every

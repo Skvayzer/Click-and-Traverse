@@ -50,6 +50,10 @@
 #              from a V5 snapshot (STUDENT), anchor E2 u300 (rooms only)
 #          V7: V6 + ground-projected goal (column-seed guidance cache, GOAL_SEED_CACHE) + success at the goal on the ground
 #              (0.3 m) with the executor's arrival stop (0.25 / 0.45 m) and a 2 s hold, from a V6 snapshot; anchor E2 u300
+#          TRACK1: V7 + tracker v1 (cat_mjlab/tracking.py): a time-indexed reference block (guidance path at the operator
+#              speed with a clock that waits for a lagging robot / procedural paths with heading, crouch and arm targets /
+#              none) in actor and critic, tracking terms, the command from the reference; warm-started from a V7 snapshot
+#              with zero-weight reference inputs (actor and critic), anchor E2 u300
 #          E1np / E1nc: RQ2 ablations of E1 -- without the anti-refusal terms (np) / without the width curriculum, on the
 #              original 0.44 m and open table pairs only (nc)
 #          T5: T2 + non-table scenes anchored to S2far u200 (the last policy before the table stages; ANCHOR) instead of the
@@ -192,6 +196,14 @@ case $VARIANT in
         GOAL_SEED_CACHE=${GOAL_SEED_CACHE:-data/furniture/tablegap_v1_goal_column} GOAL_GROUND=1 \
         ANCHOR=${ANCHOR:-$L/checkpoints/stationary_hands_E2_u300.pt}
       : "${STUDENT:?V7 needs STUDENT=<a V6 snapshot>}" ;;
+  TRACK1) export BANK=data/furniture/tablegap_v1 POWER=-0.02 HAND_FAR="0.20 0.40" RETREAT_SUCCESS=0.15 TABLE_POWER=-0.02 \
+        GLOBAL_POWER=-0.01 TABLE_PROGRESS=1 MASSES="0.15 0.35 0.08 0.14 0.12 0.03 0.25 0.03" REACTIVE_SHARE=0.3 RAISED=0.3 \
+        ROUTE_FILE=hpc/route_anchor_no_reactive_no_tables_v2.json SNAPSHOT_EVERY=50 OPERATOR_SPEED="0.1 0.6" REST_STARTS=0.25 \
+        OPERATOR_V3=1 OPERATOR_V4=1 OPERATOR_V5=1 OPERATOR_V6=1 OVERSPEED=-30 PASSAGE_PROGRESS=1 \
+        GOAL_SEED_CACHE=${GOAL_SEED_CACHE:-data/furniture/tablegap_v1_goal_column} GOAL_GROUND=1 \
+        TRACKER=1 TRACKER_MIX=${TRACKER_MIX:-field=0.5,random=0.3,none=0.2} \
+        ANCHOR=${ANCHOR:-$L/checkpoints/stationary_hands_E2_u300.pt}
+      : "${STUDENT:?TRACK1 needs STUDENT=<a V7 snapshot>}" ;;
   *) echo "unknown VARIANT $VARIANT"; exit 2 ;;
 esac
 if [[ -n "${SMOKE:-}" ]]; then
