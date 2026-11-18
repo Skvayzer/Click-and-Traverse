@@ -489,7 +489,11 @@ published CAT) runs from (0, 0) to a goal plane at x = 2 m with the obstacle in 
 m past it. The goal bonus (2000) is paid once at the plane and discounted at 0.98 per step: ~730 one second out, ~35
 four seconds out. Sprinting the last metre is worth ~700 more than walking it at 0.15 m/s, against at most ~0.3 per
 step that a clipped cost can take away -- the burst at the gap exit in the robot-side traces, ~1 m before the goal.
-V2's goal bonus 500 still left a ~180 premium. V5 (2026-11-18 10:14, commit 030a2f1, job 306294, replaces V3b at u71;
+V2's goal bonus 500 still left a ~180 premium.
+Correction (13:05): the bonus is not paid at x = 2 m. `_goal_status` counts the goal reached when the pelvis and both
+feet are past `_crossed`'s line, x > 1.5 m in CAT scenes (the fields still point at the goal point x = 2 m), so the
+success line is 0-0.4 m past the walls of the three robot-side gap scenes. Walking the last 0.5 m at 0.15 m/s (3.3 s)
+leaves the bonus worth ~69, sprinting it in 0.5 s ~1,200: the premium is ~1,100, larger than estimated above. V5 (2026-11-18 10:14, commit 030a2f1, job 306294, replaces V3b at u71;
 V4 continues as the ablation): V4 + goal bonus x clamp(1 - f / 0.25, 0, 1), f = share of the last ~2 s (EMA) with the
 0.4 s mean speed above the overspeed limit (1.25x command + 0.05 m/s): about half after 0.25 s above the limit, 0.1
 after 0.5 s, nothing after a 1 s sprint. Prediction: V4 still sprints at the gap exit (H3: the goal premium dominates),
