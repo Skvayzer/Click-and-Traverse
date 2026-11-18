@@ -568,7 +568,11 @@ Robot-side simulator bug and near-wall goals (2026-11-18 evening).
   robot link passes through the walls and contact_steps is always 0 (pelvis placed inside a wall: 0 contacts; 67 after
   recomputing the body flags). Every robot-side "no contacts" so far is void. Tracked-point distances instead: a palm's
   10.3 cm sphere overlapped a wall in 9/9 ground-goal passages (0.4-7.9 cm; E2 up to 3.5 cm) and 2/9 ball-goal ones.
-  Fix (not yet applied): recompute body flags after the patch, or set contype in the XML before compiling.
+  Fixed in humanoid_navigation 98a6576 (wholebody_core.enable_obstacle_contacts, used by wholebody_sim and FakeG1;
+  regression test). Rerun with solid walls, told 0.15 m/s: ball-goal passages 0/9 touched; ground-goal passages 6/9
+  touched, mostly the left wrist (E2 0.5 s in sidegap_plain_047; V5 u200 0.3 / 2.3 s; V6 u100 0.1-0.7 s), no falls,
+  all reached. Near-wall goals unchanged (stand-off 0.27-0.35 -> 0.40-0.51 m, no contact; goal inside sidegap_plain_047:
+  0.6 s right-ankle contact, no fall).
 - Near-wall goals, E2 u300, ground goal, 0.15 m/s, 30 s (no early stop; the sim's stop-when-reached rule had cut the
   earlier runs): closest 0.27-0.35 m, then backs off to 0.40-0.51 m, never inside the 0.25 m arrival zone; open-floor
   control 0.18 m. The nearest body part at the closest point is always a palm, 0.10-0.18 m from the wall surface.
