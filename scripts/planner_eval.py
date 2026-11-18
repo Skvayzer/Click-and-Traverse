@@ -91,6 +91,8 @@ def main(argv=None):
     p.add_argument("--tol", type=float, default=0.01, help="Allowed overlap (m) before a chunk counts as colliding")
     p.add_argument("--batch", type=int, default=32)
     p.add_argument("--seed", type=int, default=0)
+    p.add_argument("--save-plans", type=int, default=0,
+                   help="Situations per scene type whose full chunks (executed, all scene and blind samples) go to plans.npz")
     args = p.parse_args(argv)
     import torch
     import mujoco
@@ -123,6 +125,21 @@ def main(argv=None):
     keys = ("min_clear", "min_hand_clear", "min_low", "skate", "goal_err")
     gt = {k: [] for k in keys}; sc = {k: [] for k in keys}; bl = {k: [] for k in keys}
     div_scene, div_blind = [], []
+    save = set()
+    if args.save_plans:   # prefer situations whose executed motion passed within 15 cm of an obstacle
+        near = []
+        for s in range(0, n, args.batch):
+            b = {k: torch.as_tensor(np.ascontiguousarray(test[k][s:s + args.batch]), device=device) for k in ("chunk", "grid", "goal")}
+            near.append(scorer.score(b["chunk"][:, None], b["grid"], b["goal"])["min_clear"][:, 0].cpu().numpy() < 0.15)
+        near = np.concatenate(near)
+        pick_rng = np.random.default_rng(args.seed + 1)
+        for b in np.unique(test["meta"][:, 1]):
+            kind = test["meta"][:, 1] == b
+            pool = np.nonzero(kind & near)[0]
+            if len(pool) < args.save_plans:
+                pool = np.concatenate((pool, pick_rng.permutation(np.nonzero(kind & ~near)[0])[:args.save_plans - len(pool)]))
+            save.update(pick_rng.permutation(pool)[:args.save_plans].tolist())
+    full_scene, full_blind = {}, {}
     keep_scene, keep_blind = [], []
     g = torch.Generator(device=device).manual_seed(args.seed)
     for s in range(0, n, args.batch):
@@ -136,6 +153,9 @@ def main(argv=None):
                 store[k].append(out[k].cpu())
         div_scene.append(diversity(xs).cpu()); div_blind.append(diversity(xb).cpu())
         keep_scene.append(xs[:, :, :, :3].cpu()); keep_blind.append(xb[:, :, :, :3].cpu())
+        for j in range(len(xs)):
+            if s + j in save:
+                full_scene[s + j], full_blind[s + j] = xs[j].cpu().numpy(), xb[j].cpu().numpy()
     cat = lambda d: {k: torch.cat(v) for k, v in d.items()}
     gt, sc, bl = cat(gt), cat(sc), cat(bl)
     kinds = test["meta"][:, 1]
@@ -184,6 +204,16 @@ def main(argv=None):
     if examples:
         plot_examples(args.out / "examples.png", examples, test["grid"], test["chunk"][:, :, :3], scene_np, blind_np,
                       {k: v for k, v in sc.items()}, {k: v for k, v in bl.items()}, labels)
+    if save:
+        idx = np.array(sorted(save))
+        pick_s, pick_b = best_of(sc), best_of(bl)
+        np.savez_compressed(args.out / "plans.npz", idx=idx, kinds=kinds[idx], kind_names=np.array(SCENE_BUCKETS),
+                            meta=test["meta"][idx], pose=test["pose"][idx], state=test["state"][idx], goal=test["goal"][idx],
+                            grid=test["grid"][idx], executed=test["chunk"][idx],
+                            scene=np.stack([full_scene[i] for i in idx]), blind=np.stack([full_blind[i] for i in idx]),
+                            scene_best=pick_s[idx].numpy(), blind_best=pick_b[idx].numpy(),
+                            **{f"{name}_{k}": d[k][idx].numpy() for name, d in (("executed", gt), ("scene", sc), ("blind", bl))
+                               for k in ("min_clear", "min_hand_clear", "min_low", "goal_err")})
     print("EVAL SUMMARY " + json.dumps(summary["all"]), flush=True)
     for b in np.unique(kinds):
         print("EVAL TYPE " + json.dumps(dict(type=SCENE_BUCKETS[b], **{k: v["collision_free"] for k, v in summary[SCENE_BUCKETS[b]].items() if isinstance(v, dict)})), flush=True)
