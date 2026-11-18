@@ -107,11 +107,11 @@ class CATTask:
         self.init_q=tensor(const.DEFAULT_QPOS);self.nominal=self.init_q[7:]
         self.tracker=None;self.track_info=None
         if config.get('tracker'):
-            from .tracking import ReferenceTracker
+            from .tracking import ReferenceTracker,SOURCES
             tc=config['tracker']
             self.tracker=ReferenceTracker(self.num_envs,self.device,mix=[tuple(m) for m in tc['mix']],nominal_upper=self.nominal[12:],
                                           generator=self.generator)
-            self.track_sigma=float(tc.get('sigma',.15))
+            self.track_sigma=float(tc.get('sigma',.15));self.track_field=SOURCES.index('field')
         # Home pose for the upper-body posture cost only (observations and the action
         # nominal are untouched, so the warm start is unaffected). The default hangs the
         # hands 3 cm from the thigh capsules; shoulder pitch -0.3 puts them 24 cm in
@@ -1245,7 +1245,8 @@ class CATTask:
         if self.tracker is not None:
             op=self.op_speed[ids] if self.operator_speed else torch.full((n,),.525,device=self.device)
             self.tracker.reset(ids,self.data.qpos[ids,:2],self._root_yaw(ids),sample_dir=self._track_dir,op_speed=op,
-                               room_scene=~self.bank.is_cat[self.scene_ids[ids]])
+                               room_scene=~self.bank.is_cat[self.scene_ids[ids]],
+                               hold=reactive_active if self.reactive_objects is not None else None)
         self._observe(ids,self.sim.contact_flags(self.contact_pairs)[ids,:2])
         return self.obs
 
@@ -1853,6 +1854,12 @@ class CATTask:
                        else v*float(scales[k])) for k,v in rewards.items()}
         else:
             scaled={k:v*float(scales[k]) for k,v in rewards.items()}
+        if self.tracker is not None:
+            # A random (non-field) reference leaves the guidance on purpose: stop paying for moving and facing along the
+            # guidance there, or the policy is paid to ignore the reference. Distance and clearance terms stay.
+            off=self.tracker.valid&(self.tracker.source!=self.track_field)
+            for k in ('headgf','handsgf','feetgf','heading_align','sideways_bonus'):
+                if k in scaled:scaled[k]=torch.where(off,torch.zeros_like(scaled[k]),scaled[k])
         if balance:scaled['flat_balance_posture_bonus']=bonus
         for name in ('wholebody_hand_contrast_region','wholebody_hand_contrast_heading','flat_balance_posture_bonus'):
             if name in scaled:scaled[name]=torch.zeros_like(scaled[name])

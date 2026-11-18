@@ -71,5 +71,24 @@ class TrackingTest(unittest.TestCase):
         self.assertTrue(torch.allclose(step, torch.full_like(step, tr.H), atol=1e-5))
 
 
+    def test_hold_worlds_get_no_reference(self):
+        t = self.make(mix=(('field', .5), ('random', .5))); ids = torch.arange(4)
+        hold = torch.tensor([True, False, True, False])
+        t.reset(ids, torch.zeros(4, 2), torch.zeros(4), sample_dir=east, op_speed=torch.full((4,), .2),
+                room_scene=torch.ones(4, dtype=torch.bool), hold=hold)
+        self.assertFalse(bool(t.valid[hold].any()))
+        self.assertTrue(bool(t.valid[~hold].all()))
+
+    def test_upper_targets_look_ahead(self):
+        t = self.make(n=1); ids = torch.arange(1)
+        t.reset(ids, torch.zeros(1, 2), torch.zeros(1), sample_dir=east, op_speed=torch.full((1,), .2))
+        t.mask_upper[:] = 1.
+        t.upper_goal[:] = t.nominal_upper + 1.         # far goal: the look-ahead is rate-limited
+        f = t.features(ids, torch.zeros(1, 2), torch.zeros(1), torch.eye(3)[None])
+        upper = f[0, -18:-1]
+        expected = torch.full((17,), t.upper_rate * tr.UPPER_HORIZON)
+        self.assertTrue(torch.allclose(upper, expected, atol=1e-6), upper)
+
+
 if __name__ == '__main__':
     unittest.main()

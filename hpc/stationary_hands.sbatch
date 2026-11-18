@@ -53,7 +53,8 @@
 #          TRACK1: V7 + tracker v1 (cat_mjlab/tracking.py): a time-indexed reference block (guidance path at the operator
 #              speed with a clock that waits for a lagging robot / procedural paths with heading, crouch and arm targets /
 #              none) in actor and critic, tracking terms, the command from the reference; warm-started from a V7 snapshot
-#              with zero-weight reference inputs (actor and critic), anchor E2 u300
+#              with zero-weight reference inputs (actor and critic), anchor E2 u300 on reference-free worlds only,
+#              50 critic-only updates; reactive standing episodes get no reference
 #          E1np / E1nc: RQ2 ablations of E1 -- without the anti-refusal terms (np) / without the width curriculum, on the
 #              original 0.44 m and open table pairs only (nc)
 #          T5: T2 + non-table scenes anchored to S2far u200 (the last policy before the table stages; ANCHOR) instead of the
@@ -201,7 +202,7 @@ case $VARIANT in
         ROUTE_FILE=hpc/route_anchor_no_reactive_no_tables_v2.json SNAPSHOT_EVERY=50 OPERATOR_SPEED="0.1 0.6" REST_STARTS=0.25 \
         OPERATOR_V3=1 OPERATOR_V4=1 OPERATOR_V5=1 OPERATOR_V6=1 OVERSPEED=-30 PASSAGE_PROGRESS=1 \
         GOAL_SEED_CACHE=${GOAL_SEED_CACHE:-data/furniture/tablegap_v1_goal_column} GOAL_GROUND=1 \
-        TRACKER=1 TRACKER_MIX=${TRACKER_MIX:-field=0.5,random=0.3,none=0.2} \
+        TRACKER=1 TRACKER_MIX=${TRACKER_MIX:-field=0.5,random=0.3,none=0.2} WARMUP=${WARMUP:-50} \
         ANCHOR=${ANCHOR:-$L/checkpoints/stationary_hands_E2_u300.pt}
       : "${STUDENT:?TRACK1 needs STUDENT=<a V7 snapshot>}" ;;
   *) echo "unknown VARIANT $VARIANT"; exit 2 ;;

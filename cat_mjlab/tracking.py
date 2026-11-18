@@ -156,9 +156,10 @@ class ReferenceTracker:
         self.s[ids] = self.s[ids] - drop.float() * H
 
     # ------------------------------------------------------------------ episode and step
-    def reset(self, ids, root_xy, root_yaw, *, sample_dir, op_speed, room_scene=None):
+    def reset(self, ids, root_xy, root_yaw, *, sample_dir, op_speed, room_scene=None, hold=None):
         """New references for worlds ids at the robot's pose. op_speed [n]: the operator speed (field source).
-        room_scene [n] bool: the random source only runs in open rooms (other scenes fall back to 'field')."""
+        room_scene [n] bool: the random source only runs in open rooms (other scenes fall back to 'field').
+        hold [n] bool: no reference for these worlds (reactive standing episodes keep the standing skill)."""
         if len(ids) == 0:
             return
         n = len(ids)
@@ -166,6 +167,8 @@ class ReferenceTracker:
         source = torch.tensor([SOURCES.index(m) for m in self.mix_names], device=self.device)[pick]
         if room_scene is not None:
             source = torch.where((source == SOURCES.index('random')) & ~room_scene, torch.full_like(source, SOURCES.index('field')), source)
+        if hold is not None:
+            source = torch.where(hold, torch.full_like(source, SOURCES.index('none')), source)
         self.source[ids] = source
         self.path[ids] = root_xy[:, None].expand(-1, P, -1)
         self.count[ids] = 1; self.s[ids] = 0.; self.lost[ids] = False
@@ -271,7 +274,9 @@ class ReferenceTracker:
             block = torch.cat((local, dyaw.sin()[:, None], dyaw.cos()[:, None], dz[:, None]), -1)
             out.append(block * valid[:, None])
         out.append((self.mask_heading[ids] * valid)[:, None]); out.append((self.mask_height[ids] * valid)[:, None])
-        upper = (self.upper_ref[ids] - self.nominal_upper) * (self.mask_upper[ids] * valid)[:, None]
+        ahead = self.upper_rate * UPPER_HORIZON   # rad the rate-limited target moves in UPPER_HORIZON
+        target = self.upper_ref[ids] + (self.upper_goal[ids] - self.upper_ref[ids]).clamp(-ahead, ahead)
+        upper = (target - self.nominal_upper) * (self.mask_upper[ids] * valid)[:, None]
         out.append(upper); out.append((self.mask_upper[ids] * valid)[:, None])
         f = torch.cat(out, -1)
         assert f.shape[-1] == FEATURES
