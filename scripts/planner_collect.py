@@ -69,9 +69,14 @@ def install_subset_loader(keep_ids):
         return result
 
     def np_load(path, *a, **kw):
+        # Bank fields live in <bank>/<scene dir>/, the goal-seed cache (cat_mjlab/goal_seed.py) in <cache>/<scene_id>/:
+        # a file is real if its folder names a chosen scene either way.
         p = Path(str(path))
-        if p.name in ("sdf.npy", "bf.npy", "gf.npy") and keep_dirs and p.parent.name not in keep_dirs:
+        if (p.name in ("sdf.npy", "bf.npy", "gf.npy", "gf_valid.npy") and keep_dirs
+                and p.parent.name not in keep_dirs and p.parent.name not in keep_ids):
             head = original_np_load(path, mmap_mode="r", allow_pickle=False)
+            if head.ndim == 2:          # flat [cells, channels]
+                return np.zeros((4 * 4 * 45, head.shape[1]), dtype=head.dtype)
             return np.zeros((4, 4, 45, *head.shape[3:]), dtype=head.dtype)
         return original_np_load(path, *a, **kw)
     generalist_fields.load_generalist_manifest = loader
