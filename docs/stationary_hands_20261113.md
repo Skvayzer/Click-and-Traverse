@@ -467,6 +467,18 @@ V2 u450 in the same harness: 0.02 m/s average told 0.15 or 0.25 m/s, never reach
 0.25 in gap_044): the collapse is a robot that has stopped walking. (Snapshots are stripped to schema / contract /
 learner without the optimizer, 9.4 MB, with `scripts/strip_snapshot.py` on the cluster, then exported here on CPU.)
 
+V3 at update 50, same harness: V3a / V3b still approach at 0.3-0.4 m/s and leave the gap at 1.1-1.4 m/s when told 0.15
+(0.4 s mean within 15 cm of the walls 0.61-0.66 / 0.57-0.67 m/s, E2 0.67-0.73), no contacts; training success 0.31
+(V1 0.32, V2 0.29 and falling). The traces show the lunge is the passage itself: the robot turns sideways at the mouth
+and bursts out, while the command stays at 0.15 m/s. Two incentives V3 left in place:
+1. inside a narrow room passage, hand / arm clearance (outside the clip, -40/s in rooms, pressure 0.27 at 5 cm) and the
+   SDF terms (up to -14 per point at 5 cm) are charged per second; V1-V3 scale them by commanded/nominal speed, which
+   keeps them per second, so leaving the gap sooner costs less (the 0.98 discount, ~1 s horizon, values exactly that);
+2. the anchor (E2 u300) still holds gap scenes in episodes at >= 0.4 m/s, and E2 lunges through gaps at any command.
+V4 (2026-11-18 10:20, commit 601fd5f, job 306281, replaces V3a at u59; V3b continues): V3b + clearance and SDF costs at
+max(commanded, actual 0.4 s mean speed)/nominal -- per metre of travel when faster than told, at the commanded rate when
+slower -- and side-gap / hand-passage / width-scaffold scenes anchor-free.
+
 ## Measurement notes
 - Standing power, u150 clean: 26-31 W at rest (CPU trace), recovery steps after a shove 170-570 W.
 - Training metrics `reactive/*` average over all env-steps: divide by `reactive/reactive_standing` (power) or
