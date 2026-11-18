@@ -518,6 +518,34 @@ V6 (2026-11-18 12:30, commit 85e694f, job 306586, replaces V4 at u120; warm star
 that constant x the V5 compliance factor (stance feet keep 4), every goal-line (CAT) scene anchor-free (the anchor
 keeps rooms), overspeed -30/s (inside the clip).
 
+Slow-passage tests, 2026-11-18 afternoon (robot-side sim, `--speed`, `--robot-perception`; 0.4 s mean speed):
+- Told 0.1-0.2 m/s in three 0.47-0.48 m gaps (27 runs, no contacts): E2 u300 approach 0.10-0.28, at the gap
+  0.65-0.86, peak 0.93-1.31 m/s, 0.5-1.3 s from 0.3 m before to 0.3 m after the wall; V5 u150 0.43-0.56 / 0.73-0.93,
+  0.9-2.4 s; V6 u50 approach 0.10-0.18, gap 0.39-0.58, peak 0.64-0.94 m/s, 0.9-2.7 s. Later checkpoints near the
+  walls (told 0.15 / 0.25): V5 u200 0.30-0.41 (peaks 0.64-0.89), V6 u100 0.33-0.42 (peaks 0.69-0.97) m/s.
+- Command field (operator rule, nominal pose at each spot, facing +x or sideways): with the goal behind the gap the
+  command keeps its full 0.52-0.55 m/s field speed and points into the gap everywhere; nowhere does the projection cancel
+  it. A forward-facing body does not fit the gap; a sideways one fits only through the opening. The command slows only
+  within ~0.1-0.3 m of the goal. The observation clips every site's SDF at 0.5 m and zeroes its normal beyond, so a
+  wall is seen only within 0.5 m of a body point.
+- Goal placed in front of / at / inside the opening (told 0.15): both policies stop 0.38-0.64 m short and march in place
+  (never within the executor's 0.25 m arrival radius). On open floor with no walls they also stop short: V6 0.35-0.38 m
+  before goals 0.5-2.0 m away, E2 ~0.4 m before goals 0.5-0.8 m away; no retreat (0.00-0.04 m). Near the wall (goal
+  within ~0.35 m of the opening) they stop 0.1-0.2 m farther, back off 0.08-0.14 m after the closest approach and stand
+  half-turned (50-65 deg). E2 with the goal inside the gap lunges through it.
+- Why ~0.4 m: CAT-type episodes do not end at success (successful CAT episodes in the eval all run the full 1000 steps;
+  the 1 s goal hold applies to route worlds only). Success counts once the pelvis and both feet pass x = 1.5 m; the
+  trailing foot crosses when the pelvis is at ~1.60-1.65 m, i.e. 0.35-0.40 m before the goal ball at x = 2.0 m, and the
+  robot then stands for the rest of the 20 s: nothing pays for going closer (progress and bonus over, the past-line
+  constant is the same anywhere past 1.5 m, energy is priced, the field flips near the ball, the grid ends at ~2.6 m).
+  The policy recognises that distance from the 3-D guidance pattern around the 0.75 m-high goal ball (head arrow steeply
+  down, feet steeply up): a vertical-column goal seed (`scratchpad sim_column_goal.py`) lets E2 reach open-floor goals
+  (0.15-0.23 m), not V6. Robot-side consequence: the 0.25 m arrival radius is inside the learned stop distance, so the
+  robot marches in place ~0.4 m before a goal; use ~0.45-0.5 m or place goals ~0.4 m beyond the intended stop.
+- Prior-work report: `reports/Slow passage and field repulsion.md` (classical potential fields stall at doorways by a
+  position-only force balance; learned policies rush wherever time near danger is priced; remaining per-second
+  pressures in V6: contact termination, pushes 0.1-1.0 m/s every 5-10 s in gaps too, gamma 0.98).
+
 ## Measurement notes
 - Standing power, u150 clean: 26-31 W at rest (CPU trace), recovery steps after a shove 170-570 W.
 - Training metrics `reactive/*` average over all env-steps: divide by `reactive/reactive_standing` (power) or
