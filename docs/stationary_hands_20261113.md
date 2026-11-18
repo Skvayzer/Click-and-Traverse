@@ -475,16 +475,16 @@ and bursts out, while the command stays at 0.15 m/s. Two incentives V3 left in p
    SDF terms (up to -14 per point at 5 cm) are charged per second; V1-V3 scale them by commanded/nominal speed, which
    keeps them per second, so leaving the gap sooner costs less (the 0.98 discount, ~1 s horizon, values exactly that);
 2. the anchor (E2 u300) still holds gap scenes in episodes at >= 0.4 m/s, and E2 lunges through gaps at any command.
-V4 (2026-11-18 10:20, commit 601fd5f, job 306281, replaces V3a at u59; V3b continues): V3b + clearance and SDF costs at
+V4 (2026-11-18 10:07, commit 601fd5f, job 306281, replaces V3a at u59; V3b continues): V3b + clearance and SDF costs at
 max(commanded, actual 0.4 s mean speed)/nominal -- per metre of travel when faster than told, at the commanded rate when
 slower -- and side-gap / hand-passage / width-scaffold scenes anchor-free.
 
-The larger incentive (found 10:30): every CAT-type scene of tablegap_v1 (2226 procedural, 640 side gaps, original /
+The larger incentive (found 10:10): every CAT-type scene of tablegap_v1 (2226 procedural, 640 side gaps, original /
 published CAT) runs from (0, 0) to a goal plane at x = 2 m with the obstacle in between, so the goal plane lies 0.4-1.4
 m past it. The goal bonus (2000) is paid once at the plane and discounted at 0.98 per step: ~730 one second out, ~35
 four seconds out. Sprinting the last metre is worth ~700 more than walking it at 0.15 m/s, against at most ~0.3 per
 step that a clipped cost can take away -- the burst at the gap exit in the robot-side traces, ~1 m before the goal.
-V2's goal bonus 500 still left a ~180 premium. V5 (2026-11-18 10:40, commit 030a2f1, job 306294, replaces V3b at u71;
+V2's goal bonus 500 still left a ~180 premium. V5 (2026-11-18 10:14, commit 030a2f1, job 306294, replaces V3b at u71;
 V4 continues as the ablation): V4 + goal bonus x clamp(1 - f / 0.25, 0, 1), f = share of the last ~2 s (EMA) with the
 0.4 s mean speed above the overspeed limit (1.25x command + 0.05 m/s): about half after 0.25 s above the limit, 0.1
 after 0.5 s, nothing after a 1 s sprint. Prediction: V4 still sprints at the gap exit (H3: the goal premium dominates),
