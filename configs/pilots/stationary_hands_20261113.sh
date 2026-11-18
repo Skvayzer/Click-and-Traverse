@@ -71,7 +71,7 @@ RUN_DIR=${RUN_DIR:-outputs/stationary_hands_20261113}
   ${TIGHT_PASSAGES:+--hand-tight-passages} ${PASSAGE_STALL:+--passage-stall-factor $PASSAGE_STALL} \
   ${PASSAGE_SOFT:+--passage-soft-contact $PASSAGE_SOFT} ${PASSAGE_GATE:+--passage-stall-gate} \
   ${ROUTE_ENERGY:+--route-energy $ROUTE_ENERGY} ${OPERATOR_SPEED:+--operator-speed $OPERATOR_SPEED} \
-  ${REST_STARTS:+--operator-rest-starts $REST_STARTS} ${OPERATOR_V2:+--operator-v2} ${OVERSPEED:+--overspeed-weight $OVERSPEED} \
+  ${REST_STARTS:+--operator-rest-starts $REST_STARTS} ${OPERATOR_V2:+--operator-v2} ${OPERATOR_V3:+--operator-v3} ${OVERSPEED:+--overspeed-weight $OVERSPEED} \
   --sgs-slots ${SGS_SLOTS:-4} --sgs-history 100 --sgs-target 0.66 --sgs-kappa 5 --sgs-temperature 2 --sgs-epsilon 1e-8 \
   --sgs-uniform-mix ${SGS_MIX:-0.30} --sgs-prior $SGS_PRIOR --sgs-prior-count 4 \
   --style-library data/motion_library/library_v1 --style-weight 0.1 \

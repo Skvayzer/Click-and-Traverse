@@ -706,7 +706,8 @@ TELEMETRY_MEANS = ('self_clearance_min_m', 'self_clearance_violation', 'crouch_r
                    'sgs_config_p', 'reactive_power_w', 'reactive_standing', 'reactive_end_lift', 'reactive_end_slide',
                    'reactive_end_drift', 'reactive_violation', 'reactive_settled', 'reactive_feet_moved_m', 'table_walking',
                    'table_sideways', 'table_zone', 'table_cross_track_m', 'table_power_w', 'energy_power_w', 'energy_priced_w',
-                   'passage_stalled', 'energy_progress_mps', 'energy_go', 'op_speed', 'op_rest', 'op_anchor_free', 'op_speed_ratio')
+                   'passage_stalled', 'energy_progress_mps', 'energy_go', 'op_speed', 'op_rest', 'op_anchor_free', 'op_speed_ratio',
+                   'op_mean_speed_ratio')
 SCENE_BUCKETS = ('procedural_cat', 'original_cat', 'published_cat',
                  'clutter_dense', 'clutter_pilot', 'clutter_legacy',
                  'furniture_dense', 'furniture_pilot', 'furniture_legacy',
@@ -1078,7 +1079,8 @@ def create_task(args, *, environment_config=None, sim_class=None):
         passage_stall_gate=getattr(args, 'passage_stall_gate', None),
         route_energy=getattr(args, 'route_energy', None),
         operator_speed=getattr(args, 'operator_speed', None),operator_rest_starts=getattr(args, 'operator_rest_starts', None),
-        operator_v2=getattr(args, 'operator_v2', None),overspeed_weight=getattr(args, 'overspeed_weight', None),
+        operator_v2=getattr(args, 'operator_v2', None),operator_v3=getattr(args, 'operator_v3', None),
+        overspeed_weight=getattr(args, 'overspeed_weight', None),
         reactive_retreat_success=getattr(args, 'reactive_retreat_success', None),
         robustness=(dict(action_latency_ms=float(args.robust_action_latency_ms or 0.),
                          pose_noise=[float(args.robust_pose_noise[0]), float(args.robust_pose_noise[1]), math.radians(float(args.robust_pose_noise[2]))]

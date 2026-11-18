@@ -186,7 +186,7 @@ def upper_stability_terms(target,previous,previous_previous,nominal,handsdf,elbo
     return costs,telemetry
 
 
-def gf_reward(guidance,velocity,sdf,crossed,*,tau,standing=None,standing_value=4.):
+def gf_reward(guidance,velocity,sdf,crossed,*,tau,standing=None,standing_value=4.,speed=None):
     """Guidance-velocity alignment, with two constant cases kept distinct.
 
     ``crossed`` is a genuine goal/plane event and keeps its 4.0 bonus. ``standing`` was
@@ -195,10 +195,18 @@ def gf_reward(guidance,velocity,sdf,crossed,*,tau,standing=None,standing_value=4
     handsgf 1 + feetgf 2 that is +16.0/step, and it was measured at ~54% of the mean
     per-step reward once standing scenes reached half the batch: half the compute
     produced no policy gradient. ``standing_value`` makes that price explicit.
+
+    ``speed`` (per env, m/s): score the velocity along the field relative to that speed, capped at +-1, instead of
+    the cosine. The cosine reads a slow pass as poorly aligned (sway sideways is a large part of a slow head / hand
+    velocity), so near obstacles, where these terms act, only a fast pass scored well.
     """
     guidance=guidance/(torch.linalg.vector_norm(guidance,dim=-1,keepdim=True)+1e-6)
-    velocity=velocity/(torch.linalg.vector_norm(velocity,dim=-1,keepdim=True)+1e-6)
-    near=torch.sigmoid(40.*(tau-sdf.squeeze(-1)))*5.*(guidance*velocity).sum(-1)
+    if speed is None:
+        velocity=velocity/(torch.linalg.vector_norm(velocity,dim=-1,keepdim=True)+1e-6)
+        along=(guidance*velocity).sum(-1)
+    else:
+        along=((guidance*velocity).sum(-1)/speed[:,None]).clamp(-1.,1.)
+    near=torch.sigmoid(40.*(tau-sdf.squeeze(-1)))*5.*along
     if standing is not None:
         near=torch.where(standing,torch.as_tensor(standing_value,dtype=near.dtype,device=near.device),near)
     return torch.where(crossed,4.,near).mean(-1)
@@ -359,7 +367,7 @@ def native_rewards(*,action,last_action,last_last_action,joint_pos,joint_vel,las
         global_velocity,torso_angvel,navi,leg_rotations,feet_pos,feet_sensor_velocity,
         subtree_com,feet_contact,gait,foot_height,foot_height_stance,gf,positions,velocities,sdf,
         crossed,dt=.02,max_yaw=.5,sdf_knee=None,standing_gf=4.,heading_sdf=None,heading_margins=(.05,.15),
-        stand_still=False,stillness_speed=None,facing_yaw=None):
+        stand_still=False,stillness_speed=None,facing_yaw=None,gf_speed=None):
     move=command[:,0];cmd=command[:,1:]
     pitch_negative=torso_rpy[:,1].clamp(-torch.pi,0).abs()
     orientation=pelvis_rpy[:,0].abs()+torso_rpy[:,0].abs()+pitch_negative+(head_z>torso_height+.1)*torso_rpy[:,1].abs()
@@ -398,7 +406,7 @@ def native_rewards(*,action,last_action,last_last_action,joint_pos,joint_vel,las
             # Standing pays only when the body is actually still, not merely commanded to be.
             idle=idle&(torch.linalg.vector_norm(global_velocity[:,:2],dim=-1)<stillness_speed)[:,None]
         rewards[name+'gf']=gf_reward(gf[:,section],velocities[:,section],sdf[:,section],crossing,
-            tau=tau,standing=idle,standing_value=standing_gf)
+            tau=tau,standing=idle,standing_value=standing_gf,speed=gf_speed)
     for name,section in (('head',slice(0,1)),('feet',slice(3,5)),('hands',slice(5,7)),('knees',slice(7,9)),('shlds',slice(9,11))):
         rewards[name+'df']=sdf_reward(sdf[:,section],sdf_knee)
     if stand_still:

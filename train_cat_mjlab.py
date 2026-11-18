@@ -92,6 +92,9 @@ def parser():
                                  "(MIN = MAX: fixed, for evaluation); see config.operator_speed")
         target.add_argument("--operator-v2", action="store_true",
                             help="With --operator-speed: 35%% near-nominal (anchored) episodes, safer rest starts in narrow gaps")
+        target.add_argument("--operator-v3", action="store_true",
+                            help="With --operator-speed: V2 + guidance terms as progress along the field at the operator "
+                                 "speed, tracking / overspeed on the 0.4 s mean velocity, overspeed inside the reward clip")
         target.add_argument("--overspeed-weight", type=float,
                             help="Cost (negative, per second) on pelvis speed above 1.2x the commanded speed, relative to it; "
                                  "outside the reward clip so it can outweigh the goal bonus's early-arrival premium")

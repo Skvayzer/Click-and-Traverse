@@ -234,6 +234,7 @@ class CATTask:
             self.op_length_scale=torch.ones(n_,device=self.device);self.op_rest=torch.zeros(n_,dtype=torch.bool,device=self.device)
             self.anchor_free=torch.zeros(n_,dtype=torch.bool,device=self.device)
             self.op_speed_ema=self.op_far.clone()
+            self.op_vel_ema=torch.zeros((n_,2),device=self.device)   # V3: mean pelvis velocity over smooth_tau
         if config.get('hand_speed_curriculum'):
             if config.get('hand_tolerance_curriculum'):
                 raise ValueError('Run speed and tolerance curricula separately')
@@ -956,6 +957,7 @@ class CATTask:
                 far=torch.where(nominal_,self._rand((n,),max(.45,float(op['min'])),float(op['max'])),far)
                 near=torch.where(nominal_,far,near);use=use&~nominal_
             self.op_far[ids]=far;self.op_near[ids]=near;self.op_use_near[ids]=use;self.op_speed[ids]=far;self.op_speed_ema[ids]=far
+            self.op_vel_ema[ids]=0.
             if op.get('resample'):self.op_timer[ids]=self._rand((n,),float(op['resample'][0]),float(op['resample'][1]))
             slowest=torch.where(use,near,far)
             self.op_length_scale[ids]=(nominal/slowest).clamp(1.,float(op['length_scale_max']))
@@ -1369,7 +1371,10 @@ class CATTask:
                 scope=scope&mask           # route worlds follow a certified route; repulsion is for the joystick
             reward_command[:,1:3]=torch.where(scope[:,None],target,reward_command[:,1:3])
             self._safe_target=target
-        rewards=self.math.native_rewards(facing_yaw=facing_yaw,stand_still='stand_still' in _get(self.config,'reward_config.scales',{}),
+        gf_speed=None
+        if self.operator_speed and self.operator_speed.get('gf_along'):
+            gf_speed=self.op_speed.clamp_min(float(self.operator_speed['min']))
+        rewards=self.math.native_rewards(gf_speed=gf_speed,facing_yaw=facing_yaw,stand_still='stand_still' in _get(self.config,'reward_config.scales',{}),
             stillness_speed=_get(self.config,'standing_requires_stillness_speed',None),heading_sdf=heading_sdf,heading_margins=heading_margins,standing_gf=float(_get(self.config,'standing_gf_bonus',4.)),sdf_knee=sdf_knee,action=action,last_action=i['last_act'],last_last_action=i['last_last_act'],
             joint_pos=d.qpos[:,7:],joint_vel=d.qvel[:,6:],last_joint_vel=i['last_joint_vel'],lower=self.lower,upper=self.upper,
             actuator_force=d.actuator_force,command=reward_command,pelvis_rpy=i['pelvis_rpy'],torso_rpy=i['torso_rpy'],
@@ -1705,18 +1710,33 @@ class CATTask:
             factor=torch.where(standing_,1.,self.op_speed/nominal)
             for name in ('wholebody_hand_clearance','wholebody_arm_clearance','handsdf','feetdf','headdf','kneesdf','shldsdf'):
                 if name in rewards:rewards[name]=rewards[name]*factor
+            op_=self.operator_speed;v_pelvis=self._sensor('global_linvel_pelvis',self.all_ids)[:,:2]
+            if op_.get('smooth_tau'):
+                # V3: tracking and overspeed read the mean velocity over ~smooth_tau, so the gait's sideways sway (a large
+                # part of the pelvis velocity at 0.1 m/s) is not charged as tracking error or overspeed.
+                a_=min(1.,self.dt/float(op_['smooth_tau']));self.op_vel_ema=(1-a_)*self.op_vel_ema+a_*v_pelvis
+                v_mean=self.op_vel_ema
+            else:
+                v_mean=v_pelvis
             if 'tracking_root_field' in rewards:
                 cmd_=reward_command[:,1:3];c_=torch.linalg.vector_norm(cmd_,dim=-1)
-                v_=self._sensor('global_linvel_pelvis',self.all_ids)[:,:2]
-                scale_=torch.where(c_>1e-3,(nominal/c_.clamp_min(float(self.operator_speed['min']))).square(),torch.ones_like(c_))
-                rewards['tracking_root_field']=torch.exp(-4*(cmd_-v_).square().sum(-1)*scale_)
+                scale_=torch.where(c_>1e-3,(nominal/c_.clamp_min(float(op_['min']))).square(),torch.ones_like(c_))
+                rewards['tracking_root_field']=torch.exp(-4*(cmd_-v_mean).square().sum(-1)*scale_)
             telemetry['op_speed']=self.op_speed;telemetry['op_rest']=self.op_rest.float();telemetry['op_anchor_free']=self.anchor_free.float()
-            v_xy=torch.linalg.vector_norm(self._sensor('global_linvel_pelvis',self.all_ids)[:,:2],dim=-1)
+            v_xy=torch.linalg.vector_norm(v_pelvis,dim=-1)
             go_=(i['command'][:,0]>.5)&(torch.linalg.vector_norm(i['command'][:,1:3],dim=-1)>1e-3)&~standing_
-            allowed=1.2*torch.maximum(self.op_speed,self.op_speed_ema)
-            excess=(v_xy-allowed).clamp_min(0.)/self.op_speed.clamp_min(float(self.operator_speed['min']))*go_.float()
+            if op_.get('overspeed_inside'):
+                # V3: mean speed above ratio x command + slack, relative to max(command, floor); inside the clip (below)
+                allowed=float(op_['overspeed_ratio'])*torch.maximum(self.op_speed,self.op_speed_ema)+float(op_['overspeed_slack'])
+                excess=((torch.linalg.vector_norm(v_mean,dim=-1)-allowed).clamp_min(0.)
+                        /self.op_speed.clamp_min(float(op_['overspeed_floor']))*go_.float())
+            else:
+                allowed=1.2*torch.maximum(self.op_speed,self.op_speed_ema)
+                excess=(v_xy-allowed).clamp_min(0.)/self.op_speed.clamp_min(float(op_['min']))*go_.float()
             if 'overspeed' in scales:rewards['overspeed']=excess
             telemetry['op_speed_ratio']=torch.where(go_,v_xy/self.op_speed.clamp_min(1e-3),torch.zeros_like(v_xy))
+            telemetry['op_mean_speed_ratio']=torch.where(go_,torch.linalg.vector_norm(v_mean,dim=-1)/self.op_speed.clamp_min(1e-3),
+                                                         torch.zeros_like(v_xy))
         if group:
             # Per scene group (the teacher's own weights): 'room' overrides apply in room worlds, the global scales
             # in CAT worlds. One weight set for all scenes rebuilt the compromise the experts escaped (hand clearance
@@ -1757,9 +1777,10 @@ class CATTask:
             scaled={k:torch.where(v>0,v*keep,v) for k,v in scaled.items()}
             self.telemetry['passage_stalled']=stalled.float()
         clearance=scaled['wholebody_hand_clearance']*self.dt
-        if 'overspeed' in scaled:
+        if 'overspeed' in scaled and not self.operator_speed.get('overspeed_inside'):
             # Outside the clip at 0 like hand clearance: one step of 2x overspeed must cost more than the ~0.8 a goal
             # bonus pays for arriving a step earlier, which a clipped term (at most the step's positive reward) cannot.
+            # (V2; it made walking slowly pay less than standing, and ending the episode on purpose pay: V3 keeps it inside.)
             clearance=clearance+scaled['overspeed']*self.dt
         pre = sum(scaled.values())*self.dt-clearance
         from .reward_floor import hand_reward_floor
@@ -2127,7 +2148,8 @@ class CATTask:
                         'reactive_power_w', 'reactive_standing', 'reactive_end_lift', 'reactive_end_slide', 'reactive_end_drift',
                         'reactive_violation', 'reactive_settled', 'reactive_feet_moved_m', 'table_walking', 'table_sideways',
                         'table_zone', 'table_cross_track_m', 'table_power_w', 'energy_power_w', 'energy_priced_w', 'passage_stalled',
-                        'energy_progress_mps', 'energy_go', 'op_speed', 'op_rest', 'op_anchor_free', 'op_speed_ratio'):
+                        'energy_progress_mps', 'energy_go', 'op_speed', 'op_rest', 'op_anchor_free', 'op_speed_ratio',
+                        'op_mean_speed_ratio'):
                 if key in self.telemetry: metrics[key] = self.telemetry[key].clone()
             metrics['contrast_role'] = self.contrast['role'].clone()
             metrics['contrast_unresolved'] = (~self.outcome_counted | resolved).clone()
