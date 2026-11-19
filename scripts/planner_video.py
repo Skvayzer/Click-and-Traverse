@@ -38,7 +38,7 @@ TRAILS = (("left_palm", (0.86, 0.22, 0.74)), ("right_palm", (0.55, 0.32, 0.92)),
 PALETTE = ("#1f77b4", "#d62728", "#2ca02c", "#9467bd", "#ff7f0e", "#17becf", "#8c564b")
 
 
-def joint_panel(plan_q, exec_q, width, height):
+def joint_panel(plan_q, exec_q, width, height, title="All 29 joint angles (rad) over the 2 s plan: plan solid, the policy's own motion dashed"):
     """RGB image of the 29 joint angles over 2 s, and per subplot the pixel box of its data area (for the cursor)."""
     import matplotlib
     matplotlib.use("Agg")
@@ -47,18 +47,18 @@ def joint_panel(plan_q, exec_q, width, height):
     dpi = 100
     fig, axes = plt.subplots(1, 5, figsize=(width / dpi, height / dpi), dpi=dpi)
     fig.subplots_adjust(left=0.035, right=0.995, top=0.80, bottom=0.30, wspace=0.28)
-    for ax, (title, start, names) in zip(axes, GROUPS):
+    for ax, (group, start, names) in zip(axes, GROUPS):
         for j, name in enumerate(names):
             c = PALETTE[j % len(PALETTE)]
             ax.plot(t, plan_q[:, start + j], color=c, lw=1.6, label=name)
             ax.plot(t, exec_q[:, start + j], color=c, lw=0.9, ls=(0, (3, 2)), alpha=0.8)
-        ax.set_title(title, fontsize=9, pad=3)
+        ax.set_title(group, fontsize=9, pad=3)
         ax.set_xlim(0, 2.0); ax.tick_params(labelsize=7, length=2, pad=1)
         ax.set_xticks([0, 0.5, 1.0, 1.5, 2.0]); ax.grid(alpha=0.25, lw=0.5)
         ax.legend(fontsize=6.3, ncol=2, loc="upper center", bbox_to_anchor=(0.5, -0.13), frameon=False,
                   handlelength=1.2, columnspacing=0.8, labelspacing=0.15)
     axes[0].set_ylabel("rad", fontsize=7, labelpad=1)
-    fig.text(0.005, 0.985, "All 29 joint angles (rad) over the 2 s plan: plan solid, the policy's own motion dashed", fontsize=8.5, weight="bold", va="top")
+    fig.text(0.005, 0.985, title, fontsize=8.5, weight="bold", va="top")
     fig.canvas.draw()
     img = np.asarray(fig.canvas.buffer_rgba())[..., :3].copy()
     boxes = []
