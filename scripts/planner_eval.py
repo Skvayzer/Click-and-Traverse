@@ -91,6 +91,7 @@ def main(argv=None):
     p.add_argument("--tol", type=float, default=0.01, help="Allowed overlap (m) before a chunk counts as colliding")
     p.add_argument("--batch", type=int, default=32)
     p.add_argument("--seed", type=int, default=0)
+    p.add_argument("--guidance", type=float, default=1.0, help="Classifier-free guidance weight for the scene samples (1 = none)")
     p.add_argument("--save-plans", type=int, default=0,
                    help="Situations per scene type whose full chunks (executed, all scene and blind samples) go to plans.npz")
     args = p.parse_args(argv)
@@ -145,7 +146,7 @@ def main(argv=None):
     for s in range(0, n, args.batch):
         b = {k: torch.as_tensor(np.ascontiguousarray(v[s:s + args.batch]), device=device) for k, v in test.items()}
         st, gl = norm.norm("state", b["state"]), norm.norm("goal", b["goal"])
-        xs = norm.denorm("chunk", sample(model, st, gl, b["grid"], use_scene=True, samples=args.samples, steps=args.ode_steps, generator=g))
+        xs = norm.denorm("chunk", sample(model, st, gl, b["grid"], use_scene=True, samples=args.samples, steps=args.ode_steps, guidance=args.guidance, generator=g))
         xb = norm.denorm("chunk", sample(model, st, gl, None, use_scene=False, samples=args.samples, steps=args.ode_steps, generator=g))
         for store, chunks in ((gt, b["chunk"][:, None]), (sc, xs), (bl, xb)):
             out = scorer.score(chunks, b["grid"], b["goal"])
@@ -187,7 +188,7 @@ def main(argv=None):
     summary = dict(all=summarize(np.ones(n, bool)))
     for b in np.unique(kinds):
         summary[SCENE_BUCKETS[b]] = summarize(kinds == b)
-    summary["_info"] = dict(checkpoint=str(args.checkpoint), step=int(ckpt["step"]), samples=args.samples, ode_steps=args.ode_steps,
+    summary["_info"] = dict(checkpoint=str(args.checkpoint), step=int(ckpt["step"]), samples=args.samples, ode_steps=args.ode_steps, guidance=args.guidance,
                             tol_m=args.tol, situations=n, seconds=round(time.time() - started, 1))
     (args.out / "summary.json").write_text(json.dumps(summary, indent=1) + "\n")
     np.savez_compressed(args.out / "scores.npz", kinds=kinds, meta=test["meta"],
