@@ -27,7 +27,7 @@ GROUPS = dict(legs=slice(0, 12), waist=slice(12, 15), arms=slice(15, 29))
 BUCKETS = ('danger', 'anticipation', 'negative')
 
 
-def build(checkpoint, rows, device, robust, hold_plan=None):
+def build(checkpoint, rows, device, robust, hold_plan=None, bank=None):
     from cat_mjlab.runner import create_task
     from record_mjlab_rollout import load_policy
     learner, saved = load_policy(checkpoint, device=device, policy_id=0)
@@ -44,7 +44,8 @@ def build(checkpoint, rows, device, robust, hold_plan=None):
         if not env.get('tracker'):
             raise ValueError('--hold-plan needs a checkpoint trained with the tracker')
         env['tracker']['hold_plan'] = float(hold_plan)     # 1: every standing episode on a stand-still plan, 0: none
-    bank = 'data/furniture/sidegap_v2'
+    # The static bank only sets the standing room; a goal-seed cache (V7 and later) is tied to its own bank.
+    bank = bank or ('data/furniture/tablegap_v1' if env.get('goal_seed') else 'data/furniture/sidegap_v2')
     ns = SimpleNamespace(bank_manifest=Path(bank + '_packed/manifest.json'), body_collision_bank=Path(bank + '_collision/manifest.json'),
                          body_collision_resets=Path(bank + '_resets/manifest.json'), device=device, seed=0, num_envs=len(rows),
                          compile_task=False, nconmax=contract['nconmax'], njmax=contract['njmax'],
@@ -60,8 +61,8 @@ def build(checkpoint, rows, device, robust, hold_plan=None):
 
 
 @torch.no_grad()
-def evaluate(checkpoint, rows, steps, device, robust, hold_plan=None):
-    learner, task = build(checkpoint, rows, device, robust, hold_plan)
+def evaluate(checkpoint, rows, steps, device, robust, hold_plan=None, bank=None):
+    learner, task = build(checkpoint, rows, device, robust, hold_plan, bank)
     obj = task.reactive_objects
     task.reset()
     n = len(rows)
@@ -145,13 +146,14 @@ def main():
     p.add_argument('--steps', type=int, default=800)
     p.add_argument('--device', default='cuda:0')
     p.add_argument('--robust', action='store_true', help='keep the checkpoint\'s training randomisation and pushes')
+    p.add_argument('--bank', help='static scene bank (default: tablegap_v1 for checkpoints with a goal-seed cache, else sidegap_v2)')
     p.add_argument('--hold-plan', type=float, help='tracker checkpoints: share of episodes on a stand-still plan (1 = all)')
     p.add_argument('--out', type=Path)
     a = p.parse_args()
     rows = list(range(*(int(x) for x in a.rows.split(':'))))
     results = []
     for checkpoint in a.checkpoint:
-        r = evaluate(checkpoint, rows, a.steps, a.device, a.robust, a.hold_plan)
+        r = evaluate(checkpoint, rows, a.steps, a.device, a.robust, a.hold_plan, a.bank)
         print(json.dumps(r), flush=True)
         results.append(r)
     if a.out:
