@@ -628,6 +628,28 @@ on CAT courses, so V7's CAT-course gap to E2 (0.17 vs 0.36) is at least partly t
 not been run. Told 0.3 m/s, V7's side gaps drop to 0.21 clean (contact 0.70), against 0.26-0.34 for E2 and V6 under their
 own rules.
 
+Whole-body planner v1, overnight 2026-11-19 (cluster job 307723, run /l/users/konstantin.smirnov/runs/wbp/planner_v1,
+code 2d4d40f; probe 5d677bc, job 308515; report https://claude.ai/artifact/XsUF4SgoZDtLyF89nuBWwZ).
+- Data: clean 2 s windows (no contact or fall until 0.5 s after) from V7 u450 (200k, mean speed 0.24 m/s), E2 u300 and
+  T2 u650 (150k each) on tablegap_v1; 374 training / 112 held-out scenes; ~90 min of collection per source at 4096 worlds.
+- Training: 100k steps in 129 min; validation loss 0.29 (5k) -> 0.18, flat after 70k.
+- Held-out, 4200 situations of 14 types: best of 16 collision-free 99.6% (the policies' own motion 99.5%, blind 98.4%);
+  one sample 97.7% (blind 93.6%); goal error 0.6 cm; foot skate 2.0 cm (executed 1.75 cm); samples 2.4 cm apart. The
+  hindsight goal (where the policy ended 2 s later) implies a free route, hence the high blind score.
+- Inserted-column probe (scripts/planner_probe.py): a 10 cm column 25 cm beside the executed pelvis path 1 s in, cutting
+  the executed motion, start and goal unchanged (1514 situations): best of 16 clear 10% blind, 54% with the map, 70%
+  with classifier-free guidance 2 (one sample 2 / 29 / 50%); the pelvis passes 25 -> 41 cm from the column; worst table
+  edges 41%, original CAT 61%, protected / transition passages 63-64%. Guidance 2 costs nothing on ordinary situations
+  (one sample 98.1% clear, goal error 2.1 cm): make it the default.
+- Next: hindsight obstacles (SWAP) so plans learn to go around obstacles the goal does not reveal (gate >= 90% of
+  probes), goals from a route instead of hindsight, more diverse samples; the tracker after that.
+
+V7 resume failure, V7r (2026-11-19). V7's next 12 h block (job 307690, queued afterany:306915) failed at 03:40:
+task.load_state_dict refused the snapshot ("Changed task state keys: info"; info gains keys while stepping, a fresh task
+lacks them). Any fix changes source_sha256 in the resume contract, so V7 continues as V7r: warm start from V7's u600
+snapshot with a fresh optimizer and task state, code 672352c (branch v7-resume-fix = b028157 + info restored by name, so
+V7r's own resumes should pass), job 308522 from 07:41.
+
 ## Measurement notes
 - Standing power, u150 clean: 26-31 W at rest (CPU trace), recovery steps after a shove 170-570 W.
 - Training metrics `reactive/*` average over all env-steps: divide by `reactive/reactive_standing` (power) or

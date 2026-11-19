@@ -136,13 +136,37 @@ def main(argv=None):
     p.add_argument("--width", type=int, default=800)
     p.add_argument("--height", type=int, default=450)
     p.add_argument("--tol", type=float, default=0.01)
+    p.add_argument("--probe", type=Path, help="probe.npz from planner_probe.py --plans: render the inserted-column probes "
+                                               "(plans with the column in the map vs the policy's own motion) instead")
+    p.add_argument("--probe-key", default="scene_g2", help="which planner variant of the probe to show")
+    p.add_argument("--probe-radius", type=float, default=0.10)
     args = p.parse_args(argv)
     os.environ.setdefault("MUJOCO_GL", "egl")
     import mujoco
     from PIL import Image, ImageFont
     from render_clutter_rollouts import resolve_xml_assets
-    z = np.load(args.plans, allow_pickle=False)
+    z = dict(np.load(args.plans, allow_pickle=False))
     names = [str(n) for n in z["kind_names"]]
+    column = None
+    if args.probe:      # the probe's own copy of each situation, its column and the chosen planner variant
+        pr = dict(np.load(args.probe, allow_pickle=False))
+        key = args.probe_key
+        z = dict(kinds=pr["kinds"], kind_names=pr["kind_names"], meta=pr["meta"], pose=pr["pose"], state=pr["state"],
+                 goal=pr["goal"], executed=pr["executed"], scene=pr[f"{key}_chunks"], scene_best=pr[f"{key}_best"],
+                 scene_min_clear=pr[f"{key}_clear"], executed_min_clear=pr["executed_clear"][:, None])
+        best_chunk = z["scene"][np.arange(len(z["scene"])), z["scene_best"]]
+        z["scene_goal_err"] = np.repeat(np.linalg.norm(best_chunk[:, -1, :2] - z["goal"][:, :2], axis=-1)[:, None], z["scene"].shape[1], 1)
+        column, cut = pr["column"], pr["cut"]
+
+    def pick(kind):
+        rows = np.nonzero(z["kinds"] == kind)[0]
+        if column is None:
+            return rows[:args.per_type]
+        rows = rows[cut[rows]]
+        ok = z["scene_min_clear"][rows, z["scene_best"][rows]] >= -args.tol
+        good, bad = rows[ok], rows[~ok]
+        n_bad = min(len(bad), 1 if len(good) else args.per_type)
+        return np.concatenate((good[:args.per_type - n_bad], bad[:n_bad]))
     bank_manifest = Path(args.bank + "_packed/manifest.json")
     manifest = json.loads(bank_manifest.read_text())
     args.out.mkdir(parents=True, exist_ok=True)
@@ -158,9 +182,12 @@ def main(argv=None):
     hold = int(round(args.hold * args.fps))
     index = []
     for kind in np.unique(z["kinds"]):
-        rows = np.nonzero(z["kinds"] == kind)[0][:args.per_type]
+        rows = pick(kind)
         name = names[int(kind)]
-        video = args.out / f"{name}.mp4"
+        if not len(rows):
+            continue
+        stem = name + ("_probe" if column is not None else "")
+        video = args.out / f"{stem}.mp4"
         cmd = [ffmpeg, "-hide_banner", "-loglevel", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24",
                "-s", f"{2 * args.width}x{args.height}", "-r", str(args.fps), "-i", "-", "-an", "-c:v", "libx264",
                "-pix_fmt", "yuv420p", "-crf", "30", "-movflags", "+faststart", str(video)]
@@ -188,8 +215,13 @@ def main(argv=None):
             info = (f"{name}  |  {rec['scene_id'][:44]}  |  data from {source}  |  "
                     f"samples clear {int(free.sum())}/{len(free)}")
             clear_p, clear_e = float(z["scene_min_clear"][r, best]), float(z["executed_min_clear"][r, 0])
-            panels = (("plan (best of %d)" % len(free), planned, f"min clearance {100 * clear_p:+.1f} cm", True),
-                      (f"executed by {source}", executed, f"min clearance {100 * clear_e:+.1f} cm", False))
+            if column is None:
+                titles = ("plan (best of %d)" % len(free), f"executed by {source}")
+            else:
+                titles = ("plan with the new column in its map", f"{source}'s own motion, column added after")
+                col_w = path_world(column[r][None], z["pose"][r])[-1]
+            panels = ((titles[0], planned, f"min clearance {100 * clear_p:+.1f} cm", True),
+                      (titles[1], executed, f"min clearance {100 * clear_e:+.1f} cm", False))
             seq = {k: interpolate(q, n_frames) for k, (_, q, _, _) in enumerate(panels)}
             order = [0] * hold + list(range(n_frames)) + [n_frames - 1] * hold
             with mujoco.Renderer(model, width=args.width, height=args.height) as renderer:
@@ -208,6 +240,11 @@ def main(argv=None):
                         else:
                             add_path(renderer.scene, mujoco, path_world(z["executed"][r], z["pose"][r]), (0.1, 0.8, 0.95, 1.0), 0.016, z=0.016)
                         add_sphere(renderer.scene, mujoco, [goal[0], goal[1], 0.03], (0.2, 0.45, 1.0, 1.0), 0.05)
+                        if column is not None and renderer.scene.ngeom < renderer.scene.maxgeom:
+                            gcol = renderer.scene.geoms[renderer.scene.ngeom]
+                            mujoco.mjv_initGeom(gcol, mujoco.mjtGeom.mjGEOM_CYLINDER, np.array([args.probe_radius, 0.9, 0]),
+                                                np.array([col_w[0], col_w[1], 0.9]), np.eye(3).ravel(), np.array([0.85, 0.15, 0.15, 0.85], np.float32))
+                            renderer.scene.ngeom += 1
                         img = renderer.render().copy()
                         img = label(img, [title, clear], font)
                         halves.append(img)
@@ -221,9 +258,9 @@ def main(argv=None):
                               plan_goal_err_m=round(float(z["scene_goal_err"][r, best]), 3)))
         proc.stdin.close(); proc.wait()
         if stills:
-            Image.fromarray(np.concatenate(stills[:4], 0)).save(args.out / f"{name}.jpg", quality=85)
-        print("RENDERED", name, len(rows), flush=True)
-    (args.out / "index.json").write_text(json.dumps(index, indent=1) + "\n")
+            Image.fromarray(np.concatenate(stills[:4], 0)).save(args.out / f"{stem}.jpg", quality=85)
+        print("RENDERED", stem, len(rows), flush=True)
+    (args.out / ("index_probe.json" if column is not None else "index.json")).write_text(json.dumps(index, indent=1) + "\n")
 
 
 if __name__ == "__main__":
