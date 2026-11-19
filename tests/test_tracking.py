@@ -181,5 +181,23 @@ class PlannerStateTest(unittest.TestCase):
         self.assertTrue(torch.allclose(state, ours, atol=1e-5))
 
 
+class ComboConfigTest(unittest.TestCase):
+    def test_flags_reach_the_config(self):
+        """--tracker-reflex passes an empty dict (the default bands): it must not be dropped as falsy (it was, once)."""
+        from types import SimpleNamespace
+        from cat_mjlab.runner import tracker_spec
+        from cat_mjlab.config import wholebody_config
+        args = SimpleNamespace(tracker=True, tracker_mix='plan=0.5,field=0.15,random=0.1,none=0.25', tracker_scales=None,
+                               tracker_sigma=None, tracker_planner='/x/planner.pt', tracker_plan_samples=None,
+                               tracker_plan_steps=None, tracker_plan_interval=None, tracker_hold_plan=0.5, tracker_reflex=True)
+        tc = wholebody_config(tracker=tracker_spec(args), operator_speed=(0.1, 0.6))['tracker']
+        self.assertEqual(tc['reflex'], dict(hand_band=.15, body_band=.35, deadband=.20))
+        self.assertEqual(tc['hold_plan'], .5)
+        self.assertEqual(tc['planner']['path'], '/x/planner.pt')
+        self.assertEqual(tc['planner']['steps'], 6)
+        args.tracker_reflex = False
+        self.assertNotIn('reflex', wholebody_config(tracker=tracker_spec(args), operator_speed=(0.1, 0.6))['tracker'])
+
+
 if __name__ == '__main__':
     unittest.main()

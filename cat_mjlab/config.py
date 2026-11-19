@@ -473,7 +473,8 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
             config['tracker']['hold_plan']=float(spec['hold_plan'])
             if not 0.<=config['tracker']['hold_plan']<=1.:raise ValueError('tracker hold_plan must be in [0, 1]')
             if config['tracker']['hold_plan']>0 and not spec.get('planner'):raise ValueError('tracker hold_plan needs a planner')
-        if spec.get('reflex'):
+        if spec.get('reflex') is not None and spec.get('reflex') is not False:
+            # {} (the --tracker-reflex flag) means the default bands; an empty dict is falsy, so test for presence
             reflex=dict(spec['reflex']) if isinstance(spec['reflex'],dict) else {}
             config['tracker']['reflex']=dict(hand_band=float(reflex.get('hand_band',.15)),body_band=float(reflex.get('body_band',.35)),
                                              deadband=float(reflex.get('deadband',.20)))
