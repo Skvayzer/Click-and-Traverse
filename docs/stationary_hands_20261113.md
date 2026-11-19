@@ -650,6 +650,22 @@ lacks them). Any fix changes source_sha256 in the resume contract, so V7 continu
 snapshot with a fresh optimizer and task state, code 672352c (branch v7-resume-fix = b028157 + info restored by name, so
 V7r's own resumes should pass), job 308522 from 07:41.
 
+Full-body motion tracker v1 and plan execution, 2026-11-19 (cluster job 308916, run
+/l/users/konstantin.smirnov/runs/mimic/mimic_v1; code 9725c42, evaluation af552e0). mjlab's G1 tracking task
+(BeyondMimic-style PPO, flat ground) on 120 min of the policies' own clean motion: 1138 clips stitched from the planner
+v1 datasets (scripts/mimic_library.py), clip boundaries handled by cat_mjlab/mimic.py. 4096 worlds, 0.7 s/iteration,
+20000 iterations in 4.4 h; at the end episodes run the full 10 s, body position error 3.9 cm. (SuperMimic: code not
+public. NablaMimic: installing it on the cluster needs the user's approval.)
+Plan execution (scripts/planner_track_eval.py, 150 held-out situations per type, 2 s open loop, plans = best of 16 with
+guidance 2, executed motion scored against the map like a plan):
+- model_19999: plans executed clean 93.6% (the policies' own motion 92.9%), falls 0.1%, pelvis tracking error 5.6 cm;
+  worst original CAT 76%, procedural CAT 85%, side gaps 89%, table edges 91%. model_5000: 93.0%, 7.5 cm.
+- Column probe (752 situations): executed plans clear the column 39% (model_5000 30%), the policies' motion 2%;
+  71% of the plans clear it kinematically, so tracking error (~10 cm on these less typical motions) eats the margin.
+- Choosing plans by clearance up to 8 cm instead of 2 cm: 93.8% / 40.6%. No gain, since the 16 samples are ~2.4 cm apart.
+- Bug found and fixed in the evaluation: the reset advances the reference one frame, so the clip-end wrap teleported
+  robots on the last recorded step (a97bbfb).
+
 ## Measurement notes
 - Standing power, u150 clean: 26-31 W at rest (CPU trace), recovery steps after a shove 170-570 W.
 - Training metrics `reactive/*` average over all env-steps: divide by `reactive/reactive_standing` (power) or
