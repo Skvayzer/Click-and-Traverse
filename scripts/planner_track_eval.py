@@ -72,6 +72,8 @@ def main(argv=None):
     p.add_argument("--guidance", type=float, default=2.0)
     p.add_argument("--tol", type=float, default=0.01)
     p.add_argument("--probe", action="store_true")
+    p.add_argument("--clear-cap", type=float, default=0.02,
+                   help="sample choice: largest clearance up to this (m), then smallest goal error (planner_eval uses 0.02)")
     p.add_argument("--seed", type=int, default=0)
     args = p.parse_args(argv)
     import torch
@@ -108,7 +110,7 @@ def main(argv=None):
         b = {k: torch.as_tensor(np.ascontiguousarray(z[k][s:s + 32]), device=device) for k in ("state", "goal", "grid", "chunk")}
         x = norm.denorm("chunk", sample(planner, norm.norm("state", b["state"]), norm.norm("goal", b["goal"]), b["grid"], use_scene=True,
                                          samples=args.samples, steps=16, guidance=args.guidance, generator=g))
-        sc = scorer.score(x, b["grid"], b["goal"]); best = best_of(sc)
+        sc = scorer.score(x, b["grid"], b["goal"]); best = torch.argmax(sc["min_clear"].clamp(max=args.clear_cap) * 100 - sc["goal_err"], -1)
         plans.append(x[torch.arange(len(best)), best].cpu().numpy())
         plan_clear.append(sc["min_clear"][torch.arange(len(best)), best].cpu().numpy())
         exec_clear.append(scorer.score(b["chunk"][:, None], b["grid"], b["goal"])["min_clear"][:, 0].cpu().numpy())
@@ -221,10 +223,10 @@ def main(argv=None):
     result = dict(all=summary(np.ones(n, bool)))
     for b in np.unique(kinds):
         result[SCENE_BUCKETS[b]] = summary(kinds == b)
-    result["_info"] = dict(planner=str(args.planner), tracker=str(args.tracker), guidance=args.guidance, samples=args.samples,
+    result["_info"] = dict(planner=str(args.planner), tracker=str(args.tracker), guidance=args.guidance, samples=args.samples, clear_cap_m=args.clear_cap,
                            reference_frames_ahead_of_robot=sorted(set(ref_offset)),
                            probe=bool(args.probe), tol_m=args.tol, situations=n, seconds=round(time.time() - started, 1))
-    name = "track_eval_probe" if args.probe else "track_eval"
+    name = ("track_eval_probe" if args.probe else "track_eval") + ("" if args.clear_cap == 0.02 else f"_cap{round(100 * args.clear_cap)}")
     (args.out / f"{name}.json").write_text(json.dumps(result, indent=1) + "\n")
     np.savez_compressed(args.out / f"{name}.npz", meta=z["meta"], pose=z["pose"], state=z["state"], goal=z["goal"], plan=plans,
                         executed=z["chunk"], tracked=frames.cpu().numpy(), min_clear=out["min_clear"], alive=alive,

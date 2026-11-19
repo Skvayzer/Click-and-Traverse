@@ -20,6 +20,6 @@ export CAT_PATH_MAP=/home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab=$L
 P=$L/runs/wbp/${PLANNER_RUN:-planner_v1}
 OUT=${OUT:-$L/runs/mimic/${RUN:-mimic_v1}/track_eval}
 : "${TRACKER:?set TRACKER=<mjlab checkpoint model_X.pt>}"
-python scripts/planner_track_eval.py --data $P/all --planner $P/train/planner.pt --tracker $TRACKER --out $OUT --per-type ${PER_TYPE:-150}
-python scripts/planner_track_eval.py --data $P/all --planner $P/train/planner.pt --tracker $TRACKER --out $OUT --per-type ${PER_TYPE:-150} --probe
+python scripts/planner_track_eval.py --data $P/all --planner $P/train/planner.pt --tracker $TRACKER --out $OUT --per-type ${PER_TYPE:-150} ${CAP:+--clear-cap $CAP}
+python scripts/planner_track_eval.py --data $P/all --planner $P/train/planner.pt --tracker $TRACKER --out $OUT --per-type ${PER_TYPE:-150} --probe ${CAP:+--clear-cap $CAP}
 echo "== TRACK EVAL DONE at $(date -Is)"
