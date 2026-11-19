@@ -2515,9 +2515,14 @@ class CATTask:
         def validate(actual,template,name):
             if isinstance(template,dict):
                 if not isinstance(actual,dict):raise ValueError(f'Invalid task state mapping: {name}')
-                # Telemetry is observational, first populated on the first step.
-                if name!='telemetry' and set(actual)!=set(template):raise ValueError(f'Changed task state keys: {name}')
-                return {k:validate(v,template.get(k,v),name+'.'+k) for k,v in actual.items()}
+                # Telemetry is observational, first populated on the first step. info gains keys while stepping, so a
+                # freshly built task lacks some a snapshot has (and the reverse): restore by name, keep fresh entries.
+                if name not in ('telemetry','info') and set(actual)!=set(template):raise ValueError(f'Changed task state keys: {name}')
+                if name=='info' and set(actual)!=set(template):
+                    import json;print(json.dumps(dict(resume_info_keys=dict(only_saved=sorted(set(actual)-set(template)),only_fresh=sorted(set(template)-set(actual))))),flush=True)
+                out={k:validate(v,template.get(k,v),name+'.'+k) for k,v in actual.items()}
+                if name=='info':out.update({k:v for k,v in template.items() if k not in out})
+                return out
             if not isinstance(actual,torch.Tensor) or actual.shape!=template.shape or actual.dtype!=template.dtype:
                 raise ValueError(f'Task checkpoint shape/dtype mismatch: {name}')
             return actual.to(self.device).clone()
