@@ -2310,7 +2310,8 @@ class CATTask:
                         'reactive_violation', 'reactive_settled', 'reactive_feet_moved_m', 'table_walking', 'table_sideways',
                         'table_zone', 'table_cross_track_m', 'table_power_w', 'energy_power_w', 'energy_priced_w', 'passage_stalled',
                         'energy_progress_mps', 'energy_go', 'op_speed', 'op_rest', 'op_anchor_free', 'op_speed_ratio',
-                        'op_mean_speed_ratio', 'op_over_frac'):
+                        'op_mean_speed_ratio', 'op_over_frac', 'track_error_m', 'track_valid', 'track_lost', 'track_plan',
+                        'track_released', 'plan_clear_m', 'plan_sideways', 'plan_replans', 'plan_worlds'):
                 if key in self.telemetry: metrics[key] = self.telemetry[key].clone()
             metrics['contrast_role'] = self.contrast['role'].clone()
             metrics['contrast_unresolved'] = (~self.outcome_counted | resolved).clone()
