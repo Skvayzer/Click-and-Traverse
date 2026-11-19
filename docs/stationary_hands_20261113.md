@@ -669,6 +669,26 @@ guidance 2, executed motion scored against the map like a plan):
 - Bug found and fixed in the evaluation: the reset advances the reference one frame, so the clip-end wrap teleported
   robots on the last recorded step (a97bbfb).
 
+Planner with a field reflex, COMBO1 (2026-11-20; branch feature/plan-reflex 1f35ff3, cluster job 310027, run
+/l/users/konstantin.smirnov/runs/stationary_hands_20261113_COMBO1). The user asked for the combined system: the planner
+plans ahead and replans periodically, the potential-field policy is the fast reflex. One network: TRACK1 (V7 + the
+41-input reference block) with planner v1 in the loop as a fourth reference source ('plan', cat_mjlab/planner/online.py):
+from the measured state, toward a goal 2 s ahead on the guidance path at the operator speed, end heading along the path
+or turned 90 deg either way (4 samples, 6 Euler steps, bf16, guidance 2), the sample with the most body-sphere clearance
+up to 10 cm, minus 0.02 for a sideways pass and 0.1 per m (plus 0.2 m per rad) of disagreement with the replaced chunk;
+replanned every 0.3-1.0 s (random), the chunk played on its own waiting clock. The reflex rule: an arm whose hand is
+within 15 cm of an obstacle (thrown objects included) drops out of track_upper (its share is not paid); the pelvis term
+tolerates max(0, min(0.2, 0.35 m - body clearance)) of error. Sources plan 0.5, field 0.15, random 0.1, none 0.25; half
+the reactive standing worlds on a stand-still plan. Warm start V7r u600 (zero-weight reference inputs), 50 critic-only
+updates, anchor E2 u300 on reference-free worlds. Evaluations: scripts/eval_per_scene.py --tracker-mix plan=1 | none=1,
+scripts/eval_standing_hands.py --hold-plan 1 (cluster ~/jobs/eval_combo.sh).
+- Checks: local env with V7r driving (32 worlds): every plan world gets a chunk at reset, pelvis error ~7 cm, the reflex
+  rule active in 1.5-4% of steps, 29% of replans pick a sideways goal heading. Plan quality with 6-8 Euler steps in
+  bf16 equals 16 steps in fp32 (600 held-out situations: 100% clear, goal error 1.5 cm).
+- Smoke (3 updates): 74 s/update (V7r 69 s), GPU peak 30.1 GB (V7r 30.9 GB). Two failed smokes first: the new worktree
+  lacked untracked outputs/distill_v1_prep files (SGS init), then a CUDA OOM at Warp graph creation after the first
+  reset planned ~6,900 worlds at once (fix: blocks of 256 worlds, grid and scoring in small pieces: 0.4 GiB peak).
+
 ## Measurement notes
 - Standing power, u150 clean: 26-31 W at rest (CPU trace), recovery steps after a shove 170-570 W.
 - Training metrics `reactive/*` average over all env-steps: divide by `reactive/reactive_standing` (power) or
