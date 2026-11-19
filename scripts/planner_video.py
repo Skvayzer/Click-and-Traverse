@@ -124,6 +124,7 @@ def main(argv=None):
     p.add_argument("--view-height", type=int, default=440)
     p.add_argument("--panel-height", type=int, default=250)
     p.add_argument("--tol", type=float, default=0.01)
+    p.add_argument("--obstacle-alpha", type=float, default=0.45, help="obstacle opacity, so the planned body shows behind them")
     args = p.parse_args(argv)
     os.environ.setdefault("MUJOCO_GL", "egl")
     import mujoco
@@ -180,6 +181,9 @@ def main(argv=None):
                 xml, _ = resolve_xml_assets(Path(tmp) / "model.xml")
                 model = mujoco.MjModel.from_xml_string(xml)
             model.vis.global_.offwidth, model.vis.global_.offheight = W, H
+            for g in range(model.ngeom):           # scene obstacles live on the world body; the floor stays opaque
+                if model.geom_bodyid[g] == 0 and model.geom_type[g] != mujoco.mjtGeom.mjGEOM_PLANE:
+                    model.geom_rgba[g, 3] = args.obstacle_alpha
             data, ghost_data = mujoco.MjData(model), mujoco.MjData(model)
             option = mujoco.MjvOption(); option.geomgroup[3:] = 0; option.sitegroup[:] = 0
             perturb, camera = mujoco.MjvPerturb(), mujoco.MjvCamera()
@@ -195,7 +199,7 @@ def main(argv=None):
             goal = path_world(z["goal"][r][None, :2], z["pose"][r])[-1]
             mid = plan_key[:, :2].mean(0); yaw0 = float(z["pose"][r][2])
             camera.lookat[:] = [mid[0], mid[1], 0.55]
-            camera.distance, camera.elevation, camera.azimuth = 3.0, -30, math.degrees(yaw0) + 40
+            camera.distance, camera.elevation, camera.azimuth = 3.0, -36, math.degrees(yaw0) + 40
             source = SOURCES.get(int(z["meta"][r, 4]), str(int(z["meta"][r, 4])))
             clear_p, clear_e = float(z["scene_min_clear"][r, best]), float(z["executed_min_clear"][r, 0])
             col_w = path_world(column[r][None], z["pose"][r])[-1] if column is not None else None
