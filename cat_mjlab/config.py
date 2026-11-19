@@ -458,6 +458,25 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
         spec=dict(tracker) if isinstance(tracker,dict) else {}
         mix=spec.get('mix') or (('field',.5),('random',.3),('none',.2))
         config['tracker']=dict(mix=[[str(a),float(b)] for a,b in mix],sigma=float(spec.get('sigma',.15)))
+        # Planner with a field reflex: planner v1 in the loop for the 'plan' source, stand-still plans for a share of the
+        # reactive standing worlds, and the reflex rule on the tracking terms (task._rewards).
+        names={str(a) for a,_ in mix}
+        if 'plan' in names and not spec.get('planner'):raise ValueError("tracker source 'plan' needs a planner checkpoint")
+        if spec.get('planner'):
+            planner=dict(spec['planner']) if isinstance(spec['planner'],dict) else dict(path=str(spec['planner']))
+            if not planner.get('path'):raise ValueError('tracker planner needs a path')
+            config['tracker']['planner']=dict(path=str(planner['path']),samples=int(planner.get('samples',4)),
+                steps=int(planner.get('steps',8)),guidance=float(planner.get('guidance',2.)),horizon=float(planner.get('horizon',2.)),
+                interval=[float(x) for x in planner.get('interval',(.3,1.))],clear_cap=float(planner.get('clear_cap',.10)),
+                side_penalty=float(planner.get('side_penalty',.02)),switch_penalty=float(planner.get('switch_penalty',.1)))
+        if spec.get('hold_plan') is not None:
+            config['tracker']['hold_plan']=float(spec['hold_plan'])
+            if not 0.<=config['tracker']['hold_plan']<=1.:raise ValueError('tracker hold_plan must be in [0, 1]')
+            if config['tracker']['hold_plan']>0 and not spec.get('planner'):raise ValueError('tracker hold_plan needs a planner')
+        if spec.get('reflex'):
+            reflex=dict(spec['reflex']) if isinstance(spec['reflex'],dict) else {}
+            config['tracker']['reflex']=dict(hand_band=float(reflex.get('hand_band',.15)),body_band=float(reflex.get('body_band',.35)),
+                                             deadband=float(reflex.get('deadband',.20)))
         for name,value in dict(track_pos=4.,track_lead=-8.,track_heading=1.,track_height=1.,track_upper=1.).items():
             scales[name]=float((spec.get('scales') or {}).get(name,value))
     if overspeed_weight is not None:

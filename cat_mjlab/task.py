@@ -110,8 +110,23 @@ class CATTask:
             from .tracking import ReferenceTracker,SOURCES
             tc=config['tracker']
             self.tracker=ReferenceTracker(self.num_envs,self.device,mix=[tuple(m) for m in tc['mix']],nominal_upper=self.nominal[12:],
-                                          generator=self.generator)
+                                          hold_plan=float(tc.get('hold_plan',0.)),generator=self.generator)
             self.track_sigma=float(tc.get('sigma',.15));self.track_field=SOURCES.index('field')
+            # Planner with a field reflex: planner v1 in the loop for the 'plan' source (cat_mjlab/planner/online.py),
+            # and the reflex rule on the tracking terms (an arm whose hand is inside the band stops being tracked; the
+            # pelvis error gets a deadband near obstacles). The potential-field and contact terms are untouched.
+            self.online_planner=None;self.reflex=tc.get('reflex')
+            pc=tc.get('planner')
+            if pc:
+                import mujoco
+                from .model import assemble_training_xml
+                from .planner.online import OnlinePlanner
+                self.online_planner=OnlinePlanner(pc['path'],mujoco.MjModel.from_xml_string(assemble_training_xml()),self.device,
+                    samples=pc.get('samples',4),steps=pc.get('steps',8),guidance=pc.get('guidance',2.),horizon=pc.get('horizon',2.),
+                    interval=pc.get('interval',(.3,1.)),clear_cap=pc.get('clear_cap',.10),side_penalty=pc.get('side_penalty',.02),
+                    switch_penalty=pc.get('switch_penalty',.1),seed=seed+17)
+                self.plan_clear=torch.zeros(self.num_envs,device=self.device);self.plan_side=torch.zeros_like(self.plan_clear)
+                self.plan_fresh=torch.zeros_like(self.plan_clear)
         # Home pose for the upper-body posture cost only (observations and the action
         # nominal are untouched, so the warm start is unaffected). The default hangs the
         # hands 3 cm from the thigh capsules; shoulder pitch -0.3 puts them 24 cm in
@@ -753,6 +768,22 @@ class CATTask:
         m=torch.linalg.vector_norm(g,dim=-1,keepdim=True)
         return torch.where(m>1e-3,g/m.clamp_min(1e-6),torch.zeros_like(g))
 
+    def _replan(self,ids):
+        """New planner chunks for the plan-source worlds among ids, from their measured state (cat_mjlab/planner/online.py)."""
+        t=self.tracker
+        if self.online_planner is None or len(ids)==0:return
+        ids=ids[t.is_plan[ids]]
+        if len(ids)==0:return
+        op=self.online_planner;d=self.data
+        goal_xy,goal_yaw=t.route_goal(ids,op.horizon)
+        prev_ok=t.has_plan[ids]
+        ahead=[t.plan_at(ids,t.plan_t[ids]+.1*k) for k in range(1,11)]
+        prev=torch.stack([a[0] for a in ahead],1);prev_yaw=torch.stack([a[1] for a in ahead],1)
+        xy,yaw,z,upper,interval,stats=op.plan(d.qpos[ids],d.qvel[ids],self.scene_ids[ids],self.bank,goal_xy,goal_yaw,
+                                              t.route_speed[ids],t.still[ids],prev_xy=prev,prev_yaw=prev_yaw,prev_ok=prev_ok)
+        t.set_plan(ids,xy,yaw,z,upper,interval)
+        self.plan_clear[ids]=stats['min_clear'];self.plan_side[ids]=stats['sideways'];self.plan_fresh[ids]=1.
+
     def _track_command(self,command,command_delay,root_xy,odom_xy):
         """While a reference is active the operator command points at the reference 0.3 s ahead, at its speed (the
         delayed command from the pose the actor observes). Same layout as _operator_command: (0.75 go, v_xy, 0)."""
@@ -1247,6 +1278,7 @@ class CATTask:
             self.tracker.reset(ids,self.data.qpos[ids,:2],self._root_yaw(ids),sample_dir=self._track_dir,op_speed=op,
                                room_scene=~self.bank.is_cat[self.scene_ids[ids]],
                                hold=reactive_active if self.reactive_objects is not None else None)
+            self._replan(ids)
         self._observe(ids,self.sim.contact_flags(self.contact_pairs)[ids,:2])
         return self.obs
 
@@ -1521,9 +1553,20 @@ class CATTask:
             (float(_get(self.config,'hand_clearance_margin',.12))-i['sdf'][:,5:7]).clamp_min(0).square().flatten(1).mean(-1))*enabled
         rewards['wholebody_arm_clearance']=(arm_margin-i['elbow_clearance']).clamp_min(0).square().mean(-1)*enabled
         if self.tracker is not None and self.track_info is not None:
+            released=deadband=None
+            if self.reflex:
+                # The reflex rule: inside the band the field acts, not the reference (i['sdf'] is the clearance at the 13
+                # body points after the hand radii, with thrown objects merged in).
+                released=i['sdf'][:,5:7,0]<float(self.reflex.get('hand_band',.15))
+                body=i['sdf'][...,0].amin(-1)
+                deadband=(float(self.reflex.get('body_band',.35))-body).clamp(0.,float(self.reflex.get('deadband',.20)))
             terms,tel=self.tracker.rewards(d.qpos[:,:2],self._root_yaw(self.all_ids),d.qpos[:,2],d.qpos[:,19:36],self.track_info,
-                                           sigma=self.track_sigma)
+                                           sigma=self.track_sigma,released=released,deadband=deadband)
             rewards.update(terms);telemetry.update(tel)
+            if self.online_planner is not None:
+                plan=self.tracker.is_plan.float()
+                telemetry.update(plan_clear_m=self.plan_clear*self.plan_fresh,plan_sideways=self.plan_side*self.plan_fresh,
+                                 plan_replans=self.plan_fresh.clone(),plan_worlds=plan)
         if room_scale is not None:
             telemetry['hand_room_scale']=room_scale[:,0]
         if getattr(self,'side_levels',None) is not None:
@@ -2096,6 +2139,8 @@ class CATTask:
             self.track_info=self.tracker.step(d.qpos[:,:2],self.dt,sample_dir=self._track_dir,op_speed=self.op_speed)
             lost=torch.nonzero(self.tracker.lost,as_tuple=False)[:,0]
             if len(lost):self.tracker.reanchor(lost,d.qpos[lost,:2],self._root_yaw(lost),sample_dir=self._track_dir,op_speed=self.op_speed[lost])
+            if self.online_planner is not None:
+                self.plan_fresh.zero_();self._replan(self.tracker.due())
         gf,bf,sdf,command=self._fields(positions,d.qpos[:,:2],ids,store=True)
         if getattr(self,'robust',None):
             self._robust_steps+=1

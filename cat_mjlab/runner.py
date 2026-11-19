@@ -578,7 +578,7 @@ def collect_rollout(task, learner, *, unroll_length, trajectories, policy_ids):
             term = key.split('/', 1)[1]
             if key.startswith('telemetry/'):
                 info['metrics']['sgs/' + term[4:] if term.startswith('sgs_') else 'reactive/' + term if term.startswith('reactive_') else 'table/' + term if term.startswith('table_') else 'energy/' + term if term.startswith('energy_') else 'speed/' + term if term.startswith('op_') else 'passage/' + term if term.startswith('passage_') else 'side_gap/' + term if term.startswith('side_gap') else 'posture/' + term if term in ('crouch_required', 'torso_pitch_abs') else
-                                ('heading/' + term if term.startswith('heading_') else 'self_clearance/' + term.removeprefix('self_clearance_'))] = value
+                                ('heading/' + term if term.startswith('heading_') else 'track/' + term if term.startswith(('track_', 'plan_')) else 'self_clearance/' + term.removeprefix('self_clearance_'))] = value
                 continue
             info['metrics']['reward_term/' + term] = value
             info['metrics']['reward_share/' + term] = value / (positive if value > 0 else negative)
@@ -701,7 +701,8 @@ def environment_config_from_archive(metadata):
 GOALLESS_BUCKETS = ('reactive_standing', 'reactive_walking', 'flat_balance', 'teleop')
 # Per-step task telemetry averaged over the update: posture/* and self_clearance/*.
 TELEMETRY_MEANS = ('self_clearance_min_m', 'self_clearance_violation', 'crouch_required', 'torso_pitch_abs',
-                   'track_error_m', 'track_valid', 'track_lost',
+                   'track_error_m', 'track_valid', 'track_lost', 'track_plan', 'track_released',
+                   'plan_clear_m', 'plan_sideways', 'plan_replans', 'plan_worlds',
                    'hand_contact_trunk', 'hand_contact_head', 'hand_contact_arm', 'hand_contact_hand',
                    'heading_gate', 'heading_error_abs', 'hand_room_scale', 'side_gap_stage', 'side_gap_sideways_start',
                    'sgs_config_p', 'reactive_power_w', 'reactive_standing', 'reactive_end_lift', 'reactive_end_slide',
@@ -899,6 +900,19 @@ def tracker_spec(args):
         spec['scales'] = {name: float(value) for name, value in (item.split('=', 1) for item in scales.split(','))}
     if getattr(args, 'tracker_sigma', None) is not None:
         spec['sigma'] = float(args.tracker_sigma)
+    if getattr(args, 'tracker_planner', None):
+        planner = dict(path=str(args.tracker_planner))
+        if getattr(args, 'tracker_plan_samples', None) is not None:
+            planner['samples'] = int(args.tracker_plan_samples)
+        if getattr(args, 'tracker_plan_steps', None) is not None:
+            planner['steps'] = int(args.tracker_plan_steps)
+        if getattr(args, 'tracker_plan_interval', None):
+            planner['interval'] = [float(x) for x in str(args.tracker_plan_interval).split()]
+        spec['planner'] = planner
+    if getattr(args, 'tracker_hold_plan', None) is not None:
+        spec['hold_plan'] = float(args.tracker_hold_plan)
+    if getattr(args, 'tracker_reflex', False):
+        spec['reflex'] = {}
     return spec
 
 

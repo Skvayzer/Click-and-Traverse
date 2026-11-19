@@ -55,6 +55,13 @@
 #              none) in actor and critic, tracking terms, the command from the reference; warm-started from a V7 snapshot
 #              with zero-weight reference inputs (actor and critic), anchor E2 u300 on reference-free worlds only,
 #              50 critic-only updates; reactive standing episodes get no reference
+#          COMBO1: planner with a field reflex -- TRACK1 plus planner v1 in the loop (the tracker's 'plan' source:
+#              2 s whole-body chunks from the measured state toward a goal 2 s ahead on the guidance path, replanned
+#              every 0.3-1.0 s, best of 4 by body clearance; cat_mjlab/planner/online.py), half the reactive standing
+#              worlds on a stand-still plan, and the reflex rule (an arm whose hand is within 15 cm of an obstacle is not
+#              tracked; the pelvis term tolerates up to 20 cm near obstacles). Sources plan 0.5, field 0.15, random 0.1,
+#              none 0.25. Warm start from a V7r snapshot (STUDENT) with zero-weight reference inputs, 50 critic-only
+#              updates, anchor E2 u300 on reference-free worlds. PLANNER=<planner v1 checkpoint>
 #          E1np / E1nc: RQ2 ablations of E1 -- without the anti-refusal terms (np) / without the width curriculum, on the
 #              original 0.44 m and open table pairs only (nc)
 #          T5: T2 + non-table scenes anchored to S2far u200 (the last policy before the table stages; ANCHOR) instead of the
@@ -205,6 +212,15 @@ case $VARIANT in
         TRACKER=1 TRACKER_MIX=${TRACKER_MIX:-field=0.5,random=0.3,none=0.2} WARMUP=${WARMUP:-50} \
         ANCHOR=${ANCHOR:-$L/checkpoints/stationary_hands_E2_u300.pt}
       : "${STUDENT:?TRACK1 needs STUDENT=<a V7 snapshot>}" ;;
+  COMBO1) export BANK=data/furniture/tablegap_v1 POWER=-0.02 HAND_FAR="0.20 0.40" RETREAT_SUCCESS=0.15 TABLE_POWER=-0.02 \
+        GLOBAL_POWER=-0.01 TABLE_PROGRESS=1 MASSES="0.15 0.35 0.08 0.14 0.12 0.03 0.25 0.03" REACTIVE_SHARE=0.3 RAISED=0.3 \
+        ROUTE_FILE=hpc/route_anchor_no_reactive_no_tables_v2.json SNAPSHOT_EVERY=50 OPERATOR_SPEED="0.1 0.6" REST_STARTS=0.25 \
+        OPERATOR_V3=1 OPERATOR_V4=1 OPERATOR_V5=1 OPERATOR_V6=1 OVERSPEED=-30 PASSAGE_PROGRESS=1 \
+        GOAL_SEED_CACHE=${GOAL_SEED_CACHE:-data/furniture/tablegap_v1_goal_column} GOAL_GROUND=1 \
+        TRACKER=1 TRACKER_MIX=${TRACKER_MIX:-plan=0.5,field=0.15,random=0.1,none=0.25} WARMUP=${WARMUP:-50} \
+        TRACKER_PLANNER=${PLANNER:-$L/runs/wbp/planner_v1/train/planner.pt} TRACKER_HOLD_PLAN=${HOLD_PLAN:-0.5} TRACKER_REFLEX=1 \
+        ANCHOR=${ANCHOR:-$L/checkpoints/stationary_hands_E2_u300.pt}
+      : "${STUDENT:?COMBO1 needs STUDENT=<a V7r snapshot>}" ;;
   *) echo "unknown VARIANT $VARIANT"; exit 2 ;;
 esac
 if [[ -n "${SMOKE:-}" ]]; then

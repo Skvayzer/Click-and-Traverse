@@ -113,6 +113,17 @@ def parser():
         target.add_argument("--tracker-scales", help="tracking reward scales, e.g. track_pos=4,track_lead=-8,track_heading=1,"
                                                      "track_height=1,track_upper=1 (default)")
         target.add_argument("--tracker-sigma", type=float, help="position tracking width, m (default 0.15)")
+        target.add_argument("--tracker-planner", type=str,
+                            help="planner v1 checkpoint for the tracker's 'plan' source: planned in the loop from the measured "
+                                 "state toward a goal 2 s ahead on the guidance path (cat_mjlab/planner/online.py)")
+        target.add_argument("--tracker-plan-samples", type=int, help="planner samples per replan (default 4)")
+        target.add_argument("--tracker-plan-steps", type=int, help="planner Euler steps (default 8)")
+        target.add_argument("--tracker-plan-interval", type=str, help="replan interval range, s, e.g. '0.3 1.0' (default)")
+        target.add_argument("--tracker-hold-plan", type=float,
+                            help="share of reactive standing worlds that get a stand-still plan instead of no reference")
+        target.add_argument("--tracker-reflex", action="store_true",
+                            help="the reflex rule: an arm whose hand is within 15 cm of an obstacle drops out of the upper-body "
+                                 "tracking term; the pelvis term tolerates up to 20 cm near obstacles")
         target.add_argument("--goal-ground", action="store_true",
                             help="With --goal-seed-cache: success within 0.3 m of the goal on the ground (not past x = 1.5 m), "
                                  "arrival stop 0.25 / 0.45 m as on the robot, CAT episodes end 2 s after success")

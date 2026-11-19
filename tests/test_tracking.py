@@ -89,6 +89,97 @@ class TrackingTest(unittest.TestCase):
         expected = torch.full((17,), t.upper_rate * tr.UPPER_HORIZON)
         self.assertTrue(torch.allclose(upper, expected, atol=1e-6), upper)
 
+    # ------------------------------------------------------------------ plan source (planner with a field reflex)
+    def straight_plan(self, t, ids, speed=.5, yaw=0.):
+        k = torch.arange(tr.PLAN_FRAMES, dtype=torch.float32)
+        xy = torch.stack((k * tr.PLAN_DT * speed, torch.zeros_like(k)), -1)[None].expand(len(ids), -1, -1).clone()
+        yaws = torch.full((len(ids), tr.PLAN_FRAMES), yaw)
+        z = torch.full((len(ids), tr.PLAN_FRAMES), .70)
+        upper = (t.nominal_upper + .3)[None, None].expand(len(ids), tr.PLAN_FRAMES, 17).clone()
+        t.set_plan(ids, xy, yaws, z, upper, torch.full((len(ids),), .5))
+
+    def test_plan_worlds_wait_for_a_chunk(self):
+        t = self.make(2, mix=(('plan', 1.),)); ids = torch.arange(2)
+        t.reset(ids, torch.zeros(2, 2), torch.zeros(2), sample_dir=east, op_speed=torch.full((2,), .3))
+        self.assertTrue(bool(t.is_plan.all()))
+        self.assertFalse(bool(t.valid.any()))                     # no chunk yet: the policy sees no reference
+        self.assertEqual(t.due().tolist(), [0, 1])
+        self.assertTrue(bool((t.count == 51).all()))              # the guidance path is built: plan goals come from it
+        goal, heading = t.route_goal(ids, 2.)
+        self.assertTrue(torch.allclose(goal, torch.tensor([[.6, 0.], [.6, 0.]]), atol=1e-5))
+        self.straight_plan(t, ids)
+        self.assertTrue(bool(t.valid.all()))
+        self.assertEqual(len(t.due()), 0)
+
+    def test_plan_clock_targets_and_features(self):
+        t = self.make(1, mix=(('plan', 1.),)); ids = torch.arange(1)
+        t.reset(ids, torch.zeros(1, 2), torch.zeros(1), sample_dir=east, op_speed=torch.full((1,), .5))
+        self.straight_plan(t, ids)
+        robot = torch.zeros(1, 2)
+        for _ in range(10):                                       # 0.2 s, the robot follows exactly
+            robot = t.plan_at(ids, t.plan_t)[0]
+            t.step(robot, .02, sample_dir=east, op_speed=torch.full((1,), .5))
+        self.assertAlmostEqual(float(t.plan_t[0]), .2, places=5)
+        self.assertAlmostEqual(float(t.replan_in[0]), .3, places=5)
+        xy, yaw = t.targets(ids, 1.)
+        self.assertAlmostEqual(float(xy[0, 0]), .6, places=5)     # (0.2 + 1.0) s at 0.5 m/s
+        robot = t.plan_at(ids, t.plan_t)[0]                       # on the plan at 0.2 s: x = 0.1 m
+        f = t.features(ids, robot, torch.zeros(1), torch.eye(3)[None])
+        self.assertAlmostEqual(float(f[0, 1 + 5 * 3]), .5, places=4)     # dx at tau = 1.0 s, relative to the robot
+        self.assertAlmostEqual(float(f[0, 5 + 5 * 3]), .70 - tr.NOMINAL_Z, places=5)   # plan height
+        self.assertTrue(torch.allclose(f[0, -18:-1], torch.full((17,), .3), atol=1e-5))  # plan arm targets
+        self.assertEqual(float(f[0, -1]), 1.)
+
+    def test_plan_clock_waits_for_a_lagging_robot(self):
+        t = self.make(1, mix=(('plan', 1.),)); ids = torch.arange(1)
+        t.reset(ids, torch.zeros(1, 2), torch.zeros(1), sample_dir=east, op_speed=torch.full((1,), .5))
+        self.straight_plan(t, ids)
+        for _ in range(50):                                       # the robot stands still for 1 s
+            t.step(torch.zeros(1, 2), .02, sample_dir=east, op_speed=torch.full((1,), .5))
+        self.assertLess(float(t.plan_t[0]), .5)                   # the clock stopped near MAX_LAG ahead
+        self.assertEqual(t.due().tolist(), [0])                   # and the replan is due
+
+    def test_reflex_rule_releases_arms_without_paying_for_it(self):
+        t = self.make(2, mix=(('plan', 1.),)); ids = torch.arange(2)
+        t.reset(ids, torch.zeros(2, 2), torch.zeros(2), sample_dir=east, op_speed=torch.full((2,), .5))
+        self.straight_plan(t, ids)
+        info = t.step(torch.zeros(2, 2), .02, sample_dir=east, op_speed=torch.full((2,), .5))
+        q = t.nominal_upper[None].expand(2, 17).clone(); q[:, 3:10] += 1.   # left arm far off its target
+        released = torch.tensor([[False, False], [True, False]])
+        r, tel = t.rewards(torch.zeros(2, 2), torch.zeros(2), torch.full((2,), .70), q, info, released=released)
+        # world 1's left arm is released: its share is dropped, not paid; the rest still pays
+        self.assertLess(float(r['track_upper'][1]), 10 / 17 + 1e-6)
+        self.assertGreaterEqual(float(r["track_upper"][1]), float(r["track_upper"][0]) - 1e-5)
+        far = torch.tensor([[.3, 0.], [.3, 0.]])
+        r1, _ = t.rewards(far, torch.zeros(2), torch.full((2,), .70), q, info)
+        r2, _ = t.rewards(far, torch.zeros(2), torch.full((2,), .70), q, info, deadband=torch.tensor([0., .2]))
+        self.assertAlmostEqual(float(r1['track_pos'][0]), float(r2['track_pos'][0]), places=6)
+        self.assertGreater(float(r2['track_pos'][1]), float(r1['track_pos'][1]))
+
+    def test_hold_worlds_can_get_a_stand_still_plan(self):
+        t = tr.ReferenceTracker(4, 'cpu', mix=(('field', 1.),), hold_plan=1., generator=torch.Generator().manual_seed(0))
+        ids = torch.arange(4); hold = torch.tensor([True, False, True, False])
+        t.reset(ids, torch.zeros(4, 2), torch.zeros(4), sample_dir=east, op_speed=torch.full((4,), .3), hold=hold)
+        self.assertTrue(bool(t.is_plan[hold].all()))
+        self.assertTrue(bool(t.still[hold].all()))
+        self.assertTrue(bool((t.route_speed[hold] == 0).all()))
+        self.assertTrue(bool((t.count[hold] == 1).all()))          # no guidance path for stand-still worlds
+
+
+class PlannerStateTest(unittest.TestCase):
+    def test_state_matches_the_dataset_features(self):
+        from cat_mjlab.planner.data import features, quat_from_euler
+        from cat_mjlab.planner.online import planner_state
+        g = torch.Generator().manual_seed(0)
+        T, N = 120, 3
+        qpos = torch.randn(T + 1, N, 36, generator=g); qvel = torch.randn(T + 1, N, 35, generator=g)
+        qpos[..., 3:7] = quat_from_euler(.1 * torch.randn(T + 1, N, generator=g), .1 * torch.randn(T + 1, N, generator=g),
+                                         torch.randn(T + 1, N, generator=g))
+        starts = torch.tensor([[5, 0], [7, 2]]).numpy()
+        state, *_ = features(qpos, qvel, starts)
+        ours = planner_state(qpos[[5, 7], [0, 2]], qvel[[5, 7], [0, 2]])
+        self.assertTrue(torch.allclose(state, ours, atol=1e-5))
+
 
 if __name__ == '__main__':
     unittest.main()
