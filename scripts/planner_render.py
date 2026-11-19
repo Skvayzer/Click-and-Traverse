@@ -86,6 +86,31 @@ def add_sphere(scene, mujoco, pos, rgba, radius):
     scene.ngeom += 1
 
 
+def scene_geometry(directory, bank_manifest, rec):
+    """model.xml with the scene: room boxes or a CAT occupancy mesh (record_mjlab_rollout.write_geometry); packed banks
+    keep no CAT occupancy file, so those scenes get the zero surface of their signed distance field instead."""
+    from record_mjlab_rollout import write_geometry
+    try:
+        write_geometry(directory, bank_manifest, rec)
+        return
+    except FileNotFoundError:
+        pass
+    import xml.etree.ElementTree as ET
+    import trimesh
+    from skimage import measure
+    from cat_mjlab.model import assemble_training_xml
+    from cat_ppo.furniture.generalist_fields import load_generalist_manifest, scene_directory
+    mp = Path(bank_manifest).resolve()
+    sdf = np.load(scene_directory(load_generalist_manifest(mp, verify_files=False), mp, rec) / "sdf.npy").astype(np.float32)
+    v, f, n, _ = measure.marching_cubes(sdf, level=0.0, spacing=(float(rec["dx"]),) * 3)
+    trimesh.Trimesh(vertices=v, faces=f, vertex_normals=n, process=True).export(directory / "obs.obj")
+    xml = ET.fromstring(assemble_training_xml())
+    ET.SubElement(xml.find("asset"), "mesh", name="recorded_cat_obstacle", file="obs.obj")
+    ET.SubElement(xml.find("worldbody"), "geom", name="recorded_cat_obstacle", type="mesh", mesh="recorded_cat_obstacle",
+                  pos=" ".join(map(str, rec["origin"])), contype="0", conaffinity="0", group="1", rgba=".37 .52 .61 1")
+    (directory / "model.xml").write_text(ET.tostring(xml, encoding="unicode"))
+
+
 def label(frame, lines, font, xy=(14, 10), fill=(255, 255, 255)):
     from PIL import Image, ImageDraw
     img = Image.fromarray(frame)
@@ -115,7 +140,6 @@ def main(argv=None):
     os.environ.setdefault("MUJOCO_GL", "egl")
     import mujoco
     from PIL import Image, ImageFont
-    from record_mjlab_rollout import write_geometry
     from render_clutter_rollouts import resolve_xml_assets
     z = np.load(args.plans, allow_pickle=False)
     names = [str(n) for n in z["kind_names"]]
@@ -145,7 +169,7 @@ def main(argv=None):
         for r in rows:
             sid = int(z["meta"][r, 0]); rec = manifest["scenes"][sid]
             with tempfile.TemporaryDirectory() as tmp:
-                write_geometry(Path(tmp), bank_manifest, rec)
+                scene_geometry(Path(tmp), bank_manifest, rec)
                 xml, _ = resolve_xml_assets(Path(tmp) / "model.xml")
                 model = mujoco.MjModel.from_xml_string(xml)
             model.vis.global_.offwidth, model.vis.global_.offheight = 2 * args.width, args.height
