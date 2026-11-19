@@ -663,6 +663,9 @@ guidance 2, executed motion scored against the map like a plan):
 - Column probe (752 situations): executed plans clear the column 39% (model_5000 30%), the policies' motion 2%;
   71% of the plans clear it kinematically, so tracking error (~10 cm on these less typical motions) eats the margin.
 - Choosing plans by clearance up to 8 cm instead of 2 cm: 93.8% / 40.6%. No gain, since the 16 samples are ~2.4 cm apart.
+- Executed clean by the plan's own minimum clearance: under 3 cm 54% (114 plans), 3-6 cm 73% (154), 6-10 cm 87% (192),
+  over 10 cm 99% (1635). The planner needs about a 10 cm margin for this tracker.
+- Videos (scripts/planner_track_video.py, b71f522): 28, in the planner report (version 3).
 - Bug found and fixed in the evaluation: the reset advances the reference one frame, so the clip-end wrap teleported
   robots on the last recorded step (a97bbfb).
 
