@@ -27,7 +27,7 @@ GROUPS = dict(legs=slice(0, 12), waist=slice(12, 15), arms=slice(15, 29))
 BUCKETS = ('danger', 'anticipation', 'negative')
 
 
-def build(checkpoint, rows, device, robust):
+def build(checkpoint, rows, device, robust, hold_plan=None):
     from cat_mjlab.runner import create_task
     from record_mjlab_rollout import load_policy
     learner, saved = load_policy(checkpoint, device=device, policy_id=0)
@@ -40,6 +40,10 @@ def build(checkpoint, rows, device, robust):
         env.pop('robustness', None)
         env['push_config']['enable'] = False
     env['teleop'].update(fraction=0., cat_fraction=0., cat_scenes=False)
+    if hold_plan is not None:
+        if not env.get('tracker'):
+            raise ValueError('--hold-plan needs a checkpoint trained with the tracker')
+        env['tracker']['hold_plan'] = float(hold_plan)     # 1: every standing episode on a stand-still plan, 0: none
     bank = 'data/furniture/sidegap_v2'
     ns = SimpleNamespace(bank_manifest=Path(bank + '_packed/manifest.json'), body_collision_bank=Path(bank + '_collision/manifest.json'),
                          body_collision_resets=Path(bank + '_resets/manifest.json'), device=device, seed=0, num_envs=len(rows),
@@ -56,8 +60,8 @@ def build(checkpoint, rows, device, robust):
 
 
 @torch.no_grad()
-def evaluate(checkpoint, rows, steps, device, robust):
-    learner, task = build(checkpoint, rows, device, robust)
+def evaluate(checkpoint, rows, steps, device, robust, hold_plan=None):
+    learner, task = build(checkpoint, rows, device, robust, hold_plan)
     obj = task.reactive_objects
     task.reset()
     n = len(rows)
@@ -141,12 +145,13 @@ def main():
     p.add_argument('--steps', type=int, default=800)
     p.add_argument('--device', default='cuda:0')
     p.add_argument('--robust', action='store_true', help='keep the checkpoint\'s training randomisation and pushes')
+    p.add_argument('--hold-plan', type=float, help='tracker checkpoints: share of episodes on a stand-still plan (1 = all)')
     p.add_argument('--out', type=Path)
     a = p.parse_args()
     rows = list(range(*(int(x) for x in a.rows.split(':'))))
     results = []
     for checkpoint in a.checkpoint:
-        r = evaluate(checkpoint, rows, a.steps, a.device, a.robust)
+        r = evaluate(checkpoint, rows, a.steps, a.device, a.robust, a.hold_plan)
         print(json.dumps(r), flush=True)
         results.append(r)
     if a.out:

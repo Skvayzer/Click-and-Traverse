@@ -50,6 +50,9 @@ def main():
                    "cut-out 0.05 m/s, episode time scaled by 0.525/speed (the slow-traversal command; works for any checkpoint)")
     p.add_argument("--operator-speeds", type=float, nargs="+", metavar="S",
                    help="Several fixed operator speeds in one run (needs --out-dir): episodes at every speed in parallel")
+    p.add_argument("--tracker-mix", help="Override the reference sources of a tracker checkpoint, e.g. plan=1 (planner with a "
+                                         "field reflex, every episode) or none=1 (the same policy with no reference)")
+    p.add_argument("--tracker-hold-plan", type=float, help="Override the share of reactive standing worlds on a stand-still plan")
     p.add_argument("--out", type=Path)
     p.add_argument("--out-dir", type=Path)
     args = p.parse_args()
@@ -74,6 +77,13 @@ def main():
                                      rest_start_share=0.)
     if args.nominal:
         env.pop("robustness", None)
+    if args.tracker_mix or args.tracker_hold_plan is not None:
+        if not env.get("tracker"):
+            p.error("--tracker-mix / --tracker-hold-plan need a checkpoint trained with the tracker")
+        if args.tracker_mix:
+            env["tracker"]["mix"] = [[a, float(b)] for a, b in (item.split("=", 1) for item in args.tracker_mix.split(","))]
+        if args.tracker_hold_plan is not None:
+            env["tracker"]["hold_plan"] = float(args.tracker_hold_plan)
     if "teleop" in env:
         env["teleop"].update(fraction=0., cat_fraction=0., cat_scenes=False)
     B = ROOT / args.bank
