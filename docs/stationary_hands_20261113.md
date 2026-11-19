@@ -688,6 +688,10 @@ scripts/eval_standing_hands.py --hold-plan 1 (cluster ~/jobs/eval_combo.sh).
 - Smoke (3 updates): 74 s/update (V7r 69 s), GPU peak 30.1 GB (V7r 30.9 GB). Two failed smokes first: the new worktree
   lacked untracked outputs/distill_v1_prep files (SGS init), then a CUDA OOM at Warp graph creation after the first
   reset planned ~6,900 worlds at once (fix: blocks of 256 worlds, grid and scoring in small pieces: 0.4 GiB peak).
+- First launch (job 310027) stopped after 3 critic-only updates: track/track_released was 0.0 because --tracker-reflex
+  passes {} (the default bands) and the config builder dropped it as falsy, so the reflex rule never ran (fixed in
+  3cbb69d, with a test). Its run dir is kept as stationary_hands_20261113_COMBO1_noreflex_aborted. Relaunched as job
+  310037 from worktree ~/cat_worktrees/3cbb69d.
 
 ## Measurement notes
 - Standing power, u150 clean: 26-31 W at rest (CPU trace), recovery steps after a shove 170-570 W.
