@@ -698,6 +698,9 @@ scripts/eval_standing_hands.py --hold-plan 1 (cluster ~/jobs/eval_combo.sh).
   0.23 / 0.67 / 0.07 (0.25 / 0.65 / 0.08), rooms 0.89 / 0.11 / 0.01 (0.92 / 0.08 / 0.00), all 0.58 / 0.36 / 0.05
   (0.62 / 0.32 / 0.05). Against V7 u150 at 0.15 m/s: fewer refusals, but contacts in narrow cabinet passages rose from
   3% to 30%. The robot runs V7r u400 (dynamic_V7r_u400): its narrow evaluation is queued (job 310075).
+- V7r u600 standing test (2000 rows, nominal, tablegap_v1 static bank; eval_standing_hands.py now defaults to it for
+  goal-seed checkpoints): events handled 0.68 (danger 0.98, anticipation 0.98, pass-by 0.11: it flinches), contact per
+  event 0.000, mean threat retreat 0.257 m, threats with >= 15 cm retreat 0.886, >= 25 cm 0.576.
 
 ## Measurement notes
 - Standing power, u150 clean: 26-31 W at rest (CPU trace), recovery steps after a shove 170-570 W.
