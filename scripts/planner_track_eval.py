@@ -129,6 +129,8 @@ def main(argv=None):
             for k, v in zip(parts, (qpos[:, 7:], qvel[:, 6:], pos, quat, lin, ang)):
                 parts[k].append(np.asarray(v, np.float32))
     clip_len = len(qpos)
+    for k in parts:                                      # padding: the last clip must not reach the motion's end
+        parts[k].append(np.repeat(parts[k][-1][-1:], 30, 0))
     tmp = Path(tempfile.mkdtemp()) / "clips.npz"
     np.savez(tmp, fps=np.array([50]), segment_starts=np.array(starts, np.int64), **{k: np.concatenate(v) for k, v in parts.items()})
     print(json.dumps(dict(clips=len(starts), frames=total, seconds=round(time.time() - started, 1))), flush=True)
@@ -136,12 +138,18 @@ def main(argv=None):
     from mjlab.envs import ManagerBasedRlEnv
     from mjlab.rl import RslRlVecEnvWrapper
     from mjlab.tasks.tracking.rl import MotionTrackingOnPolicyRunner
+    from mjlab.tasks.tracking.mdp import MotionCommand
     from cat_mjlab.mimic import SegmentMotionCommand, SegmentMotionCommandCfg, mimic_env_cfg, mimic_rl_cfg
     assigned = torch.as_tensor(starts, device=device)
 
     class EvalCommand(SegmentMotionCommand):
         def _uniform_sampling(self, env_ids):
             self.time_steps[env_ids] = assigned[env_ids]
+
+        def _update_command(self, env_ids=None):
+            # no wrap at clip ends: evaluation stops inside each clip (the reset already advances the reference one
+            # frame, so wrapping at the clip end would teleport the robot back on the last recorded step)
+            MotionCommand._update_command(self, env_ids)
 
     @dataclasses.dataclass(kw_only=True)
     class EvalCommandCfg(SegmentMotionCommandCfg):
@@ -164,10 +172,13 @@ def main(argv=None):
     steps = clip_len - 1
     root = torch.zeros(steps + 1, len(starts), 7, device=device); joints = torch.zeros(steps + 1, len(starts), 29, device=device)
     alive = torch.ones(len(starts), dtype=torch.bool, device=device)
+    cmd = env.command_manager.get_term("motion")
+    ref_offset = []
     with torch.no_grad():
         for t in range(steps + 1):
             root[t, :, :3] = robot.data.root_link_pos_w - origins; root[t, :, 3:] = robot.data.root_link_quat_w
             joints[t] = robot.data.joint_pos
+            ref_offset.append(int((cmd.time_steps - assigned).median()) - t)
             if t == steps:
                 break
             obs, _, dones, extras = wrapped.step(policy(obs))
@@ -211,6 +222,7 @@ def main(argv=None):
     for b in np.unique(kinds):
         result[SCENE_BUCKETS[b]] = summary(kinds == b)
     result["_info"] = dict(planner=str(args.planner), tracker=str(args.tracker), guidance=args.guidance, samples=args.samples,
+                           reference_frames_ahead_of_robot=sorted(set(ref_offset)),
                            probe=bool(args.probe), tol_m=args.tol, situations=n, seconds=round(time.time() - started, 1))
     name = "track_eval_probe" if args.probe else "track_eval"
     (args.out / f"{name}.json").write_text(json.dumps(result, indent=1) + "\n")
