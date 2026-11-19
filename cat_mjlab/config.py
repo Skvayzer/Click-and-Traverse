@@ -466,7 +466,7 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
             planner=dict(spec['planner']) if isinstance(spec['planner'],dict) else dict(path=str(spec['planner']))
             if not planner.get('path'):raise ValueError('tracker planner needs a path')
             config['tracker']['planner']=dict(path=str(planner['path']),samples=int(planner.get('samples',4)),
-                steps=int(planner.get('steps',8)),guidance=float(planner.get('guidance',2.)),horizon=float(planner.get('horizon',2.)),
+                steps=int(planner.get('steps',6)),guidance=float(planner.get('guidance',2.)),horizon=float(planner.get('horizon',2.)),
                 interval=[float(x) for x in planner.get('interval',(.3,1.))],clear_cap=float(planner.get('clear_cap',.10)),
                 side_penalty=float(planner.get('side_penalty',.02)),switch_penalty=float(planner.get('switch_penalty',.1)))
         if spec.get('hold_plan') is not None:

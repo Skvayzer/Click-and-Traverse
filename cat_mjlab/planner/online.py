@@ -13,9 +13,10 @@ the chunk being replaced over the next second (pelvis position, plus 0.2 m per r
 not flip between facing forward and sideways from one replan to the next). Stand-still worlds (reactive standing episodes, or a route speed under
 5 cm/s) get the goal "stay here, same heading" in every sample.
 
-8 Euler steps in bf16 plan as well as the 16 steps in fp32 the planner was evaluated with (600 held-out situations:
-100% vs 99.8% clear, goal error 1.5 vs 1.6 cm, same smoothness), at about 0.1 s for 155 contexts x 4 samples on an
-RTX 6000 Ada.
+6-8 Euler steps in bf16 plan as well as the 16 steps in fp32 the planner was evaluated with (600 held-out situations:
+100% vs 99.8% clear, goal error 1.5 vs 1.6 cm, same smoothness). Memory: the training task already fills a 32 GB card
+(V7r peaked at 30.9 GB), so worlds are planned in blocks of `block` and the grid and the scoring run in small pieces;
+200 worlds then take about 0.2 s on an RTX 6000 Ada (grid 36 ms, sampling 148 ms with 8 steps, scoring 46 ms).
 """
 from __future__ import annotations
 
@@ -43,8 +44,9 @@ def heading_offsets(samples):
 
 
 class OnlinePlanner:
-    def __init__(self, path, mj_model, device, *, samples=4, steps=8, guidance=2.0, horizon=2.0, interval=(0.3, 1.0),
-                 clear_cap=0.10, side_penalty=0.02, switch_penalty=0.1, bf16=True, seed=0):
+    def __init__(self, path, mj_model, device, *, samples=4, steps=6, guidance=2.0, horizon=2.0, interval=(0.3, 1.0),
+                 clear_cap=0.10, side_penalty=0.02, switch_penalty=0.1, bf16=True, seed=0, block=256, grid_chunk=64,
+                 score_frames=4000):
         self.device = torch.device(device)
         ck = torch.load(path, map_location='cpu', weights_only=True)
         self.model = FlowPlanner(**ck['config']).to(self.device).eval()
@@ -59,6 +61,7 @@ class OnlinePlanner:
         self.horizon, self.interval = float(horizon), tuple(map(float, interval))
         self.clear_cap, self.side_penalty, self.switch_penalty = float(clear_cap), float(side_penalty), float(switch_penalty)
         self.bf16 = bool(bf16) and self.device.type == 'cuda'
+        self.block, self.grid_chunk, self.score_frames = int(block), int(grid_chunk), int(score_frames)
         self.offsets = torch.tensor(heading_offsets(self.samples), device=self.device)
         self.generator = torch.Generator(device=self.device).manual_seed(int(seed))
         self.identity = dict(path=str(path), step=int(ck.get('step', -1)), samples=self.samples, steps=self.steps,
@@ -87,6 +90,23 @@ class OnlinePlanner:
 
     @torch.no_grad()
     def plan(self, qpos, qvel, scene_ids, bank, goal_xy, goal_yaw, route_speed, still, prev_xy=None, prev_yaw=None, prev_ok=None):
+        """plan_block over blocks of at most `block` worlds (bounded memory); same arguments and results."""
+        m = len(qpos)
+        if m <= self.block:
+            return self.plan_block(qpos, qvel, scene_ids, bank, goal_xy, goal_yaw, route_speed, still, prev_xy, prev_yaw, prev_ok)
+        parts = []
+        for a in range(0, m, self.block):
+            sl = slice(a, a + self.block)
+            cut = lambda x: None if x is None else x[sl]
+            parts.append(self.plan_block(qpos[sl], qvel[sl], scene_ids[sl], bank, goal_xy[sl], goal_yaw[sl], route_speed[sl],
+                                         still[sl], cut(prev_xy), cut(prev_yaw), cut(prev_ok)))
+        xy, yaw, z, upper, interval = (torch.cat([p[i] for p in parts]) for i in range(5))
+        stats = {k: torch.cat([p[5][k] for p in parts]) for k in parts[0][5]}
+        return xy, yaw, z, upper, interval, stats
+
+    @torch.no_grad()
+    def plan_block(self, qpos, qvel, scene_ids, bank, goal_xy, goal_yaw, route_speed, still, prev_xy=None, prev_yaw=None,
+                   prev_ok=None):
         """Chosen chunks for m worlds. goal_xy [m, 2] / goal_yaw [m]: the route point `horizon` s ahead (world);
         still [m] bool; prev_xy [m, 10, 2] / prev_yaw [m, 10]: the replaced chunk 0.1-1.0 s ahead (world), used where
         prev_ok [m].
@@ -97,7 +117,7 @@ class OnlinePlanner:
         local = lambda d: torch.stack((c.reshape(-1, *([1] * (d.dim() - 2))) * d[..., 0] + s.reshape(-1, *([1] * (d.dim() - 2))) * d[..., 1],
                                        -s.reshape(-1, *([1] * (d.dim() - 2))) * d[..., 0] + c.reshape(-1, *([1] * (d.dim() - 2))) * d[..., 1]), -1)
         state = planner_state(qpos, qvel)
-        grid = scene_grid(bank, scene_ids, origin, yaw0)
+        grid = scene_grid(bank, scene_ids, origin, yaw0, chunk=self.grid_chunk)
         still = still | (route_speed < .05)
         end = torch.where(still[:, None], torch.zeros_like(goal_xy), local(goal_xy - origin))
         heading = torch.where(still, torch.zeros_like(yaw0), wrap(goal_yaw - yaw0))
@@ -107,7 +127,7 @@ class OnlinePlanner:
         goal = torch.stack((end[:, None, 0].expand(m, k), end[:, None, 1].expand(m, k), h.sin(), h.cos(),
                             speed[:, None].expand(m, k)), -1)
         chunks = self.sample(state, goal, grid)
-        sc = self.scorer.score(chunks, grid, goal[:, 0])
+        sc = self.scorer.score(chunks, grid, goal[:, 0], batch_frames=self.score_frames)
         score = sc['min_clear'].clamp(max=self.clear_cap) - self.side_penalty * offset.sin().abs()
         if prev_xy is not None and prev_ok is not None and bool(prev_ok.any()):
             old = local(prev_xy - origin[:, None])                                            # [m, 10, 2]

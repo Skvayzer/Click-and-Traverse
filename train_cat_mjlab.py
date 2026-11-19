@@ -117,7 +117,7 @@ def parser():
                             help="planner v1 checkpoint for the tracker's 'plan' source: planned in the loop from the measured "
                                  "state toward a goal 2 s ahead on the guidance path (cat_mjlab/planner/online.py)")
         target.add_argument("--tracker-plan-samples", type=int, help="planner samples per replan (default 4)")
-        target.add_argument("--tracker-plan-steps", type=int, help="planner Euler steps (default 8)")
+        target.add_argument("--tracker-plan-steps", type=int, help="planner Euler steps (default 6)")
         target.add_argument("--tracker-plan-interval", type=str, help="replan interval range, s, e.g. '0.3 1.0' (default)")
         target.add_argument("--tracker-hold-plan", type=float,
                             help="share of reactive standing worlds that get a stand-still plan instead of no reference")

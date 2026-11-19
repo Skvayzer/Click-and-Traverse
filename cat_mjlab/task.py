@@ -122,7 +122,7 @@ class CATTask:
                 from .model import assemble_training_xml
                 from .planner.online import OnlinePlanner
                 self.online_planner=OnlinePlanner(pc['path'],mujoco.MjModel.from_xml_string(assemble_training_xml()),self.device,
-                    samples=pc.get('samples',4),steps=pc.get('steps',8),guidance=pc.get('guidance',2.),horizon=pc.get('horizon',2.),
+                    samples=pc.get('samples',4),steps=pc.get('steps',6),guidance=pc.get('guidance',2.),horizon=pc.get('horizon',2.),
                     interval=pc.get('interval',(.3,1.)),clear_cap=pc.get('clear_cap',.10),side_penalty=pc.get('side_penalty',.02),
                     switch_penalty=pc.get('switch_penalty',.1),seed=seed+17)
                 self.plan_clear=torch.zeros(self.num_envs,device=self.device);self.plan_side=torch.zeros_like(self.plan_clear)
