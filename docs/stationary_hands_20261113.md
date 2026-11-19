@@ -679,7 +679,7 @@ up to 10 cm, minus 0.02 for a sideways pass and 0.1 per m (plus 0.2 m per rad) o
 replanned every 0.3-1.0 s (random), the chunk played on its own waiting clock. The reflex rule: an arm whose hand is
 within 15 cm of an obstacle (thrown objects included) drops out of track_upper (its share is not paid); the pelvis term
 tolerates max(0, min(0.2, 0.35 m - body clearance)) of error. Sources plan 0.5, field 0.15, random 0.1, none 0.25; half
-the reactive standing worlds on a stand-still plan. Warm start V7r u600 (zero-weight reference inputs), 50 critic-only
+the reactive standing worlds on a stand-still plan. Warm start V7r u400 (first launch: u600; zero-weight reference inputs), 50 critic-only
 updates, anchor E2 u300 on reference-free worlds. Evaluations: scripts/eval_per_scene.py --tracker-mix plan=1 | none=1,
 scripts/eval_standing_hands.py --hold-plan 1 (cluster ~/jobs/eval_combo.sh).
 - Checks: local env with V7r driving (32 worlds): every plan world gets a chunk at reset, pelvis error ~7 cm, the reflex
@@ -701,6 +701,12 @@ scripts/eval_standing_hands.py --hold-plan 1 (cluster ~/jobs/eval_combo.sh).
 - V7r u600 standing test (2000 rows, nominal, tablegap_v1 static bank; eval_standing_hands.py now defaults to it for
   goal-seed checkpoints): events handled 0.68 (danger 0.98, anticipation 0.98, pass-by 0.11: it flinches), contact per
   event 0.000, mean threat retreat 0.257 m, threats with >= 15 cm retreat 0.886, >= 25 cm 0.576.
+- V7r u400 (the robot's dynamic_V7r_u400) on the same 384 scenes is the best of the line: all 0.67 / 0.26 / 0.07 at
+  0.15 m/s (0.65 / 0.29 / 0.06 at 0.3), cabinet passages < 0.60 m 0.80 / 0.06 / 0.14, >= 0.60 m 0.99 / 0.01 / 0.00,
+  side gaps 0.46 / 0.46 / 0.06, CAT 0.22 / 0.67 / 0.11, rooms 0.96 / 0.04 / 0.00. From u400 to u600 cabinet-passage
+  contacts rose fivefold (6% to 30% at 0.15 m/s). COMBO1 was therefore stopped after 77 updates (run dir kept as
+  stationary_hands_20261113_COMBO1_from_u600_stopped) and restarted from V7r u400 (job 310177): the strongest base,
+  and the policy the robot runs, so the comparison is against the robot's policy.
 
 ## Measurement notes
 - Standing power, u150 clean: 26-31 W at rest (CPU trace), recovery steps after a shove 170-570 W.
