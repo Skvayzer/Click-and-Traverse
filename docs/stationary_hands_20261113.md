@@ -707,6 +707,19 @@ scripts/eval_standing_hands.py --hold-plan 1 (cluster ~/jobs/eval_combo.sh).
   contacts rose fivefold (6% to 30% at 0.15 m/s). COMBO1 was therefore stopped after 77 updates (run dir kept as
   stationary_hands_20261113_COMBO1_from_u600_stopped) and restarted from V7r u400 (job 310177): the strongest base,
   and the policy the robot runs, so the comparison is against the robot's policy.
+- COMBO1 u200 (from V7r u400), every episode on planner plans (eval_per_scene --tracker-mix plan=1), 384 narrow
+  scenes, clean / contact / refused at 0.15 m/s against V7r u400: side gaps 0.46 / 0.38 / 0.16 (0.46 / 0.46 / 0.06),
+  cabinet < 0.60 m 0.77 / 0.04 / 0.19 (0.80 / 0.06 / 0.14), >= 0.60 m 1.00 / 0.00 / 0.00 (0.99 / 0.01 / 0.00), CAT
+  0.19 / 0.47 / 0.34 (0.22 / 0.67 / 0.11), rooms 0.62 / 0.14 / 0.24 (0.96 / 0.04 / 0.00), all 0.58 / 0.20 / 0.21
+  (0.67 / 0.26 / 0.07). Contacts fall everywhere, refusals rise, rooms collapse. Standing with a stand-still plan:
+  danger 0.991, anticipation 0.981, contact 0.0003 per event, threat retreat 0.248 m (V7r u600: 0.984 / 0.980 / 0 /
+  0.257 m).
+- Rooms diagnosis: plan and field references were built along the stored goal field (gf), but room worlds navigate a
+  route. Traced from the start pose in three rooms that refused, the gf streamline settles 3-7 m away and oscillates
+  in place (it never reaches the route's goal), so plans kept aiming at the wrong spot until the 280 s timeout. Fix
+  (c2ab017): route worlds build references along their route polyline (navigation.route_direction; reaches the goal
+  within 2-4 cm in those rooms). COMBO1 was stopped at update ~312 and continued as COMBO1b (job 310504) from COMBO1
+  u300 with the fix, 10 critic-only updates (smoke 310500: 73 s/update, 29.2 GB).
 
 ## Measurement notes
 - Standing power, u150 clean: 26-31 W at rest (CPU trace), recovery steps after a shove 170-570 W.
