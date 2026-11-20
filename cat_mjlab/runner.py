@@ -1108,6 +1108,7 @@ def create_task(args, *, environment_config=None, sim_class=None):
         reactive_power_weight=getattr(args, 'reactive_power_weight', None),
         reactive_feet_hold_weight=getattr(args, 'reactive_feet_hold_weight', None),
         reactive_hand_clearance=getattr(args, 'reactive_hand_clearance', None),
+        reactive_far_threat_only=getattr(args, 'reactive_far_threat_only', None),
         table_facing_weight=getattr(args, 'table_facing_weight', None),
         table_leg_power_weight=getattr(args, 'table_leg_power_weight', None),
         table_progress=getattr(args, 'table_progress', None),

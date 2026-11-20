@@ -57,7 +57,7 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
                      goal_bonus_weight=None,timeout_failure=None,reward_group_room=None,commanded_blocking_map=None,
                      hand_tight_cat_only=None,sgs=None,robustness=None,upper_target_average=None,
                      reactive_stationary=None,reactive_power_weight=None,reactive_feet_hold_weight=None,
-                     reactive_hand_clearance=None,reactive_retreat_success=None,table_facing_weight=None,
+                     reactive_hand_clearance=None,reactive_far_threat_only=None,reactive_retreat_success=None,table_facing_weight=None,
                      table_leg_power_weight=None,table_progress=None,table_hands_up_weight=None,
                      table_hands_up_band=None,table_center_weight=None,table_zone_facing_weight=None,passage_progress=None,
                      table_power_weight=None,global_power_weight=None,hand_tight_passages=None,passage_stall_factor=None,
@@ -229,6 +229,12 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
         target,anticipation=float(reactive_hand_clearance[0]),float(reactive_hand_clearance[1])
         if not 0<target<anticipation<=.6:raise ValueError('reactive_hand_clearance needs 0 < target < anticipation <= 0.6')
         config['reactive_hand_clearance']=dict(target=target,anticipation=anticipation)
+    if reactive_far_threat_only:
+        # Protection precision: the far target applies to threatening objects only (danger, anticipation); a pass-by
+        # object keeps the ordinary hand margins, so a retreat from it is no longer paid for. Measured: after the far
+        # retreat stages the robot flinched at 89-90% of objects that would pass by (no-flinch 0.59 -> 0.10).
+        if reactive_hand_clearance is None:raise ValueError('reactive_far_threat_only needs reactive_hand_clearance')
+        config['reactive_far_threat_only']=True
     if reactive_retreat_success is not None:
         if not 0<float(reactive_retreat_success)<=.4:raise ValueError('reactive_retreat_success must be in (0, 0.4] m')
         config['reactive_retreat_success_m']=float(reactive_retreat_success)

@@ -243,5 +243,15 @@ class ComboConfigTest(unittest.TestCase):
         self.assertTrue(wholebody_config(tracker=tracker_spec(args), operator_speed=(0.1, 0.6))['tracker']['commit'])
 
 
+class PrecisionConfigTest(unittest.TestCase):
+    def test_far_threat_only_needs_the_far_target(self):
+        from cat_mjlab.config import wholebody_config
+        cfg = wholebody_config(reactive_hand_clearance=(.20, .40), reactive_far_threat_only=True)
+        self.assertTrue(cfg['reactive_far_threat_only'])
+        self.assertNotIn('reactive_far_threat_only', wholebody_config(reactive_hand_clearance=(.20, .40)))
+        with self.assertRaises(ValueError):
+            wholebody_config(reactive_far_threat_only=True)
+
+
 if __name__ == '__main__':
     unittest.main()

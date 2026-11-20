@@ -1541,7 +1541,9 @@ class CATTask:
         if far and self.reactive_objects is not None:
             # Standing episodes: get the hand well away from an approaching object (clearance-pressure target and
             # anticipation), not just out of contact. Traversal keeps its own tight-passage margins.
-            s=self.reactive_objects.state;standing=(s['active']&~s['walking'])[:,None]
+            s=self.reactive_objects.state;standing=s['active']&~s['walking']
+            if self.config.get('reactive_far_threat_only'):standing=standing&(s['bucket']!=2)   # not for pass-by objects
+            standing=standing[:,None]
             as_t=lambda x:torch.as_tensor(x,dtype=torch.float32,device=self.device)
             protection_target=torch.where(standing,float(far['target']),as_t(protection_target))
             protection_anticipation=torch.where(standing,float(far['anticipation']),as_t(protection_anticipation))

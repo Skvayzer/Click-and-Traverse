@@ -269,6 +269,8 @@ def parser():
                                  "steps off) and within FEET_M of where they settled, the pelvis within ROOT_M (0.2), else failure")
         target.add_argument("--reactive-power-weight", type=float,
                             help="Cost per watt of joint mechanical power |tau qdot| in standing reactive episodes (negative)")
+        target.add_argument("--reactive-far-threat-only", action="store_true",
+                            help="with --reactive-hand-clearance: the far target applies to threatening objects only, not to pass-by ones")
         target.add_argument("--reactive-hand-clearance", type=float, nargs=2, metavar=("TARGET_M", "ANTICIPATION_M"),
                             help="Standing reactive episodes: hand clearance pressure target and anticipation distance "
                                  "(defaults 0.09 / 0.20 m): how far the hand should get from an approaching object")
