@@ -62,6 +62,7 @@ class OnlinePlanner:
         self.clear_cap, self.side_penalty, self.switch_penalty = float(clear_cap), float(side_penalty), float(switch_penalty)
         self.bf16 = bool(bf16) and self.device.type == 'cuda'
         self.block, self.grid_chunk, self.score_frames = int(block), int(grid_chunk), int(score_frames)
+        self.capture, self.last, self._parts = False, None, []     # capture=True keeps the chosen chunks (recordings)
         self.offsets = torch.tensor(heading_offsets(self.samples), device=self.device)
         self.generator = torch.Generator(device=self.device).manual_seed(int(seed))
         self.identity = dict(path=str(path), step=int(ck.get('step', -1)), samples=self.samples, steps=self.steps,
@@ -92,8 +93,11 @@ class OnlinePlanner:
     def plan(self, qpos, qvel, scene_ids, bank, goal_xy, goal_yaw, route_speed, still, prev_xy=None, prev_yaw=None, prev_ok=None):
         """plan_block over blocks of at most `block` worlds (bounded memory); same arguments and results."""
         m = len(qpos)
+        self._parts = []
         if m <= self.block:
-            return self.plan_block(qpos, qvel, scene_ids, bank, goal_xy, goal_yaw, route_speed, still, prev_xy, prev_yaw, prev_ok)
+            out = self.plan_block(qpos, qvel, scene_ids, bank, goal_xy, goal_yaw, route_speed, still, prev_xy, prev_yaw, prev_ok)
+            self._keep()
+            return out
         parts = []
         for a in range(0, m, self.block):
             sl = slice(a, a + self.block)
@@ -102,7 +106,15 @@ class OnlinePlanner:
                                          still[sl], cut(prev_xy), cut(prev_yaw), cut(prev_ok)))
         xy, yaw, z, upper, interval = (torch.cat([p[i] for p in parts]) for i in range(5))
         stats = {k: torch.cat([p[5][k] for p in parts]) for k in parts[0][5]}
+        self._keep()
         return xy, yaw, z, upper, interval, stats
+
+    def _keep(self):
+        """With capture on, last = the chosen chunks of the latest plan() call: state [m, 67], chunk [m, H, 35] in the
+        chunk frame, pose [m, 3] (x, y, heading of the chunk frame), as planner_render.world_qpos takes them."""
+        if self.capture and self._parts:
+            self.last = {k: torch.cat([p[k] for p in self._parts]).detach().cpu() for k in self._parts[0]}
+        self._parts = []
 
     @torch.no_grad()
     def plan_block(self, qpos, qvel, scene_ids, bank, goal_xy, goal_yaw, route_speed, still, prev_xy=None, prev_yaw=None,
@@ -139,6 +151,8 @@ class OnlinePlanner:
         best = score.argmax(-1)
         rows = torch.arange(m, device=self.device)
         pick = chunks[rows, best]                                                              # [m, H, 35]
+        if self.capture:
+            self._parts.append(dict(state=state, chunk=pick, pose=torch.cat((origin, yaw0[:, None]), -1)))
         xy = origin[:, None] + torch.stack((c[:, None] * pick[..., 0] - s[:, None] * pick[..., 1],
                                             s[:, None] * pick[..., 0] + c[:, None] * pick[..., 1]), -1)
         xy = torch.cat((origin[:, None], xy), 1)
