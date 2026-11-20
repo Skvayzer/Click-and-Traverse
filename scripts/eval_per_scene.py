@@ -16,6 +16,9 @@ length (m), mean power (W) and cost of transport (energy / (robot mass * g * pat
 Usage: eval_per_scene.py CHECKPOINT --scenes cat|room|all [--episodes 16] [--num-envs 16384] --out FILE.json
 Speed sweep in one run: --operator-speeds 0.1 0.2 0.35 0.525 --out-dir DIR (every scene gets --episodes episodes at each
 speed, DIR/speed_<s>.json per speed, same format as --operator-speed S --out FILE.json).
+Baselines from an array archive (the released CAT generalist, outputs/mjlab_migration_20260919/original-cat-expanded.npz):
+CHECKPOINT ending in .npz needs --env-from (a .pt checkpoint for the task); the task is then built with the native 222/310
+inputs (no SDF-rate or tracker block), which is the archive's contract.
 """
 from __future__ import annotations
 
@@ -63,8 +66,13 @@ def main():
     from record_mjlab_rollout import load_policy
     from cat_mjlab.runner import create_task
     dev = "cuda:0"
+    archive = str(args.checkpoint).endswith(".npz")
+    if archive and not args.env_from:
+        p.error("an .npz policy needs --env-from <a .pt checkpoint> for the task")
     contract = torch.load(args.env_from or args.checkpoint, map_location="cpu", weights_only=True, mmap=True)["contract"]
     env = copy.deepcopy(contract["environment_config"])
+    if archive:
+        env["sdf_rate_obs"] = False; env.pop("tracker", None)
     env.pop("side_gap_curriculum", None)                 # standard CAT starts, every width
     env["push_config"]["enable"] = False
     env.pop("sgs", None)                                 # every scene gets its K jobs, no success-guided resampling
@@ -126,7 +134,15 @@ def main():
 
     task.reset = queued
     task.reset()
-    learner, _ = load_policy(args.checkpoint, device=dev, policy_id=0)
+    if archive:
+        from cat_mjlab.learning import Learner, LearnerConfig
+        from cat_mjlab.conversion import load_array_archive
+        learner = Learner(LearnerConfig(algorithm="ppo"), device=dev)
+        load_array_archive(learner, args.checkpoint, restore_optimizer=False)
+        if task.observation_size != learner.model.config.actor_obs:
+            raise ValueError(f"task gives {task.observation_size} actor inputs, the archive expects {learner.model.config.actor_obs}")
+    else:
+        learner, _ = load_policy(args.checkpoint, device=dev, policy_id=0)
     cols = ("episodes", "clean", "contact", "refused", "fall", "hands", "length", "energy_j", "path_m", "cot", "cot_episodes")
     # Near obstacles (any body point within 15 cm): actual vs commanded pelvis speed, both feet off the ground.
     near_steps = torch.zeros(NS * K, dtype=torch.float64, device=dev); near_v = torch.zeros_like(near_steps)
