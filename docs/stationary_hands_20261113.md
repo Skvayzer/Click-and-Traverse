@@ -720,6 +720,11 @@ scripts/eval_standing_hands.py --hold-plan 1 (cluster ~/jobs/eval_combo.sh).
   (c2ab017): route worlds build references along their route polyline (navigation.route_direction; reaches the goal
   within 2-4 cm in those rooms). COMBO1 was stopped at update ~312 and continued as COMBO1b (job 310504) from COMBO1
   u300 with the fix, 10 critic-only updates (smoke 310500: 73 s/update, 29.2 GB).
+- COMBO1 u200 with the plan input off (--tracker-mix none=1): all 0.66 / 0.26 / 0.07 at 0.15 m/s and 0.65 / 0.28 /
+  0.07 at 0.3 m/s, the same as V7r u400 (0.67 / 0.26 / 0.07, 0.65 / 0.29 / 0.06): learning to follow plans cost no
+  reactive skill; rooms 0.93 (V7r u400 0.96), so the room collapse is in plan following only. Side gaps at 0.3 m/s:
+  plans 0.45 / 0.38 / 0.17, no plan 0.38 / 0.50 / 0.12, V7r u400 0.33 / 0.54 / 0.14. Standing without a plan: danger
+  0.987, anticipation 0.979, contact 0.0002 per event, feet violations per settled step 0.011 (V7r u600 0.027).
 
 ## Measurement notes
 - Standing power, u150 clean: 26-31 W at rest (CPU trace), recovery steps after a shove 170-570 W.
