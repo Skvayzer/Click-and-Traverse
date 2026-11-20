@@ -762,11 +762,19 @@ class CATTask:
         return torch.atan2(2*(w*z+x*y),1-2*(y*y+z*z))
 
     def _track_dir(self,xy,ids):
-        """Unit horizontal guidance at pelvis height (0.75 m) of each world's scene at xy [n, 2]; zero where it vanishes."""
+        """Unit horizontal guidance at pelvis height (0.75 m) of each world's scene at xy [n, 2]; zero where it vanishes.
+        Route worlds (rooms, cabinet passages) follow their route instead, as their navigation command does: their stored
+        goal field leads elsewhere or stalls (traced in three failing rooms: the streamline settles 3-7 m from the start
+        and oscillates in place), which left the field and plan references aiming at the wrong place."""
         pos=torch.cat((xy,torch.full_like(xy[:,:1],.75)),-1)[:,None]
         g=self.bank.sample('gf',pos,self.scene_ids[ids])[:,0,:2]
         m=torch.linalg.vector_norm(g,dim=-1,keepdim=True)
-        return torch.where(m>1e-3,g/m.clamp_min(1e-6),torch.zeros_like(g))
+        d=torch.where(m>1e-3,g/m.clamp_min(1e-6),torch.zeros_like(g))
+        meta=self._room_meta(ids);routed=meta['enabled']&(meta['route_count']>=2)
+        if bool(routed.any()):
+            from .navigation import route_direction
+            d=torch.where(routed[:,None],route_direction(xy,meta['route'],meta['route_count']),d)
+        return d
 
     def _replan(self,ids):
         """New planner chunks for the plan-source worlds among ids, from their measured state (cat_mjlab/planner/online.py)."""

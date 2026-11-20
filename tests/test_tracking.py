@@ -181,6 +181,22 @@ class PlannerStateTest(unittest.TestCase):
         self.assertTrue(torch.allclose(state, ours, atol=1e-5))
 
 
+class RouteDirectionTest(unittest.TestCase):
+    def test_follows_an_l_shaped_route_to_its_end(self):
+        from cat_mjlab.navigation import route_direction
+        route = torch.zeros(1, 5, 2); route[0, :3] = torch.tensor([[0., 0.], [2., 0.], [2., 2.]])
+        count = torch.tensor([3])
+        xy = torch.tensor([[0., .5]])                      # off the route, beside its first leg
+        path = [xy.clone()]
+        for _ in range(200):
+            xy = xy + .05 * route_direction(xy, route, count); path.append(xy.clone())
+        end = path[-1][0]
+        self.assertLess(float(torch.linalg.vector_norm(end - torch.tensor([2., 2.]))), .06)    # reached the end, stopped
+        mid = torch.stack(path)[:, 0]
+        self.assertTrue(bool((mid[:, 0] <= 2.06).all()))                                        # turned at the corner
+        self.assertTrue(torch.equal(route_direction(torch.tensor([[2., 2.]]), route, count), torch.zeros(1, 2)))
+
+
 class ComboConfigTest(unittest.TestCase):
     def test_flags_reach_the_config(self):
         """--tracker-reflex passes an empty dict (the default bands): it must not be dropped as falsy (it was, once)."""

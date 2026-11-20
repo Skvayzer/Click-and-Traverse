@@ -72,6 +72,35 @@ def _segment_target(root, route, segment, lookahead):
     return target,projection,b
 
 
+def route_direction(xy, route, route_count, *, ahead=.3):
+    """Unit direction from xy [n, 2] toward the route point `ahead` m past xy's nearest point on the route polyline
+    (route [n, R, 2], route_count [n]); zero within 1 cm of the route's end or for routes with fewer than 2 points.
+    Used to build reference paths that follow the route, as the route worlds' navigation command does."""
+    n, r = route.shape[:2]
+    seg = route[:, 1:] - route[:, :-1]                                            # [n, R-1, 2]
+    length = torch.linalg.vector_norm(seg, dim=-1)
+    k = torch.arange(r - 1, device=xy.device)[None]
+    used = k < (route_count - 1)[:, None]
+    length = torch.where(used, length, torch.zeros_like(length))
+    cum = torch.cat((torch.zeros_like(length[:, :1]), length.cumsum(-1)), -1)    # [n, R] arc length at each point
+    t = (((xy[:, None] - route[:, :-1]) * seg).sum(-1) / length.square().clamp_min(1e-12)).clamp(0., 1.)
+    near = route[:, :-1] + t[..., None] * seg
+    dist = torch.where(used, torch.linalg.vector_norm(xy[:, None] - near, dim=-1), torch.full_like(t, 1e9))
+    j = dist.argmin(-1)
+    rows = torch.arange(n, device=xy.device)
+    total = cum[rows, (route_count - 1).clamp_min(0)]
+    s = cum[rows, j] + t[rows, j] * length[rows, j]
+    goal = (s + ahead).clamp(max=total)
+    i = (torch.searchsorted(cum.contiguous(), goal[:, None], right=True)[:, 0] - 1).clamp(0, r - 2)
+    i = torch.minimum(i, (route_count - 2).clamp_min(0))
+    a = ((goal - cum[rows, i]) / length[rows, i].clamp_min(1e-9)).clamp(0., 1.)
+    point = route[rows, i] + a[:, None] * seg[rows, i]
+    d = point - xy
+    m = torch.linalg.vector_norm(d, dim=-1, keepdim=True)
+    live = (route_count >= 2) & (total - s > .01)
+    return torch.where((live[:, None]) & (m > 1e-6), d / m.clamp_min(1e-9), torch.zeros_like(d))
+
+
 def route_context(root_xy, previous_xy, segment, sticky_violation, route, route_count,
                   obstacles, obstacle_count, *, radius, lookahead=.4,
                   waypoint_radius=.15, goal_radius=.20, speed=.6):
