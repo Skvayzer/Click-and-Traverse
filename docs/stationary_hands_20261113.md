@@ -725,6 +725,18 @@ scripts/eval_standing_hands.py --hold-plan 1 (cluster ~/jobs/eval_combo.sh).
   reactive skill; rooms 0.93 (V7r u400 0.96), so the room collapse is in plan following only. Side gaps at 0.3 m/s:
   plans 0.45 / 0.38 / 0.17, no plan 0.38 / 0.50 / 0.12, V7r u400 0.33 / 0.54 / 0.14. Standing without a plan: danger
   0.987, anticipation 0.979, contact 0.0002 per event, feet violations per settled step 0.011 (V7r u600 0.027).
+- COMBO1b u150 (route fix), plans on, 0.15 m/s: all 0.61 / 0.19 / 0.20 (COMBO1 u200 0.58 / 0.20 / 0.21; V7r u400
+  0.67 / 0.26 / 0.07); rooms 0.93 / 0.07 / 0.01 (fixed; was 0.62 / 0.14 / 0.24); CAT 0.13 / 0.45 / 0.42; cabinet
+  < 0.60 m 0.70 / 0.05 / 0.25; side gaps 0.46 / 0.36 / 0.17. At 0.3 m/s: all 0.64 / 0.18 / 0.18 (V7r u400 0.65 /
+  0.29 / 0.06). No plan: 0.63 / 0.28 / 0.09 (0.65 / 0.26 / 0.07 at 0.3). Standing with a stand-still plan: danger
+  0.986, no contact, threat retreat 0.255 m.
+- Why it refuses with plans (recording of COMBO1 u300 + route fix, runs/videos/COMBO1_u300_plan): in a hurdle course
+  that stalled for 60 s the plans moved 0.45 m per 2 s while the robot moved 0.08 m/s. Replans restart the chunk at the
+  robot and the clock waits for a lagging robot, so the reference point stayed 4 cm from the pelvis and standing still
+  earned 91% of track_pos (clean runs: 2-3 cm, 95%); near obstacles the deadband forgave lag as well. The refusal
+  equilibrium of H2 reappears inside the planner-reflex split. COMBO2 (00d3931, --tracker-commit): plan clocks do not
+  wait and the deadband forgives sideways error only; staged in ~/cat_worktrees/00d3931, not launched (needs the
+  user's go).
 
 ## Measurement notes
 - Standing power, u150 clean: 26-31 W at rest (CPU trace), recovery steps after a shove 170-570 W.
