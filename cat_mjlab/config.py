@@ -473,6 +473,10 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
             config['tracker']['hold_plan']=float(spec['hold_plan'])
             if not 0.<=config['tracker']['hold_plan']<=1.:raise ValueError('tracker hold_plan must be in [0, 1]')
             if config['tracker']['hold_plan']>0 and not spec.get('planner'):raise ValueError('tracker hold_plan needs a planner')
+        if spec.get('commit'):
+            # COMBO2: plan clocks do not wait for a lagging robot; the deadband forgives sideways error only
+            if not spec.get('planner'):raise ValueError('tracker commit needs a planner')
+            config['tracker']['commit']=True
         if spec.get('reflex') is not None and spec.get('reflex') is not False:
             # {} (the --tracker-reflex flag) means the default bands; an empty dict is falsy, so test for presence
             reflex=dict(spec['reflex']) if isinstance(spec['reflex'],dict) else {}

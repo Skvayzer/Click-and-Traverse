@@ -156,6 +156,31 @@ class TrackingTest(unittest.TestCase):
         self.assertAlmostEqual(float(r1['track_pos'][0]), float(r2['track_pos'][0]), places=6)
         self.assertGreater(float(r2['track_pos'][1]), float(r1['track_pos'][1]))
 
+    def test_commit_keeps_the_clock_running_and_charges_lag(self):
+        """COMBO2: with commit the plan clock runs on while the robot stands, and the deadband forgives sideways error
+        only. Without commit a standing robot keeps the reference beside it (the stall COMBO1 learned)."""
+        for commit, expect_far in ((False, False), (True, True)):
+            t = tr.ReferenceTracker(1, 'cpu', mix=(('plan', 1.),), commit=commit, generator=torch.Generator().manual_seed(0))
+            ids = torch.arange(1)
+            t.reset(ids, torch.zeros(1, 2), torch.zeros(1), sample_dir=east, op_speed=torch.full((1,), .5))
+            self.straight_plan(t, ids)
+            for _ in range(40):                                   # 0.8 s standing still at the start
+                info = t.step(torch.zeros(1, 2), .02, sample_dir=east, op_speed=torch.full((1,), .5))
+            gap = float(torch.linalg.vector_norm(t.plan_at(ids, t.plan_t)[0][0]))
+            self.assertEqual(gap > .3, expect_far, (commit, gap))
+        # deadband: 0.2 m sideways is forgiven, 0.2 m of lag is not
+        t = tr.ReferenceTracker(2, 'cpu', mix=(('plan', 1.),), commit=True, generator=torch.Generator().manual_seed(0))
+        ids = torch.arange(2)
+        t.reset(ids, torch.zeros(2, 2), torch.zeros(2), sample_dir=east, op_speed=torch.full((2,), .5))
+        self.straight_plan(t, ids)
+        info = t.step(torch.zeros(2, 2), .02, sample_dir=east, op_speed=torch.full((2,), .5))
+        here = t.plan_at(ids, t.plan_t)[0]
+        robot = here + torch.tensor([[0., .2], [-.2, 0.]])      # world 0 beside the plan, world 1 behind it
+        r, _ = t.rewards(robot, torch.zeros(2), torch.full((2,), .70), t.plan_at(ids, t.plan_t)[3], info,
+                         deadband=torch.full((2,), .2))
+        self.assertGreater(float(r['track_pos'][0]), .99)
+        self.assertLess(float(r['track_pos'][1]), .2)
+
     def test_hold_worlds_can_get_a_stand_still_plan(self):
         t = tr.ReferenceTracker(4, 'cpu', mix=(('field', 1.),), hold_plan=1., generator=torch.Generator().manual_seed(0))
         ids = torch.arange(4); hold = torch.tensor([True, False, True, False])
@@ -213,6 +238,9 @@ class ComboConfigTest(unittest.TestCase):
         self.assertEqual(tc['planner']['steps'], 6)
         args.tracker_reflex = False
         self.assertNotIn('reflex', wholebody_config(tracker=tracker_spec(args), operator_speed=(0.1, 0.6))['tracker'])
+        self.assertNotIn('commit', tc)
+        args.tracker_commit = True
+        self.assertTrue(wholebody_config(tracker=tracker_spec(args), operator_speed=(0.1, 0.6))['tracker']['commit'])
 
 
 if __name__ == '__main__':

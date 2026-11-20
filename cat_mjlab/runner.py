@@ -913,6 +913,8 @@ def tracker_spec(args):
         spec['hold_plan'] = float(args.tracker_hold_plan)
     if getattr(args, 'tracker_reflex', False):
         spec['reflex'] = {}
+    if getattr(args, 'tracker_commit', False):
+        spec['commit'] = True
     return spec
 
 

@@ -110,7 +110,8 @@ class CATTask:
             from .tracking import ReferenceTracker,SOURCES
             tc=config['tracker']
             self.tracker=ReferenceTracker(self.num_envs,self.device,mix=[tuple(m) for m in tc['mix']],nominal_upper=self.nominal[12:],
-                                          hold_plan=float(tc.get('hold_plan',0.)),generator=self.generator)
+                                          hold_plan=float(tc.get('hold_plan',0.)),commit=bool(tc.get('commit',False)),
+                                          generator=self.generator)
             self.track_sigma=float(tc.get('sigma',.15));self.track_field=SOURCES.index('field')
             # Planner with a field reflex: planner v1 in the loop for the 'plan' source (cat_mjlab/planner/online.py),
             # and the reflex rule on the tracking terms (an arm whose hand is inside the band stops being tracked; the

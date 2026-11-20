@@ -28,6 +28,11 @@ The reflex rule (rewards): an arm whose hand is inside the reflex band of an obs
 out of the upper-body tracking term, and the pelvis term tolerates `deadband` m of error near obstacles; the potential-
 field and contact terms are untouched, so near obstacles the field acts and away from them the reference does.
 
+commit=True (COMBO2): a plan's clock no longer waits for a lagging robot, and the deadband forgives only the sideways
+part of the pelvis error, not lag along the reference. Measured on COMBO1 in a hurdle course where it stalled for 60 s:
+replans restart the chunk at the robot and the clock waited, so the reference point stayed 4 cm away and standing still
+earned 91% of track_pos; with the deadband near obstacles, falling behind there was free as well.
+
 Features (FEATURES = 41), in the robot's heading frame:
     valid, then for each horizon tau in HORIZONS: dx, dy, sin dyaw, cos dyaw, dz (pelvis height minus NOMINAL_Z),
     then mask_heading, mask_height, the 17 upper-body targets minus nominal at UPPER_HORIZON, mask_upper.
@@ -72,7 +77,7 @@ class ReferenceTracker:
 
     def __init__(self, num_envs, device, *, mix=(('field', .5), ('random', .3), ('none', .2)), random_speed=(0., .6),
                  stop_share=.15, sideways_share=.3, crouch_share=.25, upper_share=.5, upper_amplitude=.4,
-                 upper_rate=1.0, nominal_upper=None, hold_plan=0., generator=None):
+                 upper_rate=1.0, nominal_upper=None, hold_plan=0., commit=False, generator=None):
         self.n, self.device, self.generator = int(num_envs), device, generator
         names = [m[0] for m in mix]
         if not set(names) <= set(SOURCES):
@@ -85,6 +90,7 @@ class ReferenceTracker:
         self.sideways_share, self.crouch_share, self.upper_share = float(sideways_share), float(crouch_share), float(upper_share)
         self.upper_amplitude, self.upper_rate = float(upper_amplitude), float(upper_rate)
         self.hold_plan = float(hold_plan)
+        self.commit = bool(commit)
         z = lambda *s, dtype=torch.float32: torch.zeros(s, device=device, dtype=dtype)
         self.path = z(self.n, P, 2)                     # world xy
         self.count = z(self.n, dtype=torch.long)        # valid points in path
@@ -294,7 +300,7 @@ class ReferenceTracker:
             gap = torch.linalg.vector_norm(off, dim=-1)
             t_robot = torch.linalg.vector_norm(self.plan_xy - root_xy[:, None], dim=-1).argmin(-1).float() * PLAN_DT
             behind = (gap > MAX_LAG) & (t_robot < self.plan_t - .15)
-            run = plan & self.has_plan & ~behind
+            run = plan & self.has_plan & (~behind | self.commit)
             self.plan_t = torch.where(run, (self.plan_t + dt).clamp_max((PLAN_FRAMES - 1) * PLAN_DT), self.plan_t)
             self.replan_in = torch.where(plan, self.replan_in - dt, self.replan_in)
             ahead_xy, _, _, _ = self.plan_at(ids, self.plan_t + .3)
@@ -401,6 +407,21 @@ class ReferenceTracker:
             z_ref = torch.where(plan, pz, z_ref); upper_ref = torch.where(plan[:, None], pup, upper_ref)
         d = torch.linalg.vector_norm(root_xy - here, dim=-1)
         d_paid = d if deadband is None else (d - deadband).clamp_min(0.)
+        if deadband is not None and self.commit:
+            # the deadband forgives sideways error only: lag along the reference's direction of motion stays paid
+            tangent = self._tangent(ids, self.s)
+            direction = torch.stack((tangent.cos(), tangent.sin()), -1)
+            moving = ~plan
+            if bool(plan.any()):
+                motion = self.plan_at(ids, self.plan_t + .3)[0] - here
+                length = torch.linalg.vector_norm(motion, dim=-1)
+                direction = torch.where(plan[:, None], motion / length.clamp_min(1e-6)[:, None], direction)
+                moving = moving | (length > .03)
+            off = root_xy - here
+            along = (off * direction).sum(-1)
+            cross = torch.linalg.vector_norm(off - along[:, None] * direction, dim=-1)
+            split = torch.sqrt(along.square() + (cross - deadband).clamp_min(0.).square())
+            d_paid = torch.where(moving, split, d_paid)
         e_yaw = wrap(root_yaw - yaw_ref)
         err = (q_upper - upper_ref).square()
         upper = torch.zeros_like(d)
