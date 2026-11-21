@@ -387,7 +387,7 @@ def compute_loss(model, data, config, *, entropy_noise=None, style_lambda=0., di
         grad, = torch.autograd.grad(mean.sum(), state, create_graph=True)
         lipschitz = grad.square().sum(-1).mean()
         total = total + config.lipschitz * lipschitz
-        extra = dict(extra, lipschitz_penalty=lipschitz.detach())
+        extra = dict(extra, **{"diagnostics/lipschitz_penalty": lipschitz.detach()})   # diagnostics/ keys are exported
     if "distill_label" in data:
         # DAgger regulariser during RL fine-tuning (cat_mjlab/distill.py, regularize mode): regress the action mean
         # onto the scene's teacher where one exists (mask), weight distill_lambda fading to 0. Keeps the distilled

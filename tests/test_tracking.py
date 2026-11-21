@@ -389,6 +389,6 @@ class GaitConfigTest(unittest.TestCase):
                     truncation=torch.zeros(6, 4))
         base, _ = compute_loss(learner.model, data, config)
         smooth, metrics = compute_loss(learner.model, data, replace(config, lipschitz=.01))
-        self.assertGreater(float(metrics['lipschitz_penalty']), 0.)
-        self.assertAlmostEqual(float(smooth - base), .01 * float(metrics['lipschitz_penalty']), places=5)
+        self.assertGreater(float(metrics['diagnostics/lipschitz_penalty']), 0.)
+        self.assertAlmostEqual(float(smooth - base), .01 * float(metrics['diagnostics/lipschitz_penalty']), places=5)
         smooth.backward()                                      # the penalty is differentiable (double backward)
