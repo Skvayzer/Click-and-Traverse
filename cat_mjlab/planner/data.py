@@ -132,19 +132,39 @@ class ShardWriter:
             self.counts[name] = k + 1
 
 
-def load_split(root, split, *, grids=True):
-    """Concatenated arrays of one split, in memory: dict(file -> array). grids=False skips the large grid file."""
+def load_split(root, split, *, grids=True, keep=None):
+    """Concatenated arrays of one split, in memory: dict(file -> array). grids=False skips the large grid file.
+    keep(meta, goal) -> bool [n] selects examples shard by shard (the grid is read only for the kept rows)."""
     directory = Path(root) / split
     shards = sorted({p.name.split("_")[0] for p in directory.glob("*_state.npy")})
     if not shards:
         raise FileNotFoundError(f"no shards in {directory}")
+    masks = None
+    if keep is not None:
+        masks = [np.asarray(keep(np.load(directory / f"{k}_meta.npy"), np.load(directory / f"{k}_goal.npy")), bool) for k in shards]
     out = {}
     for f in FILES:
         if f == "grid" and not grids:
             continue
         parts = [np.load(directory / f"{k}_{f}.npy", mmap_mode="r") for k in shards]
+        if masks is not None:
+            parts = [part[mask] for part, mask in zip(parts, masks)]
         out[f] = np.concatenate(parts) if len(parts) > 1 else np.asarray(parts[0])
     return out
+
+
+def drop_stopped(info, speed=0.05, buckets=("procedural_cat", "original_cat", "published_cat", "narrow_passage",
+                                              "protected_passage", "transition_passage", "table_edges", "open_passage")):
+    """keep() for load_split: drops windows whose mean speed is below `speed` m/s in the given scene types (info.json
+    scene_types). Measured on planner v1's data: 38-55% of the clean windows in CAT courses and 43% in side gaps were the
+    policy standing still (rooms 8%), because windows ending in contact were filtered out; the planner then proposed
+    hesitant, slow-starting plans in front of hard obstacles (4 cm in the first 0.3 s against 8 cm elsewhere)."""
+    types = list(info["scene_types"])
+    ids = np.array([types.index(b) for b in buckets if b in types])
+
+    def keep(meta, goal):
+        return ~((goal[:, 4] < speed) & np.isin(meta[:, 1].astype(int), ids))
+    return keep
 
 
 def write_info(root, info):

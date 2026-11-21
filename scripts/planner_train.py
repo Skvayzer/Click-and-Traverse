@@ -60,18 +60,23 @@ def main(argv=None):
     p.add_argument("--eval-every", type=int, default=5000)
     p.add_argument("--log-every", type=int, default=250)
     p.add_argument("--seed", type=int, default=0)
+    p.add_argument("--drop-stopped", type=float, metavar="SPEED",
+                   help="drop windows slower than SPEED m/s in CAT courses, passages and table edges (planner v2)")
     args = p.parse_args(argv)
     import torch
     import mujoco
     from cat_mjlab.model import assemble_training_xml
-    from cat_mjlab.planner.data import load_split
+    from cat_mjlab.planner.data import drop_stopped, load_split
     from cat_mjlab.planner.metrics import ChunkScorer
     from cat_mjlab.planner.model import FlowPlanner, Normalizer, flow_loss, sample
     torch.manual_seed(args.seed); np.random.seed(args.seed)
     args.out.mkdir(parents=True, exist_ok=True)
     t0 = time.time()
-    train = load_split(args.data, "train")
-    held = load_split(args.data, "test")
+    keep = None
+    if args.drop_stopped is not None:
+        keep = drop_stopped(json.loads((Path(args.data) / "info.json").read_text()), speed=args.drop_stopped)
+    train = load_split(args.data, "train", keep=keep)
+    held = load_split(args.data, "test", keep=keep)
     val_mask, _ = held_out_halves(held["meta"], args.seed)
     val = {k: v[val_mask] for k, v in held.items()}
     print(json.dumps(dict(train=len(train["state"]), val=len(val["state"]), load_s=round(time.time() - t0, 1),

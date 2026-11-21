@@ -334,3 +334,23 @@ class HeightCurriculumTest(unittest.TestCase):
         self.assertEqual((info['bar_m'], info['beam_bottom_m']), (0.19, 0.90))
         bar, beam = boxes
         self.assertLess(bar['center'][0], beam['center'][0])                                 # the bar comes first
+
+
+class PlannerDataFilterTest(unittest.TestCase):
+    def test_drop_stopped_keeps_standing_scenes(self):
+        import tempfile
+        from pathlib import Path
+        import numpy as np
+        from cat_mjlab.planner.data import FILES, drop_stopped, load_split
+        info = dict(scene_types=["procedural_cat", "original_cat", "clutter_dense", "reactive_standing"])
+        with tempfile.TemporaryDirectory() as tmp:
+            d = Path(tmp) / "train"; d.mkdir()
+            for k, (bucket, speed) in enumerate(((1, .0), (1, .2), (3, .0), (2, .01))):
+                arrays = dict(grid=np.zeros((1, 2, 2, 2), np.uint8), state=np.zeros((1, 67), np.float32),
+                              chunk=np.zeros((1, 20, 35), np.float32), goal=np.array([[0, 0, 0, 1, speed]], np.float32),
+                              meta=np.array([[k, bucket, 0, 0, 0, 0]]), pose=np.zeros((1, 3), np.float32))
+                for f in FILES:
+                    np.save(d / f"{k:03d}_{f}.npy", arrays[f])
+            out = load_split(tmp, "train", keep=drop_stopped(info))
+            self.assertEqual(out["meta"][:, 0].tolist(), [1, 2, 3])     # only the stopped CAT window is dropped
+            self.assertEqual(len(out["grid"]), 3)
