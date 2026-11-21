@@ -150,9 +150,9 @@ def main():
                 shutil.copy2(item, target / item.name)
     combined = list(base["scenes"]) + records
     marker = dict(base["flat_balance"])
-    additions = list(marker.get("additions", [])) + [dict(kind="beam_bars", manifest=str(fragment.resolve()),
-                                                          sha256=sha256(fragment), count=len(records))]
-    marker.update(schema=EXTENDED_SCHEMA, parent=dict(manifest=str(base_path), sha256=sha256(base_path)), additions=additions)
+    # the parent bank is pinned as an exact prefix; only this stage's addition follows it (cat_ppo extended_balance_bank)
+    marker.update(schema=EXTENDED_SCHEMA, parent=dict(manifest=str(base_path), sha256=sha256(base_path)),
+                  additions=[dict(kind="beam_bars", manifest=str(fragment.resolve()), sha256=sha256(fragment), count=len(records))])
     manifest = dict(base, scene_count=len(combined), scenes=combined, flat_balance=marker,
                     fields_bytes=base.get("fields_bytes", 0) + sum(f["size_bytes"] for r in records for f in r["fields"].values()))
     manifest.pop("manifest_sha256", None)
