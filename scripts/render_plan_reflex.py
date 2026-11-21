@@ -74,6 +74,13 @@ def main(argv=None):
     p.add_argument("--height", type=int, default=720)
     p.add_argument("--max-seconds", type=float, default=60.)
     p.add_argument("--ghost-ahead", type=float, default=AHEAD, help="s past the plan clock that the ghost shows")
+    p.add_argument("--stills-only", action="store_true",
+                   help="clean PNG stills for figures: no text, no candidate lines, no video; one per --times entry, or "
+                        "at the closest hand approach")
+    p.add_argument("--worlds", type=int, nargs="+", help="render only these recorded worlds")
+    p.add_argument("--times", type=float, nargs="+", help="with --stills-only: episode times (s) to render")
+    p.add_argument("--camera", type=float, nargs=3, metavar=("DISTANCE", "ELEVATION", "AZIMUTH_OFFSET"),
+                   default=(3.4, -28., 55.), help="camera distance (m), elevation and azimuth offset from the start heading (deg)")
     args = p.parse_args(argv)
     os.environ.setdefault("MUJOCO_GL", "egl")
     import mujoco
@@ -99,8 +106,14 @@ def main(argv=None):
     body_clear = z["body_clear"] if "body_clear" in z.files else None
     index = []
     for w, scene_id in enumerate(meta["scenes"]):
+        if args.worlds and w not in args.worlds:
+            continue
         end = int(meta["end"][w]); outcome = meta["outcome"][w] or dict(result="running at the end", hand_contact=False)
         steps = list(range(0, min(end, int(args.max_seconds / dt)) + 1, stride))
+        if args.stills_only:
+            last = min(end, int(args.max_seconds / dt))
+            steps = ([min(int(round(t / dt)), last) for t in args.times] if args.times
+                     else [int(np.argmin(z["hand_clear"][:last + 1, w].min(-1)))])
         with tempfile.TemporaryDirectory() as tmp:
             scene_geometry(Path(tmp), bank_manifest, by_id[scene_id])
             xml, _ = resolve_xml_assets(Path(tmp) / "model.xml")
@@ -115,13 +128,13 @@ def main(argv=None):
         palms = [model.site("left_palm").id, model.site("right_palm").id]
         q0 = z["qpos"][0, w]
         yaw0 = math.atan2(2 * (q0[3] * q0[6] + q0[4] * q0[5]), 1 - 2 * (q0[5] ** 2 + q0[6] ** 2))
-        camera.distance, camera.elevation, camera.azimuth = 3.4, -28, math.degrees(yaw0) + 55
+        camera.distance, camera.elevation, camera.azimuth = args.camera[0], args.camera[1], math.degrees(yaw0) + args.camera[2]
         look = q0[:2].copy()
         name = f"{w:02d}_" + "".join(ch if ch.isalnum() else "_" for ch in kind_of(scene_id)).strip("_")
         cmd = [ffmpeg, "-hide_banner", "-loglevel", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24",
                "-s", f"{args.width}x{args.height}", "-r", str(args.fps), "-i", "-", "-an", "-c:v", "libx264",
                "-pix_fmt", "yuv420p", "-crf", "27", "-movflags", "+faststart", str(args.out / f"{name}.mp4")]
-        proc = subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL)
+        proc = None if args.stills_only else subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL)
         closest, still = 1e9, None
         reflex_steps = fallback_steps = 0
         if has_ev:
@@ -131,7 +144,7 @@ def main(argv=None):
             for t in steps:
                 q = z["qpos"][t, w]
                 data.qpos[:] = q; mujoco.mj_forward(model, data)
-                look = 0.9 * look + 0.1 * q[:2]
+                look = q[:2].copy() if args.stills_only else 0.9 * look + 0.1 * q[:2]
                 camera.lookat[:] = [look[0], look[1], 0.6]
                 renderer.update_scene(data, camera=camera, scene_option=option)
                 sc = renderer.scene
@@ -144,7 +157,7 @@ def main(argv=None):
                     path = np.concatenate((plan[k0:, :2], np.full((21 - k0, 1), 0.02)), -1)
                     if len(path) > 1:
                         add_line(sc, mujoco, path, (0.20, 0.45, 1.0, 0.95), 0.012)
-                    if has_ev and len(mine):
+                    if has_ev and len(mine) and not args.stills_only:
                         j = np.searchsorted(ev_times, t, side="left") - 1
                         if j >= 0:
                             e = mine[j]; score = z["ev_score"][e]; best = int(np.argmax(score))
@@ -165,6 +178,10 @@ def main(argv=None):
                         add_sphere(sc, mujoco, data.site_xpos[palms[h]], (0.95, 0.15, 0.15, 0.85), 0.045)
                 reflex_steps += int(released.any()); fallback_steps += int(dropped)
                 frame = renderer.render().copy()
+                if args.stills_only:
+                    Image.fromarray(frame).save(args.out / f"{name}_t{t * dt:05.1f}.png")
+                    print("STILL", name, f"t={t * dt:.1f}s", "hand", float(z["hand_clear"][t, w].min()), flush=True)
+                    continue
                 clear = float(z["hand_clear"][t, w].min())
                 if dropped:
                     status = "FALLBACK: no progress for 2 s, plan dropped - the field alone drives the robot"
@@ -187,6 +204,8 @@ def main(argv=None):
                 proc.stdin.write(frame.tobytes())
                 if clear < closest:
                     closest, still = clear, frame
+        if args.stills_only:
+            continue
         proc.stdin.close(); proc.wait()
         if still is not None:
             Image.fromarray(still).save(args.out / f"{name}.jpg", quality=88)
