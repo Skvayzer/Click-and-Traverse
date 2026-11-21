@@ -751,6 +751,12 @@ scripts/eval_standing_hands.py --hold-plan 1 (cluster ~/jobs/eval_combo.sh).
   0.99 / 0.00 (0.70), cabinet < 0.60 m 0.33 / 0.66 / 0.02, >= 0.60 m 0.43 / 0.53 / 0.04, CAT courses 0.19 / 0.75 / 0.06
   (0.23), rooms 0.60 / 0.38 / 0.02; 0.525 m/s all 0.31 / 0.65 / 0.04 (0.13). V7r u400 at 0.525: 0.62 / 0.31 / 0.08
   (0.02); COMBO1b u500 plans at 0.525: 0.59 / 0.17 / 0.24 (0.02).
+- H1 seed replicates (standing benchmark, same protocol; envs_ever_violating = episodes where a foot moved): energy
+  price seeds 0/1/2: 6.0 / 5.4 / 8.5% of episodes, standing power 33.5 / 33.2 / 33.3 W (legs 20.0 / 20.2 / 20.2 W);
+  stance rule seeds 0/1: 6.8 / 7.0%, 37.4 / 38.7 W (legs 23.6 / 25.2 W); seed 2 of the rule still training.
+- COMBO2 u150 (committed plan clock), plans on, 0.15 m/s: all 0.55 / 0.15 / 0.30 (COMBO1b u500 0.56 / 0.17 / 0.27):
+  refusals did not fall. No plan: 0.64 / 0.29 / 0.07. Standing: danger 0.993, no contact, pass-by 0.08. The waiting
+  clock is not the whole cause; recordings of refused scenes (COMBO2 u500) are being made to see what the robot does.
 
 ## Measurement notes
 - Standing power, u150 clean: 26-31 W at rest (CPU trace), recovery steps after a shove 170-570 W.
