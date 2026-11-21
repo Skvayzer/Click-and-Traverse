@@ -3,10 +3,13 @@
 
 One world per scene id, one episode each (until it ends or --steps). Per control step: the robot's qpos, the active
 whole-body plan as 21 world-frame poses (start pose + 20 frames, 0.1 s apart; captured from the online planner),
-the plan clock, which hands are inside the reflex band, and whether the world still records. At the end: each
+the plan clock, which hands are inside the reflex band, whether the stall fallback has dropped the plan, and whether
+the world still records. Per replan (event arrays ev_*): every candidate chunk as 21 world-frame poses with its
+body-sphere clearance, score and goal-heading offset (the chosen one has the highest score). At the end: each
 episode's outcome as the per-scene evaluation scores it (clean / contact / refused / fall, hand contact).
 
     record_plan_reflex.py CHECKPOINT --scenes ID [ID ...] --out rec.npz [--mix plan=1] [--speed 0.15] [--steps 3000]
+                          [--fallback STALL_S HOLD_S]
 """
 from __future__ import annotations
 
@@ -35,6 +38,8 @@ def main():
     p.add_argument("--steps", type=int, default=3000)
     p.add_argument("--bank", default="data/furniture/tablegap_v1")
     p.add_argument("--seed", type=int, default=1)
+    p.add_argument("--fallback", type=float, nargs=2, metavar=("STALL_S", "HOLD_S"),
+                   help="the stall rule: no progress along the route for STALL_S s drops the plan for HOLD_S s")
     args = p.parse_args()
     scenes = [l.strip() for l in open(args.scenes[0][1:]) if l.strip()] if args.scenes[0].startswith("@") else args.scenes
     from record_mjlab_rollout import load_policy
@@ -53,6 +58,8 @@ def main():
     if not env.get("tracker"):
         raise ValueError("needs a checkpoint trained with the tracker (planner with a field reflex)")
     env["tracker"]["mix"] = [[a, float(b)] for a, b in (item.split("=", 1) for item in args.mix.split(","))]
+    if args.fallback:
+        env["tracker"]["fallback"] = dict(stall_s=float(args.fallback[0]), hold_s=float(args.fallback[1]))
     B = ROOT / args.bank
     ns = SimpleNamespace(bank_manifest=Path(str(B) + "_packed/manifest.json"), body_collision_bank=Path(str(B) + "_collision/manifest.json"),
                          body_collision_resets=Path(str(B) + "_resets/manifest.json"), device=dev, seed=args.seed,
@@ -66,6 +73,8 @@ def main():
     sids = torch.tensor([names.index(s) for s in scenes], device=dev)
     n = len(scenes)
     plans = np.zeros((n, 21, 36), np.float32)
+    events = dict(t=[], w=[], cands=[], clear=[], score=[], offset=[])
+    now = [0]
     op = task.online_planner
     if op is not None:
         op.capture = True
@@ -76,8 +85,15 @@ def main():
             op.last = None
             original(ids)
             if op.last is not None and len(ids_plan):
+                last = op.last
                 for k, w in enumerate(ids_plan.tolist()):
-                    plans[w] = world_qpos(op.last["state"][k].numpy(), op.last["chunk"][k].numpy(), op.last["pose"][k].numpy())
+                    st, pose = last["state"][k].numpy(), last["pose"][k].numpy()
+                    plans[w] = world_qpos(st, last["chunk"][k].numpy(), pose)
+                    if "chunks" in last:
+                        events["t"].append(now[0]); events["w"].append(w)
+                        events["cands"].append(np.stack([world_qpos(st, c, pose) for c in last["chunks"][k].numpy()]).astype(np.float16))
+                        for key in ("clear", "score", "offset"):
+                            events[key].append(last[key][k].float().numpy())
 
         task._replan = replan
     task.reset(None, sids)
@@ -86,17 +102,22 @@ def main():
     T = args.steps
     rec = dict(qpos=np.zeros((T + 1, n, 36), np.float32), plan=np.zeros((T + 1, n, 21, 36), np.float32),
                plan_t=np.zeros((T + 1, n), np.float32), released=np.zeros((T + 1, n, 2), bool),
-               has_plan=np.zeros((T + 1, n), bool), hand_clear=np.zeros((T + 1, n, 2), np.float32))
+               has_plan=np.zeros((T + 1, n), bool), hand_clear=np.zeros((T + 1, n, 2), np.float32),
+               fallback=np.zeros((T + 1, n), bool), body_clear=np.zeros((T + 1, n), np.float32))
     live = np.ones(n, bool); end = np.full(n, T, np.int64)
     outcome = [None] * n
     t0 = time.time()
     for t in range(T + 1):
+        now[0] = t
         rec["qpos"][t] = task.data.qpos[:, :36].float().cpu().numpy()
         rec["plan"][t] = plans
         rec["plan_t"][t] = task.tracker.plan_t.cpu().numpy()
         rec["has_plan"][t] = (task.tracker.is_plan & task.tracker.has_plan).cpu().numpy()
         clear = task.info["sdf"][:, 5:7, 0].float().cpu().numpy()
         rec["hand_clear"][t] = clear; rec["released"][t] = clear < band
+        rec["body_clear"][t] = task.info["sdf"][..., 0].amin(-1).float().cpu().numpy()
+        if hasattr(task.tracker, "fallback_t"):
+            rec["fallback"][t] = (task.tracker.fallback_t > 0).cpu().numpy()
         if t == T or not live.any():
             end = np.where(live, t, end); break
         with torch.no_grad():
@@ -115,9 +136,13 @@ def main():
         if t % 500 == 0:
             print(f"step {t}: {int(live.sum())} of {n} still running, {time.time() - t0:.0f} s", flush=True)
     meta = dict(checkpoint=str(args.checkpoint), scenes=scenes, mix=args.mix, speed=args.speed, band_m=band,
-                outcome=outcome, end=end.tolist(), dt=float(task.dt), bank=args.bank)
+                outcome=outcome, end=end.tolist(), dt=float(task.dt), bank=args.bank, fallback=args.fallback)
     args.out.parent.mkdir(parents=True, exist_ok=True)
-    np.savez_compressed(args.out, meta=json.dumps(meta), **{k: v[:int(end.max()) + 1] for k, v in rec.items()})
+    ev = {}
+    if events["t"]:
+        ev = dict(ev_t=np.array(events["t"]), ev_w=np.array(events["w"]), ev_cands=np.stack(events["cands"]),
+                  ev_clear=np.stack(events["clear"]), ev_score=np.stack(events["score"]), ev_offset=np.stack(events["offset"]))
+    np.savez_compressed(args.out, meta=json.dumps(meta), **{k: v[:int(end.max()) + 1] for k, v in rec.items()}, **ev)
     print("RECORDED", json.dumps(dict(out=str(args.out), outcome=outcome)), flush=True)
 
 

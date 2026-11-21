@@ -62,7 +62,7 @@ class OnlinePlanner:
         self.clear_cap, self.side_penalty, self.switch_penalty = float(clear_cap), float(side_penalty), float(switch_penalty)
         self.bf16 = bool(bf16) and self.device.type == 'cuda'
         self.block, self.grid_chunk, self.score_frames = int(block), int(grid_chunk), int(score_frames)
-        self.capture, self.last, self._parts = False, None, []     # capture=True keeps the chosen chunks (recordings)
+        self.capture, self.last, self._parts = False, None, []     # capture=True keeps the chunks of the last call (recordings)
         self.offsets = torch.tensor(heading_offsets(self.samples), device=self.device)
         self.generator = torch.Generator(device=self.device).manual_seed(int(seed))
         self.identity = dict(path=str(path), step=int(ck.get('step', -1)), samples=self.samples, steps=self.steps,
@@ -110,8 +110,9 @@ class OnlinePlanner:
         return xy, yaw, z, upper, interval, stats
 
     def _keep(self):
-        """With capture on, last = the chosen chunks of the latest plan() call: state [m, 67], chunk [m, H, 35] in the
-        chunk frame, pose [m, 3] (x, y, heading of the chunk frame), as planner_render.world_qpos takes them."""
+        """With capture on, last = the latest plan() call's chunks: state [m, 67], chosen chunk [m, H, 35] in the chunk
+        frame, pose [m, 3] (x, y, heading of the chunk frame), as planner_render.world_qpos takes them, and every
+        candidate: chunks [m, K, H, 35], clear [m, K] (body-sphere clearance, m), score [m, K], offset [m, K] (rad)."""
         if self.capture and self._parts:
             self.last = {k: torch.cat([p[k] for p in self._parts]).detach().cpu() for k in self._parts[0]}
         self._parts = []
@@ -152,7 +153,9 @@ class OnlinePlanner:
         rows = torch.arange(m, device=self.device)
         pick = chunks[rows, best]                                                              # [m, H, 35]
         if self.capture:
-            self._parts.append(dict(state=state, chunk=pick, pose=torch.cat((origin, yaw0[:, None]), -1)))
+            # recordings: the chosen chunk plus every candidate with its clearance, score and goal-heading offset
+            self._parts.append(dict(state=state, chunk=pick, pose=torch.cat((origin, yaw0[:, None]), -1), chunks=chunks,
+                                    clear=sc['min_clear'], score=score, offset=offset))
         xy = origin[:, None] + torch.stack((c[:, None] * pick[..., 0] - s[:, None] * pick[..., 1],
                                             s[:, None] * pick[..., 0] + c[:, None] * pick[..., 1]), -1)
         xy = torch.cat((origin[:, None], xy), 1)
