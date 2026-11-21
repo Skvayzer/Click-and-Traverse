@@ -737,6 +737,20 @@ scripts/eval_standing_hands.py --hold-plan 1 (cluster ~/jobs/eval_combo.sh).
   equilibrium of H2 reappears inside the planner-reflex split. COMBO2 (00d3931, --tracker-commit): plan clocks do not
   wait and the deadband forgives sideways error only; staged in ~/cat_worktrees/00d3931, not launched (needs the
   user's go).
+- 2026-11-21 overnight (user: "do experiments overnight, work autonomously"): COMBO2 launched (job 311901, from COMBO1b
+  u500); H1 seed replicates (S2 seeds 1-2 to update 180, S1b seeds 1-2 to update 150, on the original commits 85d311a /
+  0a6697f plus a run-directory suffix: seeds/S2 fa7996c, seeds/S1b 67f3676; jobs 311902-311905); COMBO3 (protection
+  precision: --reactive-far-threat-only, e7cc12f) staged.
+- COMBO1b u500 (end of its block), plans on, 0.15 m/s: all 0.56 / 0.17 / 0.27; cabinet < 0.60 m 0.55 / 0.01 / 0.44;
+  side gaps 0.36 / 0.28 / 0.36. Refusals grow with training under the waiting clock (0.07 -> 0.20 at u150 -> 0.27 at
+  u500) while contact falls (0.26 -> 0.19 -> 0.17). No plan: 0.64 / 0.29 / 0.07 (= V7r u400). Standing with a
+  stand-still plan: danger 0.983, anticipation 0.973, no contact, pass-by 0.124.
+- Released CAT generalist (Xue et al.; outputs/mjlab_migration_20260919/original-cat-expanded.npz) on the 384 scenes in
+  our task (eval_per_scene with an .npz policy and --env-from V7r u400: native 222/310 inputs, same commands and
+  success rules), clean / contact / refused (hand contact): 0.3 m/s all 0.33 / 0.64 / 0.03 (0.15), side gaps 0.01 /
+  0.99 / 0.00 (0.70), cabinet < 0.60 m 0.33 / 0.66 / 0.02, >= 0.60 m 0.43 / 0.53 / 0.04, CAT courses 0.19 / 0.75 / 0.06
+  (0.23), rooms 0.60 / 0.38 / 0.02; 0.525 m/s all 0.31 / 0.65 / 0.04 (0.13). V7r u400 at 0.525: 0.62 / 0.31 / 0.08
+  (0.02); COMBO1b u500 plans at 0.525: 0.59 / 0.17 / 0.24 (0.02).
 
 ## Measurement notes
 - Standing power, u150 clean: 26-31 W at rest (CPU trace), recovery steps after a shove 170-570 W.
