@@ -310,3 +310,27 @@ class PrecisionConfigTest(unittest.TestCase):
 
 if __name__ == '__main__':
     unittest.main()
+
+
+class HeightCurriculumTest(unittest.TestCase):
+    def test_config_and_scene_levels(self):
+        import sys
+        from pathlib import Path
+        import numpy as np
+        from cat_mjlab.config import wholebody_config
+        self.assertEqual(wholebody_config(height_curriculum=(0.5, 300))['height_curriculum'], dict(advance=.5, window=300))
+        self.assertNotIn('height_curriculum', wholebody_config())
+        with self.assertRaises(ValueError):
+            wholebody_config(height_curriculum=(1.5, 300))
+        sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
+        import generate_beam_bars as g
+        rng = np.random.default_rng(0)
+        boxes, info = g.scene_boxes(rng, 0, 'beam')
+        self.assertEqual(info['beam_bottom_m'], 1.40)
+        beam = boxes[0]
+        self.assertAlmostEqual(beam['center'][2] - beam['half_size'][2], 1.40, places=3)     # underside
+        self.assertGreaterEqual(2 * beam['half_size'][1], g.WIDTH)                           # spans the full width
+        boxes, info = g.scene_boxes(rng, 7, 'beam_bar')
+        self.assertEqual((info['bar_m'], info['beam_bottom_m']), (0.19, 0.90))
+        bar, beam = boxes
+        self.assertLess(bar['center'][0], beam['center'][0])                                 # the bar comes first

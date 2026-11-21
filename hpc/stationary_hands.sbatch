@@ -74,6 +74,10 @@
 #              does, so a hesitant plan can neither stop the gait nor switch off the stall cost). COMBO1b/2 refused in
 #              27-30% of the 384 narrow scenes because replans restarted the slow-starting plans at the robot (a standing
 #              robot kept 87-91% of track_pos) and the plan command said stop within 5 cm. STUDENT = a COMBO2 snapshot
+#          COMBO5: COMBO4 + the beam/bar height curriculum (bank tablegap_bb_v1 = tablegap_v1 + 600 procedural beam and bar
+#              scenes in 8 levels, scripts/generate_beam_bars.py; --height-curriculum 0.5 300: stage s samples levels <= s
+#              and advances at 50% clean of 300 level-s episodes). Contact stays terminal (no obstacle forces in training).
+#              No policy in the line passed CAT beams or bars cleanly (0-25%). STUDENT = a COMBO4 snapshot
 #          COMBO3: COMBO2 + protection precision (--reactive-far-threat-only: the far retreat target only for threatening
 #              objects; after the far stages the robot flinched at ~90% of pass-by objects). STUDENT = a COMBO2 snapshot
 #          E1np / E1nc: RQ2 ablations of E1 -- without the anti-refusal terms (np) / without the width curriculum, on the
@@ -226,15 +230,17 @@ case $VARIANT in
         TRACKER=1 TRACKER_MIX=${TRACKER_MIX:-field=0.5,random=0.3,none=0.2} WARMUP=${WARMUP:-50} \
         ANCHOR=${ANCHOR:-$L/checkpoints/stationary_hands_E2_u300.pt}
       : "${STUDENT:?TRACK1 needs STUDENT=<a V7 snapshot>}" ;;
-  COMBO1|COMBO1b|COMBO2|COMBO3|COMBO4) export BANK=data/furniture/tablegap_v1 POWER=-0.02 HAND_FAR="0.20 0.40" RETREAT_SUCCESS=0.15 TABLE_POWER=-0.02 \
+  COMBO1|COMBO1b|COMBO2|COMBO3|COMBO4|COMBO5) export BANK=data/furniture/tablegap$([ "$VARIANT" = COMBO5 ] && echo _bb)_v1 POWER=-0.02 HAND_FAR="0.20 0.40" RETREAT_SUCCESS=0.15 TABLE_POWER=-0.02 \
         GLOBAL_POWER=-0.01 TABLE_PROGRESS=1 MASSES="0.15 0.35 0.08 0.14 0.12 0.03 0.25 0.03" REACTIVE_SHARE=0.3 RAISED=0.3 \
         ROUTE_FILE=hpc/route_anchor_no_reactive_no_tables_v2.json SNAPSHOT_EVERY=50 OPERATOR_SPEED="0.1 0.6" REST_STARTS=0.25 \
         OPERATOR_V3=1 OPERATOR_V4=1 OPERATOR_V5=1 OPERATOR_V6=1 OVERSPEED=-30 PASSAGE_PROGRESS=1 \
-        GOAL_SEED_CACHE=${GOAL_SEED_CACHE:-data/furniture/tablegap_v1_goal_column} GOAL_GROUND=1 \
+        GOAL_SEED_CACHE=${GOAL_SEED_CACHE:-data/furniture/tablegap$([ "$VARIANT" = COMBO5 ] && echo _bb)_v1_goal_column} GOAL_GROUND=1 \
         TRACKER=1 TRACKER_MIX=${TRACKER_MIX:-plan=0.5,field=0.15,random=0.1,none=0.25} \
         WARMUP=${WARMUP:-$([ "$VARIANT" = COMBO1 ] && echo 50 || ([ "$VARIANT" = COMBO4 ] && echo 20 || echo 10))} \
-        TRACKER_COMMIT=$([ "$VARIANT" = COMBO2 ] || [ "$VARIANT" = COMBO3 ] || [ "$VARIANT" = COMBO4 ] && echo 1) \
-        TRACKER_CONTINUITY=$([ "$VARIANT" = COMBO4 ] && echo 0.5) TRACKER_ROUTE_GO=$([ "$VARIANT" = COMBO4 ] && echo 1) \
+        TRACKER_COMMIT=$([ "$VARIANT" = COMBO2 ] || [ "$VARIANT" = COMBO3 ] || [ "$VARIANT" = COMBO4 ] || [ "$VARIANT" = COMBO5 ] && echo 1) \
+        TRACKER_CONTINUITY=$([ "$VARIANT" = COMBO4 ] || [ "$VARIANT" = COMBO5 ] && echo 0.5) \
+        TRACKER_ROUTE_GO=$([ "$VARIANT" = COMBO4 ] || [ "$VARIANT" = COMBO5 ] && echo 1) \
+        HEIGHT_CURRICULUM=$([ "$VARIANT" = COMBO5 ] && echo "0.5 300") \
         FAR_THREAT_ONLY=$([ "$VARIANT" = COMBO3 ] && echo 1) \
         TRACKER_PLANNER=${PLANNER:-$L/runs/wbp/planner_v1/train/planner.pt} TRACKER_HOLD_PLAN=${HOLD_PLAN:-0.5} TRACKER_REFLEX=1 \
         ANCHOR=${ANCHOR:-$L/checkpoints/stationary_hands_E2_u300.pt}

@@ -52,7 +52,7 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
                      heading_track_weight=None,upright_roll=None,body_motion_weight=None,style_free_near_obstacles=None,
                      keyboard_v10=None,hand_clearance_tight=None,teleop_progress_weight=None,teleop_stall_weight=None,
                      teleop_cat_fraction=None,heading_lookaheads=None,heading_blocking_probes=None,sideways_bonus_weight=None,
-                     side_gap_curriculum=None,teleop_side_prob=None,hand_tight_walls_only=None,side_gap_tumbling=None,
+                     side_gap_curriculum=None,height_curriculum=None,teleop_side_prob=None,hand_tight_walls_only=None,side_gap_tumbling=None,
                      sideways_bonus_progress=None,contact_penalty=None,stall_weight=None,goal_progress_weight=None,
                      goal_bonus_weight=None,timeout_failure=None,reward_group_room=None,commanded_blocking_map=None,
                      hand_tight_cat_only=None,sgs=None,robustness=None,upper_target_average=None,
@@ -336,6 +336,10 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
         scales['sideways_bonus']=_signed('sideways_bonus_weight',sideways_bonus_weight,positive=True)
     if side_gap_curriculum:
         config['side_gap_curriculum']=dict(thresholds=[.50,.42,.36,0.],advance=.30,window=300,sideways_starts=[.5,.35,.2,.1])
+    if height_curriculum:
+        advance,window=(float(v) for v in height_curriculum)
+        if not (0.<advance<=1. and window>=1):raise ValueError('height_curriculum needs ADVANCE in (0, 1] and WINDOW >= 1')
+        config['height_curriculum']=dict(advance=advance,window=int(window))
     if sideways_bonus_progress is not None:
         if 'sideways_bonus' not in scales:raise ValueError('sideways_bonus_progress requires sideways_bonus_weight')
         if not sideways_bonus_progress>0:raise ValueError('sideways_bonus_progress must be > 0 (m/s for the full bonus)')

@@ -305,6 +305,7 @@ class CATTask:
         else:
             config.pop('hand_raised_reset_certificate',None)
         self._init_side_gap_curriculum()
+        self._init_height_curriculum()
         self._init_sgs()
         self.robust=self.config.get('robustness');self._robust_steps=0
         # Upper-body motors (12-28) track the mean of the last two upper targets: removes the 25 Hz component of any
@@ -425,6 +426,32 @@ class CATTask:
         self.side_placed=torch.zeros(self.num_envs,dtype=torch.bool,device=self.device)
         self.probabilities=self.bank.probabilities(self.bank.weights*(self.bank.weights>0)*((self.side_levels<0)|(self.side_levels<=0)),
                                                    stage=self.curriculum_stage)
+
+    def _init_height_curriculum(self):
+        """config 'height_curriculum' (scripts/generate_beam_bars.py scenes, source kind 'beam-bar'): per scene its
+        difficulty level, 0 (a beam at 1.40 m, a 3 cm bar) to 7 (0.90 m, 0.19 m); stage s samples levels <= s and
+        advances when >= advance of >= window resolved episodes at level s are clean goals (judged per block of window
+        episodes). Other scenes: level -1, always sampled. The training simulator has no obstacle contact forces, so
+        contact stays terminal here: the curriculum, not soft contact, makes the passes learnable."""
+        hc=self.config.get('height_curriculum')
+        if not hc:
+            self.height_levels=None;return
+        levels=[int(((r.get('source') or {}).get('beam_bar') or {}).get('level',-1))
+                if (r.get('source') or {}).get('kind')=='beam-bar' else -1 for r in self.bank.manifest['scenes']]
+        if max(levels)<0:raise ValueError('height_curriculum needs beam-bar scenes in the bank (scripts/generate_beam_bars.py)')
+        self.height_levels=torch.as_tensor(levels,dtype=torch.long,device=self.device)
+        self.height_stage=int(hc.get('start',0));self.height_counts=[0,0]
+        self.probabilities=self.bank.probabilities(self.bank.weights*(self.bank.weights>0)*self._curriculum_mask(),
+                                                   stage=self.curriculum_stage)
+
+    def _curriculum_mask(self):
+        """1 for scenes the side-gap and height curricula currently allow (levels <= their stages, or no level)."""
+        mask=torch.ones(self.bank.count,device=self.device)
+        if getattr(self,'side_levels',None) is not None:
+            mask=mask*((self.side_levels<0)|(self.side_levels<=self.side_stage)).float()
+        if getattr(self,'height_levels',None) is not None:
+            mask=mask*((self.height_levels<0)|(self.height_levels<=self.height_stage)).float()
+        return mask
 
     def _blocking(self):
         """Lazily built 2-D blocking footprint of every scene (cat_mjlab/blocking.py)."""
@@ -1610,6 +1637,8 @@ class CATTask:
             telemetry['hand_room_scale']=room_scale[:,0]
         if getattr(self,'side_levels',None) is not None:
             telemetry['side_gap_stage']=torch.full_like(rewards['wholebody_arm_clearance'],float(self.side_stage))
+        if getattr(self,'height_levels',None) is not None:
+            telemetry['height_stage']=torch.full_like(rewards['wholebody_arm_clearance'],float(self.height_stage))
             telemetry['side_gap_sideways_start']=(self.side_placed&(self.side_levels[self.scene_ids]>=0)).float()
         if self.stabilization:rewards.update(costs)
         scales=_get(self.config,'reward_config.scales',{})
@@ -2007,7 +2036,19 @@ class CATTask:
             if advance:
                 self.side_stage+=1;self.side_counts=[0,0]
                 self.probabilities=self.bank.probabilities(torch.ones_like(self.scene_success_ema)*(self.bank.weights>0)*
-                    ((self.side_levels<0)|(self.side_levels<=self.side_stage)),stage=self.curriculum_stage)
+                    self._curriculum_mask(),stage=self.curriculum_stage)
+        if getattr(self,'height_levels',None) is not None:
+            levels=self.height_levels[self.scene_ids];current=(levels>=0)&(levels==self.height_stage)
+            self.height_counts[0]+=int((resolved&current).sum());self.height_counts[1]+=int((successful&current).sum())
+            hc=self.config['height_curriculum']
+            advance=(self.height_stage<int(self.height_levels.max())) and self.height_counts[0]>=int(hc['window']) and \
+                self.height_counts[1]>=float(hc['advance'])*self.height_counts[0]
+            if self.height_counts[0]>=int(hc['window']) and not advance:
+                self.height_counts=[0,0]    # judge each block of `window` episodes on its own
+            if advance:
+                self.height_stage+=1;self.height_counts=[0,0]
+                self.probabilities=self.bank.probabilities(torch.ones_like(self.scene_success_ema)*(self.bank.weights>0)*
+                    self._curriculum_mask(),stage=self.curriculum_stage)
         posture_success=successful
         if self.hand_contrast:
             c=self.contrast;t=self.telemetry
@@ -2087,8 +2128,7 @@ class CATTask:
         self.scene_episode_ema=decay*self.scene_episode_ema+counts;self.scene_success_ema=decay*self.scene_success_ema+goals
         rates=self.scene_success_ema/(self.scene_episode_ema+1e-6)
         weights=((1-rates)**alpha).clamp_min(1e-3)*(self.bank.weights>0)
-        if getattr(self,'side_levels',None) is not None:
-            weights=weights*((self.side_levels<0)|(self.side_levels<=self.side_stage))
+        weights=weights*self._curriculum_mask()
         self.probabilities=self.bank.probabilities(weights,stage=self.curriculum_stage)
         return resolved,successful
 
@@ -2344,7 +2384,7 @@ class CATTask:
                 metrics[key] = self.telemetry[key].clone()
             for key in ('self_clearance_min_m', 'self_clearance_violation', 'crouch_required', 'torso_pitch_abs',
                         'hand_contact_trunk', 'hand_contact_head', 'hand_contact_arm', 'hand_contact_hand',
-                        'heading_gate', 'heading_error_abs', 'hand_room_scale', 'side_gap_stage', 'side_gap_sideways_start',
+                        'heading_gate', 'heading_error_abs', 'hand_room_scale', 'side_gap_stage', 'height_stage', 'side_gap_sideways_start',
                         'reactive_power_w', 'reactive_standing', 'reactive_end_lift', 'reactive_end_slide', 'reactive_end_drift',
                         'reactive_violation', 'reactive_settled', 'reactive_feet_moved_m', 'table_walking', 'table_sideways',
                         'table_zone', 'table_cross_track_m', 'table_power_w', 'energy_power_w', 'energy_priced_w', 'passage_stalled',

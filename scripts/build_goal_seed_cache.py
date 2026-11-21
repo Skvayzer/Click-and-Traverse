@@ -47,6 +47,7 @@ def main(argv=None):
     p.add_argument('--bank', required=True, help='bank prefix (uses <bank>_packed/manifest.json)')
     p.add_argument('--out', required=True)
     p.add_argument('--workers', type=int, default=8)
+    p.add_argument('--reuse', help='an existing cache whose scenes (same id, same packed gf input) are hard-linked, not recomputed')
     args = p.parse_args(argv)
     from cat_ppo.furniture.generalist_fields import load_generalist_manifest, scene_directory
     from cat_mjlab.goal_seed import SCHEMA, SEED_RADIUS, COLUMN_Z, R_PROJ_CELLS
@@ -55,6 +56,34 @@ def main(argv=None):
     records = manifest['scenes']; out = Path(args.out); out.mkdir(parents=True, exist_ok=True)
     jobs = [(str(scene_directory(manifest, path, r)), r, str(out)) for r in records]
     start = time.time(); scenes = {}; kept = []
+    if args.reuse:
+        import os, shutil
+        from cat_mjlab.goal_seed import _sha256
+        old = Path(args.reuse); old_meta = json.loads((old / 'cache.json').read_text())
+        if old_meta.get('schema') != SCHEMA or old_meta.get('seed_radius_m') != SEED_RADIUS or \
+                list(old_meta.get('column_z_m', [])) != list(COLUMN_Z) or old_meta.get('r_proj_cells') != R_PROJ_CELLS:
+            raise ValueError('the reused cache was built with other parameters')
+        todo = []
+        for job in jobs:
+            # scenes inherited from the reused cache's bank are the same records (an extended bank copies them)
+            sid = job[1]['scene_id']
+            if sid not in old_meta['scenes']:
+                todo.append(job); continue
+            target = out / sid; target.mkdir(parents=True, exist_ok=True)
+            for name in ('gf.npy', 'gf_valid.npy'):
+                if (old / sid / name).exists():
+                    try:
+                        os.link(old / sid / name, target / name)
+                    except OSError:
+                        shutil.copy2(old / sid / name, target / name)
+            entry = dict(old_meta['scenes'][sid])
+            if _sha256(target / 'gf.npy') != entry['gf_sha256']:
+                raise ValueError(f'reused gf of {sid} does not match its recorded hash')
+            scenes[sid] = entry
+            if sid in old_meta.get('kept_ball', []):
+                kept.append(sid)
+        print(f'reused {len(scenes)} scenes from {old}, computing {len(todo)}', flush=True)
+        jobs = todo
     with ProcessPoolExecutor(args.workers) as pool:
         for k, (scene_id, entry, was_kept) in enumerate(pool.map(_one, jobs, chunksize=4)):
             scenes[scene_id] = entry
