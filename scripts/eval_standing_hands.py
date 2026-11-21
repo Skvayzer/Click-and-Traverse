@@ -27,12 +27,25 @@ GROUPS = dict(legs=slice(0, 12), waist=slice(12, 15), arms=slice(15, 29))
 BUCKETS = ('danger', 'anticipation', 'negative')
 
 
-def build(checkpoint, rows, device, robust, hold_plan=None, bank=None):
+def build(checkpoint, rows, device, robust, hold_plan=None, bank=None, env_from=None):
     from cat_mjlab.runner import create_task
     from record_mjlab_rollout import load_policy
-    learner, saved = load_policy(checkpoint, device=device, policy_id=0)
+    archive = str(checkpoint).endswith('.npz')
+    if archive:
+        # A released-CAT array archive: the task comes from env_from, built on the archive's native 222/310 inputs.
+        if env_from is None:
+            raise ValueError('an .npz policy needs --env-from <a .pt checkpoint>')
+        from cat_mjlab.learning import Learner, LearnerConfig
+        from cat_mjlab.conversion import load_array_archive
+        learner = Learner(LearnerConfig(algorithm='ppo'), device=device)
+        load_array_archive(learner, checkpoint, restore_optimizer=False)
+        _, saved = load_policy(env_from, device='cpu', policy_id=0)
+    else:
+        learner, saved = load_policy(checkpoint, device=device, policy_id=0)
     contract = saved['contract']
     env = copy.deepcopy(contract['environment_config'])
+    if archive:
+        env['sdf_rate_obs'] = False; env.pop('tracker', None)
     for key in ('sgs', 'reactive_stationary', 'reactive_retreat_success_m', 'reactive_hand_clearance'):
         env.pop(key, None)                       # same event definition (5 cm retreat) for every policy
     env['reactive_spot_radius'] = .3
@@ -61,8 +74,8 @@ def build(checkpoint, rows, device, robust, hold_plan=None, bank=None):
 
 
 @torch.no_grad()
-def evaluate(checkpoint, rows, steps, device, robust, hold_plan=None, bank=None):
-    learner, task = build(checkpoint, rows, device, robust, hold_plan, bank)
+def evaluate(checkpoint, rows, steps, device, robust, hold_plan=None, bank=None, env_from=None):
+    learner, task = build(checkpoint, rows, device, robust, hold_plan, bank, env_from)
     obj = task.reactive_objects
     task.reset()
     n = len(rows)
@@ -147,13 +160,14 @@ def main():
     p.add_argument('--device', default='cuda:0')
     p.add_argument('--robust', action='store_true', help='keep the checkpoint\'s training randomisation and pushes')
     p.add_argument('--bank', help='static scene bank (default: tablegap_v1 for checkpoints with a goal-seed cache, else sidegap_v2)')
+    p.add_argument('--env-from', help='a .pt checkpoint whose task configuration an .npz (released CAT) policy runs in')
     p.add_argument('--hold-plan', type=float, help='tracker checkpoints: share of episodes on a stand-still plan (1 = all)')
     p.add_argument('--out', type=Path)
     a = p.parse_args()
     rows = list(range(*(int(x) for x in a.rows.split(':'))))
     results = []
     for checkpoint in a.checkpoint:
-        r = evaluate(checkpoint, rows, a.steps, a.device, a.robust, a.hold_plan, a.bank)
+        r = evaluate(checkpoint, rows, a.steps, a.device, a.robust, a.hold_plan, a.bank, a.env_from)
         print(json.dumps(r), flush=True)
         results.append(r)
     if a.out:
