@@ -58,7 +58,7 @@ def main():
     p.add_argument("--tracker-hold-plan", type=float, help="Override the share of reactive standing worlds on a stand-still plan")
     p.add_argument("--tracker-fallback", type=float, nargs=2, metavar=("STALL_S", "HOLD_S"),
                    help="The monitor's stall rule: a plan world without progress along its route for STALL_S s acts without "
-                        "its plan for HOLD_S s, then replans
+                        "its plan for HOLD_S s, then replans")
     p.add_argument("--out", type=Path)
     p.add_argument("--out-dir", type=Path)
     args = p.parse_args()
