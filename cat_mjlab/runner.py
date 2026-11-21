@@ -704,7 +704,7 @@ TELEMETRY_MEANS = ('self_clearance_min_m', 'self_clearance_violation', 'crouch_r
                    'track_error_m', 'track_valid', 'track_lost', 'track_plan', 'track_released', 'track_fallback',
                    'plan_clear_m', 'plan_sideways', 'plan_replans', 'plan_worlds', 'plan_continued',
                    'hand_contact_trunk', 'hand_contact_head', 'hand_contact_arm', 'hand_contact_hand',
-                   'heading_gate', 'heading_error_abs', 'hand_room_scale', 'side_gap_stage', 'height_stage', 'gait_frequency_hz', 'side_gap_sideways_start',
+                   'heading_gate', 'heading_error_abs', 'hand_room_scale', 'side_gap_stage', 'height_stage', 'gait_frequency_hz', 'plan_crouch', 'side_gap_sideways_start',
                    'sgs_config_p', 'reactive_power_w', 'reactive_standing', 'reactive_end_lift', 'reactive_end_slide',
                    'reactive_end_drift', 'reactive_violation', 'reactive_settled', 'reactive_feet_moved_m', 'table_walking',
                    'table_sideways', 'table_zone', 'table_cross_track_m', 'table_power_w', 'energy_power_w', 'energy_priced_w',
@@ -919,6 +919,8 @@ def tracker_spec(args):
         spec['continuity'] = dict(reanchor=float(args.tracker_continuity))
     if getattr(args, 'tracker_route_go', False):
         spec['route_go'] = True
+    if getattr(args, 'tracker_crouch_gate', None) is not None:
+        spec['crouch_gate'] = float(args.tracker_crouch_gate)
     return spec
 
 

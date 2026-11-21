@@ -502,6 +502,10 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
         if spec.get('route_go'):
             if not spec.get('planner'):raise ValueError('tracker route_go needs a planner')
             config['tracker']['route_go']=True
+        if spec.get('crouch_gate') is not None:
+            # posture bonuses off while the plan crouches below this pelvis height (m)
+            if not spec.get('planner'):raise ValueError('tracker crouch_gate needs a planner')
+            config['plan_crouch_gate']=float(spec['crouch_gate'])
         if spec.get('reflex') is not None and spec.get('reflex') is not False:
             # {} (the --tracker-reflex flag) means the default bands; an empty dict is falsy, so test for presence
             reflex=dict(spec['reflex']) if isinstance(spec['reflex'],dict) else {}

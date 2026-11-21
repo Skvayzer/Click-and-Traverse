@@ -296,6 +296,8 @@ class ComboConfigTest(unittest.TestCase):
         args.tracker_continuity, args.tracker_route_go = 0.5, True
         tc4 = wholebody_config(tracker=tracker_spec(args), operator_speed=(0.1, 0.6))['tracker']
         self.assertEqual(tc4['continuity'], dict(reanchor=.5)); self.assertTrue(tc4['route_go'])
+        args.tracker_crouch_gate = .70
+        self.assertEqual(wholebody_config(tracker=tracker_spec(args), operator_speed=(0.1, 0.6))['plan_crouch_gate'], .70)
 
 
 class PrecisionConfigTest(unittest.TestCase):

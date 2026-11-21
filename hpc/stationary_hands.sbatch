@@ -82,7 +82,10 @@
 #          COMBO5: GAIT1 (cadence already ramped in, so no ramp) + the beam/bar height curriculum (bank tablegap_bb_v1 = tablegap_v1 + 600 procedural beam and bar
 #              scenes in 8 levels, scripts/generate_beam_bars.py; --height-curriculum 0.5 300: stage s samples levels <= s
 #              and advances at 50% clean of 300 level-s episodes). Contact stays terminal (no obstacle forces in training).
-#              No policy in the line passed CAT beams or bars cleanly (0-25%). STUDENT = a GAIT1 snapshot
+#              No policy in the line passed CAT beams or bars cleanly (0-25%). Plans that crouch now switch off upright
+#              and stand_tall (--tracker-crouch-gate 0.70) and height tracking pays 3 instead of 1: in COMBO2 u500's beam
+#              courses 53-98% of the plans crouched to 0.42-0.44 m, the robot never went below 0.77 m.
+#              STUDENT = a GAIT1 snapshot
 #          COMBO3: COMBO2 + protection precision (--reactive-far-threat-only: the far retreat target only for threatening
 #              objects; after the far stages the robot flinched at ~90% of pass-by objects). STUDENT = a COMBO2 snapshot
 #          E1np / E1nc: RQ2 ablations of E1 -- without the anti-refusal terms (np) / without the width curriculum, on the
@@ -249,6 +252,7 @@ case $VARIANT in
         HEADING_TRACK=$([ "$VARIANT" = GAIT1 ] || [ "$VARIANT" = COMBO5 ] && echo 1.5 || echo 0.4) \
         HIP_DEVIATION=$([ "$VARIANT" = GAIT1 ] || [ "$VARIANT" = COMBO5 ] && echo -1) \
         LIPSCHITZ=$([ "$VARIANT" = GAIT1 ] || [ "$VARIANT" = COMBO5 ] && echo 0.002) \
+        CROUCH_GATE=$([ "$VARIANT" = COMBO5 ] && echo 0.70) TRACKER_SCALES=$([ "$VARIANT" = COMBO5 ] && echo "track_height=3") \
         HEIGHT_CURRICULUM=$([ "$VARIANT" = COMBO5 ] && echo "0.5 300") \
         FAR_THREAT_ONLY=$([ "$VARIANT" = COMBO3 ] && echo 1) \
         TRACKER_PLANNER=${PLANNER:-$L/runs/wbp/planner_v1/train/planner.pt} TRACKER_HOLD_PLAN=${HOLD_PLAN:-0.5} TRACKER_REFLEX=1 \

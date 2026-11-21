@@ -1876,6 +1876,16 @@ class CATTask:
             terms,crouch=tm.posture_terms(i['torso_rpy'][:,1],i['positions'][:,0,2],i['gf'][:,0],i['sdf'][:,0].reshape(-1),i['torso_angvel'],
                 head_target=float(_get(self.config,'posture_head_target',1.20)),crouch_near=float(near) if near else None,
                 torso_roll=i['torso_rpy'][:,0] if self.config.get('upright_roll') else None)
+            gate=self.config.get('plan_crouch_gate')
+            if gate is not None and self.tracker is not None and bool(self.tracker.is_plan.any()):
+                # The plan says crouch (pelvis 0.3 s ahead below the gate height): standing tall and upright stop
+                # paying, as they do when the head field points down. Measured on COMBO2 u500 in two beam courses:
+                # 53-98% of the plans lowered the pelvis to 0.42-0.44 m, the robot never went below 0.77 m.
+                t=self.tracker;z_ahead=t.plan_at(self.all_ids,t.plan_t+.3)[2]
+                plan_crouch=t.is_plan&t.has_plan&t.valid&(z_ahead<float(gate))
+                for k in ('upright','stand_tall'):
+                    if k in terms:terms[k]=terms[k]*(~plan_crouch).float()
+                crouch=crouch|plan_crouch;telemetry['plan_crouch']=plan_crouch.float()
             rewards.update({k:v for k,v in terms.items() if k in scales})
             telemetry['crouch_required']=crouch.float();telemetry['torso_pitch_abs']=i['torso_rpy'][:,1].abs()
         if self.hand_contrast:
@@ -2411,7 +2421,7 @@ class CATTask:
                 metrics[key] = self.telemetry[key].clone()
             for key in ('self_clearance_min_m', 'self_clearance_violation', 'crouch_required', 'torso_pitch_abs',
                         'hand_contact_trunk', 'hand_contact_head', 'hand_contact_arm', 'hand_contact_hand',
-                        'heading_gate', 'heading_error_abs', 'hand_room_scale', 'side_gap_stage', 'height_stage', 'gait_frequency_hz', 'side_gap_sideways_start',
+                        'heading_gate', 'heading_error_abs', 'hand_room_scale', 'side_gap_stage', 'height_stage', 'gait_frequency_hz', 'plan_crouch', 'side_gap_sideways_start',
                         'reactive_power_w', 'reactive_standing', 'reactive_end_lift', 'reactive_end_slide', 'reactive_end_drift',
                         'reactive_violation', 'reactive_settled', 'reactive_feet_moved_m', 'table_walking', 'table_sideways',
                         'table_zone', 'table_cross_track_m', 'table_power_w', 'energy_power_w', 'energy_priced_w', 'passage_stalled',
