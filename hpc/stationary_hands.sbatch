@@ -79,10 +79,10 @@
 #              1.3-1.5 Hz clock over 150 updates; measured before: 2.6-3.0 steps/s and 6.5-9 cm steps at 0.15 m/s),
 #              facing the travel direction (heading reward 0.4 -> 1.5, gated as before so narrow gaps may still be passed
 #              sideways), hip roll/yaw cost -1, Lipschitz gradient penalty 0.002 (LCP). STUDENT = a COMBO2 snapshot
-#          COMBO5: COMBO4 + the beam/bar height curriculum (bank tablegap_bb_v1 = tablegap_v1 + 600 procedural beam and bar
+#          COMBO5: GAIT1 (cadence already ramped in, so no ramp) + the beam/bar height curriculum (bank tablegap_bb_v1 = tablegap_v1 + 600 procedural beam and bar
 #              scenes in 8 levels, scripts/generate_beam_bars.py; --height-curriculum 0.5 300: stage s samples levels <= s
 #              and advances at 50% clean of 300 level-s episodes). Contact stays terminal (no obstacle forces in training).
-#              No policy in the line passed CAT beams or bars cleanly (0-25%). STUDENT = a COMBO4 snapshot
+#              No policy in the line passed CAT beams or bars cleanly (0-25%). STUDENT = a GAIT1 snapshot
 #          COMBO3: COMBO2 + protection precision (--reactive-far-threat-only: the far retreat target only for threatening
 #              objects; after the far stages the robot flinched at ~90% of pass-by objects). STUDENT = a COMBO2 snapshot
 #          E1np / E1nc: RQ2 ablations of E1 -- without the anti-refusal terms (np) / without the width curriculum, on the
@@ -245,8 +245,10 @@ case $VARIANT in
         TRACKER_COMMIT=$([ "$VARIANT" = COMBO2 ] || [ "$VARIANT" = COMBO3 ] || [ "$VARIANT" = COMBO4 ] || [ "$VARIANT" = COMBO5 ] || [ "$VARIANT" = GAIT1 ] && echo 1) \
         TRACKER_CONTINUITY=$([ "$VARIANT" = COMBO4 ] || [ "$VARIANT" = COMBO5 ] || [ "$VARIANT" = GAIT1 ] && echo 0.5) \
         TRACKER_ROUTE_GO=$([ "$VARIANT" = COMBO4 ] || [ "$VARIANT" = COMBO5 ] || [ "$VARIANT" = GAIT1 ] && echo 1) \
-        CADENCE=$([ "$VARIANT" = GAIT1 ] && echo "0.55 0.55 0.6 1.4 0.2 4800") HEADING_TRACK=$([ "$VARIANT" = GAIT1 ] && echo 1.5 || echo 0.4) \
-        HIP_DEVIATION=$([ "$VARIANT" = GAIT1 ] && echo -1) LIPSCHITZ=$([ "$VARIANT" = GAIT1 ] && echo 0.002) \
+        CADENCE=$([ "$VARIANT" = GAIT1 ] && echo "0.55 0.55 0.6 1.4 0.2 4800" || ([ "$VARIANT" = COMBO5 ] && echo "0.55 0.55 0.6 1.4 0.2 0")) \
+        HEADING_TRACK=$([ "$VARIANT" = GAIT1 ] || [ "$VARIANT" = COMBO5 ] && echo 1.5 || echo 0.4) \
+        HIP_DEVIATION=$([ "$VARIANT" = GAIT1 ] || [ "$VARIANT" = COMBO5 ] && echo -1) \
+        LIPSCHITZ=$([ "$VARIANT" = GAIT1 ] || [ "$VARIANT" = COMBO5 ] && echo 0.002) \
         HEIGHT_CURRICULUM=$([ "$VARIANT" = COMBO5 ] && echo "0.5 300") \
         FAR_THREAT_ONLY=$([ "$VARIANT" = COMBO3 ] && echo 1) \
         TRACKER_PLANNER=${PLANNER:-$L/runs/wbp/planner_v1/train/planner.pt} TRACKER_HOLD_PLAN=${HOLD_PLAN:-0.5} TRACKER_REFLEX=1 \
