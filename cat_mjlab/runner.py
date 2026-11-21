@@ -701,7 +701,7 @@ def environment_config_from_archive(metadata):
 GOALLESS_BUCKETS = ('reactive_standing', 'reactive_walking', 'flat_balance', 'teleop')
 # Per-step task telemetry averaged over the update: posture/* and self_clearance/*.
 TELEMETRY_MEANS = ('self_clearance_min_m', 'self_clearance_violation', 'crouch_required', 'torso_pitch_abs',
-                   'track_error_m', 'track_valid', 'track_lost', 'track_plan', 'track_released',
+                   'track_error_m', 'track_valid', 'track_lost', 'track_plan', 'track_released', 'track_fallback',
                    'plan_clear_m', 'plan_sideways', 'plan_replans', 'plan_worlds',
                    'hand_contact_trunk', 'hand_contact_head', 'hand_contact_arm', 'hand_contact_hand',
                    'heading_gate', 'heading_error_abs', 'hand_room_scale', 'side_gap_stage', 'side_gap_sideways_start',

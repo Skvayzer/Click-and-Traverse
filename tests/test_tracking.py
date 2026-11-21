@@ -181,6 +181,25 @@ class TrackingTest(unittest.TestCase):
         self.assertGreater(float(r['track_pos'][0]), .99)
         self.assertLess(float(r['track_pos'][1]), .2)
 
+    def test_fallback_drops_the_plan_after_a_stall_and_replans_later(self):
+        t = tr.ReferenceTracker(2, 'cpu', mix=(('plan', 1.),), fallback=dict(stall_s=1., hold_s=2., min_speed=.03),
+                                generator=torch.Generator().manual_seed(0))
+        ids = torch.arange(2); v = torch.full((2,), .3)
+        t.reset(ids, torch.zeros(2, 2), torch.zeros(2), sample_dir=east, op_speed=v)
+        self.straight_plan(t, ids)
+        robot = torch.zeros(2, 2)
+        for k in range(60):                                   # 1.2 s: world 0 stands, world 1 walks at 0.3 m/s
+            robot[1, 0] += .3 * .02
+            t.step(robot, .02, sample_dir=east, op_speed=v)
+            if not bool(t.valid[0]): break
+        self.assertFalse(bool(t.valid[0]))                    # world 0 lost its plan: reactive mode
+        self.assertTrue(bool(t.valid[1]))                     # the walking world keeps its plan
+        self.assertNotIn(0, t.due().tolist())                 # no replanning during the fallback
+        for _ in range(101):                                  # 2 s of fallback
+            t.step(robot, .02, sample_dir=east, op_speed=v)
+        self.assertIn(0, t.due().tolist())                    # then a fresh plan is due
+        self.assertEqual(float(t.fallback_t[0]), 0.)
+
     def test_hold_worlds_can_get_a_stand_still_plan(self):
         t = tr.ReferenceTracker(4, 'cpu', mix=(('field', 1.),), hold_plan=1., generator=torch.Generator().manual_seed(0))
         ids = torch.arange(4); hold = torch.tensor([True, False, True, False])

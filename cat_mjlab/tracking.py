@@ -28,6 +28,12 @@ The reflex rule (rewards): an arm whose hand is inside the reflex band of an obs
 out of the upper-body tracking term, and the pelvis term tolerates `deadband` m of error near obstacles; the potential-
 field and contact terms are untouched, so near obstacles the field acts and away from them the reference does.
 
+fallback (the monitor's stall rule): a plan world whose robot makes less than `min_speed` m/s of progress along the
+route for `stall_s` s while the route says go drops its plan for `hold_s` s -- the same network then acts on the
+potential field alone, as without a planner -- and replans afterwards. Measured motivation: without a plan the
+planner-reflex policy passes narrow cabinet passages as the reactive policy does (0.83 clean), with plans it refuses
+in 43% of them.
+
 commit=True (COMBO2): a plan's clock no longer waits for a lagging robot, and the deadband forgives only the sideways
 part of the pelvis error, not lag along the reference. Measured on COMBO1 in a hurdle course where it stalled for 60 s:
 replans restart the chunk at the robot and the clock waited, so the reference point stayed 4 cm away and standing still
@@ -77,7 +83,7 @@ class ReferenceTracker:
 
     def __init__(self, num_envs, device, *, mix=(('field', .5), ('random', .3), ('none', .2)), random_speed=(0., .6),
                  stop_share=.15, sideways_share=.3, crouch_share=.25, upper_share=.5, upper_amplitude=.4,
-                 upper_rate=1.0, nominal_upper=None, hold_plan=0., commit=False, generator=None):
+                 upper_rate=1.0, nominal_upper=None, hold_plan=0., commit=False, fallback=None, generator=None):
         self.n, self.device, self.generator = int(num_envs), device, generator
         names = [m[0] for m in mix]
         if not set(names) <= set(SOURCES):
@@ -91,6 +97,7 @@ class ReferenceTracker:
         self.upper_amplitude, self.upper_rate = float(upper_amplitude), float(upper_rate)
         self.hold_plan = float(hold_plan)
         self.commit = bool(commit)
+        self.fallback = dict(fallback) if fallback else None
         z = lambda *s, dtype=torch.float32: torch.zeros(s, device=device, dtype=dtype)
         self.path = z(self.n, P, 2)                     # world xy
         self.count = z(self.n, dtype=torch.long)        # valid points in path
@@ -117,6 +124,9 @@ class ReferenceTracker:
         self.has_plan = z(self.n, dtype=torch.bool)
         self.still = z(self.n, dtype=torch.bool)        # stand-still plans (reactive standing worlds)
         self.route_speed = z(self.n)                    # operator speed along the guidance path (plan goals)
+        self.stall_t = z(self.n)                        # s without progress along the route (fallback rule)
+        self.fallback_t = z(self.n)                     # s left without a plan (fallback rule)
+        self.prev_s = z(self.n)
 
     # ------------------------------------------------------------------ helpers
     def _rand(self, *shape, low=0., high=1.):
@@ -124,7 +134,8 @@ class ReferenceTracker:
 
     @property
     def valid(self):
-        return (self.source != SOURCES.index('none')) & ((self.source != SOURCES.index('plan')) | self.has_plan)
+        return ((self.source != SOURCES.index('none')) & ((self.source != SOURCES.index('plan')) | self.has_plan)
+                & (self.fallback_t <= 0))
 
     @property
     def is_plan(self):
@@ -152,7 +163,7 @@ class ReferenceTracker:
 
     def due(self):
         """Plan worlds that need a new chunk: no chunk yet, or their replan time has come."""
-        return torch.nonzero(self.is_plan & (~self.has_plan | (self.replan_in <= 0)), as_tuple=False)[:, 0]
+        return torch.nonzero(self.is_plan & (self.fallback_t <= 0) & (~self.has_plan | (self.replan_in <= 0)), as_tuple=False)[:, 0]
 
     def route_goal(self, ids, horizon):
         """The point horizon s ahead of the robot's progress along the guidance path, at the route speed: xy [n, 2],
@@ -237,6 +248,7 @@ class ReferenceTracker:
                                                    torch.full_like(source, SOURCES.index('none'))), source)
         self.source[ids] = source; self.still[ids] = still
         self.has_plan[ids] = False; self.plan_t[ids] = 0.; self.replan_in[ids] = 0.
+        self.stall_t[ids] = 0.; self.fallback_t[ids] = 0.
         self.route_speed[ids] = torch.where(still, torch.zeros_like(op_speed), op_speed)
         self.path[ids] = root_xy[:, None].expand(-1, P, -1)
         self.count[ids] = 1; self.s[ids] = 0.; self.lost[ids] = False
@@ -308,6 +320,20 @@ class ReferenceTracker:
             self.speed = torch.where(plan, length / .3, self.speed)
             along = (off * motion).sum(-1) / length.clamp_min(1e-6)
             plan_lead = torch.where(plan & self.has_plan & (length > .03), along.clamp_min(0.), plan_lead)
+        if self.fallback is not None and bool(plan.any()):
+            fb = self.fallback
+            moving = plan & ~self.still & (self.route_speed > .05)
+            progress = (self.s - self.prev_s) / dt
+            was = self.fallback_t > 0
+            stalled = moving & (progress < float(fb.get('min_speed', .03))) & ~was
+            self.stall_t = torch.where(stalled, self.stall_t + dt, torch.zeros_like(self.stall_t))
+            start = self.stall_t > float(fb.get('stall_s', 2.))
+            self.fallback_t = torch.where(start, torch.full_like(self.fallback_t, float(fb.get('hold_s', 4.))),
+                                          (self.fallback_t - dt).clamp_min(0.))
+            self.stall_t = torch.where(start, torch.zeros_like(self.stall_t), self.stall_t)
+            ended = plan & was & (self.fallback_t <= 0)
+            self.replan_in = torch.where(ended, torch.zeros_like(self.replan_in), self.replan_in)
+            self.has_plan = torch.where(start, torch.zeros_like(self.has_plan), self.has_plan)
         # upper-body reference moves toward its goal at a limited rate
         step = self.upper_rate * dt
         self.upper_ref = self.upper_ref + (self.upper_goal - self.upper_ref).clamp(-step, step)
@@ -319,6 +345,7 @@ class ReferenceTracker:
             self._redraw(due)
         # keep at least ~1.5 m of path ahead of the progress
         self._shift(ids)
+        self.prev_s = self.s.clone()            # after the shift, so progress is measured in the same frame
         reach = torch.where(plan, torch.full_like(self.s, 2.5), torch.full_like(self.s, 1.5))
         short = ((self.count - 1).float() * H - self.s) < reach
         ext_f = torch.nonzero(short & (fld | (plan & ~self.still)), as_tuple=False)[:, 0]
@@ -435,5 +462,5 @@ class ReferenceTracker:
             track_height=torch.exp(-((root_z - z_ref) / .05).square()) * self.mask_height * valid,
             track_upper=upper * self.mask_upper * valid,
         ), dict(track_error_m=d * valid, track_valid=valid, track_lost=self.lost.float(),
-                track_plan=(plan & self.has_plan).float(),
+                track_plan=(plan & self.has_plan).float(), track_fallback=(self.fallback_t > 0).float(),
                 track_released=(torch.zeros_like(d) if released is None else released.float().mean(-1)) * valid)
