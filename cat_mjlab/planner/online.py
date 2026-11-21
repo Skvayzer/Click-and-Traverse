@@ -123,7 +123,8 @@ class OnlinePlanner:
         """Chosen chunks for m worlds. goal_xy [m, 2] / goal_yaw [m]: the route point `horizon` s ahead (world);
         still [m] bool; prev_xy [m, 10, 2] / prev_yaw [m, 10]: the replaced chunk 0.1-1.0 s ahead (world), used where
         prev_ok [m].
-        Returns world-frame xy [m, 21, 2], yaw [m, 21], z [m, 21], upper [m, 21, 17], interval [m], stats."""
+        Returns world-frame xy [m, 21, 2], yaw [m, 21], z [m, 21], upper [m, 21, 17], interval [m], stats (with the
+        full body state per frame for continuing the plan: roll, pitch [m, 21], legs [m, 21, 12])."""
         m, k = len(qpos), self.samples
         origin, yaw0 = qpos[:, :2], heading_of(qpos[:, 3:7])
         c, s = yaw0.cos(), yaw0.sin()
@@ -162,8 +163,11 @@ class OnlinePlanner:
         yaw = torch.cat((yaw0[:, None], yaw0[:, None] + pick[..., 3]), 1)
         z = torch.cat((qpos[:, None, 2], pick[..., 2]), 1)
         upper = torch.cat((qpos[:, None, 19:36], pick[..., 18:35]), 1)
+        roll0, pitch0, _ = euler_zyx(qpos[:, 3:7])
+        roll = torch.cat((roll0[:, None], pick[..., 4]), 1); pitch = torch.cat((pitch0[:, None], pick[..., 5]), 1)
+        legs = torch.cat((qpos[:, None, 7:19], pick[..., 6:18]), 1)
         lo, hi = self.interval
         interval = lo + (hi - lo) * torch.rand(m, device=self.device, generator=self.generator)
         stats = dict(min_clear=sc['min_clear'][rows, best], sideways=(offset[rows, best] != 0).float(),
-                     any_clear=(sc['min_clear'].amax(-1) >= -.01).float())
+                     any_clear=(sc['min_clear'].amax(-1) >= -.01).float(), roll=roll, pitch=pitch, legs=legs)
         return xy, yaw, z, upper, interval, stats

@@ -111,8 +111,12 @@ class CATTask:
             tc=config['tracker']
             self.tracker=ReferenceTracker(self.num_envs,self.device,mix=[tuple(m) for m in tc['mix']],nominal_upper=self.nominal[12:],
                                           hold_plan=float(tc.get('hold_plan',0.)),commit=bool(tc.get('commit',False)),fallback=tc.get('fallback'),
+                                          continuity=tc.get('continuity'),
                                           generator=self.generator)
             self.track_sigma=float(tc.get('sigma',.15));self.track_field=SOURCES.index('field')
+            # COMBO4: in plan worlds the command says go whenever the route does, at the route (operator) speed, so a
+            # hesitant plan can neither stop the gait nor switch off the stall cost (which follows the command)
+            self.track_route_go=bool(tc.get('route_go',False))
             # Planner with a field reflex: planner v1 in the loop for the 'plan' source (cat_mjlab/planner/online.py),
             # and the reflex rule on the tracking terms (an arm whose hand is inside the band stops being tracked; the
             # pelvis error gets a deadband near obstacles). The potential-field and contact terms are untouched.
@@ -127,7 +131,7 @@ class CATTask:
                     interval=pc.get('interval',(.3,1.)),clear_cap=pc.get('clear_cap',.10),side_penalty=pc.get('side_penalty',.02),
                     switch_penalty=pc.get('switch_penalty',.1),seed=seed+17)
                 self.plan_clear=torch.zeros(self.num_envs,device=self.device);self.plan_side=torch.zeros_like(self.plan_clear)
-                self.plan_fresh=torch.zeros_like(self.plan_clear)
+                self.plan_fresh=torch.zeros_like(self.plan_clear);self.plan_cont=torch.zeros_like(self.plan_clear)
         # Home pose for the upper-body posture cost only (observations and the action
         # nominal are untouched, so the warm start is unaffected). The default hangs the
         # hands 3 cm from the thigh capsules; shoulder pitch -0.3 puts them 24 cm in
@@ -778,20 +782,30 @@ class CATTask:
         return d
 
     def _replan(self,ids):
-        """New planner chunks for the plan-source worlds among ids, from their measured state (cat_mjlab/planner/online.py)."""
+        """New planner chunks for the plan-source worlds among ids (cat_mjlab/planner/online.py): from the measured state,
+        or with tracker continuity (COMBO4) from the executing plan's own state at the current plan time, toward a goal
+        ahead of the plan's route progress, while the robot is within the re-anchor distance of the plan."""
         t=self.tracker
         if self.online_planner is None or len(ids)==0:return
         ids=ids[t.is_plan[ids]]
         if len(ids)==0:return
         op=self.online_planner;d=self.data
+        qpos,qvel=d.qpos[ids,:36],d.qvel[ids,:35]
+        cont=t.continuing(ids,qpos[:,:2])
         goal_xy,goal_yaw=t.route_goal(ids,op.horizon)
+        if bool(cont.any()):
+            pq,pv=t.plan_state(ids)
+            qpos=torch.where(cont[:,None],pq,qpos);qvel=torch.where(cont[:,None],pv,qvel)
+            gxy,gyaw=t.route_goal(ids,op.horizon,from_xy=pq[:,:2])
+            goal_xy=torch.where(cont[:,None],gxy,goal_xy);goal_yaw=torch.where(cont,gyaw,goal_yaw)
         prev_ok=t.has_plan[ids]
         ahead=[t.plan_at(ids,t.plan_t[ids]+.1*k) for k in range(1,11)]
         prev=torch.stack([a[0] for a in ahead],1);prev_yaw=torch.stack([a[1] for a in ahead],1)
-        xy,yaw,z,upper,interval,stats=op.plan(d.qpos[ids],d.qvel[ids],self.scene_ids[ids],self.bank,goal_xy,goal_yaw,
+        xy,yaw,z,upper,interval,stats=op.plan(qpos,qvel,self.scene_ids[ids],self.bank,goal_xy,goal_yaw,
                                               t.route_speed[ids],t.still[ids],prev_xy=prev,prev_yaw=prev_yaw,prev_ok=prev_ok)
-        t.set_plan(ids,xy,yaw,z,upper,interval)
+        t.set_plan(ids,xy,yaw,z,upper,interval,roll=stats.get('roll'),pitch=stats.get('pitch'),legs=stats.get('legs'))
         self.plan_clear[ids]=stats['min_clear'];self.plan_side[ids]=stats['sideways'];self.plan_fresh[ids]=1.
+        self.plan_cont[ids]=cont.float()
 
     def _track_command(self,command,command_delay,root_xy,odom_xy):
         """While a reference is active the operator command points at the reference 0.3 s ahead, at its speed (the
@@ -799,9 +813,23 @@ class CATTask:
         t=self.tracker;valid=t.valid
         if not bool(valid.any()):return command,command_delay
         target,_=t.targets(self.all_ids,.3)
+        if self.track_route_go:
+            far,_=t.targets(self.all_ids,1.)
+            here,_,_,_=t.plan_at(self.all_ids,t.plan_t)
+            route_dir=t._tangent(self.all_ids,t.s);route_dir=torch.stack((route_dir.cos(),route_dir.sin()),-1)
+            plan_go=t.is_plan&t.has_plan&~t.still&(t.route_speed>.05)
         def make(xy):
             d=target-xy;dist=torch.linalg.vector_norm(d,dim=-1);go=(t.speed>.05)&(dist>.05)
             v=d/dist.clamp_min(1e-6)[:,None]*(t.speed*go)[:,None]
+            if self.track_route_go:
+                # aim at the 0.3 s point, or at the 1.0 s point once the 0.3 s point is reached or passed, or along the
+                # route when the plan itself stands still; always at the route speed while the route says go
+                passed=((target-here)*(xy-target)).sum(-1)>0
+                aim=torch.where(((dist>.05)&~passed)[:,None],d,far-xy)
+                n=torch.linalg.vector_norm(aim,dim=-1)
+                aim=torch.where((n>.02)[:,None],aim/n.clamp_min(1e-6)[:,None],route_dir)
+                go=torch.where(plan_go,torch.ones_like(go),go)
+                v=torch.where(plan_go[:,None],aim*t.route_speed[:,None],v)
             return torch.cat(((go.float()*.75)[:,None],v,torch.zeros_like(dist)[:,None]),-1)
         m=valid[:,None]
         return torch.where(m,make(root_xy),command),torch.where(m,make(odom_xy),command_delay)
@@ -1577,7 +1605,7 @@ class CATTask:
             if self.online_planner is not None:
                 plan=self.tracker.is_plan.float()
                 telemetry.update(plan_clear_m=self.plan_clear*self.plan_fresh,plan_sideways=self.plan_side*self.plan_fresh,
-                                 plan_replans=self.plan_fresh.clone(),plan_worlds=plan)
+                                 plan_replans=self.plan_fresh.clone(),plan_worlds=plan,plan_continued=self.plan_cont*self.plan_fresh)
         if room_scale is not None:
             telemetry['hand_room_scale']=room_scale[:,0]
         if getattr(self,'side_levels',None) is not None:
@@ -2322,7 +2350,8 @@ class CATTask:
                         'table_zone', 'table_cross_track_m', 'table_power_w', 'energy_power_w', 'energy_priced_w', 'passage_stalled',
                         'energy_progress_mps', 'energy_go', 'op_speed', 'op_rest', 'op_anchor_free', 'op_speed_ratio',
                         'op_mean_speed_ratio', 'op_over_frac', 'track_error_m', 'track_valid', 'track_lost', 'track_plan',
-                        'track_released', 'track_fallback', 'plan_clear_m', 'plan_sideways', 'plan_replans', 'plan_worlds'):
+                        'track_released', 'track_fallback', 'plan_clear_m', 'plan_sideways', 'plan_replans', 'plan_worlds',
+                        'plan_continued'):
                 if key in self.telemetry: metrics[key] = self.telemetry[key].clone()
             metrics['contrast_role'] = self.contrast['role'].clone()
             metrics['contrast_unresolved'] = (~self.outcome_counted | resolved).clone()

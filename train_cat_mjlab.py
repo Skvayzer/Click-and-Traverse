@@ -124,6 +124,12 @@ def parser():
         target.add_argument("--tracker-commit", action="store_true",
                             help="COMBO2: plan clocks do not wait for a lagging robot and the reflex deadband forgives only "
                                  "sideways pelvis error, so stopping in front of an obstacle is no longer nearly free")
+        target.add_argument("--tracker-continuity", type=float, metavar="REANCHOR_M",
+                            help="COMBO4: replans continue the executing plan from its own state (the robot re-anchors the "
+                                 "plan only when farther than REANCHOR_M from it), so a stalled robot falls behind")
+        target.add_argument("--tracker-route-go", action="store_true",
+                            help="COMBO4: in plan worlds the command says go whenever the route does, at the route speed "
+                                 "(a hesitant plan can no longer stop the gait or switch off the stall cost)")
         target.add_argument("--tracker-reflex", action="store_true",
                             help="the reflex rule: an arm whose hand is within 15 cm of an obstacle drops out of the upper-body "
                                  "tracking term; the pelvis term tolerates up to 20 cm near obstacles")

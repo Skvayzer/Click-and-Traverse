@@ -483,6 +483,13 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
             # COMBO2: plan clocks do not wait for a lagging robot; the deadband forgives sideways error only
             if not spec.get('planner'):raise ValueError('tracker commit needs a planner')
             config['tracker']['commit']=True
+        if spec.get('continuity'):
+            # COMBO4: replans continue the executing plan; the robot re-anchors it only beyond `reanchor` m
+            if not spec.get('planner'):raise ValueError('tracker continuity needs a planner')
+            config['tracker']['continuity']=dict(reanchor=float(dict(spec['continuity']).get('reanchor',.5)))
+        if spec.get('route_go'):
+            if not spec.get('planner'):raise ValueError('tracker route_go needs a planner')
+            config['tracker']['route_go']=True
         if spec.get('reflex') is not None and spec.get('reflex') is not False:
             # {} (the --tracker-reflex flag) means the default bands; an empty dict is falsy, so test for presence
             reflex=dict(spec['reflex']) if isinstance(spec['reflex'],dict) else {}

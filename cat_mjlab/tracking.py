@@ -34,6 +34,15 @@ potential field alone, as without a planner -- and replans afterwards. Measured 
 planner-reflex policy passes narrow cabinet passages as the reactive policy does (0.83 clean), with plans it refuses
 in 43% of them.
 
+continuity (COMBO4): a replan continues the executing plan instead of restarting it at the robot. The new chunk is
+planned from the plan's own state at the current plan time (its pose, joints and velocities, see plan_state), toward a
+goal taken ahead of the plan's own route progress, and its first frame is that state. A robot that stalls therefore
+falls behind a reference that keeps moving (standing still keeps about 20% of track_pos at 0.15 m/s instead of 87-91%);
+only a robot more than `reanchor` m from the plan's current point gets a plan from its measured state. Measured
+motivation: plans for a standing robot start slowly (4 cm in their first 0.3 s against 8 cm elsewhere), and replans
+every 0.3-1.0 s restarted them at the robot, so only the slow start was ever played (HALO and PASSAGE continue the
+executing plan instead).
+
 commit=True (COMBO2): a plan's clock no longer waits for a lagging robot, and the deadband forgives only the sideways
 part of the pelvis error, not lag along the reference. Measured on COMBO1 in a hurdle course where it stalled for 60 s:
 replans restart the chunk at the robot and the clock waited, so the reference point stayed 4 cm away and standing still
@@ -83,7 +92,8 @@ class ReferenceTracker:
 
     def __init__(self, num_envs, device, *, mix=(('field', .5), ('random', .3), ('none', .2)), random_speed=(0., .6),
                  stop_share=.15, sideways_share=.3, crouch_share=.25, upper_share=.5, upper_amplitude=.4,
-                 upper_rate=1.0, nominal_upper=None, hold_plan=0., commit=False, fallback=None, generator=None):
+                 upper_rate=1.0, nominal_upper=None, hold_plan=0., commit=False, fallback=None, continuity=None,
+                 generator=None):
         self.n, self.device, self.generator = int(num_envs), device, generator
         names = [m[0] for m in mix]
         if not set(names) <= set(SOURCES):
@@ -98,6 +108,7 @@ class ReferenceTracker:
         self.hold_plan = float(hold_plan)
         self.commit = bool(commit)
         self.fallback = dict(fallback) if fallback else None
+        self.continuity = dict(continuity) if continuity else None
         z = lambda *s, dtype=torch.float32: torch.zeros(s, device=device, dtype=dtype)
         self.path = z(self.n, P, 2)                     # world xy
         self.count = z(self.n, dtype=torch.long)        # valid points in path
@@ -119,6 +130,9 @@ class ReferenceTracker:
         self.plan_yaw = z(self.n, PLAN_FRAMES)
         self.plan_z = torch.full((self.n, PLAN_FRAMES), NOMINAL_Z, device=device)
         self.plan_upper = z(self.n, PLAN_FRAMES, 17)
+        self.plan_roll, self.plan_pitch = z(self.n, PLAN_FRAMES), z(self.n, PLAN_FRAMES)
+        self.plan_legs = z(self.n, PLAN_FRAMES, 12)       # leg joints: kept only to continue the plan (never tracked)
+        self.has_full = z(self.n, dtype=torch.bool)     # the chunk carries roll, pitch and legs (continuity)
         self.plan_t = z(self.n)                         # s since the chunk started
         self.replan_in = z(self.n)                      # s until the next replan
         self.has_plan = z(self.n, dtype=torch.bool)
@@ -152,12 +166,17 @@ class ReferenceTracker:
         y0, y1 = self.plan_yaw[ids, k0], self.plan_yaw[ids, k0 + 1]
         return lerp(self.plan_xy), y0 + a * wrap(y1 - y0), lerp(self.plan_z), lerp(self.plan_upper)
 
-    def set_plan(self, ids, xy, yaw, z, upper, interval):
+    def set_plan(self, ids, xy, yaw, z, upper, interval, roll=None, pitch=None, legs=None):
         """A new chunk for worlds ids (world frame, PLAN_FRAMES frames from now): xy [m, F, 2], yaw/z [m, F],
-        upper [m, F, 17]; the next replan comes after interval [m] s."""
+        upper [m, F, 17]; the next replan comes after interval [m] s. roll/pitch [m, F] and legs [m, F, 12] complete the
+        body state so that a later replan can continue the plan (continuity)."""
         if len(ids) == 0:
             return
         self.plan_xy[ids], self.plan_yaw[ids], self.plan_z[ids], self.plan_upper[ids] = xy, yaw, z, upper
+        full = roll is not None and pitch is not None and legs is not None
+        if full:
+            self.plan_roll[ids], self.plan_pitch[ids], self.plan_legs[ids] = roll, pitch, legs
+        self.has_full[ids] = full
         self.plan_t[ids] = 0.; self.replan_in[ids] = interval; self.has_plan[ids] = True
         self.mask_heading[ids] = 1.; self.mask_height[ids] = 1.; self.mask_upper[ids] = 1.
 
@@ -165,11 +184,52 @@ class ReferenceTracker:
         """Plan worlds that need a new chunk: no chunk yet, or their replan time has come."""
         return torch.nonzero(self.is_plan & (self.fallback_t <= 0) & (~self.has_plan | (self.replan_in <= 0)), as_tuple=False)[:, 0]
 
-    def route_goal(self, ids, horizon):
-        """The point horizon s ahead of the robot's progress along the guidance path, at the route speed: xy [n, 2],
-        path heading there [n]. Stand-still worlds should ignore it."""
-        s = self.s[ids] + self.route_speed[ids] * horizon
+    def route_goal(self, ids, horizon, from_xy=None):
+        """The point horizon s ahead of the robot's progress along the guidance path (or, with from_xy [n, 2], of that
+        point's progress), at the route speed: xy [n, 2], path heading there [n]. Stand-still worlds should ignore it."""
+        s0 = self.s[ids] if from_xy is None else self.project(ids, from_xy)[0]
+        s = s0 + self.route_speed[ids] * horizon
         return self._point(ids, s), self._tangent(ids, s)
+
+    def _interp(self, x, ids, t):
+        """Frame-interpolated value of a plan buffer x [n, F, ...] at plan time t [m] for worlds ids."""
+        u = (t / PLAN_DT).clamp(0., PLAN_FRAMES - 1.)
+        k0 = u.floor().long().clamp_max(PLAN_FRAMES - 2); a = u - k0.float()
+        x0, x1 = x[ids, k0], x[ids, k0 + 1]
+        return x0 + a.reshape(-1, *([1] * (x0.dim() - 1))) * (x1 - x0)
+
+    def continuing(self, ids, root_xy):
+        """Worlds among ids whose next chunk continues the executing plan: plan source with a full chunk, and the robot
+        within `reanchor` m of the plan's current point (otherwise the plan restarts from the robot)."""
+        if self.continuity is None or len(ids) == 0:
+            return torch.zeros(len(ids), dtype=torch.bool, device=self.device)
+        here = self.plan_at(ids, self.plan_t[ids])[0]
+        near = torch.linalg.vector_norm(root_xy - here, dim=-1) < float(self.continuity.get('reanchor', .5))
+        return self.is_plan[ids] & self.has_plan[ids] & self.has_full[ids] & near
+
+    def plan_state(self, ids):
+        """The executing plan's state at the current plan time as MuJoCo-style qpos [m, 36] and qvel [m, 35] (free root:
+        world position, quaternion w-x-y-z, world linear velocity, body angular velocity), velocities by finite
+        difference over the next 0.1 s of the chunk. Leg joints come first, then the 17 upper-body joints."""
+        t0 = self.plan_t[ids]
+        t1 = (t0 + PLAN_DT).clamp_max((PLAN_FRAMES - 1) * PLAN_DT)
+        t0 = torch.minimum(t0, t1 - 1e-3)
+        dt = (t1 - t0).clamp_min(1e-3)
+        def at(t):
+            xy, yaw, zz, up = self.plan_at(ids, t)
+            return xy, yaw, zz, self._interp(self.plan_roll, ids, t), self._interp(self.plan_pitch, ids, t), \
+                torch.cat((self._interp(self.plan_legs, ids, t), up), -1)
+        xy0, y0, z0, r0, p0, q0 = at(t0)
+        xy1, y1, z1, r1, p1, q1 = at(t1)
+        cy, sy, cp, sp, cr, sr = (torch.cos(y0 / 2), torch.sin(y0 / 2), torch.cos(p0 / 2), torch.sin(p0 / 2),
+                                  torch.cos(r0 / 2), torch.sin(r0 / 2))
+        quat = torch.stack((cr * cp * cy + sr * sp * sy, sr * cp * cy - cr * sp * sy,
+                            cr * sp * cy + sr * cp * sy, cr * cp * sy - sr * sp * cy), -1)
+        qpos = torch.cat((xy0, z0[:, None], quat, q0), -1)
+        lin = torch.cat(((xy1 - xy0) / dt[:, None], ((z1 - z0) / dt)[:, None]), -1)
+        ang = torch.stack(((r1 - r0) / dt, (p1 - p0) / dt, wrap(y1 - y0) / dt), -1)
+        qvel = torch.cat((lin, ang, (q1 - q0) / dt[:, None]), -1)
+        return qpos, qvel
 
     def _point(self, ids, s):
         """Path point at arc length s [n] (linear interpolation, clamped to the last valid point)."""
@@ -247,7 +307,7 @@ class ReferenceTracker:
             source = torch.where(hold, torch.where(still, torch.full_like(source, SOURCES.index('plan')),
                                                    torch.full_like(source, SOURCES.index('none'))), source)
         self.source[ids] = source; self.still[ids] = still
-        self.has_plan[ids] = False; self.plan_t[ids] = 0.; self.replan_in[ids] = 0.
+        self.has_plan[ids] = False; self.has_full[ids] = False; self.plan_t[ids] = 0.; self.replan_in[ids] = 0.
         self.stall_t[ids] = 0.; self.fallback_t[ids] = 0.
         self.route_speed[ids] = torch.where(still, torch.zeros_like(op_speed), op_speed)
         self.path[ids] = root_xy[:, None].expand(-1, P, -1)

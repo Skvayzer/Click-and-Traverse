@@ -98,6 +98,38 @@ class TrackingTest(unittest.TestCase):
         upper = (t.nominal_upper + .3)[None, None].expand(len(ids), tr.PLAN_FRAMES, 17).clone()
         t.set_plan(ids, xy, yaws, z, upper, torch.full((len(ids),), .5))
 
+    def test_continuity_state_matches_the_executing_plan(self):
+        from cat_mjlab.planner.data import euler_zyx
+        t = tr.ReferenceTracker(2, 'cpu', mix=(('plan', 1.),), continuity=dict(reanchor=.5),
+                                generator=torch.Generator().manual_seed(0))
+        ids = torch.arange(2)
+        t.reset(ids, torch.zeros(2, 2), torch.zeros(2), sample_dir=east, op_speed=torch.full((2,), .3))
+        k = torch.arange(tr.PLAN_FRAMES, dtype=torch.float32)
+        xy = torch.stack((k * .02, torch.zeros_like(k)), -1)[None].repeat(2, 1, 1)      # 0.2 m/s along +x
+        yaw = torch.full((2, tr.PLAN_FRAMES), .3); z = torch.full((2, tr.PLAN_FRAMES), .74)
+        upper = (k[:, None] * .01).expand(-1, 17)[None].repeat(2, 1, 1)
+        roll, pitch = torch.full((2, tr.PLAN_FRAMES), .05), torch.full((2, tr.PLAN_FRAMES), -.03)
+        legs = (k[:, None] * .02).expand(-1, 12)[None].repeat(2, 1, 1)
+        t.set_plan(ids, xy, yaw, z, upper, torch.full((2,), .5), roll=roll, pitch=pitch, legs=legs)
+        t.set_plan(ids[1:], xy[1:], yaw[1:], z[1:], upper[1:], torch.full((1,), .5))   # world 1: no full state
+        t.plan_t[:] = .25
+        qpos, qvel = t.plan_state(ids[:1])
+        self.assertTrue(torch.allclose(qpos[0, :3], torch.tensor([.05, 0., .74]), atol=1e-5))
+        r, p_, y = euler_zyx(qpos[:, 3:7])
+        self.assertAlmostEqual(float(r), .05, places=4); self.assertAlmostEqual(float(p_), -.03, places=4)
+        self.assertAlmostEqual(float(y), .3, places=4)
+        self.assertTrue(torch.allclose(qpos[0, 7:19], torch.full((12,), .05), atol=1e-5))   # legs at frame 2.5
+        self.assertTrue(torch.allclose(qpos[0, 19:36], torch.full((17,), .025), atol=1e-5))
+        self.assertTrue(torch.allclose(qvel[0, :3], torch.tensor([.2, 0., 0.]), atol=1e-4))
+        self.assertTrue(torch.allclose(qvel[0, 6:18], torch.full((12,), .2), atol=1e-4))     # 0.02 rad per 0.1 s
+        near = t.continuing(ids, torch.tensor([[.1, 0.], [.05, 0.]]))
+        self.assertEqual(near.tolist(), [True, False])                                       # world 1 lacks the legs
+        far = t.continuing(ids, torch.tensor([[.9, 0.], [.05, 0.]]))
+        self.assertEqual(far.tolist(), [False, False])                                       # 0.85 m away: re-anchor
+        goal_robot, _ = t.route_goal(ids, 2.)
+        goal_plan, _ = t.route_goal(ids, 2., from_xy=torch.tensor([[.5, 0.], [.5, 0.]]))
+        self.assertGreater(float(goal_plan[0, 0]), float(goal_robot[0, 0]) + .4)             # goal ahead of the plan
+
     def test_plan_worlds_wait_for_a_chunk(self):
         t = self.make(2, mix=(('plan', 1.),)); ids = torch.arange(2)
         t.reset(ids, torch.zeros(2, 2), torch.zeros(2), sample_dir=east, op_speed=torch.full((2,), .3))
@@ -260,6 +292,10 @@ class ComboConfigTest(unittest.TestCase):
         self.assertNotIn('commit', tc)
         args.tracker_commit = True
         self.assertTrue(wholebody_config(tracker=tracker_spec(args), operator_speed=(0.1, 0.6))['tracker']['commit'])
+        self.assertNotIn('continuity', tc); self.assertNotIn('route_go', tc)
+        args.tracker_continuity, args.tracker_route_go = 0.5, True
+        tc4 = wholebody_config(tracker=tracker_spec(args), operator_speed=(0.1, 0.6))['tracker']
+        self.assertEqual(tc4['continuity'], dict(reanchor=.5)); self.assertTrue(tc4['route_go'])
 
 
 class PrecisionConfigTest(unittest.TestCase):

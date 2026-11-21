@@ -702,7 +702,7 @@ GOALLESS_BUCKETS = ('reactive_standing', 'reactive_walking', 'flat_balance', 'te
 # Per-step task telemetry averaged over the update: posture/* and self_clearance/*.
 TELEMETRY_MEANS = ('self_clearance_min_m', 'self_clearance_violation', 'crouch_required', 'torso_pitch_abs',
                    'track_error_m', 'track_valid', 'track_lost', 'track_plan', 'track_released', 'track_fallback',
-                   'plan_clear_m', 'plan_sideways', 'plan_replans', 'plan_worlds',
+                   'plan_clear_m', 'plan_sideways', 'plan_replans', 'plan_worlds', 'plan_continued',
                    'hand_contact_trunk', 'hand_contact_head', 'hand_contact_arm', 'hand_contact_hand',
                    'heading_gate', 'heading_error_abs', 'hand_room_scale', 'side_gap_stage', 'side_gap_sideways_start',
                    'sgs_config_p', 'reactive_power_w', 'reactive_standing', 'reactive_end_lift', 'reactive_end_slide',
@@ -915,6 +915,10 @@ def tracker_spec(args):
         spec['reflex'] = {}
     if getattr(args, 'tracker_commit', False):
         spec['commit'] = True
+    if getattr(args, 'tracker_continuity', None) is not None:
+        spec['continuity'] = dict(reanchor=float(args.tracker_continuity))
+    if getattr(args, 'tracker_route_go', False):
+        spec['route_go'] = True
     return spec
 
 
