@@ -266,6 +266,13 @@ else
   RUN=$L/runs/stationary_hands_20261113_$VARIANT; export WANDB_MODE=${WANDB_MODE:-offline}
 fi
 mkdir -p $RUN
+# Preflight: processes outside Slurm have held 9-11 GB on every GPU of gpu-01 (and some of gpu-02); a run needs ~30 of
+# the 32 GB, so starting on an occupied GPU only ends in a Warp graph-creation OOM minutes later.
+if [[ -n "${CUDA_VISIBLE_DEVICES:-}" ]] && command -v nvidia-smi >/dev/null; then
+  used=$(nvidia-smi --id=${CUDA_VISIBLE_DEVICES%%,*} --query-gpu=memory.used --format=csv,noheader,nounits 2>/dev/null | head -1 | tr -dc '0-9')
+  echo "== assigned GPU ${CUDA_VISIBLE_DEVICES} on $(hostname): ${used:-?} MiB already in use"
+  if [[ -n "$used" && "$used" -gt ${MAX_FOREIGN_MIB:-1500} ]]; then echo "== GPU occupied by other processes; exit 3"; exit 3; fi
+fi
 export CAT_PATH_MAP=/home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab=$L/cat_root
 export STUDENT=${STUDENT:-$L/checkpoints/generalist_robust_delay_v1_u150.pt} RUN_DIR=$RUN/run WANDB_DIR=$RUN
 export NUM_ENVS=${NUM_ENVS:-12288} BATCH_SIZE=1024    # 16384 peaked at 31.2 of 32.8 GB (bank fields ~20 GB fixed)
