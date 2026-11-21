@@ -100,6 +100,7 @@ def load_policy(path, *, device, policy_id):
     saved_config = dict(snapshot.get("contract", {}).get("learner_config") or {})
     saved_config.setdefault("style_critic", False)          # field added 2026-09-29; older contracts lack it
     saved_config.setdefault("max_action_std_arms", None)     # field added 2026-11-15; older contracts lack it
+    saved_config.setdefault("lipschitz", 0.)                 # field added 2026-11-21 (111a792); older contracts lack it
     if saved_config != expected_config:
         raise ValueError("Saved learner configuration differs from its training contract")
     policies = config.num_policies if config.algorithm == "sapg" else 1
