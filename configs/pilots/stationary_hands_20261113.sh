@@ -46,7 +46,7 @@ RUN_DIR=${RUN_DIR:-outputs/stationary_hands_20261113}
   --goal-hold-seconds 1 \
   --action-rate-weight -0.02 --joint-acc-weight -0.000005 \
   --hand-body-contact-weight -10 --heading-hand-probes --head-guidance-near-sdf 0.3 \
-  --teleop-fraction 0.5 --teleop-heading-commands --heading-track-weight 0.4 \
+  --teleop-fraction 0.5 --teleop-heading-commands --heading-track-weight ${HEADING_TRACK:-0.4} \
   --body-motion-weight -0.5 --style-free-near-obstacles \
   --hand-clearance-tight 0.10 0.40 0.3 --hand-tight-walls-only --hand-tight-cat-only \
   --stall-weight -5 --goal-progress-weight 5 --goal-bonus-weight ${GOAL_BONUS:-2000} --timeout-failure \
@@ -71,7 +71,7 @@ RUN_DIR=${RUN_DIR:-outputs/stationary_hands_20261113}
   ${TIGHT_PASSAGES:+--hand-tight-passages} ${PASSAGE_STALL:+--passage-stall-factor $PASSAGE_STALL} \
   ${PASSAGE_SOFT:+--passage-soft-contact $PASSAGE_SOFT} ${PASSAGE_GATE:+--passage-stall-gate} \
   ${ROUTE_ENERGY:+--route-energy $ROUTE_ENERGY} ${OPERATOR_SPEED:+--operator-speed $OPERATOR_SPEED} \
-  ${REST_STARTS:+--operator-rest-starts $REST_STARTS} ${OPERATOR_V2:+--operator-v2} ${OPERATOR_V3:+--operator-v3} ${OPERATOR_V4:+--operator-v4} ${OPERATOR_V5:+--operator-v5} ${OPERATOR_V6:+--operator-v6} ${GOAL_SEED_CACHE:+--goal-seed-cache $GOAL_SEED_CACHE} ${GOAL_GROUND:+--goal-ground} ${TRACKER:+--tracker} ${TRACKER_MIX:+--tracker-mix $TRACKER_MIX} ${TRACKER_SCALES:+--tracker-scales $TRACKER_SCALES} ${TRACKER_PLANNER:+--tracker-planner $TRACKER_PLANNER} ${TRACKER_HOLD_PLAN:+--tracker-hold-plan $TRACKER_HOLD_PLAN} ${TRACKER_REFLEX:+--tracker-reflex} ${TRACKER_COMMIT:+--tracker-commit} ${TRACKER_CONTINUITY:+--tracker-continuity $TRACKER_CONTINUITY} ${TRACKER_ROUTE_GO:+--tracker-route-go} ${HEIGHT_CURRICULUM:+--height-curriculum $HEIGHT_CURRICULUM} ${FAR_THREAT_ONLY:+--reactive-far-threat-only} ${TRACKER_PLAN_INTERVAL:+--tracker-plan-interval "$TRACKER_PLAN_INTERVAL"} ${OVERSPEED:+--overspeed-weight $OVERSPEED} \
+  ${REST_STARTS:+--operator-rest-starts $REST_STARTS} ${OPERATOR_V2:+--operator-v2} ${OPERATOR_V3:+--operator-v3} ${OPERATOR_V4:+--operator-v4} ${OPERATOR_V5:+--operator-v5} ${OPERATOR_V6:+--operator-v6} ${GOAL_SEED_CACHE:+--goal-seed-cache $GOAL_SEED_CACHE} ${GOAL_GROUND:+--goal-ground} ${TRACKER:+--tracker} ${TRACKER_MIX:+--tracker-mix $TRACKER_MIX} ${TRACKER_SCALES:+--tracker-scales $TRACKER_SCALES} ${TRACKER_PLANNER:+--tracker-planner $TRACKER_PLANNER} ${TRACKER_HOLD_PLAN:+--tracker-hold-plan $TRACKER_HOLD_PLAN} ${TRACKER_REFLEX:+--tracker-reflex} ${TRACKER_COMMIT:+--tracker-commit} ${TRACKER_CONTINUITY:+--tracker-continuity $TRACKER_CONTINUITY} ${TRACKER_ROUTE_GO:+--tracker-route-go} ${HEIGHT_CURRICULUM:+--height-curriculum $HEIGHT_CURRICULUM} ${CADENCE:+--cadence $CADENCE} ${HIP_DEVIATION:+--hip-deviation-weight $HIP_DEVIATION} ${LIPSCHITZ:+--lipschitz $LIPSCHITZ} ${FAR_THREAT_ONLY:+--reactive-far-threat-only} ${TRACKER_PLAN_INTERVAL:+--tracker-plan-interval "$TRACKER_PLAN_INTERVAL"} ${OVERSPEED:+--overspeed-weight $OVERSPEED} \
   --sgs-slots ${SGS_SLOTS:-4} --sgs-history 100 --sgs-target 0.66 --sgs-kappa 5 --sgs-temperature 2 --sgs-epsilon 1e-8 \
   --sgs-uniform-mix ${SGS_MIX:-0.30} --sgs-prior $SGS_PRIOR --sgs-prior-count 4 \
   --style-library data/motion_library/library_v1 --style-weight 0.1 \

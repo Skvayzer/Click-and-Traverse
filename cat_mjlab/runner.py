@@ -704,7 +704,7 @@ TELEMETRY_MEANS = ('self_clearance_min_m', 'self_clearance_violation', 'crouch_r
                    'track_error_m', 'track_valid', 'track_lost', 'track_plan', 'track_released', 'track_fallback',
                    'plan_clear_m', 'plan_sideways', 'plan_replans', 'plan_worlds', 'plan_continued',
                    'hand_contact_trunk', 'hand_contact_head', 'hand_contact_arm', 'hand_contact_hand',
-                   'heading_gate', 'heading_error_abs', 'hand_room_scale', 'side_gap_stage', 'height_stage', 'side_gap_sideways_start',
+                   'heading_gate', 'heading_error_abs', 'hand_room_scale', 'side_gap_stage', 'height_stage', 'gait_frequency_hz', 'side_gap_sideways_start',
                    'sgs_config_p', 'reactive_power_w', 'reactive_standing', 'reactive_end_lift', 'reactive_end_slide',
                    'reactive_end_drift', 'reactive_violation', 'reactive_settled', 'reactive_feet_moved_m', 'table_walking',
                    'table_sideways', 'table_zone', 'table_cross_track_m', 'table_power_w', 'energy_power_w', 'energy_priced_w',
@@ -1101,6 +1101,7 @@ def create_task(args, *, environment_config=None, sim_class=None):
         heading_lookaheads=getattr(args, 'heading_lookaheads', None), heading_blocking_probes=getattr(args, 'heading_blocking_probes', None),
         sideways_bonus_weight=getattr(args, 'sideways_bonus_weight', None), side_gap_curriculum=getattr(args, 'side_gap_curriculum', None),
         height_curriculum=getattr(args, 'height_curriculum', None),
+        cadence=getattr(args, 'cadence', None), hip_deviation_weight=getattr(args, 'hip_deviation_weight', None),
         teleop_side_prob=getattr(args, 'teleop_side_prob', None),
         hand_tight_walls_only=getattr(args, 'hand_tight_walls_only', None), side_gap_tumbling=getattr(args, 'side_gap_tumbling', None),
         sideways_bonus_progress=getattr(args, 'sideways_bonus_progress', None), contact_penalty=getattr(args, 'contact_penalty', None),
@@ -1251,7 +1252,7 @@ def native_initialization(path):
     validate_upgrade(snapshot)
     from .observation_contract import observation_contract
     env = snapshot['contract']['environment_config']
-    expected_contract = observation_contract(bool(env.get('sdf_rate_obs', False)), bool(env.get('tracker')))
+    expected_contract = observation_contract(bool(env.get('sdf_rate_obs', False)), bool(env.get('tracker')), bool(env.get('cadence')))
     if snapshot.get('observation_contract', expected_contract) != expected_contract:
         raise ValueError('Native checkpoint observation contract differs; use --from-scratch, no conversion is performed')
     if snapshot.get("schema") == "cat-mjlab-runtime-v1":
@@ -1309,9 +1310,13 @@ def run(args):
     tracker = bool(tracker_spec(args) or (config_source or {}).get('tracker'))
     sdf_rate = bool(getattr(args, 'sdf_rate_obs', None) if getattr(args, 'sdf_rate_obs', None) is not None
                     else (config_source or {}).get('sdf_rate_obs', False))
-    if (config.actor_obs, config.critic_obs) != (actor_size(sdf_rate, tracker), critic_size(tracker)):
-        config = replace(config, actor_obs=actor_size(sdf_rate, tracker), critic_obs=critic_size(tracker))
-    if (config.actor_obs, config.critic_obs, config.action_size) != (actor_size(sdf_rate, tracker), critic_size(tracker), 29):
+    cadence = bool(getattr(args, 'cadence', None) or (config_source or {}).get('cadence'))
+    sizes = (actor_size(sdf_rate, tracker, cadence), critic_size(tracker, cadence))
+    if (config.actor_obs, config.critic_obs) != sizes:
+        config = replace(config, actor_obs=sizes[0], critic_obs=sizes[1])
+    if getattr(args, 'lipschitz', None) is not None:
+        config = replace(config, lipschitz=float(args.lipschitz))
+    if (config.actor_obs, config.critic_obs, config.action_size) != (*sizes, 29):
         raise ValueError('Native training requires actor 222 / critic 310 and 29 actions. '
                          'Use --from-scratch; obsolete observation contracts are not converted.')
     overrides = {name: getattr(args, name) for name in ("max_action_std", "max_action_std_arms", "discounting", "num_minibatches")

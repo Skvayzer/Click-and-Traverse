@@ -56,6 +56,7 @@ class LearnerConfig:
     max_action_std: float | None = None
     max_action_std_arms: float | None = None   # separate sigma ceiling for the arm joints (actions 15-28); legs+waist keep max_action_std
     style_critic: bool = False     # second value head for the motion-prior style reward
+    lipschitz: float = 0.          # gradient penalty on the action mean w.r.t. the actor input (LCP, arXiv 2410.11825)
 
     def __post_init__(self):
         if self.algorithm not in ("ppo", "sapg"):
@@ -378,6 +379,15 @@ def compute_loss(model, data, config, *, entropy_noise=None, style_lambda=0., di
         extra = dict(style_v_loss=style_value_loss.detach())
     entropy_loss = -config.entropy_cost * transformed_entropy(logits, entropy_noise).mean()
     total = policy_loss + value_loss + entropy_loss
+    if config.lipschitz > 0:
+        # Lipschitz-constrained policy (Chen et al. 2024): penalise the squared gradient of the action mean with respect
+        # to the actor input, so similar observations give similar actions (smooth motion without a low-pass filter).
+        state = data["state"].detach().reshape(-1, data["state"].shape[-1]).requires_grad_(True)
+        mean, _ = gaussian_parameters(model.logits(state, ids.reshape(-1)))
+        grad, = torch.autograd.grad(mean.sum(), state, create_graph=True)
+        lipschitz = grad.square().sum(-1).mean()
+        total = total + config.lipschitz * lipschitz
+        extra = dict(extra, lipschitz_penalty=lipschitz.detach())
     if "distill_label" in data:
         # DAgger regulariser during RL fine-tuning (cat_mjlab/distill.py, regularize mode): regress the action mean
         # onto the scene's teacher where one exists (mask), weight distill_lambda fading to 0. Keeps the distilled

@@ -96,7 +96,11 @@ class CATTask:
         self.stabilization=bool(_get(config,'wholebody_stabilization',False))
         self.sdf_rate=bool(config.get('sdf_rate_obs',False))
         from .observation_contract import observation_contract
-        self.contract=observation_contract(self.sdf_rate,bool(config.get('tracker')))
+        self.contract=observation_contract(self.sdf_rate,bool(config.get('tracker')),bool(config.get('cadence')))
+        # Speed-dependent cadence (config 'cadence'): the stride frequency follows the commanded speed instead of a fixed
+        # 1.3-1.5 Hz per episode (measured: 2.6-3.0 steps/s and 6.5-9 cm steps when told 0.15 m/s), and the policy
+        # observes it. Ramped in from the old per-episode frequency over `ramp_steps` control steps.
+        self.cadence=config.get('cadence');self._cadence_steps=0
         self.observation_size=len(self.contract['actor_features'])
         self.privileged_observation_size=len(self.contract['critic_features'])
         elbow_block=[n for n in self.contract['actor_features'] if n.startswith('pf.elbows.') and '.dfrate.' not in n]
@@ -1042,6 +1046,9 @@ class CATTask:
             fa=self.tracker.features(ids,est,torch.atan2(navi_a[:,1,0],navi_a[:,0,0]),navi_a)
             ft=self.tracker.features(ids,self.data.qpos[ids,:2],self._root_yaw(ids),info['navi'])
             result=dict(result,state=torch.cat((result['state'],fa),-1),privileged_state=torch.cat((result['privileged_state'],ft),-1))
+        if self.cadence:
+            hz=(info['phase_dt']/(2*torch.pi*self.dt))[:,None]
+            result=dict(result,state=torch.cat((result['state'],hz),-1),privileged_state=torch.cat((result['privileged_state'],hz),-1))
         if result['state'].shape[-1]!=self.observation_size or result['privileged_state'].shape[-1]!=self.privileged_observation_size:
             raise RuntimeError('Observation feature contract changed')
         for k,v in result.items():self.obs[k][ids]=v
@@ -1211,6 +1218,10 @@ class CATTask:
         defaults['push_interval']=torch.round(self._rand((n,),*_get(self.config,'push_config.interval_range',[5.,10.]))/self.dt).long()
         frequency=self._rand((n,),*_get(self.config,'gait_config.freq_range',[1.3,1.5]))
         defaults['phase_dt']=2*torch.pi*self.dt*frequency
+        if self.config.get('cadence'):
+            c=self.config['cadence']
+            defaults['base_freq']=frequency
+            defaults['cadence_noise']=self._rand((n,),1.-float(c['noise']),1.+float(c['noise']))
         left=torch.rand((n,),device=self.device,generator=self.generator)<.5
         defaults['phase']=torch.where(left[:,None],qpos.new_tensor([0.,np.pi]),qpos.new_tensor([np.pi,0.]))
         defaults['foot_height']=self._rand((n,),*_get(self.config,'gait_config.foot_height_range',[.07,.07]))
@@ -1618,6 +1629,13 @@ class CATTask:
         rewards['wholebody_hand_clearance']=(telemetry['hand_clearance_pressure'] if self.hand_protection else
             (float(_get(self.config,'hand_clearance_margin',.12))-i['sdf'][:,5:7]).clamp_min(0).square().flatten(1).mean(-1))*enabled
         rewards['wholebody_arm_clearance']=(arm_margin-i['elbow_clearance']).clamp_min(0).square().mean(-1)*enabled
+        if 'hip_deviation' in _get(self.config,'reward_config.scales',{}):
+            # hip roll and yaw away from zero (both legs): toes out, crossed legs and crab steps look unnatural
+            # (unitree_rl_gym hip_pos); squared, mean over the four joints
+            hip=self.data.qpos[:,7:19][:,[1,2,7,8]]
+            rewards['hip_deviation']=hip.square().mean(-1)
+        if self.cadence:
+            telemetry['gait_frequency_hz']=self.info['phase_dt']/(2*torch.pi*self.dt)
         if self.tracker is not None and self.track_info is not None:
             released=deadband=None
             if self.reflex:
@@ -2250,6 +2268,15 @@ class CATTask:
             # (the robot executor re-arms on new fields).
             restart=torch.ones_like(restart);eligible=torch.ones_like(eligible)
         phase_input=restart_phase(i['phase'],i['last_command'],command,eligible)
+        if self.cadence:
+            # stride frequency from the commanded speed (|v| of the command actually given, plan or field), ramped in
+            # from the episode's old fixed frequency, low-passed so the phase rate never jumps
+            c=self.cadence;self._cadence_steps+=1
+            speed=torch.linalg.vector_norm(command[:,1:3],dim=-1)
+            target=(float(c['a'])+float(c['b'])*speed).clamp(float(c['lo']),float(c['hi']))*i['cadence_noise']
+            alpha=min(1.,self._cadence_steps/max(float(c['ramp_steps']),1.))
+            target=alpha*target+(1.-alpha)*i['base_freq']
+            i['phase_dt']=i['phase_dt']+(2*torch.pi*self.dt*target-i['phase_dt'])*min(1.,self.dt/float(c['tau']))
         command,stop,phase,gait=self.math.update_phase(command,i['last_command'],i['stop_timestep'],phase_input,i['phase_dt'],
             float(_get(self.config,'gait_config.gait_bound',.6)),restart)
         if hasattr(self, 'speed_state'):
@@ -2384,7 +2411,7 @@ class CATTask:
                 metrics[key] = self.telemetry[key].clone()
             for key in ('self_clearance_min_m', 'self_clearance_violation', 'crouch_required', 'torso_pitch_abs',
                         'hand_contact_trunk', 'hand_contact_head', 'hand_contact_arm', 'hand_contact_hand',
-                        'heading_gate', 'heading_error_abs', 'hand_room_scale', 'side_gap_stage', 'height_stage', 'side_gap_sideways_start',
+                        'heading_gate', 'heading_error_abs', 'hand_room_scale', 'side_gap_stage', 'height_stage', 'gait_frequency_hz', 'side_gap_sideways_start',
                         'reactive_power_w', 'reactive_standing', 'reactive_end_lift', 'reactive_end_slide', 'reactive_end_drift',
                         'reactive_violation', 'reactive_settled', 'reactive_feet_moved_m', 'table_walking', 'table_sideways',
                         'table_zone', 'table_cross_track_m', 'table_power_w', 'energy_power_w', 'energy_priced_w', 'passage_stalled',

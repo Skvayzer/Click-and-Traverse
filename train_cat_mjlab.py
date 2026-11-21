@@ -235,6 +235,12 @@ def parser():
         target.add_argument("--sideways-bonus-weight", type=float, help="Bonus for facing sideways where forward does not fit")
         target.add_argument("--side-gap-curriculum", action="store_true", default=None,
                             help="Side-gap width levels (>=0.50/0.42/0.36/all, advance at 30%% of 300) with sideways starts 50/35/20/10%%")
+        target.add_argument("--cadence", type=float, nargs=6, metavar=("A", "B", "LO", "HI", "NOISE", "RAMP_STEPS"),
+                            help="Speed-dependent cadence: stride frequency clip(A + B|v|, LO, HI) Hz times a per-episode "
+                                 "factor 1 +- NOISE, observed by the policy, ramped in over RAMP_STEPS control steps")
+        target.add_argument("--hip-deviation-weight", type=float, help="Cost on squared hip roll and yaw (negative)")
+        target.add_argument("--lipschitz", type=float,
+                            help="Gradient penalty on the action mean w.r.t. the actor input (LCP, e.g. 0.002)")
         target.add_argument("--height-curriculum", type=float, nargs=2, metavar=("ADVANCE", "WINDOW"),
                             help="Beam/bar height levels (scripts/generate_beam_bars.py scenes, levels 0-7): stage s samples "
                                  "levels <= s and advances when ADVANCE of WINDOW resolved level-s episodes are clean goals")

@@ -354,3 +354,39 @@ class PlannerDataFilterTest(unittest.TestCase):
             out = load_split(tmp, "train", keep=drop_stopped(info))
             self.assertEqual(out["meta"][:, 0].tolist(), [1, 2, 3])     # only the stopped CAT window is dropped
             self.assertEqual(len(out["grid"]), 3)
+
+
+class GaitConfigTest(unittest.TestCase):
+    def test_cadence_contract_and_lipschitz(self):
+        from dataclasses import replace
+        import numpy as np
+        from cat_mjlab.config import wholebody_config
+        from cat_mjlab.observation_contract import actor_size, critic_size, observation_contract
+        cfg = wholebody_config(cadence=(.55, .55, .6, 1.4, .2, 4800), hip_deviation_weight=-1.)
+        self.assertEqual(cfg['cadence'], dict(a=.55, b=.55, lo=.6, hi=1.4, noise=.2, ramp_steps=4800., tau=.5))
+        self.assertEqual(cfg['reward_config']['scales']['hip_deviation'], -1.)
+        self.assertEqual(actor_size(True, True, True), 222 + 4 + 41 + 1)
+        self.assertEqual(critic_size(True, True), 310 + 41 + 1)
+        contract = observation_contract(True, True, True)
+        self.assertEqual(contract['actor_features'][-1], 'gait.stride_frequency_hz')
+        self.assertEqual(len(contract['actor_features']), 268)
+        from cat_mjlab.learning import Learner, LearnerConfig, compute_loss, gaussian_parameters, log_probability
+        config = LearnerConfig(algorithm='ppo', actor_obs=3, critic_obs=4, action_size=2, actor_hidden=(7, 5),
+                               critic_hidden=(9, 6), num_policies=1, embedding_dim=2, num_minibatches=2,
+                               num_updates_per_batch=2, prepare_chunk_size=2, entropy_cost=0.)
+        torch.manual_seed(0); learner = Learner(config, device='cpu')
+        rng = np.random.default_rng(7)
+        data = {k: torch.tensor(rng.normal(0, .3, (6, 4, w)), dtype=torch.float32)
+                for k, w in (('state', 3), ('next_state', 3), ('privileged_state', 4), ('next_privileged_state', 4))}
+        data['policy_id'] = torch.zeros(6, 4, dtype=torch.long)
+        with torch.no_grad():
+            logits = learner.model.logits(data['state'], data['policy_id']); mean, std = gaussian_parameters(logits)
+            data['raw_action'] = mean + std * torch.tensor(rng.normal(size=(6, 4, 2)), dtype=torch.float32)
+            data['log_prob'] = log_probability(logits, data['raw_action'])
+        data.update(reward=torch.tensor(rng.normal(size=(6, 4)), dtype=torch.float32), discount=torch.ones(6, 4),
+                    truncation=torch.zeros(6, 4))
+        base, _ = compute_loss(learner.model, data, config)
+        smooth, metrics = compute_loss(learner.model, data, replace(config, lipschitz=.01))
+        self.assertGreater(float(metrics['lipschitz_penalty']), 0.)
+        self.assertAlmostEqual(float(smooth - base), .01 * float(metrics['lipschitz_penalty']), places=5)
+        smooth.backward()                                      # the penalty is differentiable (double backward)
