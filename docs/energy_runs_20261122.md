@@ -58,3 +58,32 @@ The matched baseline for each bucket and target side is the still-success energy
 ### Flip pilot plan
 
 All arms start from `/l/users/konstantin.smirnov/checkpoints/stationary_hands_S2_seed1_u180.pt`, use the fixed heat reward for 50 updates and keep the u150 anchor, seed 0 and the same standing benchmark. The fixed-heat S2H run at unit prices is the control. The arm multipliers are k*/3, k* and 3k*, with a mirror leg multiplier of 1/k*. Use arm multipliers 2, 8 and 30 and mirror 1/8 if k* is undefined or the CI is missing or more than fourfold wide. The planned effect is at least a five-percentage-point decrease in arm-first share near k*, with at least half that change absorbed by body-first successes. An increase in failures that absorbs the shift refutes the predicted response substitution. This is a single-seed pilot on the calibration benchmark.
+
+### Standing re-score and flip submissions
+
+Standing re-score 315346 completed. The detailed report with count, mean watts, joules per event and matched excess by actuator group is `/l/users/konstantin.smirnov/runs/energy_round2_standing_315346/baseline_matched_summary.json`. The raw approach export is `standing.json` in the same directory.
+
+S2 seed 1 had −7.84 J of matched policy fixed-heat excess per arm-first event and +86.43 J per body-first event across four common-support strata. The negative arm-first estimate leaves k* undefined as a positive price ratio, so there is no applicable 95% interval. Only 18 body-first events contributed. The fallback schedule uses arm prices 2, 8 and 30 and mirror leg price 0.125. This benchmark describes matched event energy and cannot on its own establish a causal effect of price.
+
+| Policy | Arm-first | Body-first | Still success | Failure |
+| --- | ---: | ---: | ---: | ---: |
+| u150 | 626 (9.8%) | 246 (3.8%) | 3690 (57.5%) | 1858 (28.9%) |
+| S1b seed 1 u150 | 1462 (22.9%) | 35 (0.5%) | 3159 (49.6%) | 1715 (26.9%) |
+| S2 seed 1 u180 | 1306 (20.4%) | 18 (0.3%) | 3359 (52.4%) | 1725 (26.9%) |
+| S2 seed 2 u180 | 1481 (23.5%) | 17 (0.3%) | 3218 (51.0%) | 1597 (25.3%) |
+
+All jobs below use `ws-ia`. Each training job uses 1 GPU, 12 CPUs and 54000M RAM with a 3 h limit and a 70–95 min expected runtime. Each evaluation uses 1 GPU, 8 CPUs and 48000M RAM with a 75 min limit and a 7–15 min expected runtime. All four trained flips use the S2 seed 1 u180 warm start, the u150 anchor, and 50 updates. An eval runs after successful training. Two dependency chains limit concurrent jobs. Outputs below are relative to `/l/users/konstantin.smirnov/runs/`.
+
+| Job | Purpose | After | Arm price | Leg price | Output |
+| --- | --- | --- | ---: | ---: | --- |
+| 315381 | Standing eval S2H_peak | 315348 |  |  | `energy_round2_trained_315381` |
+| 315382 | Train Flip_arm_low | 315381 | 2 | 1 | `stationary_hands_20261113_Flip_arm_low` |
+| 315383 | Standing eval Flip_arm_low | 315382 |  |  | `energy_round2_trained_315383` |
+| 315384 | Train Flip_arm_high | - | 30 | 1 | `stationary_hands_20261113_Flip_arm_high` |
+| 315385 | Standing eval Flip_arm_high | 315384 |  |  | `energy_round2_trained_315385` |
+| 315386 | Train Flip_arm_center | 315383 | 8 | 1 | `stationary_hands_20261113_Flip_arm_center` |
+| 315387 | Standing eval Flip_arm_center | 315386 |  |  | `energy_round2_trained_315387` |
+| 315388 | Train Flip_leg_mirror | 315385 | 1 | 0.125 | `stationary_hands_20261113_Flip_leg_mirror` |
+| 315389 | Standing eval Flip_leg_mirror | 315388 |  |  | `energy_round2_trained_315389` |
+
+Video array 315390 runs after 315387:315389. Each task uses 1 GPU, 8 CPUs and 48000M RAM, with a 2 h 30 min limit and an estimated 15–45 min runtime. The array allows two concurrent tasks and writes each policy to its own subdirectory under `/l/users/konstantin.smirnov/runs/energy_videos/round2_315390/`. Every policy uses seed 0 and the same files by scenario: `danger_row0_seed0.mp4`, `anticipation_row1_seed0.mp4`, `negative_row2_seed0.mp4`. These are planned outputs until the array completes.
