@@ -28,7 +28,7 @@ from standing_event_energy import StandingEventEnergy, matched_extra
 BUCKETS = ('danger', 'anticipation', 'negative')
 
 
-def build(checkpoint, rows, device, robust, hold_plan=None, bank=None, env_from=None):
+def build(checkpoint, rows, device, robust, hold_plan=None, bank=None, env_from=None, *, sim_class=None):
     from cat_mjlab.runner import create_task
     from record_mjlab_rollout import load_policy
     archive = str(checkpoint).endswith('.npz')
@@ -65,9 +65,11 @@ def build(checkpoint, rows, device, robust, hold_plan=None, bank=None, env_from=
                          compile_task=False, nconmax=contract['nconmax'], njmax=contract['njmax'],
                          reactive_bank=Path('data/furniture/reactive_standing_v2_20260923/manifest.json'), reactive_row=None)
     kwargs = {}
-    if device == 'cpu':
+    if device == 'cpu' and sim_class is None:
         from cat_mjlab.sim_cpu import CPUSimulation
-        kwargs['sim_class'] = CPUSimulation
+        sim_class = CPUSimulation
+    if sim_class is not None:
+        kwargs['sim_class'] = sim_class
     task, _, _ = create_task(ns, environment_config=env, **kwargs)
     task.collision_every_substep = False
     task.reactive_objects.force_rows = torch.as_tensor(rows, device=task.device)
@@ -75,8 +77,9 @@ def build(checkpoint, rows, device, robust, hold_plan=None, bank=None, env_from=
 
 
 @torch.no_grad()
-def evaluate(checkpoint, rows, steps, device, robust, hold_plan=None, bank=None, env_from=None):
-    learner, task = build(checkpoint, rows, device, robust, hold_plan, bank, env_from)
+def evaluate(checkpoint, rows, steps, device, robust, hold_plan=None, bank=None, env_from=None, *,
+             sim_class=None, observer_class=StandingEventEnergy):
+    learner, task = build(checkpoint, rows, device, robust, hold_plan, bank, env_from, sim_class=sim_class)
     obj = task.reactive_objects
     task.reset()
     n = len(rows)
@@ -90,7 +93,7 @@ def evaluate(checkpoint, rows, steps, device, robust, hold_plan=None, bank=None,
     episode_j = torch.zeros_like(energy_j)
     episode_count = zeros()
     episode_steps = zeros()
-    obj.energy_observer = observer = StandingEventEnergy(task)
+    obj.energy_observer = observer = observer_class(task)
     contact_open = torch.zeros(n, dtype=torch.bool, device=task.device)
     ever_violated = torch.zeros(n, dtype=torch.bool, device=task.device)
     first_violation = torch.full((n,), float(steps), device=task.device)

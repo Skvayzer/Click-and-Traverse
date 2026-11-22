@@ -222,6 +222,10 @@ class StandingObjects(AnalyticObjects):
         if observer is not None:
             observer.observe(data,ids,s['clock'][ids],s['target_hand'][ids],s['approach_ray'][ids],
                              p[:,self.geometry.hand_mask],data.xpos[ids,self.pelvis])
+            probe=getattr(observer,'probe',None)
+            if probe is not None:
+                probe(ids,s['target_hand'][ids],p[:,self.geometry.hand_mask],s['start'][ids,0],s['end'][ids,0],
+                      s['sizes'][ids,0],s['kinds'][ids,0],retreat[:,0])
         s['position'][ids]+=motion;s['velocity'][ids]=motion/dt;s['clock'][ids]+=dt
         # Approach bookkeeping: closest the object got, how far the targeted hand retreated along
         # the approach axis RELATIVE TO THE ROOT, how far the root strayed, any robot contact.
