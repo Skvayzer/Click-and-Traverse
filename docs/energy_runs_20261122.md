@@ -113,3 +113,15 @@ Job 315819 is a CPU-only allocation on `gpu` with `--gres=none`, 12 CPUs, 60000M
 The CPU replay uses the same authored rows and seed 0 as benchmark 315346, sampling up to 60 rows per threat bucket. The smaller CPU batch has its own realized trajectories. Each motor comparison uses the replayed event's initial pose, targeted hand, approach duration until object reversal, and achieved clearance in an enclosing swept-capsule proxy. When clearance did not improve relative to the initial hand position, the optimization targets at least .10 m clearance. The policy efficiency comparison excludes those substituted targets. Policy excess is relative to still-success W matched by policy, bucket and hand side, scaled to the same approach window.
 
 Arm endpoints are searched with bounded IK and joined to the initial pose by minimum-jerk joint interpolation with both feet welded and the pelvis fixed. The body-only search holds arm joints fixed, varies pelvis and waist, and uses leg IK to preserve both feet. The step search checks inward and outward scripted lateral swings on each side across three step lengths, with stance-foot support until landing. MuJoCo inverse dynamics and the weld reactions estimate torques, with a minimum-norm correction for residual floating-base wrench. Candidate rejection checks torque and speed limits, net friction and the ZMP against rectangular support polygons. The estimate assumes rest at each endpoint and uses finite differences, simplified support geometry, and an endpoint clearance target. Feasible energies are the lowest among the searched candidates. These finite searches do not establish a global minimum or certify collision-free real-world motion. The planned sample is 75 completed events per policy per threat bucket. `reference.json` contains the event-level estimates, feasibility summaries, k_phys and same-event efficiency ratios.
+
+### Baseline threatened-event motion for the extensions
+
+Quantiles below are cm and use all danger and anticipation entries, including failures. Values are median / 90th percentile of the recorded maximum displacement within the event. The earlier episode-level feet-violation rate measures a different population.
+
+| Checkpoint | Eval | Events | Feet | Pelvis | Torso-relative hand retreat |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| S2 seed 1 u180 | 315346 | 4010 | .74 / 1.65 | 2.89 / 4.87 | 8.39 / 14.46 |
+| Fixed-heat S2H u50 | 315381 | 3972 | .65 / 1.38 | 2.86 / 4.66 | 8.89 / 14.37 |
+| Arm ×2 u50 | 315383 | 4030 | .70 / 1.61 | 2.94 / 4.99 | 8.61 / 14.34 |
+| Arm ×30 u50 | 315385 | 4017 | .75 / 1.81 | 3.05 / 5.12 | 8.70 / 16.25 |
+| Leg ×0.125 u50 | 315389 | 4029 | .74 / 1.57 | 2.84 / 4.65 | 8.67 / 14.56 |
