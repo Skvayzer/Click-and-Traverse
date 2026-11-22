@@ -23,8 +23,8 @@ import torch
 ROOT = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(ROOT), str(ROOT / 'scripts')]
 
-from cat_mjlab.energy import GROUPS, SHAPE, report_energy
-from standing_event_energy import StandingEventEnergy
+from cat_mjlab.energy import GROUPS, SHAPE, print_motor_weights, report_energy
+from standing_event_energy import StandingEventEnergy, matched_extra
 BUCKETS = ('danger', 'anticipation', 'negative')
 
 
@@ -166,6 +166,7 @@ def evaluate(checkpoint, rows, steps, device, robust, hold_plan=None, bank=None,
     result['energy_during_standing'] = report_energy(energy_j.cpu(), 0, s['standing'] * task.dt)
     result['energy_during_object_motion'] = report_energy(moving_j.cpu(), 0, s['moving'] * task.dt)
     result['energy_by_response'], result['approaches'] = observer.summary(rows, BUCKETS)
+    result['matched_extra'] = matched_extra(result['approaches'])
     result['power_W']['total'] = {k: round(sum(result['power_W'][g][k] or 0. for g in GROUPS), 2) for k in ('standing', 'object_moving')}
     return result
 
@@ -183,6 +184,7 @@ def main():
     p.add_argument('--out', type=Path)
     a = p.parse_args()
     rows = list(range(*(int(x) for x in a.rows.split(':'))))
+    print_motor_weights()
     results = []
     for checkpoint in a.checkpoint:
         r = evaluate(checkpoint, rows, a.steps, a.device, a.robust, a.hold_plan, a.bank, a.env_from)

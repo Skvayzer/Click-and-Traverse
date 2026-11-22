@@ -1400,6 +1400,8 @@ def run(args):
         if getattr(args, "init_action_std_arms", None) is not None:
             migration["initial_action_std_arms"] = args.init_action_std_arms
     task, sim, environment_config = create_task(args, environment_config=config_source)
+    from .energy import print_motor_weights
+    print_motor_weights()
     _configure_reactive(task, args)
     style_schedule = None
     if getattr(args, 'style_library', None):

@@ -7,9 +7,9 @@ import pytest
 import torch
 
 from cat_mjlab.constants import TORQUE_LIMIT
-from cat_mjlab.energy import EnergyMeter
+from cat_mjlab.energy import EnergyMeter, motor_spec, REFERENCE_PEAK_W
 from cat_mjlab.task_math import pd_torques
-from scripts.standing_event_energy import StandingEventEnergy, classify
+from scripts.standing_event_energy import StandingEventEnergy, classify, matched_extra
 from train_cat_mjlab import parser
 
 
@@ -74,7 +74,7 @@ def test_reward_uses_clipped_pd_and_gravity_without_rfi_or_offsets():
 def test_static_hold_has_heat_cost_at_real_motor_limits():
     limits = torch.tensor(TORQUE_LIMIT, dtype=torch.float32)
     torque = (.25 * limits)[None]
-    meter = EnergyMeter(1, limits, {"model": "heat"})
+    meter = EnergyMeter(1, limits, {"model": "heat_eq"})
     meter.record(torque, torque, torch.zeros_like(torque), .002)
     price, _ = meter.reward_power(torque, torch.zeros_like(torque), .002)
     assert not meter.step_j[0, 0, 0].any()
@@ -104,7 +104,7 @@ def test_heat_clamps_net_work_and_metabolic_prices_negative_work():
     torque[0, 15] = 2.
     velocity = torch.ones_like(torque)
     limits = torch.full((29,), 10.)
-    heat = EnergyMeter(1, limits, {"model": "heat", "alpha": 100.})
+    heat = EnergyMeter(1, limits, {"model": "heat_eq", "alpha": 100.})
     heat.record(torque, torque, velocity, .002)
     power, _ = heat.reward_power(torque, velocity, .002)
     torch.testing.assert_close(power, torch.tensor([13.]))
@@ -118,7 +118,8 @@ def test_approach_classification_thresholds_and_body_priority():
     assert classify(torch.tensor([.10, .11, .11, .09, .11, .11]),
                     torch.tensor([.04, .05, .04, .02, .04, .04]),
                     torch.tensor([.04, .04, .05, .10, .04, .04]),
-                    torch.tensor([False, False, False, False, True, False])).tolist() == [1, 0, 0, 2, 2, 1]
+                    torch.tensor([False, False, False, False, True, False]),
+                    torch.tensor([True, True, True, False, True, False])).tolist() == [1, 3, 3, 0, 2, 0]
 
 
 def test_cli_config_route_baseline_and_zero_all_prices():
@@ -195,9 +196,38 @@ def test_event_uses_torso_frame_and_counts_only_active_substeps():
     hand[0, 0, 0] = .32
     event.observe(data, row, torch.tensor([.002]), row, ray, hand, root)
     event.record(sample)
-    event.finish(row, row)
+    event.finish(row, row, row, torch.tensor([True]))
     summary, details = event.summary([17], ["danger"])
     assert summary["arm_first"]["count"] == 1
     assert details[0]["row"] == 17
     assert details[0]["retreat_m"] == .12
     assert details[0]["energy"]["policy"]["heat"]["waist"] == {"energy_j": .004, "mean_w": 1.}
+
+
+
+def test_motor_peak_heat_mapping_and_static_weighting():
+    from cat_ppo.furniture.control import JOINT_NAMES
+    expected = {"7520-22": 4, "7520-14": 5, "5020": 10, "4010": 4, "2×5020": 6}
+    from collections import Counter
+    assert Counter(motor_spec(j)[0] for j in JOINT_NAMES) == expected
+    assert motor_spec("left_ankle_pitch_joint") == ("2×5020", 50., 37.)
+    assert motor_spec("right_wrist_roll_joint") == ("5020", 25., 37.)
+    assert motor_spec("right_wrist_yaw_joint") == ("4010", 5., 22.)
+    meter = EnergyMeter(1, torch.ones(29), {"model": "heat"})
+    hold = .25 * meter.heat_limits[None]
+    meter.record(hold, hold, torch.zeros_like(hold), .002)
+    power, _ = meter.reward_power(hold, hold, .002)
+    peak = 4 * 139 * 20 + 5 * 88 * 32 + 10 * 25 * 37 + 4 * 5 * 22 + 6 * 50 * 37
+    torch.testing.assert_close(power, torch.tensor([500 * .25**2 * peak / REFERENCE_PEAK_W]))
+
+
+def test_matched_extra_subtracts_time_scaled_baselines_and_bootstraps_rows():
+    from cat_mjlab.energy import report_energy
+    events = []
+    for i in range(20):
+        for response, duration, joules in (("still_success", 1., 3.), ("arm_first", 2., 7.), ("body_first", 3., 13.)):
+            events.append(dict(row=i, bucket="danger", hand_side="left", response=response, seconds=duration,
+                               energy=report_energy(torch.full((2, 2, 3), joules), 1, duration)))
+    r = matched_extra(events, draws=64)
+    assert r["k_star"] == 4.
+    assert r["ci95"] == [4., 4.]

@@ -522,8 +522,8 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
     if any(value is not None for value in (energy_model,energy_alpha,arm_mult,leg_mult)):
         energy=config.setdefault('energy_config',{})
         energy['model']=energy.get('model','mech') if energy_model is None else energy_model
-        if energy['model'] not in ('mech','heat','metab'):
-            raise ValueError('energy_model must be mech, heat or metab')
+        if energy['model'] not in ('mech','heat','heat_eq','metab'):
+            raise ValueError('energy_model must be mech, heat, heat_eq or metab')
         for key,value in [('alpha',energy_alpha),('arm_mult',arm_mult),('leg_mult',leg_mult)]:
             if value is not None:
                 value=float(value)

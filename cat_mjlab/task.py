@@ -2369,7 +2369,12 @@ class CATTask:
         metrics['energy/step_w']=self.energy_meter.step_j/self.dt
         metrics['energy/episode_j']=i['energy_j'].clone()
         metrics['energy/episode_steps']=i['energy_steps'].clone()
-        if event_energy is not None:event_energy.reset(done)
+        if event_energy is not None:
+            if self.reactive_objects is not None:
+                s=self.reactive_objects.state
+                failed=done & (faults.get('fall',torch.zeros_like(done)) | regions.any(-1))
+                event_energy.abort(failed,s['bucket'],s['target_hand'])
+            event_energy.reset(done)
         metrics.update(navigation_counts=self.navigation_counts.clone(),contrast_counts=self.contrast_counts.clone(),role_counts=self.role_counts.clone(),
             episode_return=self.episode_reward.clone(),episode_length=i['step'].clone(),resolved=resolved,successful=successful,
             scene_ids=self.scene_ids.clone(),collision_regions=regions,

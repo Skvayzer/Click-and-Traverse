@@ -249,7 +249,7 @@ class StandingObjects(AnalyticObjects):
                 reacted=retreat>=float(self.retreat_success_m);flinched=retreat>=.05
                 success=stayed&~s['approach_contact'][f]&torch.where(bucket==2,~flinched,reacted)
                 s['event_finished'][f]=True;s['event_success'][f]=success;s['event_retreat'][f]=retreat;s['event_bucket'][f]=bucket
-                if observer is not None:observer.finish(f,bucket)
+                if observer is not None:observer.finish(f,bucket,s['target_hand'][f],success)
                 self.rearm(data,f,self.sampling_generator)
         # Store start-of-robot-motion clearance after safe object movement.
         d,_=self.distances(p,ids)

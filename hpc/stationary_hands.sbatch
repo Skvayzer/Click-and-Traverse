@@ -272,7 +272,13 @@ if [[ -n "${SMOKE:-}" ]]; then
   RUN=$L/runs/smoke_hands_${VARIANT}_${SLURM_JOB_ID}; export EXTRA="--max-updates ${SMOKE_UPDATES:-3}" WANDB_MODE=disabled
   if [[ "$VARIANT" = S2H ]]; then export WANDB_MODE=offline; fi
 else
-  RUN=$L/runs/stationary_hands_20261113_$VARIANT; export WANDB_MODE=${WANDB_MODE:-offline}
+  run_tag=${ENERGY_RUN_TAG:-$VARIANT}
+  [[ "$run_tag" =~ ^[[:alnum:]_-]+$ ]] || { echo "Invalid run tag: $run_tag" >&2; exit 2; }
+  RUN=$L/runs/stationary_hands_20261113_$run_tag
+  if [[ -n "${ENERGY_RUN_TAG:-}" && -e "$RUN" ]]; then
+    echo "Energy run tag already exists: $RUN" >&2; exit 2
+  fi
+  export WANDB_MODE=${WANDB_MODE:-offline}
 fi
 mkdir -p $RUN
 # Preflight: processes outside Slurm have held 9-11 GB on every GPU of gpu-01 (and some of gpu-02); a run needs ~30 of
@@ -292,7 +298,7 @@ if [[ -f $RUN/run/status.json ]]; then export EXTRA="--resume ${EXTRA:-}" FRESH=
   echo "commit $(git -C $CLONE rev-parse HEAD) $(git -C $CLONE status --porcelain --untracked-files=no | wc -l) modified tracked files (copied to $REPO)"
   echo "STATIONARY='${STATIONARY:-}' POWER='${POWER:-}' FEET_HOLD='${FEET_HOLD:-}' BANK='${BANK:-}' ARM_STD='${ARM_STD:-}' HAND_FAR='${HAND_FAR:-}' RETREAT_SUCCESS='${RETREAT_SUCCESS:-}' TABLE_FACING='${TABLE_FACING:-}' TABLE_LEG_POWER='${TABLE_LEG_POWER:-}' TABLE_PROGRESS='${TABLE_PROGRESS:-}' TABLE_HANDS_UP='${TABLE_HANDS_UP:-}' TABLE_HANDS_UP_BAND='${TABLE_HANDS_UP_BAND:-}' TABLE_CENTER='${TABLE_CENTER:-}' TABLE_ZONE_FACING='${TABLE_ZONE_FACING:-}' PASSAGE_PROGRESS='${PASSAGE_PROGRESS:-}' TABLE_POWER='${TABLE_POWER:-}' GLOBAL_POWER='${GLOBAL_POWER:-}' PASSAGE_STALL='${PASSAGE_STALL:-}' PASSAGE_SOFT='${PASSAGE_SOFT:-}' PASSAGE_GATE='${PASSAGE_GATE:-}' ROUTE_ENERGY='${ROUTE_ENERGY:-}' OPERATOR_SPEED='${OPERATOR_SPEED:-}' REST_STARTS='${REST_STARTS:-}' OPERATOR_V2='${OPERATOR_V2:-}' OPERATOR_V3='${OPERATOR_V3:-}' OPERATOR_V4='${OPERATOR_V4:-}' OPERATOR_V5='${OPERATOR_V5:-}' OPERATOR_V6='${OPERATOR_V6:-}' GOAL_SEED_CACHE='${GOAL_SEED_CACHE:-}' GOAL_GROUND='${GOAL_GROUND:-}' OVERSPEED='${OVERSPEED:-}' GOAL_BONUS='${GOAL_BONUS:-}' TIGHT_PASSAGES='${TIGHT_PASSAGES:-}' ANCHOR='${ANCHOR:-}' SNAPSHOT_EVERY='${SNAPSHOT_EVERY:-}' MASSES='${MASSES:-}' REACTIVE_SHARE='${REACTIVE_SHARE:-}' RAISED='${RAISED:-}' ROUTE_FILE='${ROUTE_FILE:-}' NUM_ENVS=$NUM_ENVS NUM_MINIBATCHES=$NUM_MINIBATCHES EXTRA='${EXTRA:-}'"
   if [[ "$VARIANT" = S2H || "$VARIANT" = COMBO_NOPRICE ]]; then
-    echo "ENERGY_MODEL=${ENERGY_MODEL:-} ENERGY_ALPHA=${ENERGY_ALPHA:-} NO_ENERGY_PRICE=${NO_ENERGY_PRICE:-} ENERGY_UPDATES=${ENERGY_UPDATES:-}"
+    echo "ENERGY_MODEL=${ENERGY_MODEL:-} ENERGY_ALPHA=${ENERGY_ALPHA:-} NO_ENERGY_PRICE=${NO_ENERGY_PRICE:-} ENERGY_UPDATES=${ENERGY_UPDATES:-} ARM_MULT=${ARM_MULT:-1} LEG_MULT=${LEG_MULT:-1}"
   fi
   echo "STUDENT=$STUDENT CAT_PATH_MAP=$CAT_PATH_MAP"
   echo "config: configs/pilots/stationary_hands_20261113.sh"; } >> $RUN/run_info.txt
