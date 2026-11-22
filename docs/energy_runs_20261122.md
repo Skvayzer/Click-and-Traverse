@@ -28,3 +28,33 @@ Standing evaluation uses the available checkpoints at the requested updates. A s
 - COMBO_NOPRICE uses COMBO1b's 500-update recipe, warm-started from `plan_reflex_COMBO1_update_0300.pt` with 10 critic-only updates and the E2 u300 anchor. It removes the explicit standing, table, leg-and-waist, global, and route energy prices, including inherited terms. It retains the shared native joint-torque regularizer.
 - Existing launch recipes omit `--energy-model` and retain the historical final-sample mechanical reward. Explicit `mech`, `heat`, and `metab` charge clipped PD plus gravity feed-forward, timed over each physics substep. The route offset `--route-energy-p0` defaults to zero. The heat model uses joint torque limits with a shared alpha because motor masses were unavailable.
 - Energy telemetry reports policy and applied torque for both mechanical and heat models, by legs, waist, and arms. Heat's positive net work is allocated across groups with positive net work in proportion to their contribution. Standing events cover the active approach through return to the object start. A step requires at least 5 cm horizontal travel and 2 cm lift of the same foot. The arm-first retreat measurement projects the targeted hand's torso-relative displacement onto the initial retreat direction.
+
+## Round 2 — motor-size heat and standing response classes
+
+Code `f93f1c2` is deployed in `~/cat_worktrees/energy_price_f93f1c2`. The original equal-heat S2H job 314950 had already completed 50 updates. The new jobs write separate outputs under `/l/users/konstantin.smirnov/runs/`. All use one GPU and W&B offline.
+
+| Job | Purpose | Partition | CPUs | RAM | Limit | ETA after allocation | Output directory relative to runs |
+| --- | --- | --- | ---: | ---: | --- | --- | --- |
+| 315346 | Standing re-score of u150, S1b seed 1, S2 seeds 1 and 2 | ws-ia | 8 | 48000M | 02:00:00 | 20–45 min | `energy_round2_standing_315346` |
+| 315347 | Retry COMBO1b 384 scenes at 0.15 and 0.3 m/s | gpu | 8 | 48000M | 03:00:00 | 75–100 min | `energy_round2_combo1b_315347` |
+| 315348 | Motor-weighted S2H, 50 updates | ws-ia | 12 | 54000M | 03:00:00 | 70–95 min | `stationary_hands_20261113_S2H_peak` |
+
+Retry 315347 uses a partition with disjoint nodes and explicitly excludes `ws-l1-[001-021],ws-l2-[001-021]`. The failed 314949 log had no hostname, the controller had purged the job, and the accounting service was unavailable. There was no exact node name to recover.
+
+The old standing JSON saved group-level equal heat and movement labels without hand side or event success. Round 2 reruns the same 2,000 rows and 800 control steps. Completed successes are classified by torso-relative hand retreat, stepping and pelvis displacement. Active approaches cut short by a fall or contact are failures. Events still open at a time limit are censored.
+
+| Actuator class | Joint torque limit (N·m) | Speed limit (rad/s) | Peak (W) | Heat weight |
+| --- | ---: | ---: | ---: | ---: |
+| 7520-22 | 139 | 20 | 2780 | 1.000000 |
+| 7520-14 | 88 | 32 | 2816 | 1.012950 |
+| 5020 | 25 | 37 | 925 | 0.332734 |
+| 4010 | 5 | 22 | 110 | 0.039568 |
+| Two parallel 5020 motors | 50 | 37 | 1850 | 0.665468 |
+
+The class mapping follows mjlab 1.6.0's G1 actuator expressions. Ankles and waist pitch/roll use its parallel 5020 assignment at nominal 1:1. The reference peak is 2780 W and alpha stays 500 W. `heat_eq` preserves the old uniform normalized price. Fifteen focused CPU tests passed.
+
+The matched baseline for each bucket and target side is the still-success energy divided by still-success duration. It is multiplied by each response event's duration before subtraction. The comparison weights both classes to the same observed bucket/side mix on common support. The k* estimator divides total policy fixed-heat extra joules per body-first event by the arm-first estimate. The 95% percentile interval uses 2,000 resamples of entire benchmark rows. S2 seed 1 is the calibration policy because it is the flip warm start.
+
+### Flip pilot plan
+
+All arms start from `/l/users/konstantin.smirnov/checkpoints/stationary_hands_S2_seed1_u180.pt`, use the fixed heat reward for 50 updates and keep the u150 anchor, seed 0 and the same standing benchmark. The fixed-heat S2H run at unit prices is the control. The arm multipliers are k*/3, k* and 3k*, with a mirror leg multiplier of 1/k*. Use arm multipliers 2, 8 and 30 and mirror 1/8 if k* is undefined or the CI is missing or more than fourfold wide. The planned effect is at least a five-percentage-point decrease in arm-first share near k*, with at least half that change absorbed by body-first successes. An increase in failures that absorbs the shift refutes the predicted response substitution. This is a single-seed pilot on the calibration benchmark.
