@@ -70,6 +70,9 @@ RUN_DIR=${RUN_DIR:-outputs/stationary_hands_20261113}
   ${TABLE_POWER:+--table-power-weight $TABLE_POWER} ${GLOBAL_POWER:+--global-power-weight $GLOBAL_POWER} \
   ${TIGHT_PASSAGES:+--hand-tight-passages} ${PASSAGE_STALL:+--passage-stall-factor $PASSAGE_STALL} \
   ${PASSAGE_SOFT:+--passage-soft-contact $PASSAGE_SOFT} ${PASSAGE_GATE:+--passage-stall-gate} \
+  ${TRACKER_HAND_BAND:+--tracker-hand-band "$TRACKER_HAND_BAND"} \
+  ${HAND_CLEARANCE_MARGIN:+--hand-clearance-margin "$HAND_CLEARANCE_MARGIN"} ${ARM_CLEARANCE_MARGIN:+--arm-clearance-margin "$ARM_CLEARANCE_MARGIN"} \
+  ${HAND_SDF_KNEE:+--hand-sdf-knee "$HAND_SDF_KNEE"} \
   ${ENERGY_MODEL:+--energy-model "$ENERGY_MODEL"} ${ENERGY_ALPHA:+--energy-alpha "$ENERGY_ALPHA"} \
   ${ARM_MULT:+--arm-mult "$ARM_MULT"} ${LEG_MULT:+--leg-mult "$LEG_MULT"} ${NO_ENERGY_PRICE:+--no-energy-price} \
   ${ROUTE_ENERGY_P0:+--route-energy-p0 "$ROUTE_ENERGY_P0"} \

@@ -936,7 +936,8 @@ def tracker_spec(args):
     if getattr(args, 'tracker_hold_plan', None) is not None:
         spec['hold_plan'] = float(args.tracker_hold_plan)
     if getattr(args, 'tracker_reflex', False):
-        spec['reflex'] = {}
+        hand_band = getattr(args, 'tracker_hand_band', None)
+        spec['reflex'] = {} if hand_band is None else {'hand_band': hand_band}
     if getattr(args, 'tracker_commit', False):
         spec['commit'] = True
     if getattr(args, 'tracker_continuity', None) is not None:
@@ -1113,6 +1114,9 @@ def create_task(args, *, environment_config=None, sim_class=None):
         route_recovery_speed=getattr(args, 'route_recovery_speed', None), route_lost_seconds=getattr(args, 'route_lost_seconds', None),
         goal_hold_seconds=getattr(args, 'goal_hold_seconds', None),
         action_rate_weight=getattr(args, 'action_rate_weight', None), joint_acc_weight=getattr(args, 'joint_acc_weight', None),
+        hand_clearance_margin=getattr(args, 'hand_clearance_margin', None),
+        arm_clearance_margin=getattr(args, 'arm_clearance_margin', None),
+        hand_sdf_knee=getattr(args, 'hand_sdf_knee', None),
         hand_body_contact_weight=getattr(args, 'hand_body_contact_weight', None),
         heading_hand_probes=getattr(args, 'heading_hand_probes', None),
         head_guidance_near_sdf=getattr(args, 'head_guidance_near_sdf', None),

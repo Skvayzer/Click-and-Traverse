@@ -62,6 +62,8 @@ def main():
     p.add_argument("--tracker-fallback", type=float, nargs=2, metavar=("STALL_S", "HOLD_S"),
                    help="The monitor's stall rule: a plan world without progress along its route for STALL_S s acts without "
                         "its plan for HOLD_S s, then replans")
+    p.add_argument("--refused-rewards", action="store_true",
+                   help="Aggregate named scaled terms per transition over eventually refused episodes")
     p.add_argument("--out", type=Path)
     p.add_argument("--out-dir", type=Path)
     args = p.parse_args()
@@ -165,6 +167,12 @@ def main():
         mass = float(task.model.body_subtreemass[task.pelvis_body])      # whole robot (pelvis = root of its tree)
     except Exception:
         mass = float("nan")
+    if args.refused_rewards:
+        refusal_terms = ("track_pos", "track_lead", "track_upper", "handsdf", "wholebody_hand_clearance",
+                         "wholebody_arm_clearance", "stall", "goal_progress", "global_power", "table_power")
+        refusal_acc = torch.zeros((task.num_envs, len(refusal_terms)), device=dev)
+        refusal_totals = torch.zeros((NS * K, len(refusal_terms)), device=dev)
+        refusal_steps = torch.zeros(NS * K, device=dev)
     target = S * args.episodes * K
     start = time.time()
     for t in range(args.max_steps):
@@ -188,6 +196,10 @@ def main():
             overspeed.index_add_(0, sc_, w_ * ((c_ > 1e-3) & (v_ > 1.5 * c_)).double())
             vb_ = torch.linalg.vector_norm(v_bar, dim=-1).double()
             near_vbar.index_add_(0, sc_, w_ * vb_); overspeed_bar.index_add_(0, sc_, w_ * ((c_ > 1e-3) & (vb_ > 1.5 * c_)).double())
+        if args.refused_rewards:
+            zero_term = torch.zeros_like(path, dtype=torch.float32)
+            terms = torch.stack([m.get("reward/" + term, zero_term) for term in refusal_terms], 1)
+            refusal_acc += torch.where((before >= 0)[:, None], terms, 0.)
         if bool(done.any()):
             zero = torch.zeros_like(done)
             goal = m.get("episode/goal_reached", m["successful"]).bool()
@@ -197,6 +209,11 @@ def main():
             d = torch.nonzero(done).flatten(); sc = before[d]
             for c, f in enumerate(flags):
                 stats[:, c].index_add_(0, sc, f[d].double())
+            if args.refused_rewards:
+                refused = flags[3][d]
+                refusal_totals.index_add_(0, sc, torch.where(refused[:, None], refusal_acc[d], 0.))
+                refusal_steps.index_add_(0, sc, torch.where(refused, m["episode_length"][d], 0).float())
+                refusal_acc[d] = 0.
             stats[:, 6].index_add_(0, sc, m["episode_length"][d].double())
             episode_j = m['energy/episode_j'][d].double()
             group_energy.index_add_(0, sc, episode_j)
@@ -229,6 +246,12 @@ def main():
             result[scenes[i]["scene_id"]] = row
         E = stats[jid, 0].sum().clamp_min(1)
         summary = {c: round(float(stats[jid, c_].sum() / E), 4) for c_, c in enumerate(cols) if 0 < c_ < 9}
+        if args.refused_rewards:
+            count = float(refusal_steps[jid].sum())
+            summary["refused_reward_terms_per_step"] = {
+                "steps": int(count),
+                "terms": dict(zip(refusal_terms, (refusal_totals[jid].sum(0) / count).tolist())) if count else {},
+            }
         summary["energy"] = report_energy(group_energy[jid].sum(0), int(stats[jid, 0].sum()),
                                           float(stats[jid, 6].sum()) * task.dt)
         summary["power_w"] = round(float(stats[jid, 7].sum() / (stats[jid, 6].sum() * task.dt).clamp_min(1e-9)), 2)

@@ -167,6 +167,8 @@ def evaluate(checkpoint, rows, steps, device, robust, hold_plan=None, bank=None,
     result['energy_during_object_motion'] = report_energy(moving_j.cpu(), 0, s['moving'] * task.dt)
     result['energy_by_response'], result['approaches'] = observer.summary(rows, BUCKETS)
     result['matched_extra'] = matched_extra(result['approaches'])
+    from standing_event_energy import threatened_motion
+    result['threatened_motion'] = threatened_motion(result['approaches'])
     result['power_W']['total'] = {k: round(sum(result['power_W'][g][k] or 0. for g in GROUPS), 2) for k in ('standing', 'object_moving')}
     return result
 

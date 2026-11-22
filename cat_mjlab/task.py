@@ -1571,8 +1571,11 @@ class CATTask:
             subtree_com=d.subtree_com[:,self.pelvis_body],feet_contact=contacts[:,:2],gait=i['gait'],foot_height=i['foot_height'],
             foot_height_stance=float(_get(self.config,'reward_config.foot_height_stance',0.)),gf=i['gf'],positions=i['positions'],velocities=i['velocities'],
             sdf=i['sdf'],crossed=self._crossed(i['positions'],self.all_ids),dt=self.dt,max_yaw=abs(float(_get(self.config,'ang_vel_yaw',[-.5,.5])[1])))
+        hand_knee=self.config.get('hand_sdf_knee')
+        if hand_knee is not None:
+            rewards['handsdf']=tm.sdf_reward(i['sdf'][:,5:7],knee=hand_knee)
         if self.config.get('protected_hand_sdf_margin',False) and self.hand_contrast:
-            rewards['handsdf']=tm.protected_hand_sdf_reward(i['sdf'][:,5:7],self.contrast,sdf_knee)
+            rewards['handsdf']=tm.protected_hand_sdf_reward(i['sdf'][:,5:7],self.contrast,sdf_knee if hand_knee is None else hand_knee)
         balance=getattr(self,'balance_settings',None) is not None
         if balance:
             flat=self.bank.flat_balance[self.scene_ids]
@@ -1608,7 +1611,7 @@ class CATTask:
             arm_margin=arm_margin*room_scale
             # handsdf (cost below 5 cm) shrinks with the same room: sideways in a 0.34 m gap the hands are 6 cm
             # from the walls and handsdf alone cost ~-8.7 per step, as much as the whole positive reward.
-            rewards['handsdf']=tm.sdf_reward(i['sdf'][:,5:7],knee=.05*room_scale[:,0])
+            rewards['handsdf']=tm.sdf_reward(i['sdf'][:,5:7],knee=(.05 if hand_knee is None else hand_knee)*room_scale[:,0])
         far=self.config.get('reactive_hand_clearance')
         if far and self.reactive_objects is not None:
             # Standing episodes: get the hand well away from an approaching object (clearance-pressure target and
@@ -1647,7 +1650,9 @@ class CATTask:
             if self.reflex:
                 # The reflex rule: inside the band the field acts, not the reference (i['sdf'] is the clearance at the 13
                 # body points after the hand radii, with thrown objects merged in).
-                released=i['sdf'][:,5:7,0]<float(self.reflex.get('hand_band',.15))
+                hand_band=float(self.reflex.get('hand_band',.15))
+                if hand_band > 0.:
+                    released=i['sdf'][:,5:7,0]<hand_band
                 body=i['sdf'][...,0].amin(-1)
                 deadband=(float(self.reflex.get('body_band',.35))-body).clamp(0.,float(self.reflex.get('deadband',.20)))
             terms,tel=self.tracker.rewards(d.qpos[:,:2],self._root_yaw(self.all_ids),d.qpos[:,2],d.qpos[:,19:36],self.track_info,

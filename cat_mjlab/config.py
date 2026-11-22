@@ -40,6 +40,7 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
                      hand_reward_soft_floor=None,disable_hand_contrast=None,
                      hand_clearance_weight=None,arm_clearance_weight=None,hand_clearance_target=None,
                      hand_clearance_anticipation=None,hand_clearance_near_weight=None,
+                     hand_clearance_margin=None,arm_clearance_margin=None,hand_sdf_knee=None,
                      tracking_root_field_weight=None,standing_gf_bonus=None,
                      reactive_hand_guidance=None,handsdf_weight=None,heading_align_weight=None,
                      upright_weight=None,stand_tall_weight=None,torso_rate_weight=None,self_clearance_weight=None,
@@ -99,6 +100,12 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
         upper_cost_waist_weight=4.,hand_protection_target_clearance=.04,hand_protection_anticipation_distance=.20,
         hand_protection_near_weight=.8,hand_protection_posture_taper=.10,upper_arm_velocity_weight=.5,
         upper_arm_acceleration_weight=.1,num_act=29,num_obs=ACTOR_SIZE,num_pri=CRITIC_SIZE)
+    for key,value in (('hand_clearance_margin', hand_clearance_margin),
+                      ('arm_clearance_margin', arm_clearance_margin), ('hand_sdf_knee', hand_sdf_knee)):
+        if value is not None:
+            if not math.isfinite(value) or value <= 0.:
+                raise ValueError(f"{key} must be positive and finite")
+            config[key] = float(value)
     config['wholebody']={'body_collision':dict(enabled=collision_manifest is not None,
         bank_manifest='' if collision_manifest is None else str(Path(collision_manifest).resolve()),
         reset_manifest='' if reset_manifest is None else str(Path(reset_manifest).resolve()),
@@ -510,7 +517,10 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
         if spec.get('reflex') is not None and spec.get('reflex') is not False:
             # {} (the --tracker-reflex flag) means the default bands; an empty dict is falsy, so test for presence
             reflex=dict(spec['reflex']) if isinstance(spec['reflex'],dict) else {}
-            config['tracker']['reflex']=dict(hand_band=float(reflex.get('hand_band',.15)),body_band=float(reflex.get('body_band',.35)),
+            hand_band=float(reflex.get('hand_band',.15))
+            if not math.isfinite(hand_band) or hand_band < 0.:
+                raise ValueError("Tracker hand band must be nonnegative and finite")
+            config['tracker']['reflex']=dict(hand_band=hand_band,body_band=float(reflex.get('body_band',.35)),
                                              deadband=float(reflex.get('deadband',.20)))
         for name,value in dict(track_pos=4.,track_lead=-8.,track_heading=1.,track_height=1.,track_upper=1.).items():
             scales[name]=float((spec.get('scales') or {}).get(name,value))

@@ -179,3 +179,26 @@ def matched_extra(events, *, draws=2000, seed=0):
     if len(ratios) >= .95 * draws:
         result["ci95"] = np.quantile(ratios,[.025,.975]).tolist()
     return result
+
+
+
+def threatened_motion(events):
+    """Summary of the full displacement distribution on danger and anticipation events."""
+    result = {}
+    subsets = {
+        "all": [e for e in events if e["bucket"] in ("danger", "anticipation")],
+        "danger": [e for e in events if e["bucket"] == "danger"],
+        "anticipation": [e for e in events if e["bucket"] == "anticipation"],
+    }
+    for bucket, subset in subsets.items():
+        row = result[bucket] = {"count": len(subset)}
+        for field in ("feet_m", "pelvis_m", "retreat_m"):
+            values = np.asarray([e[field] for e in subset])
+            row[field] = None if not len(values) else {
+                "mean": float(values.mean()),
+                **dict(zip(("p10", "p25", "p50", "p75", "p90", "p95", "p99"), np.quantile(
+                    values, [.10, .25, .50, .75, .90, .95, .99]).tolist())),
+                "share_ge_5cm": float((values >= .05).mean()),
+                "share_ge_10cm": float((values >= .10).mean()),
+            }
+    return result

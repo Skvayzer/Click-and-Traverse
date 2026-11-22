@@ -139,6 +139,10 @@ def parser():
                                  "(a hesitant plan can no longer stop the gait or switch off the stall cost)")
         target.add_argument("--tracker-crouch-gate", type=float, metavar="Z_M",
                             help="upright and stand_tall stop paying while the plan's pelvis 0.3 s ahead is below Z_M")
+        target.add_argument("--tracker-hand-band", type=float, help="Hand release band in metres, zero keeps arms tracked")
+        target.add_argument("--hand-clearance-margin", type=float)
+        target.add_argument("--arm-clearance-margin", type=float)
+        target.add_argument("--hand-sdf-knee", type=float)
         target.add_argument("--tracker-reflex", action="store_true",
                             help="the reflex rule: an arm whose hand is within 15 cm of an obstacle drops out of the upper-body "
                                  "tracking term; the pelvis term tolerates up to 20 cm near obstacles")
