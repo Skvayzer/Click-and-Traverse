@@ -87,3 +87,21 @@ All jobs below use `ws-ia`. Each training job uses 1 GPU, 12 CPUs and 54000M RAM
 | 315389 | Standing eval Flip_leg_mirror | 315388 |  |  | `energy_round2_trained_315389` |
 
 Video array 315390 runs after 315387:315389. Each task uses 1 GPU, 8 CPUs and 48000M RAM, with a 2 h 30 min limit and an estimated 15–45 min runtime. The array allows two concurrent tasks and writes each policy to its own subdirectory under `/l/users/konstantin.smirnov/runs/energy_videos/round2_315390/`. Every policy uses seed 0 and the same files by scenario: `danger_row0_seed0.mp4`, `anticipation_row1_seed0.mp4`, `negative_row2_seed0.mp4`. These are planned outputs until the array completes.
+
+## Round 3 — planner refusals and longer price flips
+
+Code `828a405` is deployed at `~/cat_worktrees/energy_price_828a405`. The running center-flip and video array were left untouched. The no-price benchmark uses the same two-speed, 384-scene protocol and original evaluator as 315347. No matched lower-refusal COMBO4/5 checkpoint was found in the run log or retained cluster paths. Both COMBO trainings use `/l/users/konstantin.smirnov/checkpoints/plan_reflex_COMBO1b_u500.pt` and the original E2 u300 anchor.
+
+| Job | Purpose | Partition | GPU / CPUs / RAM | Limit | ETA after allocation | Waits for | Output under runs |
+| --- | --- | --- | --- | --- | --- | --- | --- |
+| 315778 | COMBO_NOPRICE final u50, 384 scenes | gpu | 1 / 8 / 48000M | 3 h | 1–2 h | — | `energy_round3_noprice_combo1b_315778` |
+| 315781 | COMBO_FIX, 150 updates | ws-ia | 1 / 12 / 54000M | 6 h | 3–4 h | 315390 | `stationary_hands_20261113_COMBO_FIX` |
+| 315783 | COMBO_FIX, 384 scenes | ws-ia | 1 / 8 / 48000M | 3 h | 1–2 h | 315781 | `energy_round3_COMBO_FIX_315783` |
+| 315782 | COMBO_NOREFLEX, 150 updates | ws-ia | 1 / 12 / 54000M | 6 h | 3–4 h | 315390 | `stationary_hands_20261113_COMBO_NOREFLEX` |
+| 315784 | COMBO_NOREFLEX, 384 scenes | ws-ia | 1 / 8 / 48000M | 3 h | 1–2 h | 315782 | `energy_round3_COMBO_NOREFLEX_315784` |
+| 315785 | ×30 exact checkpoint continuation, +100 updates | ws-ia | 1 / 12 / 54000M | 6 h | 2–3 h | 315783 | `stationary_hands_20261113_Flip_arm_high_u150` |
+| 315787 | ×30 u150 standing eval | ws-ia | 1 / 8 / 48000M | 90 min | 7–15 min | 315785 | `energy_round3_Flip_arm_high_u150_315787` |
+| 315786 | ×100 warm-start from S2 seed 1 u180, 150 updates | ws-ia | 1 / 12 / 54000M | 6 h | 3–4 h | 315784 | `stationary_hands_20261113_Flip_arm100` |
+| 315788 | ×100 u150 standing eval | ws-ia | 1 / 8 / 48000M | 90 min | 7–15 min | 315786 | `energy_round3_Flip_arm100_315788` |
+
+Both COMBO variants use the .5 m continuing-plan rule and COMBO2 committed clock with lateral-only pelvis deadband. FIX releases arm tracking within .05 m. NOREFLEX keeps arms tracked globally at hand band zero while retaining the same lateral pelvis deadband. The hand and elbow margins are .05 and .04 m, and the handsdf knee is .03 m before existing room-width scaling. Traversal evaluations save transition-averaged reward terms for eventually refused episodes. Standing evaluations save threatened-event displacement quantiles and raw per-event values. The ×30 run copies the original u50 runtime into its own output directory and uses the original `f93f1c2` trainer snapshot for strict optimizer and simulation-state restoration. The ×100 run uses `stationary_hands_S2_seed1_u180.pt` plus the u150 anchor.
