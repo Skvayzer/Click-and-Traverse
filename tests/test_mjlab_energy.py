@@ -231,3 +231,17 @@ def test_matched_extra_subtracts_time_scaled_baselines_and_bootstraps_rows():
     r = matched_extra(events, draws=64)
     assert r["k_star"] == 4.
     assert r["ci95"] == [4., 4.]
+
+def test_hand_knee_override_runs_in_a_batched_task():
+    from cat_mjlab.config import wholebody_config
+    from cat_mjlab.task import CATTask
+    from test_mjlab_task import _CPUSimulation, _tiny_bank
+
+    config = wholebody_config(hand_sdf_knee=.03, hand_clearance_margin=.05, arm_clearance_margin=.04)
+    config["randomize_initial_episode_steps"] = False
+    bank = _tiny_bank()
+    bank.manifest = {"scenes": [{} for _ in range(bank.count)]}
+    bank.weights = torch.ones(bank.count)
+    task = CATTask(_CPUSimulation(2), bank, config, seed=33)
+    result = task.step(torch.zeros((2, 29)))
+    assert result["metrics"]["reward/handsdf"].shape == (2,)

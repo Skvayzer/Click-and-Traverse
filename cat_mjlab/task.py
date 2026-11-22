@@ -1572,10 +1572,12 @@ class CATTask:
             foot_height_stance=float(_get(self.config,'reward_config.foot_height_stance',0.)),gf=i['gf'],positions=i['positions'],velocities=i['velocities'],
             sdf=i['sdf'],crossed=self._crossed(i['positions'],self.all_ids),dt=self.dt,max_yaw=abs(float(_get(self.config,'ang_vel_yaw',[-.5,.5])[1])))
         hand_knee=self.config.get('hand_sdf_knee')
-        if hand_knee is not None:
-            rewards['handsdf']=tm.sdf_reward(i['sdf'][:,5:7],knee=hand_knee)
+        hand_knees=None if hand_knee is None else action.new_full((self.num_envs,), hand_knee)
+        if hand_knees is not None:
+            rewards['handsdf']=tm.sdf_reward(i['sdf'][:,5:7],knee=hand_knees)
         if self.config.get('protected_hand_sdf_margin',False) and self.hand_contrast:
-            rewards['handsdf']=tm.protected_hand_sdf_reward(i['sdf'][:,5:7],self.contrast,sdf_knee if hand_knee is None else hand_knee)
+            rewards['handsdf']=tm.protected_hand_sdf_reward(i['sdf'][:,5:7],self.contrast,
+                sdf_knee if hand_knees is None else hand_knees)
         balance=getattr(self,'balance_settings',None) is not None
         if balance:
             flat=self.bank.flat_balance[self.scene_ids]
