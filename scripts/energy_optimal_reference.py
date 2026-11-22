@@ -266,28 +266,33 @@ class InverseReference:
         lateral = Rotation.from_quat(q0[3:7], scalar_first=True).as_matrix()[:,1].copy()
         lateral[2] = 0.
         lateral /= max(np.linalg.norm(lateral), 1.e-12)
-        for swing, direction in ((0, 1.), (1, -1.)):
+        for swing, direction in ((0, 1.), (0, -1.), (1, 1.), (1, -1.)):
             stance = 1-swing
-            for metres in (.12, .22, .30):
+            for metres in (.08, .12, .15):
                 shift = metres * direction * lateral
-                stance_shift = .70*(feet[stance,:2]-q0[:2])
+                if abs(np.dot(feet[swing] + shift - feet[stance], lateral)) < .075:
+                    continue
+                if np.dot(feet[swing] + shift - feet[stance], lateral) * np.dot(feet[swing] - feet[stance], lateral) <= 0.:
+                    continue
+                stance_shift = feet[stance,:2]-q0[:2]
                 path = [q0]
                 for t in times[1:]:
-                    f = minimum_jerk((t-.22)/.55)
+                    f = minimum_jerk((t-.35)/.40)
                     q = q0.copy()
-                    q[:2] += stance_shift * (minimum_jerk(t/.22)-minimum_jerk((t-.75)/.25))
-                    q[:2] += .65 * shift[:2] * minimum_jerk((t-.73)/.27)
+                    q[:2] += stance_shift * (minimum_jerk(t/.35)-minimum_jerk((t-.75)/.25))
+                    q[:2] += .75 * shift[:2] * minimum_jerk((t-.75)/.25)
+                    q[2] -= .055 * minimum_jerk(t/.35)
                     target = feet.copy()
                     target[swing] += shift*f
-                    phase = np.clip((t-.22)/.55,0.,1.)
-                    target[swing,2] += .06*np.sin(np.pi*phase)**2
+                    phase = np.clip((t-.35)/.40,0.,1.)
+                    target[swing,2] += .045*np.sin(np.pi*phase)**2
                     q = self.leg_ik(q, target, orient, path[-1][7:19])
                     if q is None:
                         break
                     path.append(q)
                 if len(path) == len(times):
                     support = np.ones((len(times),2), dtype=bool)
-                    support[(times > .22) & (times < .77), swing] = False
+                    support[(times > .35) & (times < .75), swing] = False
                     yield np.asarray(path), support
 
     def inverse(self, path, seconds, support):

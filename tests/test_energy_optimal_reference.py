@@ -45,3 +45,20 @@ def test_batched_replay_agrees_with_scalar_bridge_for_one_step():
     batch.step()
     assert_allclose(batch.data.qpos[0], single.data.qpos[0])
     assert_allclose(batch.final_collision_data().xpos[0], single.final_collision_data().xpos[0])
+
+
+
+def test_scripted_step_moves_a_foot_and_can_balance_with_a_long_deadline():
+    reference = InverseReference(samples=25)
+    home = np.asarray(DEFAULT_QPOS, dtype=float)
+    reference.kine(home)
+    feet, orientations = reference.frames()
+    paths = list(reference.step_paths(home, np.linspace(0., 1., 25), feet, orientations))
+    assert paths
+    feasible = [(path, support) for path, support in paths if reference.inverse(path, 3., support)]
+    assert feasible
+    path, support = feasible[0]
+    assert (support.sum(axis=1) == 1).any()
+    reference.kine(path[-1])
+    landed, _ = reference.frames()
+    assert np.linalg.norm(landed-feet, axis=1).max() >= .075
