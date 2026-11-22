@@ -6,8 +6,8 @@ parameters, repeated approaches re-aimed at the live hand), deterministic action
 mode (measured, never ending an episode), no pushes, no robustness randomisation unless --robust.
 
 Reports per checkpoint: approach events (success by bucket, hand-object contact, hand retreat), feet (fraction of settled
-steps violating the 5 cm / 5-step rule, foot travel), mechanical joint power |tau*qdot| split into legs (0-11), waist
-(12-14) and arms (15-28), overall and while an object is moving, and falls.
+steps violating the 5 cm / 5-step rule, foot travel), falls, and substep energy by joint group.
+Completed approaches include torso-relative retreat, response classification, and per-event energy.
 
   eval_standing_hands.py --checkpoint A.pt [B.pt ...] --rows 0:2000 --steps 800 --device cuda:0 --out result.json
 """
@@ -23,7 +23,8 @@ import torch
 ROOT = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(ROOT), str(ROOT / 'scripts')]
 
-GROUPS = dict(legs=slice(0, 12), waist=slice(12, 15), arms=slice(15, 29))
+from cat_mjlab.energy import GROUPS, SHAPE, report_energy
+from standing_event_energy import StandingEventEnergy
 BUCKETS = ('danger', 'anticipation', 'negative')
 
 
@@ -84,7 +85,12 @@ def evaluate(checkpoint, rows, steps, device, robust, hold_plan=None, bank=None,
                lifted=zeros(), feet_moved=zeros(), standing=zeros(), moving=zeros(), falls=zeros(), steps=zeros())
     by_bucket = {b: dict(events=zeros(), success=zeros()) for b in range(3)}
     far = dict(threat=zeros(), r15=zeros(), r25=zeros(), retreat=zeros())   # threatening events: retreat distance
-    power = {g: dict(all=zeros(), moving=zeros()) for g in GROUPS}
+    energy_j = torch.zeros(SHAPE, device=task.device)
+    moving_j = torch.zeros_like(energy_j)
+    episode_j = torch.zeros_like(energy_j)
+    episode_count = zeros()
+    episode_steps = zeros()
+    obj.energy_observer = observer = StandingEventEnergy(task)
     contact_open = torch.zeros(n, dtype=torch.bool, device=task.device)
     ever_violated = torch.zeros(n, dtype=torch.bool, device=task.device)
     first_violation = torch.full((n,), float(steps), device=task.device)
@@ -93,12 +99,14 @@ def evaluate(checkpoint, rows, steps, device, robust, hold_plan=None, bank=None,
         out = task.step(learner.act(task.obs, policy_ids=0, deterministic=True)['action'])
         m, t = out['metrics'], task.telemetry
         standing = t['reactive_standing'] > 0
-        moving_obj = standing & ~obj.state['retreating'].all(-1) & (obj.state['clock'] > 0)
-        per_joint = (task.data.ctrl * task.data.qvel[:, 6:]).abs()
-        for g, sl in GROUPS.items():
-            p = per_joint[:, sl].sum(-1)
-            power[g]['all'] += p * standing
-            power[g]['moving'] += p * moving_obj
+        done = out['done'].bool() & standing
+        moving_obj = standing & ~out['done'].bool() & ~obj.state['retreating'].all(-1) & (obj.state['clock'] > 0)
+        step_power = m['energy/step_w']
+        energy_j += torch.where(standing[:, None, None, None], step_power, 0.).sum(0) * task.dt
+        moving_j += torch.where(moving_obj[:, None, None, None], step_power, 0.).sum(0) * task.dt
+        episode_j += torch.where(done[:, None, None, None], m['energy/episode_j'], 0.).sum(0)
+        episode_steps += m['energy/episode_steps'] * done
+        episode_count += done
         contact_open |= m['reactive/robot_initiated_contact'].bool()
         finished = m['reactive/event_finished'].bool() & standing
         if bool(finished.any()):
@@ -145,9 +153,19 @@ def evaluate(checkpoint, rows, steps, device, robust, hold_plan=None, bank=None,
                   feet_moved_mean_m=ratio(s['feet_moved'], s['settled']),
                   envs_ever_violating=round(float(ever_violated.float().mean()), 4),
                   first_violation_step_median=float(first_violation[ever_violated].median()) if bool(ever_violated.any()) else None,
-                  falls=int(s['falls']),
-                  power_W={g: dict(standing=ratio(float(v['all'].sum()), s['standing']), object_moving=ratio(float(v['moving'].sum()), s['moving']))
-                           for g, v in power.items()})
+                  falls=int(s['falls']))
+    all_group_power = energy_j.cpu()[0, 0].tolist()
+    moving_group_power = moving_j.cpu()[0, 0].tolist()
+    result['power_W'] = {
+        g: dict(standing=ratio(all_group_power[k], s['standing'] * task.dt),
+                object_moving=ratio(moving_group_power[k], s['moving'] * task.dt))
+        for k, g in enumerate(GROUPS)
+    }
+    result['completed_episodes'] = int(episode_count.sum())
+    result['energy'] = report_energy(episode_j.cpu(), result['completed_episodes'], float(episode_steps.sum()) * task.dt)
+    result['energy_during_standing'] = report_energy(energy_j.cpu(), 0, s['standing'] * task.dt)
+    result['energy_during_object_motion'] = report_energy(moving_j.cpu(), 0, s['moving'] * task.dt)
+    result['energy_by_response'], result['approaches'] = observer.summary(rows, BUCKETS)
     result['power_W']['total'] = {k: round(sum(result['power_W'][g][k] or 0. for g in GROUPS), 2) for k in ('standing', 'object_moving')}
     return result
 
@@ -168,7 +186,7 @@ def main():
     results = []
     for checkpoint in a.checkpoint:
         r = evaluate(checkpoint, rows, a.steps, a.device, a.robust, a.hold_plan, a.bank, a.env_from)
-        print(json.dumps(r), flush=True)
+        print(json.dumps(r if not a.out else {k: v for k, v in r.items() if k != 'approaches'}), flush=True)
         results.append(r)
     if a.out:
         a.out.write_text(json.dumps(results, indent=1) + '\n')

@@ -70,6 +70,9 @@ RUN_DIR=${RUN_DIR:-outputs/stationary_hands_20261113}
   ${TABLE_POWER:+--table-power-weight $TABLE_POWER} ${GLOBAL_POWER:+--global-power-weight $GLOBAL_POWER} \
   ${TIGHT_PASSAGES:+--hand-tight-passages} ${PASSAGE_STALL:+--passage-stall-factor $PASSAGE_STALL} \
   ${PASSAGE_SOFT:+--passage-soft-contact $PASSAGE_SOFT} ${PASSAGE_GATE:+--passage-stall-gate} \
+  ${ENERGY_MODEL:+--energy-model "$ENERGY_MODEL"} ${ENERGY_ALPHA:+--energy-alpha "$ENERGY_ALPHA"} \
+  ${ARM_MULT:+--arm-mult "$ARM_MULT"} ${LEG_MULT:+--leg-mult "$LEG_MULT"} ${NO_ENERGY_PRICE:+--no-energy-price} \
+  ${ROUTE_ENERGY_P0:+--route-energy-p0 "$ROUTE_ENERGY_P0"} \
   ${ROUTE_ENERGY:+--route-energy $ROUTE_ENERGY} ${OPERATOR_SPEED:+--operator-speed $OPERATOR_SPEED} \
   ${REST_STARTS:+--operator-rest-starts $REST_STARTS} ${OPERATOR_V2:+--operator-v2} ${OPERATOR_V3:+--operator-v3} ${OPERATOR_V4:+--operator-v4} ${OPERATOR_V5:+--operator-v5} ${OPERATOR_V6:+--operator-v6} ${GOAL_SEED_CACHE:+--goal-seed-cache $GOAL_SEED_CACHE} ${GOAL_GROUND:+--goal-ground} ${TRACKER:+--tracker} ${TRACKER_MIX:+--tracker-mix $TRACKER_MIX} ${TRACKER_SCALES:+--tracker-scales $TRACKER_SCALES} ${TRACKER_PLANNER:+--tracker-planner $TRACKER_PLANNER} ${TRACKER_HOLD_PLAN:+--tracker-hold-plan $TRACKER_HOLD_PLAN} ${TRACKER_REFLEX:+--tracker-reflex} ${TRACKER_COMMIT:+--tracker-commit} ${TRACKER_CONTINUITY:+--tracker-continuity $TRACKER_CONTINUITY} ${TRACKER_ROUTE_GO:+--tracker-route-go} ${HEIGHT_CURRICULUM:+--height-curriculum $HEIGHT_CURRICULUM} ${CADENCE:+--cadence $CADENCE} ${HIP_DEVIATION:+--hip-deviation-weight $HIP_DEVIATION} ${LIPSCHITZ:+--lipschitz $LIPSCHITZ} ${CROUCH_GATE:+--tracker-crouch-gate $CROUCH_GATE} ${FAR_THREAT_ONLY:+--reactive-far-threat-only} ${TRACKER_PLAN_INTERVAL:+--tracker-plan-interval "$TRACKER_PLAN_INTERVAL"} ${OVERSPEED:+--overspeed-weight $OVERSPEED} \
   --sgs-slots ${SGS_SLOTS:-4} --sgs-history 100 --sgs-target 0.66 --sgs-kappa 5 --sgs-temperature 2 --sgs-epsilon 1e-8 \
@@ -85,5 +88,5 @@ RUN_DIR=${RUN_DIR:-outputs/stationary_hands_20261113}
   --hand-clearance-near-weight 0.8 --hand-reward-soft-floor 0 \
   --hand-raised-reset-fraction ${RAISED:-0} --upper-gravity-compensation \
   ${COMPILE:---compile-task} --device ${DEVICE:-cuda:0} --seed 0 \
-  --checkpoint-interval-updates 10 ${SNAPSHOT_EVERY:+--snapshot-interval-updates $SNAPSHOT_EVERY} ${EXTRA:-} \
+  --checkpoint-interval-updates 10 ${SNAPSHOT_EVERY:+--snapshot-interval-updates $SNAPSHOT_EVERY} ${ENERGY_UPDATES:+--max-updates $ENERGY_UPDATES} ${EXTRA:-} \
   --wandb-mode ${WANDB_MODE:-online} --wandb-project CAT-wholebody --wandb-entity skvayzer

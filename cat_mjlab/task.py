@@ -13,6 +13,7 @@ import torch
 
 from . import task_math as tm
 from .config import hand_curriculum_threshold
+from .energy import EnergyMeter, SHAPE as ENERGY_SHAPE
 from .observation_contract import ACTOR_SIZE, CRITIC_SIZE
 from .navigation import route_context,swept_root_clearance,hand_contrast_context,contrast_reward_terms
 
@@ -55,7 +56,7 @@ class CATTask:
         self.sim,self.bank,self.config,self.collision=sim,bank,config,collision
         self.math=SimpleNamespace(**{name:getattr(tm,name) for name in (
             'quat_mul','quat_rotate','quat_conj','delay_body_pos','navi_rotation','world_to_navi','matrix_rpy',
-            'motor_targets','pd_torque','compute_cmd_from_rtf','update_phase','observations',
+            'motor_targets','pd_torques','compute_cmd_from_rtf','update_phase','observations',
             'upper_stability_terms','native_rewards','heading_probe_points','yaw_tracking',
             'facing_probe_points','clearance_gate','safe_velocity_target','hysteresis')})
         self.route_context=route_context
@@ -145,6 +146,7 @@ class CATTask:
         if home_pitch is not None:
             self.upper_home[3]=float(home_pitch);self.upper_home[10]=float(home_pitch)
         self.kps,self.kds,self.torque_limit=map(tensor,(const.KPs,const.KDs,const.TORQUE_LIMIT))
+        self.energy_meter=EnergyMeter(self.num_envs,self.torque_limit,config.get('energy_config',{}))
         from .upper_control import action_scales, UpperGravity
         self.upper_action_scales=tensor(action_scales(config))
         from .lateral_corridor import ArmGeometry
@@ -240,7 +242,9 @@ class CATTask:
             extra=hand_body_pairs();pairs=pairs+[(a,b) for a,b,_ in extra]
             self.hand_body_region=torch.tensor([HAND_BODY_REGIONS.index(r) for _,_,r in extra],device=self.device)
         self.contact_pairs=torch.tensor([[self.model.geom(a).id,self.model.geom(b).id] for a,b in pairs],device=self.device)
-        self.info={};self.navigation={};self.contrast={};self.episode={};self.telemetry={}
+        self.info={'energy_j':self.torque_limit.new_zeros((self.num_envs,*ENERGY_SHAPE)),
+                   'energy_steps':torch.zeros(self.num_envs,dtype=torch.long,device=self.device)}
+        self.navigation={};self.contrast={};self.episode={};self.telemetry={}
         self.obs={'state':torch.zeros((self.num_envs,self.observation_size),device=self.device),'privileged_state':torch.zeros((self.num_envs,self.privileged_observation_size),device=self.device)}
         self.scene_ids=torch.zeros(self.num_envs,dtype=torch.long,device=self.device)
         self.scene_episode_ema=torch.zeros(bank.count,device=self.device)
@@ -364,6 +368,7 @@ class CATTask:
             setattr(self.math,name,compile_batched_kernel(function,backend=backend))
         for name in ('route_context','swept_root_clearance','hand_contrast_context','contrast_reward_terms'):
             setattr(self,name,compile_batched_kernel(getattr(self,name),backend=backend))
+        self.energy_meter.sample=compile_batched_kernel(self.energy_meter.sample,backend=backend)
         if hasattr(self.bank,'enable_compilation'):self.bank.enable_compilation(backend=backend)
         if hasattr(self.collision,'enable_compilation'):self.collision.enable_compilation(backend=backend)
         if getattr(self,'balance_settings',None) is not None:self.balance_terms=compile_batched_kernel(self.balance_terms,backend=backend)
@@ -1347,6 +1352,7 @@ class CATTask:
             self.tolerance_episode_rung[ids]=self.tolerance_state['stage']
             self.tolerance_zone_steps[ids]=0
         self.outcome_counted[ids]=False;self.zone_steps[ids]=0;self.episode_reward[ids]=0
+        self.info['energy_j'][ids]=0;self.info['energy_steps'][ids]=0
         if getattr(self,'balance_settings',None) is not None:self.balance_streak[ids]=0
         if self.tracker is not None:
             op=self.op_speed[ids] if self.operator_speed else torch.full((n,),.525,device=self.device)
@@ -1763,6 +1769,7 @@ class CATTask:
             # left-spot radius. stand_still prices speed; this prices the drift it accumulates.
             radius=float(_get(self.config,'reactive_spot_radius',.3))
             rewards['spot_hold']=(self.reactive_root_displacement/radius).clamp(0.,1.).square()
+        power_all, lower_power=self.energy_meter.reward_power(d.ctrl,d.qvel[:,6:],self.dt)
         if getattr(self,'table_scene',None) is not None and bool(self.table_scene.any()):
             # Table-edge passages: pass forward and protect the hands with the arms (raise / tuck) instead of turning the
             # body sideways. table_facing prices facing away from the route direction while walking (0 forward, .5
@@ -1776,15 +1783,9 @@ class CATTask:
             alignment=(facing*direction).sum(-1)
             if 'table_facing' in scales:rewards['table_facing']=.5*(1.-alignment)*walking.float()
             if 'table_leg_power' in scales:
-                legs=torch.nan_to_num((self.data.ctrl[:,:15]*self.data.qvel[:,6:21]).abs().sum(-1),nan=0.,posinf=0.,neginf=0.)
-                rewards['table_leg_power']=legs*table.float()
-            # Mechanical power of all 29 joints (W, |torque x velocity|) in table-edge scenes, as the standing price.
-            # table_power is the energy-only alternative to the facing / hands-up terms (E1): moving an arm costs less
-            # than turning or side-stepping the whole body, so if energy is what makes arm-first protection natural,
-            # pricing it alone should produce raised or tucked hands where the gap allows. Measured always.
-            power=torch.nan_to_num((self.data.ctrl*self.data.qvel[:,6:]).abs().sum(-1),nan=0.,posinf=0.,neginf=0.)
-            if 'table_power' in scales:rewards['table_power']=power*table.float()
-            telemetry['table_power_w']=power*table.float()
+                rewards['table_leg_power']=lower_power*table.float()
+            if 'table_power' in scales:rewards['table_power']=power_all*table.float()
+            telemetry['table_power_w']=power_all*table.float()
             if 'table_hands_up' in scales:
                 # Exploration guide for the forward pass between table pairs (0.44 m gap at the 0.70-0.72 m tabletops):
                 # a hand within 0.30 m of a table earns credit for being above the tabletop band (palm z low -> high,
@@ -1826,17 +1827,10 @@ class CATTask:
                 rule=getattr(self,'reactive_stationary',None) or SHADOW_STATIONARY
                 rewards['reactive_feet_hold']=(moved/float(rule['feet_m'])).clamp(0.,1.).square()
         if self.reactive_objects is not None:
-            # Mechanical power of all 29 joints (W, |torque x velocity|) in standing reactive episodes: the light arms
-            # cost far less to move than stepping or swaying the whole body, so pricing energy prefers hand motion.
-            # Measured in every reactive run; a reward only with reactive_power in scales.
             s=self.reactive_objects.state;standing=(s['active']&~s['walking']).float()
-            power=torch.nan_to_num((self.data.ctrl*self.data.qvel[:,6:]).abs().sum(-1),nan=0.,posinf=0.,neginf=0.)
-            if 'reactive_power' in scales:rewards['reactive_power']=power*standing
-            telemetry['reactive_power_w']=power*standing;telemetry['reactive_standing']=standing
-        # Mechanical power of all 29 joints in every environment (telemetry), and the energy price outside the standing
-        # episodes and the table scenes (E2: global_power), which carry their own price (reactive_power, table_power):
-        # with it, efficient whole-body motion is paid for everywhere, traversal included.
-        power_all=torch.nan_to_num((self.data.ctrl*self.data.qvel[:,6:]).abs().sum(-1),nan=0.,posinf=0.,neginf=0.)
+            if 'reactive_power' in scales:rewards['reactive_power']=power_all*standing
+            telemetry['reactive_power_w']=power_all*standing;telemetry['reactive_standing']=standing
+        # The global energy price applies outside standing reactive episodes and table scenes.
         priced=torch.ones_like(power_all,dtype=torch.bool)
         if getattr(self,'table_scene',None) is not None:priced&=~self.table_scene[self.scene_ids]
         if self.reactive_objects is not None:
@@ -1862,7 +1856,9 @@ class CATTask:
             weight=routed
             if getattr(self,'table_scene',None) is not None and float(spec.get('table_factor',1.))!=1.:
                 weight=weight*torch.where(self.table_scene[self.scene_ids],float(spec['table_factor']),1.)
-            rewards['route_energy']=(power_all-float(spec['q'])*v)*weight
+            baseline=float(spec.get('p0',0.))
+            power=power_all+baseline if baseline else power_all
+            rewards['route_energy']=(power-float(spec['q'])*v)*weight
             telemetry['energy_progress_mps']=v*routed;telemetry['energy_go']=go*routed
         if 'reactive_event' in scales and self.reactive_objects is not None:
             # Sparse, paid once per finished approach: +1 handled, -1 unhandled for a threatening
@@ -2189,6 +2185,8 @@ class CATTask:
         object_initiated=robot_initiated.clone() if robot_initiated is not None else None
         if self.reactive_objects is not None:
             self.reactive_objects.begin_step(self.info['velocities'][:,5:7])
+        self.energy_meter.begin_step()
+        event_energy=getattr(self.reactive_objects,'energy_observer',None)
         for substep in range(self.n_substeps):
             if self.reactive_objects is not None:
                 reactive_before=self.reactive_objects.advance(self.sim.final_collision_data(),self.dt/self.n_substeps)
@@ -2211,10 +2209,11 @@ class CATTask:
                     older=i['motor_targets']
                 if self.upper_average:
                     applied=torch.cat((applied[:,:12],.5*(applied[:,12:]+older[:,12:])),-1)
-            if getattr(self,'robust',None):
-                feedforward=(feedforward if feedforward is not None else torch.zeros_like(d.ctrl))+i['torque_offset']
-            torque=self.math.pd_torque(d.qpos[:,7:],d.qvel[:,6:],applied,self.kps,self.kds,i['kp'],i['kd'],
-                i['rfi'],self._rand((self.num_envs,29),-1.,1.),self.torque_limit,feedforward=feedforward)
+            offset=i['torque_offset'] if getattr(self,'robust',None) else None
+            policy_torque,torque=self.math.pd_torques(d.qpos[:,7:],d.qvel[:,6:],applied,self.kps,self.kds,i['kp'],i['kd'],
+                i['rfi'],self._rand((self.num_envs,29),-1.,1.),self.torque_limit,feedforward=feedforward,torque_offset=offset)
+            sample=self.energy_meter.record(policy_torque,torque,d.qvel[:,6:],self.sim_dt)
+            if event_energy is not None:event_energy.record(sample)
             d.ctrl.copy_(torque)
             self.sim.step()
             if self.reactive_objects is not None:
@@ -2365,6 +2364,12 @@ class CATTask:
         self.episode_reward+=reward
         terminal_obs={k:v.clone() for k,v in self.obs.items()}
         metrics={'reward/'+k:v for k,v in components.items()}
+        i['energy_j'].add_(self.energy_meter.step_j)
+        i['energy_steps'].add_(1)
+        metrics['energy/step_w']=self.energy_meter.step_j/self.dt
+        metrics['energy/episode_j']=i['energy_j'].clone()
+        metrics['energy/episode_steps']=i['energy_steps'].clone()
+        if event_energy is not None:event_energy.reset(done)
         metrics.update(navigation_counts=self.navigation_counts.clone(),contrast_counts=self.contrast_counts.clone(),role_counts=self.role_counts.clone(),
             episode_return=self.episode_reward.clone(),episode_length=i['step'].clone(),resolved=resolved,successful=successful,
             scene_ids=self.scene_ids.clone(),collision_regions=regions,

@@ -83,10 +83,17 @@ def parser():
         target.add_argument("--hand-tight-passages", action="store_true",
                             help="With --hand-tight-cat-only: room passages (hand-contrast passages, width scaffolds) also get "
                                  "the room-scaled hand / elbow margins (between full-height walls only with --hand-tight-walls-only)")
+        target.add_argument("--energy-model", choices=("mech", "heat", "metab"),
+                            help="Price substep-averaged policy torque. Omission preserves legacy mechanical pricing.")
+        target.add_argument("--energy-alpha", type=float, help="Heat model holding coefficient in watts (default 500)")
+        target.add_argument("--arm-mult", type=float, help="Multiplier on the arm energy price (default 1)")
+        target.add_argument("--leg-mult", type=float, help="Multiplier on the leg energy price (default 1)")
+        target.add_argument("--no-energy-price", action="store_true", help="Remove all energy reward terms, including inherited prices")
+        target.add_argument("--route-energy-p0", type=float, help="Constant baseline in watts added to the route price (default 0)")
         target.add_argument("--route-energy", type=float, nargs=4, metavar=("WEIGHT", "Q_J_PER_M", "CRUISE_MPS", "TABLE_FACTOR"),
                             help="Energy per metre in place of --table/--global-power-weight: price per joule (negative) "
-                                 "times P - q*v under a go command (v = speed along the command, capped at the cruise "
-                                 "speed), P alone under a stop command; table steps weigh TABLE_FACTOR times more")
+                                 "times P + P0 - q*v under a go command (v = speed along the command, capped at the cruise "
+                                 "speed), P + P0 under a stop command; table steps weigh TABLE_FACTOR times more")
         target.add_argument("--operator-speed", type=float, nargs=2, metavar=("MIN", "MAX"),
                             help="Slow traversal: field direction at an operator speed drawn per episode in [MIN, MAX] m/s "
                                  "(MIN = MAX: fixed, for evaluation); see config.operator_speed")

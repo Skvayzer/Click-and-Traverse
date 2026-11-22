@@ -36,6 +36,9 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT)); sys.path.insert(0, str(ROOT / "scripts"))
 
 
+from cat_mjlab.energy import SHAPE, report_energy
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("checkpoint")
@@ -156,7 +159,8 @@ def main():
     near_vbar = torch.zeros_like(near_steps); overspeed_bar = torch.zeros_like(near_steps)
     v_bar = torch.zeros((task.num_envs, 2), device=dev)
     stats = torch.zeros((NS * K, len(cols)), dtype=torch.float64, device=dev)
-    energy = torch.zeros(task.num_envs, dtype=torch.float64, device=dev); path = torch.zeros_like(energy)
+    group_energy = torch.zeros((NS * K, *SHAPE), dtype=torch.float64, device=dev)
+    path = torch.zeros(task.num_envs, dtype=torch.float64, device=dev)
     try:
         mass = float(task.model.body_subtreemass[task.pelvis_body])      # whole robot (pelvis = root of its tree)
     except Exception:
@@ -167,14 +171,12 @@ def main():
         before = env_scene.clone(); root0 = task.data.qpos[:, :2].clone()
         with torch.no_grad():
             out = task.step(learner.act(task.obs, policy_ids=0, deterministic=not args.stochastic)["action"])
+        m = out["metrics"]
         done = out["done"].bool() & (before >= 0)
-        # Energy as the training prices it (PD torque of the last substep x joint velocity); a finished env has already
-        # been reset (ctrl holds reset targets), so its terminal step is left out of both sums.
+        # Energy and root position metrics include the terminal transition.
         moving = (before >= 0) & ~done
         v_bar = torch.where(done[:, None], 0., .95 * v_bar + .05 * task.data.qvel[:, :2])
-        power = (task.data.ctrl * task.data.qvel[:, 6:]).abs().sum(-1).double()
-        energy += torch.where(moving, power * task.dt, 0.)
-        path += torch.where(moving, torch.linalg.vector_norm(task.data.qpos[:, :2] - root0, dim=-1).double(), 0.)
+        path += torch.where(before >= 0, torch.linalg.vector_norm(m['acceptance/root_xy'] - root0, dim=-1).double(), 0.)
         near = moving & (task.info['sdf'][:, :11, 0].amin(-1) < .15)
         if bool(near.any()):
             sc_ = before.clamp_min(0); w_ = near.double()
@@ -187,7 +189,7 @@ def main():
             vb_ = torch.linalg.vector_norm(v_bar, dim=-1).double()
             near_vbar.index_add_(0, sc_, w_ * vb_); overspeed_bar.index_add_(0, sc_, w_ * ((c_ > 1e-3) & (vb_ > 1.5 * c_)).double())
         if bool(done.any()):
-            m = out["metrics"]; zero = torch.zeros_like(done)
+            zero = torch.zeros_like(done)
             goal = m.get("episode/goal_reached", m["successful"]).bool()
             obstacle = m.get("episode/obstacle", zero).bool(); fall = m.get("episode/fall", zero).bool()
             hands = m.get("episode/body_collision_hands", zero).bool()
@@ -196,16 +198,20 @@ def main():
             for c, f in enumerate(flags):
                 stats[:, c].index_add_(0, sc, f[d].double())
             stats[:, 6].index_add_(0, sc, m["episode_length"][d].double())
-            stats[:, 7].index_add_(0, sc, energy[d]); stats[:, 8].index_add_(0, sc, path[d])
+            episode_j = m['energy/episode_j'][d].double()
+            group_energy.index_add_(0, sc, episode_j)
+            energy = episode_j[:, 0, 0].sum(-1)
+            stats[:, 7].index_add_(0, sc, energy); stats[:, 8].index_add_(0, sc, path[d])
             far = path[d] >= .5
-            stats[:, 9].index_add_(0, sc, torch.where(far, energy[d] / (mass * 9.81 * path[d].clamp_min(1e-6)), 0.))
+            stats[:, 9].index_add_(0, sc, torch.where(far, energy / (mass * 9.81 * path[d].clamp_min(1e-6)), 0.))
             stats[:, 10].index_add_(0, sc, far.double())
-        energy = torch.where(done, 0., energy); path = torch.where(done, 0., path)
+        path = torch.where(done, 0., path)
         finished = int(stats[:, 0].sum())
         if t % 500 == 0:
             print(f"step {t}: {finished}/{target} episodes, {time.time() - start:.0f}s", flush=True)
         if finished >= target:
             break
+    group_energy = group_energy.cpu()
     for k, speed in enumerate(speeds):
         jid = [i + NS * k for i in ids]
         result = {}
@@ -214,6 +220,7 @@ def main():
             if e == 0:
                 continue
             row = dict(episodes=int(e), **{c: round(float(stats[j, c_]) / e, 4) for c_, c in enumerate(cols) if 0 < c_ < 9},)
+            row["energy"] = report_energy(group_energy[j], e, float(stats[j, 6]) * task.dt)
             row["power_w"] = round(float(stats[j, 7] / (stats[j, 6] * task.dt).clamp_min(1e-9)), 2)
             row["cot"] = round(float(stats[j, 9] / stats[j, 10]), 4) if float(stats[j, 10]) else None
             if float(near_steps[j]) > 0:
@@ -222,6 +229,8 @@ def main():
             result[scenes[i]["scene_id"]] = row
         E = stats[jid, 0].sum().clamp_min(1)
         summary = {c: round(float(stats[jid, c_].sum() / E), 4) for c_, c in enumerate(cols) if 0 < c_ < 9}
+        summary["energy"] = report_energy(group_energy[jid].sum(0), int(stats[jid, 0].sum()),
+                                          float(stats[jid, 6].sum()) * task.dt)
         summary["power_w"] = round(float(stats[jid, 7].sum() / (stats[jid, 6].sum() * task.dt).clamp_min(1e-9)), 2)
         summary["cot"] = round(float(stats[jid, 9].sum() / stats[jid, 10].sum().clamp_min(1)), 4)
         summary["robot_mass_kg"] = round(mass, 2)

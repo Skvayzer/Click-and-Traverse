@@ -59,11 +59,22 @@ def motor_targets(action,previous,nominal,lower,upper,*,action_scale=.5,upper_ac
     return torch.cat((legs,arms),-1)
 
 
+def pd_torques(joint_pos,joint_vel,targets,kps,kds,kp_scale,kd_scale,rfi_scale,noise,torque_limit,
+               feedforward=None,torque_offset=None):
+    pd=(kp_scale[:,None]*kps)*(targets-joint_pos)+(kd_scale[:,None]*kds)*(-joint_vel)
+    policy=pd if feedforward is None else pd+feedforward
+    applied=policy
+    if torque_offset is not None:
+        # Preserve the applied arithmetic order used before energy accounting.
+        offset=(torch.zeros_like(pd) if feedforward is None else feedforward)+torque_offset
+        applied=pd+offset
+    applied=applied+rfi_scale*noise
+    return policy.clamp(-torque_limit,torque_limit),applied.clamp(-torque_limit,torque_limit)
+
+
 def pd_torque(joint_pos,joint_vel,targets,kps,kds,kp_scale,kd_scale,rfi_scale,noise,torque_limit,feedforward=None):
-    torque=(kp_scale[:,None]*kps)*(targets-joint_pos)+(kd_scale[:,None]*kds)*(-joint_vel)
-    if feedforward is not None:torque=torque+feedforward
-    torque=torque+rfi_scale*noise
-    return torch.maximum(torch.minimum(torque,torque_limit),-torque_limit)
+    return pd_torques(joint_pos,joint_vel,targets,kps,kds,kp_scale,kd_scale,rfi_scale,noise,torque_limit,
+                      feedforward=feedforward)[1]
 
 
 def compute_cmd_from_rtf(rtf,cgf,cbf):

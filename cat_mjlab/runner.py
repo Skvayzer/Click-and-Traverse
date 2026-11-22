@@ -276,6 +276,11 @@ def collect_rollout(task, learner, *, unroll_length, trajectories, policy_ids):
     outcomes = {}
     dense = {}
     response_counts = {}
+    from .energy import GROUPS, MODELS, SHAPE, SOURCES
+    energy_j = torch.zeros(SHAPE,device=task.device)
+    energy_power_sum = torch.zeros_like(energy_j)
+    energy_episodes = torch.zeros((),device=task.device)
+    energy_samples = 0
     reactive_counts = {'steps': 0., 'active': 0., 'robot_hit': 0., 'object_hit': 0.,
                        'active_gap_sum': 0., 'active_gap_min': float('inf'), 'inside_anticipation': 0.}
     # Per-term reward totals. The task computes every component each step and the loop
@@ -450,6 +455,13 @@ def collect_rollout(task, learner, *, unroll_length, trajectories, policy_ids):
                     reactive_counts['active_gap_sum'] += float(gap.sum())
                     reactive_counts['active_gap_min'] = min(reactive_counts['active_gap_min'], float(gap.amin()))
                     reactive_counts['inside_anticipation'] += float((gap < .20).sum())
+            if 'energy/step_w' in metrics:
+                step_power = metrics['energy/step_w']
+                energy_power_sum += step_power.sum(0)
+                energy_samples += step_power.shape[0]
+                complete_energy = done & (metrics['energy/episode_steps'] == metrics['episode_length'])
+                energy_j += torch.where(complete_energy[:,None,None,None],metrics['energy/episode_j'],0.).sum(0)
+                energy_episodes += complete_energy.sum()
             completed += done.sum()
             sum_return += torch.where(done, metrics["episode_return"], 0.).sum()
             sum_length += torch.where(done, metrics["episode_length"], 0.).sum()
@@ -639,6 +651,18 @@ def collect_rollout(task, learner, *, unroll_length, trajectories, policy_ids):
             info["metrics"][f"training/{prefix}body_collision_{part}_count"] = count
             if total:
                 info["metrics"][f"training/{prefix}body_collision_{part}_rate"] = count / total
+    if energy_samples:
+        mean_power = (energy_power_sum / energy_samples).cpu().tolist()
+        count = float(energy_episodes)
+        mean_energy = (energy_j / energy_episodes).cpu().tolist() if count else None
+        info['metrics']['energy/episode_count'] = count
+        for s,source in enumerate(SOURCES):
+            for m,model in enumerate(MODELS):
+                for g,group in enumerate(GROUPS):
+                    prefix = f'energy/{source}/{model}/{group}'
+                    info['metrics'][prefix+'/mean_w'] = mean_power[s][m][g]
+                    if mean_energy is not None:
+                        info['metrics'][prefix+'/episode_j'] = mean_energy[s][m][g]
     if bool(completed > 0):
         info["metrics"].update({"episode/return": float(sum_return / completed),
                                "episode/length": float(sum_length / completed),
@@ -1132,6 +1156,12 @@ def create_task(args, *, environment_config=None, sim_class=None):
         passage_soft_contact=getattr(args, 'passage_soft_contact', None),
         passage_stall_gate=getattr(args, 'passage_stall_gate', None),
         route_energy=getattr(args, 'route_energy', None),
+        route_energy_p0=getattr(args, 'route_energy_p0', None),
+        energy_model=getattr(args, 'energy_model', None),
+        energy_alpha=getattr(args, 'energy_alpha', None),
+        arm_mult=getattr(args, 'arm_mult', None),
+        leg_mult=getattr(args, 'leg_mult', None),
+        no_energy_price=getattr(args, 'no_energy_price', False),
         operator_speed=getattr(args, 'operator_speed', None),operator_rest_starts=getattr(args, 'operator_rest_starts', None),
         operator_v2=getattr(args, 'operator_v2', None),operator_v3=getattr(args, 'operator_v3', None),
         operator_v4=getattr(args, 'operator_v4', None),operator_v5=getattr(args, 'operator_v5', None),

@@ -218,6 +218,10 @@ class StandingObjects(AnalyticObjects):
         step=torch.minimum(step,floor_budget.clamp_min(0))*s['valid'][ids]
         step=step*(s['clock'][ids]>=0.)[:,None]   # a re-armed object waits out its pause at its start
         motion=step[...,None]*direction
+        observer=getattr(self,'energy_observer',None)
+        if observer is not None:
+            observer.observe(data,ids,s['clock'][ids],s['target_hand'][ids],s['approach_ray'][ids],
+                             p[:,self.geometry.hand_mask],data.xpos[ids,self.pelvis])
         s['position'][ids]+=motion;s['velocity'][ids]=motion/dt;s['clock'][ids]+=dt
         # Approach bookkeeping: closest the object got, how far the targeted hand retreated along
         # the approach axis RELATIVE TO THE ROOT, how far the root strayed, any robot contact.
@@ -245,6 +249,7 @@ class StandingObjects(AnalyticObjects):
                 reacted=retreat>=float(self.retreat_success_m);flinched=retreat>=.05
                 success=stayed&~s['approach_contact'][f]&torch.where(bucket==2,~flinched,reacted)
                 s['event_finished'][f]=True;s['event_success'][f]=success;s['event_retreat'][f]=retreat;s['event_bucket'][f]=bucket
+                if observer is not None:observer.finish(f,bucket)
                 self.rearm(data,f,self.sampling_generator)
         # Store start-of-robot-motion clearance after safe object movement.
         d,_=self.distances(p,ids)

@@ -4,6 +4,7 @@
 #   smoke: sbatch --job-name=hands_smoke --time=00:40:00 --export=ALL,VARIANT=S1,SMOKE=1 hpc/stationary_hands.sbatch
 # VARIANT  S1 stationary: feet planted (<= 5 cm, <= 5 steps off the floor) after settling, pelvis <= 0.2 m, else failure
 #          S2 energy: cost 0.02 per watt of joint power in standing episodes, old non-terminal 0.3 m spot rule
+#          S2H: S2 with policy-torque heat pricing (alpha 500 W), 180 updates
 #          S3 both;  S0 control: old rules only
 #          S1b: S1 plus a dense cost on foot travel from the settled spot (weight -10, (travel/5 cm)^2)
 #          S2far: S2 plus a far hand retreat in standing episodes (clearance target 0.20 m, anticipation 0.40 m,
@@ -65,6 +66,7 @@
 #          COMBO1b: COMBO1 with route-following references in route worlds (rooms, cabinet passages; COMBO1's
 #              references there followed the stored goal field, which stalls in rooms), warm-started from a COMBO1
 #              snapshot (STUDENT), 10 critic-only updates
+#          COMBO_NOPRICE: COMBO1b from COMBO1 u300 for 500 updates, with every energy price removed
 #          COMBO2: COMBO1b + commit (plan clocks do not wait for a lagging robot; the reflex deadband forgives only
 #              sideways pelvis error): in COMBO1 a stalled robot kept 91% of track_pos because the reference restarted
 #              at the robot and waited. Warm start from a COMBO1b snapshot (STUDENT), 10 critic-only updates
@@ -119,6 +121,7 @@ case $VARIANT in
   S0) ;;
   S1) export STATIONARY="0.05 5 30 0.2" ;;
   S2) export POWER=-0.02 ;;
+  S2H) export POWER=-0.02 ENERGY_MODEL=heat ENERGY_ALPHA=500 ENERGY_UPDATES=180 ;;
   S3) export STATIONARY="0.05 5 30 0.2" POWER=-0.02 ;;
   S1b) export STATIONARY="0.05 5 30 0.2" FEET_HOLD=-10 ;;
   S2far) export POWER=-0.02 HAND_FAR="0.20 0.40" RETREAT_SUCCESS=0.15; : "${STUDENT:?S2far needs STUDENT=<S2 checkpoint>}" ;;
@@ -238,7 +241,7 @@ case $VARIANT in
         TRACKER=1 TRACKER_MIX=${TRACKER_MIX:-field=0.5,random=0.3,none=0.2} WARMUP=${WARMUP:-50} \
         ANCHOR=${ANCHOR:-$L/checkpoints/stationary_hands_E2_u300.pt}
       : "${STUDENT:?TRACK1 needs STUDENT=<a V7 snapshot>}" ;;
-  COMBO1|COMBO1b|COMBO2|COMBO3|COMBO4|COMBO5|GAIT1) export BANK=data/furniture/tablegap$([ "$VARIANT" = COMBO5 ] && echo _bb)_v1 POWER=-0.02 HAND_FAR="0.20 0.40" RETREAT_SUCCESS=0.15 TABLE_POWER=-0.02 \
+  COMBO1|COMBO1b|COMBO_NOPRICE|COMBO2|COMBO3|COMBO4|COMBO5|GAIT1) export BANK=data/furniture/tablegap$([ "$VARIANT" = COMBO5 ] && echo _bb)_v1 POWER=-0.02 HAND_FAR="0.20 0.40" RETREAT_SUCCESS=0.15 TABLE_POWER=-0.02 \
         GLOBAL_POWER=-0.01 TABLE_PROGRESS=1 MASSES="0.15 0.35 0.08 0.14 0.12 0.03 0.25 0.03" REACTIVE_SHARE=0.3 RAISED=0.3 \
         ROUTE_FILE=hpc/route_anchor_no_reactive_no_tables_v2.json SNAPSHOT_EVERY=50 OPERATOR_SPEED="0.1 0.6" REST_STARTS=0.25 \
         OPERATOR_V3=1 OPERATOR_V4=1 OPERATOR_V5=1 OPERATOR_V6=1 OVERSPEED=-30 PASSAGE_PROGRESS=1 \
@@ -257,11 +260,17 @@ case $VARIANT in
         FAR_THREAT_ONLY=$([ "$VARIANT" = COMBO3 ] && echo 1) \
         TRACKER_PLANNER=${PLANNER:-$L/runs/wbp/planner_v1/train/planner.pt} TRACKER_HOLD_PLAN=${HOLD_PLAN:-0.5} TRACKER_REFLEX=1 \
         ANCHOR=${ANCHOR:-$L/checkpoints/stationary_hands_E2_u300.pt}
+      if [[ "$VARIANT" = COMBO_NOPRICE ]]; then
+        export STUDENT=${STUDENT:-$L/checkpoints/plan_reflex_COMBO1_update_0300.pt}
+        export POWER=0 TABLE_POWER=0 GLOBAL_POWER=0 TABLE_LEG_POWER=0 NO_ENERGY_PRICE=1 ENERGY_UPDATES=500
+        unset ROUTE_ENERGY
+      fi
       : "${STUDENT:?COMBO1 needs STUDENT=<a V7r snapshot> (COMBO1b: <a COMBO1 snapshot>)}" ;;
   *) echo "unknown VARIANT $VARIANT"; exit 2 ;;
 esac
 if [[ -n "${SMOKE:-}" ]]; then
   RUN=$L/runs/smoke_hands_${VARIANT}_${SLURM_JOB_ID}; export EXTRA="--max-updates ${SMOKE_UPDATES:-3}" WANDB_MODE=disabled
+  if [[ "$VARIANT" = S2H ]]; then export WANDB_MODE=offline; fi
 else
   RUN=$L/runs/stationary_hands_20261113_$VARIANT; export WANDB_MODE=${WANDB_MODE:-offline}
 fi
@@ -282,6 +291,9 @@ if [[ -f $RUN/run/status.json ]]; then export EXTRA="--resume ${EXTRA:-}" FRESH=
   nvidia-smi --query-gpu=name,driver_version,memory.total --format=csv,noheader
   echo "commit $(git -C $CLONE rev-parse HEAD) $(git -C $CLONE status --porcelain --untracked-files=no | wc -l) modified tracked files (copied to $REPO)"
   echo "STATIONARY='${STATIONARY:-}' POWER='${POWER:-}' FEET_HOLD='${FEET_HOLD:-}' BANK='${BANK:-}' ARM_STD='${ARM_STD:-}' HAND_FAR='${HAND_FAR:-}' RETREAT_SUCCESS='${RETREAT_SUCCESS:-}' TABLE_FACING='${TABLE_FACING:-}' TABLE_LEG_POWER='${TABLE_LEG_POWER:-}' TABLE_PROGRESS='${TABLE_PROGRESS:-}' TABLE_HANDS_UP='${TABLE_HANDS_UP:-}' TABLE_HANDS_UP_BAND='${TABLE_HANDS_UP_BAND:-}' TABLE_CENTER='${TABLE_CENTER:-}' TABLE_ZONE_FACING='${TABLE_ZONE_FACING:-}' PASSAGE_PROGRESS='${PASSAGE_PROGRESS:-}' TABLE_POWER='${TABLE_POWER:-}' GLOBAL_POWER='${GLOBAL_POWER:-}' PASSAGE_STALL='${PASSAGE_STALL:-}' PASSAGE_SOFT='${PASSAGE_SOFT:-}' PASSAGE_GATE='${PASSAGE_GATE:-}' ROUTE_ENERGY='${ROUTE_ENERGY:-}' OPERATOR_SPEED='${OPERATOR_SPEED:-}' REST_STARTS='${REST_STARTS:-}' OPERATOR_V2='${OPERATOR_V2:-}' OPERATOR_V3='${OPERATOR_V3:-}' OPERATOR_V4='${OPERATOR_V4:-}' OPERATOR_V5='${OPERATOR_V5:-}' OPERATOR_V6='${OPERATOR_V6:-}' GOAL_SEED_CACHE='${GOAL_SEED_CACHE:-}' GOAL_GROUND='${GOAL_GROUND:-}' OVERSPEED='${OVERSPEED:-}' GOAL_BONUS='${GOAL_BONUS:-}' TIGHT_PASSAGES='${TIGHT_PASSAGES:-}' ANCHOR='${ANCHOR:-}' SNAPSHOT_EVERY='${SNAPSHOT_EVERY:-}' MASSES='${MASSES:-}' REACTIVE_SHARE='${REACTIVE_SHARE:-}' RAISED='${RAISED:-}' ROUTE_FILE='${ROUTE_FILE:-}' NUM_ENVS=$NUM_ENVS NUM_MINIBATCHES=$NUM_MINIBATCHES EXTRA='${EXTRA:-}'"
+  if [[ "$VARIANT" = S2H || "$VARIANT" = COMBO_NOPRICE ]]; then
+    echo "ENERGY_MODEL=${ENERGY_MODEL:-} ENERGY_ALPHA=${ENERGY_ALPHA:-} NO_ENERGY_PRICE=${NO_ENERGY_PRICE:-} ENERGY_UPDATES=${ENERGY_UPDATES:-}"
+  fi
   echo "STUDENT=$STUDENT CAT_PATH_MAP=$CAT_PATH_MAP"
   echo "config: configs/pilots/stationary_hands_20261113.sh"; } >> $RUN/run_info.txt
 nvidia-smi --query-gpu=timestamp,memory.used,utilization.gpu --format=csv,noheader -l ${GPU_LOG_SECONDS:-60} >> $RUN/gpu.csv &

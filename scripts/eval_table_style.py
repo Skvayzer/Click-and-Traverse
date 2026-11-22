@@ -28,6 +28,9 @@ ROOT = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(ROOT), str(ROOT / 'scripts')]
 
 
+from cat_mjlab.energy import SHAPE, report_energy
+
+
 def evaluate(checkpoint, episodes, robust, bank, seed, max_steps):
     from record_mjlab_rollout import load_policy
     from cat_mjlab.runner import create_task
@@ -68,6 +71,7 @@ def evaluate(checkpoint, episodes, robust, bank, seed, max_steps):
     acc = dict(walk_near=z(), sideways=z(), raised=z(), tucked=z(), backward=z(), power=z(), live_steps=z())
     REGIONS = ('feet', 'legs', 'trunk', 'head', 'arms', 'hands')
     ENDS = ('hand_violation', 'elbow_violation', 'body_collision') + tuple('body_collision_' + r for r in REGIONS)
+    episode_j = torch.zeros((n_envs, *SHAPE), device=dev)
     out_flags = {k: torch.zeros(n_envs, dtype=torch.bool, device=dev) for k in ('done', 'goal', 'obstacle', 'hands', 'fall') + ENDS}
     start = time.time()
     for t in range(max_steps):
@@ -92,12 +96,14 @@ def evaluate(checkpoint, episodes, robust, bank, seed, max_steps):
         acc['backward'] += walk_near & (angle >= 3 * math.pi / 4)
         acc['raised'] += walk_near & raised
         acc['tucked'] += walk_near & tucked
-        # joint mechanical power (W) while the first episode runs, as the training's energy term prices it
-        acc['power'] += torch.where(live, (d.ctrl * d.qvel[:, 6:]).abs().sum(-1), 0.)
+        # Metrics are captured before autoreset, including the terminal substep.
+        m = out['metrics']
+        acc['power'] += torch.where(live, m['energy/step_w'][:, 0, 0].sum(-1), 0.)
         acc['live_steps'] += live
         done = out['done'].bool() & live
         if bool(done.any()):
-            m = out['metrics']; zero = torch.zeros_like(done)
+            episode_j[done] = m['energy/episode_j'][done]
+            zero = torch.zeros_like(done)
             out_flags['done'] |= done
             out_flags['goal'] |= done & m.get('episode/goal_reached', m['successful']).bool()
             out_flags['obstacle'] |= done & m.get('episode/obstacle', zero).bool()
@@ -120,6 +126,8 @@ def evaluate(checkpoint, episodes, robust, bank, seed, max_steps):
                     hand_raised=f('raised'), hands_tucked=f('tucked'), goal=g('goal'), clean_goal=round(float((out_flags['goal'] & ~out_flags['obstacle'])[mask].sum()) / e, 4) if e else None,
                     obstacle_contact=g('obstacle'), hand_contact=g('hands'), fall=g('fall'),
                     power_w=round(float(acc['power'][mask].sum()) / max(float(acc['live_steps'][mask].sum()), 1.), 2),
+                    energy=report_energy(episode_j[mask].sum(0).cpu(), e,
+                                         float(acc['live_steps'][mask & out_flags['done']].sum()) * task.dt),
                     ends={k.replace('body_collision_', 'touch_'): g(k) for k in ENDS})
     role = torch.tensor([0 if roles[int(s)] == 'open' else 1 for s in job], device=dev)
     gap = torch.tensor([gaps[int(s)] for s in job], device=dev)

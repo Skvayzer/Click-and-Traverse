@@ -61,7 +61,8 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
                      table_leg_power_weight=None,table_progress=None,table_hands_up_weight=None,
                      table_hands_up_band=None,table_center_weight=None,table_zone_facing_weight=None,passage_progress=None,
                      table_power_weight=None,global_power_weight=None,hand_tight_passages=None,passage_stall_factor=None,
-                     passage_soft_contact=None,passage_stall_gate=None,route_energy=None,operator_speed=None,
+                     passage_soft_contact=None,passage_stall_gate=None,route_energy=None,route_energy_p0=None,
+                     energy_model=None,energy_alpha=None,arm_mult=None,leg_mult=None,no_energy_price=False,operator_speed=None,
                      operator_rest_starts=None,operator_v2=None,operator_v3=None,operator_v4=None,operator_v5=None,operator_v6=None,overspeed_weight=None,goal_seed_cache=None,goal_ground=None,tracker=None):
     from cat_ppo.furniture.generalist_config import released_config
     from .collision import PROPOSAL
@@ -518,6 +519,17 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
         weight=_signed('overspeed_weight',overspeed_weight,positive=False)
         if weight==0:scales.pop('overspeed',None)
         else:scales['overspeed']=weight
+    if any(value is not None for value in (energy_model,energy_alpha,arm_mult,leg_mult)):
+        energy=config.setdefault('energy_config',{})
+        energy['model']=energy.get('model','mech') if energy_model is None else energy_model
+        if energy['model'] not in ('mech','heat','metab'):
+            raise ValueError('energy_model must be mech, heat or metab')
+        for key,value in [('alpha',energy_alpha),('arm_mult',arm_mult),('leg_mult',leg_mult)]:
+            if value is not None:
+                value=float(value)
+                if not math.isfinite(value) or value<0:
+                    raise ValueError(f'energy {key} must be finite and nonnegative')
+                energy[key]=value
     if route_energy is not None:
         # Energy per metre in place of the per-second table/global price (task._rewards): [weight, q_J_per_m,
         # cruise_mps, table_factor]; weight < 0 is the price per joule, as global_power's.
@@ -531,6 +543,11 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
         scales.pop('global_power',None);scales.pop('table_power',None)
         scales['route_energy']=weight
         config['route_energy']=dict(q=q,cap=cap,table_factor=table_factor)
+    if route_energy_p0 is not None:
+        baseline=float(route_energy_p0)
+        if 'route_energy' not in config or not math.isfinite(baseline):
+            raise ValueError('route_energy_p0 requires route_energy and a finite baseline')
+        config['route_energy']['p0']=baseline
     if passage_stall_gate:
         # Room passages: no positive reward while stalled under a go command (task._rewards).
         config['passage_stall_gate']=True
@@ -580,4 +597,10 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
             if not math.isfinite(value):raise ValueError('reward_group_room scales must be finite')
             room[term]=value
         config['reward_group_scales']=dict(room=room)
+    if no_energy_price:
+        from .energy import PRICE_TERMS
+        for weights in (scales,*config.get('reward_group_scales',{}).values()):
+            for key in PRICE_TERMS:
+                weights.pop(key,None)
+        config.pop('route_energy',None)
     return config
