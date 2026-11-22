@@ -125,3 +125,11 @@ Quantiles below are cm and use all danger and anticipation entries, including fa
 | Arm ×2 u50 | 315383 | 4030 | .70 / 1.61 | 2.94 / 4.99 | 8.61 / 14.34 |
 | Arm ×30 u50 | 315385 | 4017 | .75 / 1.81 | 3.05 / 5.12 | 8.70 / 16.25 |
 | Leg ×0.125 u50 | 315389 | 4029 | .74 / 1.57 | 2.84 / 4.65 | 8.67 / 14.56 |
+
+### ×100 moved to dep-1
+
+The ×100 train/eval pipeline started on dep-1 at 2026-11-23 01:33 Dubai time. It uses the same trainer commit `3a6f7db` in detached worktree `/tmp/cat-energy-dep1-3a6f7db`, with the dedicated CUDA environment `/tmp/cat-energy-test-env`. It runs one process chain under a local GPU lock on an RTX 6000 Ada (48 GB), 12,288 worlds, seed 0, 150 updates, W&B offline, then the same 2,000-row standing evaluation. The student is the cluster copy of `stationary_hands_S2_seed1_u180.pt` (SHA-256 `4e228d3ce6901b3dbb329e86e362b53d52ae3f1d2f23d8c5cc3299dc6c430147`, matching the prior S2H run contract) with the local u150 anchor. Both input names and the effective launch options are recorded by the pipeline.
+
+Output is `/home/konstantinsmirnov/robotics/cat-energy-local-runs/Flip_arm100/` with `launch.log`, `run/status.json`, and a final `standing.json` on successful completion. The launch PID was 207579. Estimated training is 3–4 hours plus standing evaluation. Only the pending cluster counterparts 315813 and 315815 were canceled. The evaluated dependency list showed that 315815 was the sole downstream consumer of 315813.
+
+The CPU reference 315819 was still pending at this check due to `QOSMaxCpuPerUserLimit`, with no output at `/l/users/konstantin.smirnov/runs/energy_round3_reference_315819/` yet.
