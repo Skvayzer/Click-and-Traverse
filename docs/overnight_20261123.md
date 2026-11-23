@@ -190,3 +190,16 @@ The local 384-scene run completed both speeds at 768 episodes each. Intervals re
 | Stall fallback − COMBO_FIX | 0.3 | -0.13 [-2.73, +2.60] | +3.39 [+0.52, +6.25] | -2.86 [-4.95, -0.78] | +0.26 [-0.91, +1.43] |
 
 At 0.30 m/s, the lower refusal rate came with 3.39 pp more contact, so fallback alone fails the prespecified clean/contact criterion for this seed at that speed. At 0.15 m/s, clean traversal gained 3.39 pp. The remaining seeds and candidate filter are needed before selection.
+
+E0 seed 0 moved to dep-1 using the identical one-episode audit protocol and deployment `1bc21af`. Only our pending `319388_0` was canceled. The six remaining E1 tasks now depend on `319388_1` and `319388_2` individually, and Slurm confirmed the revised dependencies. The local GPU lock queues the audit behind existing local work. Its output is `~/robotics/cat-energy-local-runs/overnight_E0_baseline_seed0_local_1bc21af`.
+
+### E3 static-obstacle pilot, seed 0
+
+Both runs completed 768 episodes per speed using the same obstacle schedule and validated matching initial state. Reflex-on ran on dep-1, and reflex-off ran on ws-ia. These intervals resample paired scenes for this seed, so they quantify scene variation while the two remaining seed pairs are pending.
+
+| Command (m/s) | Clean, on − off | Contact, on − off | Refused, on − off | All hand contact, on − off | Inserted hand contact, on − off |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 0.15 | -1.30 [-4.17, +1.43] | -3.12 [-6.64, +0.39] | +4.43 [+2.08, +6.77] | -2.21 [-5.08, +0.52] | -1.30 [-3.91, +1.17] |
+| 0.30 | -0.39 [-3.26, +2.47] | -1.82 [-5.47, +1.82] | +1.95 [-0.52, +4.56] | -0.91 [-3.52, +1.69] | -2.08 [-4.30, +0.13] |
+
+The first seed points to lower collision rates and higher refusal rates. Exposure remained above 98.5% in both conditions. Neither static speed passes the joint clean/contact criterion on this seed.
