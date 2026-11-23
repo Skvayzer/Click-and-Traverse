@@ -33,7 +33,7 @@ def main():
     p.add_argument("checkpoint")
     p.add_argument("--scenes", nargs="+", required=True, help="scene ids (one world each) or @file")
     p.add_argument("--out", type=Path, required=True)
-    p.add_argument("--mix", default="plan=1", help="tracker sources, e.g. plan=1 (planner + reflex) or none=1")
+    p.add_argument("--mix", default="plan=1", help="tracker sources, e.g. plan=1 (planner + reflex) or none=1 (reactive only)")
     p.add_argument("--speed", type=float, default=0.15, help="operator speed, m/s")
     p.add_argument("--steps", type=int, default=3000)
     p.add_argument("--bank", default="data/furniture/tablegap_v1")
@@ -55,11 +55,13 @@ def main():
                                  rest_start_share=0.)
     if "teleop" in env:
         env["teleop"].update(fraction=0., cat_fraction=0., cat_scenes=False)
-    if not env.get("tracker"):
-        raise ValueError("needs a checkpoint trained with the tracker (planner with a field reflex)")
-    env["tracker"]["mix"] = [[a, float(b)] for a, b in (item.split("=", 1) for item in args.mix.split(","))]
-    if args.fallback:
-        env["tracker"]["fallback"] = dict(stall_s=float(args.fallback[0]), hold_s=float(args.fallback[1]))
+    tracker = env.get("tracker")
+    if tracker:
+        tracker["mix"] = [[a, float(b)] for a, b in (item.split("=", 1) for item in args.mix.split(","))]
+        if args.fallback:
+            tracker["fallback"] = dict(stall_s=float(args.fallback[0]), hold_s=float(args.fallback[1]))
+    elif args.mix != "none=1" or args.fallback:
+        raise ValueError("A tracker-free checkpoint requires --mix none=1 and no fallback")
     B = ROOT / args.bank
     ns = SimpleNamespace(bank_manifest=Path(str(B) + "_packed/manifest.json"), body_collision_bank=Path(str(B) + "_collision/manifest.json"),
                          body_collision_resets=Path(str(B) + "_resets/manifest.json"), device=dev, seed=args.seed,
@@ -75,7 +77,7 @@ def main():
     plans = np.zeros((n, 21, 36), np.float32)
     events = dict(t=[], w=[], cands=[], clear=[], score=[], offset=[])
     now = [0]
-    op = task.online_planner
+    op = getattr(task, "online_planner", None)
     if op is not None:
         op.capture = True
         original = task._replan
@@ -98,7 +100,8 @@ def main():
         task._replan = replan
     task.reset(None, sids)
     learner, _ = load_policy(args.checkpoint, device=dev, policy_id=0)
-    band = float((getattr(task, "reflex", None) or {}).get("hand_band", .15))
+    reflex = getattr(task, "reflex", None)
+    band = float(reflex.get("hand_band", .15)) if reflex and args.mix != "none=1" else 0.
     T = args.steps
     rec = dict(qpos=np.zeros((T + 1, n, 36), np.float32), plan=np.zeros((T + 1, n, 21, 36), np.float32),
                plan_t=np.zeros((T + 1, n), np.float32), released=np.zeros((T + 1, n, 2), bool),
@@ -111,12 +114,15 @@ def main():
         now[0] = t
         rec["qpos"][t] = task.data.qpos[:, :36].float().cpu().numpy()
         rec["plan"][t] = plans
-        rec["plan_t"][t] = task.tracker.plan_t.cpu().numpy()
-        rec["has_plan"][t] = (task.tracker.is_plan & task.tracker.has_plan).cpu().numpy()
+        if tracker:
+            rec["plan_t"][t] = task.tracker.plan_t.cpu().numpy()
+            rec["has_plan"][t] = (task.tracker.is_plan & task.tracker.has_plan & task.tracker.valid).cpu().numpy()
         clear = task.info["sdf"][:, 5:7, 0].float().cpu().numpy()
-        rec["hand_clear"][t] = clear; rec["released"][t] = clear < band
+        rec["hand_clear"][t] = clear
+        if band > 0.:
+            rec["released"][t] = rec["has_plan"][t, :, None] & (clear < band)
         rec["body_clear"][t] = task.info["sdf"][..., 0].amin(-1).float().cpu().numpy()
-        if hasattr(task.tracker, "fallback_t"):
+        if tracker and hasattr(task.tracker, "fallback_t"):
             rec["fallback"][t] = (task.tracker.fallback_t > 0).cpu().numpy()
         if t == T or not live.any():
             end = np.where(live, t, end); break
@@ -132,7 +138,8 @@ def main():
             for w in np.nonzero(done & live)[0]:
                 kind = "clean" if goal[w] and not obstacle[w] else "contact" if obstacle[w] else "fall" if fall[w] else "refused"
                 outcome[w] = dict(result=kind, hand_contact=bool(hands[w]), steps=int(t + 1))
-                live[w] = False; end[w] = t + 1
+                # The next pose would be the automatically reset episode.
+                live[w] = False; end[w] = t
         if t % 500 == 0:
             print(f"step {t}: {int(live.sum())} of {n} still running, {time.time() - t0:.0f} s", flush=True)
     meta = dict(checkpoint=str(args.checkpoint), scenes=scenes, mix=args.mix, speed=args.speed, band_m=band,

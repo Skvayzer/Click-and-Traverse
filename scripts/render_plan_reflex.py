@@ -4,7 +4,7 @@
 Per recorded world: the robot as simulated (solid), the active whole-body plan --ghost-ahead s past the plan clock
 (see-through blue ghost; 0.3 s is what the network is asked to reach), the chosen plan's pelvis path for the rest of the
 chunk (blue line), the other candidates of the latest replan (grey: clear, amber: turned 90 deg, red: overlapping an
-obstacle), and a red marker on a hand while it is inside the reflex band (in training that arm is then not paid for
+obstacle), and a red highlight on an arm while its hand is inside the reflex band (in training that arm is then not paid for
 tracking, and the field-driven terms move it). While the stall fallback has dropped the plan, nothing plan-related is
 drawn and the status says so. One mp4 per world (real time at 25 fps), a still at the moment of closest hand
 approach, and index.json.
@@ -27,6 +27,7 @@ import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(ROOT), str(ROOT / "scripts")]
+from cat_mjlab.model import ARM_LINKS  # noqa: E402
 from planner_render import add_sphere, label, scene_geometry  # noqa: E402
 from planner_video import add_ghost, add_line  # noqa: E402
 
@@ -64,6 +65,14 @@ def plan_pose(plan, t):
     return q
 
 
+def clip_start(released, hand_clear, end, stride, frames):
+    """Start near the earliest active release, or the closest hand approach."""
+    active = np.flatnonzero(released[:end+1].any(axis=-1))
+    focus = int(active[0]) if len(active) else int(hand_clear[:end+1].min(axis=-1).argmin())
+    last_start = max(0, end // stride + 1 - frames)
+    return min(max(0, focus // stride - frames // 3), last_start)
+
+
 def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--rec", type=Path, required=True)
@@ -73,6 +82,8 @@ def main(argv=None):
     p.add_argument("--width", type=int, default=1280)
     p.add_argument("--height", type=int, default=720)
     p.add_argument("--max-seconds", type=float, default=60.)
+    p.add_argument("--clip-anchor", type=Path,
+                   help="match the clip start to the planner recording's reflex/closest approach")
     p.add_argument("--ghost-ahead", type=float, default=AHEAD, help="s past the plan clock that the ghost shows")
     p.add_argument("--stills-only", action="store_true",
                    help="clean PNG stills for figures: no text, no candidate lines, no video; one per --times entry, or "
@@ -86,8 +97,16 @@ def main(argv=None):
     import mujoco
     from PIL import Image, ImageFont
     from render_clutter_rollouts import resolve_xml_assets
-    z = np.load(args.rec, allow_pickle=False)
+    with np.load(args.rec, allow_pickle=False) as recording:
+        z = dict(recording)
     meta = json.loads(str(z["meta"]))
+    reference, reference_meta = z, meta
+    if args.clip_anchor and args.clip_anchor.resolve() != args.rec.resolve():
+        with np.load(args.clip_anchor, allow_pickle=False) as recording:
+            reference = {k: recording[k] for k in ("meta", "released", "hand_clear")}
+        reference_meta = json.loads(str(reference["meta"]))
+        if reference_meta["scenes"] != meta["scenes"] or reference_meta["dt"] != meta["dt"]:
+            raise ValueError("Clip anchor must use the same scenes, in order, and timestep")
     bank_manifest = Path(args.bank + "_packed/manifest.json")
     manifest = json.loads(bank_manifest.read_text())
     by_id = {r["scene_id"]: r for r in manifest["scenes"]}
@@ -101,15 +120,26 @@ def main(argv=None):
         import imageio_ffmpeg
         ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
     dt = float(meta["dt"]); stride = max(1, int(round(1 / (args.fps * dt))))
-    has_ev = "ev_t" in z.files
-    fallback = z["fallback"] if "fallback" in z.files else np.zeros_like(z["has_plan"])
-    body_clear = z["body_clear"] if "body_clear" in z.files else None
+    frames = int(args.max_seconds * args.fps)
+    if frames < 1:
+        p.error("--max-seconds must cover at least one video frame")
+    has_ev = "ev_t" in z
+    fallback = z.get("fallback", np.zeros_like(z["has_plan"]))
+    body_clear = z.get("body_clear")
+    reactive = meta.get("mix") == "none=1"
+    policy_name = "Reactive navigation" if reactive else "Planner + field reflex"
     index = []
     for w, scene_id in enumerate(meta["scenes"]):
         if args.worlds and w not in args.worlds:
             continue
         end = int(meta["end"][w]); outcome = meta["outcome"][w] or dict(result="running at the end", hand_contact=False)
-        steps = list(range(0, min(end, int(args.max_seconds / dt)) + 1, stride))
+        start = 0
+        if args.clip_anchor:
+            start = clip_start(reference["released"][:, w], reference["hand_clear"][:, w],
+                               int(reference_meta["end"][w]), stride, frames)
+            if start * stride > end:
+                start = max(0, end // stride + 1 - frames)
+        steps = range(start * stride, min(end + 1, (start + frames) * stride), stride)
         if args.stills_only:
             last = min(end, int(args.max_seconds / dt))
             steps = ([min(int(round(t / dt)), last) for t in args.times] if args.times
@@ -125,12 +155,21 @@ def main(argv=None):
         data, ghost = mujoco.MjData(model), mujoco.MjData(model)
         option = mujoco.MjvOption(); option.geomgroup[3:] = 0; option.sitegroup[:] = 0
         perturb, camera = mujoco.MjvPerturb(), mujoco.MjvCamera()
-        palms = [model.site("left_palm").id, model.site("right_palm").id]
+        sides = ("left", "right")
+        palms = [model.site(f"{side}_palm").id for side in sides]
+        arm_bodies = {model.body(f"{side}_{link}").id: h for h, side in enumerate(sides) for link in ARM_LINKS}
+        arms = [arm_bodies.get(body) for body in model.geom_bodyid]
+        reflex_color = np.array([.95, .15, .15])
         q0 = z["qpos"][0, w]
         yaw0 = math.atan2(2 * (q0[3] * q0[6] + q0[4] * q0[5]), 1 - 2 * (q0[5] ** 2 + q0[6] ** 2))
         camera.distance, camera.elevation, camera.azimuth = args.camera[0], args.camera[1], math.degrees(yaw0) + args.camera[2]
-        look = q0[:2].copy()
-        name = f"{w:02d}_" + "".join(ch if ch.isalnum() else "_" for ch in kind_of(scene_id)).strip("_")
+        look = z["qpos"][steps[0], w, :2].copy()
+        kind = kind_of(scene_id)
+        if args.clip_anchor:
+            scene_words = kind.replace(".", "-").replace(",", "").replace(" + ", " and ")
+            name = f"{w:02d}-" + "-".join(scene_words.lower().split())
+        else:
+            name = f"{w:02d}_" + "".join(ch if ch.isalnum() else "_" for ch in kind).strip("_")
         cmd = [ffmpeg, "-hide_banner", "-loglevel", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24",
                "-s", f"{args.width}x{args.height}", "-r", str(args.fps), "-i", "-", "-an", "-c:v", "libx264",
                "-pix_fmt", "yuv420p", "-crf", "27", "-movflags", "+faststart", str(args.out / f"{name}.mp4")]
@@ -149,6 +188,13 @@ def main(argv=None):
                 renderer.update_scene(data, camera=camera, scene_option=option)
                 sc = renderer.scene
                 active = bool(z["has_plan"][t, w]); dropped = bool(fallback[t, w])
+                released = z["released"][t, w] if active else (False, False)
+                if any(released):
+                    for g in range(sc.ngeom):
+                        geom = sc.geoms[g]
+                        arm = arms[geom.objid] if geom.objtype == mujoco.mjtObj.mjOBJ_GEOM and geom.objid >= 0 else None
+                        if arm is not None and released[arm]:
+                            geom.rgba[:3] = .25 * geom.rgba[:3] + .75 * reflex_color
                 cand_txt = ""
                 if active:
                     plan, pt = z["plan"][t, w], float(z["plan_t"][t, w])
@@ -172,11 +218,10 @@ def main(argv=None):
                             names = ["%+.0f cm%s%s" % (100 * clear[c], " sideways" if abs(off[c]) > 1e-3 else "",
                                                        " (chosen)" if c == best else "") for c in range(len(score))]
                             cand_txt = "last replan " + f"{(t - int(z['ev_t'][e])) * dt:.1f} s ago: candidate clearances " + ", ".join(names)
-                released = z["released"][t, w]
                 for h in range(2):
                     if released[h]:
                         add_sphere(sc, mujoco, data.site_xpos[palms[h]], (0.95, 0.15, 0.15, 0.85), 0.045)
-                reflex_steps += int(released.any()); fallback_steps += int(dropped)
+                reflex_steps += int(any(released)); fallback_steps += int(dropped)
                 frame = renderer.render().copy()
                 if args.stills_only:
                     Image.fromarray(frame).save(args.out / f"{name}_t{t * dt:05.1f}.png")
@@ -185,36 +230,41 @@ def main(argv=None):
                 clear = float(z["hand_clear"][t, w].min())
                 if dropped:
                     status = "FALLBACK: no progress for 2 s, plan dropped - the field alone drives the robot"
-                elif released.any():
+                elif any(released):
                     status = ("reflex: " + " + ".join(s for s, r in zip(("left arm", "right arm"), released) if r)
-                              + " released from the plan (hand within 15 cm)")
+                              + f" released from the plan (hand within {100 * meta['band_m']:.0f} cm)")
                 else:
-                    status = "following the plan" if active else "no plan"
+                    status = "following the plan" if active else "reactive control"
                 body = "" if body_clear is None else f"  |  closest body point {100 * float(body_clear[t, w]):5.1f} cm"
-                lines = [f"Planner + field reflex  |  {kind_of(scene_id)}  |  t = {t * dt:5.1f} s  |  told {meta['speed']:.2f} m/s",
+                lines = [f"{policy_name}  |  {kind_of(scene_id)}  |  t = {t * dt:5.1f} s  |  told {meta['speed']:.2f} m/s",
                          f"{status}", f"closest hand {100 * clear:5.1f} cm{body}"]
                 if cand_txt:
                     lines.append(cand_txt)
                 frame = label(frame, lines, font)
-                frame = label(frame, [f"blue ghost: the plan {args.ghost_ahead:.1f} s ahead  |  blue line: chosen plan  |  "
-                                      f"red dot: hand within {100 * meta['band_m']:.0f} cm",
-                                      "other candidates: grey clear, amber turned 90 deg, red overlapping an obstacle",
-                                      f"episode: {outcome['result']}" + ("  (hand contact)" if outcome.get("hand_contact") else "")],
-                              font, xy=(14, args.height - 100))
+                legend = [] if reactive else [
+                    f"blue ghost: the plan {args.ghost_ahead:.1f} s ahead  |  blue line: chosen plan  |  "
+                    f"red arm: hand within {100 * meta['band_m']:.0f} cm",
+                    "other candidates: grey clear, amber turned 90 deg, red overlapping an obstacle",
+                ]
+                legend.append(f"episode: {outcome['result']}" + ("  (hand contact)" if outcome.get("hand_contact") else ""))
+                frame = label(frame, legend, font, xy=(14, args.height - 100))
                 proc.stdin.write(frame.tobytes())
                 if clear < closest:
                     closest, still = clear, frame
         if args.stills_only:
             continue
-        proc.stdin.close(); proc.wait()
+        proc.stdin.close()
+        if proc.wait():
+            raise RuntimeError(f"ffmpeg failed for {name}")
         if still is not None:
             Image.fromarray(still).save(args.out / f"{name}.jpg", quality=88)
-        index.append(dict(video=f"{name}.mp4", scene=scene_id, kind=kind_of(scene_id), seconds=round(steps[-1] * dt, 1),
+        index.append(dict(video=f"{name}.mp4", scene=scene_id, kind=kind_of(scene_id), seconds=len(steps) / args.fps,
+                          start_s=round(steps[0] * dt, 2), end_s=round(steps[-1] * dt, 2),
                           reflex_share=round(reflex_steps / max(len(steps), 1), 3),
                           fallback_share=round(fallback_steps / max(len(steps), 1), 3), closest_hand_clearance_m=round(closest, 4),
                           **outcome))
         print("VIDEO", name, outcome, flush=True)
-    (args.out / "index.json").write_text(json.dumps(dict(meta={k: meta.get(k) for k in ("checkpoint", "mix", "speed", "fallback")},
+    (args.out / "index.json").write_text(json.dumps(dict(meta={k: meta.get(k) for k in ("checkpoint", "mix", "speed", "fallback", "band_m")},
                                                          videos=index), indent=1) + "\n")
 
 
