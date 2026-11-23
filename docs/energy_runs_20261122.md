@@ -201,3 +201,22 @@ The ×30 continuation finished on the cluster and the ×100 run finished on dep-
 For these two runs, more foot and pelvis motion at ×100 coincided with more hand retreat and a larger arm-first share. The predicted arm-to-body substitution did not appear. The maximum foot displacement reached 5 cm on 3.99% and 3.67% of threats, respectively, so the contrast depends on the motion statistic.
 
 The inverse reference median [p25, p75] J for arm, lean/twist and side-step was 0.565 [0.421, 0.764], 2.047 [1.239, 3.103], and 22.862 [22.094, 24.128] under mech, and 31.122 [21.364, 44.574], 39.681 [27.689, 59.606], and 307.818 [281.975, 360.692] under size-weighted heat. Paired lean/arm energy-ratio medians [p25, p75] were 3.653 [2.429, 5.081] mech and 1.162 [0.989, 1.636] heat. Mean-baseline excess / optimal arm-only ratios for S2 (52 eligible threats) had signed medians −1.76 mech and −0.093 heat. For S2H (64 threats) they were −1.71 and −0.232. Negative values indicate measured consumption below the matched still-success baseline over that window. The signed ratios do not measure an absolute efficiency gain.
+
+## Round 4 paired training seeds and heat sensitivity
+
+All tasks warm-start with fresh optimizer state for 150 updates, 12,288 worlds, and the prior recipe's remaining settings. The planner tasks exactly reuse trainer `3a6f7db`, `plan_reflex_COMBO1b_u500.pt` and the E2 u300 anchor. Training seeds 1 and 2 are matched across COMBO_FIX and COMBO_NOREFLEX, with jobs 315808 and 315809 supplying the existing seed 0 pair. The standing tasks reuse `f93f1c2`, `stationary_hands_S2_seed1_u180.pt` and the u150 anchor. The four standing tasks share training seed 1, leg multiplier 1, and λ = .02. The arm multiplier and α variations are given below. The two α runs share the same 150-update α500 arm×1 comparison, with the same seed and start.
+
+Wrapper `68206db` is deployed as `~/jobs/energy_round4_68206db.sbatch` with SHA-256 `34edd4cbe6ad43c17a4e7c1685a32d1401e2c1389f0031a29993eb22cda16ede`. Each array permits two concurrent tasks. Array 318295 waits for standing comparison video array 317958 to reach a terminal state so its tasks do not compete for `ws-ia`. Each task evaluates its own final checkpoint after verifying 150 updates. Planner eval uses the same 384 scene IDs, two episodes per scene, both .15 and .30 m/s and forced planning. Standing eval uses the same 2,000 deterministic rows over 800 control steps. All tasks use 1 GPU and 54000M RAM. Expected from allocation is 5–6 h for planner tasks (8 h limit), and 3.5–4.5 h for standing tasks (6 h limit).
+
+| Job | Purpose | Partition / CPUs | Training seed | Eval output below `/l/users/konstantin.smirnov/runs` |
+| --- | --- | --- | ---: | --- |
+| 318295_0 | COMBO_FIX | ws-ia / 12 | 1 | `energy_round4_COMBO_FIX_seed1_318295` |
+| 318295_1 | COMBO_NOREFLEX | ws-ia / 12 | 1 | `energy_round4_COMBO_NOREFLEX_seed1_318295` |
+| 318295_2 | COMBO_FIX | ws-ia / 12 | 2 | `energy_round4_COMBO_FIX_seed2_318295` |
+| 318295_3 | COMBO_NOREFLEX | ws-ia / 12 | 2 | `energy_round4_COMBO_NOREFLEX_seed2_318295` |
+| 318296_0 | S2H arm×30, α500 W | gpu / 8 | 1 | `energy_round4_Flip_arm30_seed1_318296` |
+| 318296_1 | S2H arm×1, α500 W | gpu / 8 | 1 | `energy_round4_Flip_arm1_seed1_318296` |
+| 318296_2 | S2H arm×1, α250 W | gpu / 8 | 1 | `energy_round4_Heat250_seed1_318296` |
+| 318296_3 | S2H arm×1, α1000 W | gpu / 8 | 1 | `energy_round4_Heat1000_seed1_318296` |
+
+Training directories use `stationary_hands_20261113_R4_<case>_<array-id>/run`. Report planner mean and sample s.d. across the three independent training seeds at each speed for clean/contact/refused/hand-contact rates, and seed-wise reflex-on minus reflex-off differences before averaging. For standing, compare threatened-event response shares and foot motion at matched seed 1, with the existing seed 0 ×30 result for context. The sensitivity comparison holds arm and leg prices equal and changes only α, while using the same α500 W telemetry convention for every checkpoint.
