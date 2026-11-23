@@ -26,3 +26,16 @@ The available logs point to side gaps and CAT courses as the main refusal groups
 - Existing E3: `319349_0–4` on ws-ia and local COMBO_FIX seed 0 on dep-1, with 768 episodes per speed and variant, separate physical inserted contact metrics, and three paired Keynote-safe videos planned. Local `/tmp/cat-plan-blind/local-on.log`. Original code `a197178`.
 - Existing E7: α250/α1000 in `318296_2–3`. Third standing seed price flip in `319350_0–1`, 150 updates warm-started from S2 seed 1 u180. Previous energy-only and contact-only measurements are in `docs/energy_runs_20261122.md`.
 - The urgent furnished traversal videos were delivered before this program. They are under `/home/konstantinsmirnov/videos/cluttered/`, with handling and the scene list in the energy run log.
+
+## E0 window audit and E1 recovery variants
+
+Both arrays use frozen COMBO_FIX checkpoints for seeds 0–2, the original 384 scene IDs and both 0.15 and 0.30 m/s commands. E0 logs the 25 weighted reward terms by scene for refused episodes whose first confirmed stall has a complete one-second pre-stall and two-second stall window. An audit run uses one episode per scene per speed. For policy comparisons we use the existing two-episode baseline and the matched two-episode E1 protocol.
+
+| Phase | Job | Partition | Per task | Limit | Expected runtime per task | Run directories under `/l/users/konstantin.smirnov/runs` |
+| --- | --- | --- | --- | --- | --- | --- |
+| E0 audit | 319388 (0–2, at most 2 active) | gpu | 1 GPU, 8 CPUs, 30000 MB | 3 h | 60–95 min | `overnight_E0_baseline_seed{0,1,2}_319388` |
+| E1 variants | 319389 (0–8, at most 2 active) | gpu | 1 GPU, 8 CPUs, 30000 MB | 3 h | 1–2 h | `overnight_E1_<fallback\|margin\|both>_seed{0,1,2}_319389` |
+
+E0 waits for round 4 planner seed 2. E1 waits for E0. E1 tasks 0–2 use fallback, 3–5 use margin and 6–8 combine them. Fallback drops the plan after two seconds without a 5 cm forward gain and replans after a further 5 cm reactive gain. Margin selects the highest-scoring candidate with at least 5 cm predicted body clearance, relaxes to 3 cm if necessary, and otherwise acts reactively with a new candidate check every 0.6 seconds. Deployment commit `1bc21af` passed 34 CPU tests and a synthetic check of window timing.
+
+The primary comparison is the paired seed-level change in refusals, clean traversal, any contact and hand contact at each speed. Refusal recovery is useful if the clean rate rises and the contact rate stays level or falls. Side gaps and CAT courses are the prespecified scene groups for diagnosis. E2 stays conditional on evidence that recovery and candidate selection leave a reward-balance problem.
