@@ -49,6 +49,9 @@ def main():
     p.add_argument("--num-envs", type=int, default=16384)
     p.add_argument("--bank", default="data/furniture/sidegap_v2")
     p.add_argument("--env-from", help="Take the environment config from this checkpoint instead")
+    p.add_argument("--brace-config", type=Path, help="published BRACE model-sidecar YAML")
+    p.add_argument("--brace-robot", type=Path, help="published BRACE G1 MJCF for reference kinematics")
+    p.add_argument("--brace-provider", choices=("cuda", "cpu"), default="cuda")
     p.add_argument("--stochastic", action="store_true")
     p.add_argument("--max-steps", type=int, default=40000)
     p.add_argument("--seed", type=int, default=1)
@@ -93,6 +96,12 @@ def main():
     from cat_mjlab.runner import create_task
     dev = "cuda:0"
     archive = str(args.checkpoint).endswith(".npz")
+    brace = str(args.checkpoint).endswith(".onnx")
+    if brace and not (args.env_from and args.brace_config and args.brace_robot and args.tracker_mix == "plan=1"
+                      and args.nominal and not args.stochastic):
+        p.error("BRACE requires --env-from, its robot and config, --tracker-mix plan=1 and --nominal")
+    if brace and (blind or args.refusal_fix or args.plan_only):
+        p.error("BRACE evaluates direct plan tracking on a static scene bank")
     if archive and not args.env_from:
         p.error("an .npz policy needs --env-from <a .pt checkpoint> for the task")
     contract = torch.load(args.env_from or args.checkpoint, map_location="cpu", weights_only=True, mmap=True)["contract"]
@@ -104,6 +113,8 @@ def main():
     env.pop("sgs", None)                                 # every scene gets its K jobs, no success-guided resampling
     if args.planning_benchmark:
         env["eval_goal_stop"] = True
+    if brace:
+        env["dm_rand_config"]["enable_pd"] = False
     speeds = [float(x) for x in args.operator_speeds] if args.operator_speeds else (
         [float(args.operator_speed)] if args.operator_speed is not None else [None])
     if speeds[0] is not None:
@@ -271,6 +282,10 @@ def main():
         load_array_archive(learner, args.checkpoint, restore_optimizer=False)
         if task.observation_size != learner.model.config.actor_obs:
             raise ValueError(f"task gives {task.observation_size} actor inputs, the archive expects {learner.model.config.actor_obs}")
+    elif brace:
+        from cat_mjlab.brace_tracker import BraceTracker
+        external = BraceTracker(task, args.checkpoint, args.brace_config, args.brace_robot,
+                                provider=args.brace_provider, seed=args.seed)
     else:
         learner, _ = load_policy(args.checkpoint, device=dev, policy_id=0)
     cols = ("episodes", "clean", "contact", "refused", "fall", "hands", "length", "energy_j", "path_m", "cot", "cot_episodes")
@@ -313,8 +328,14 @@ def main():
             if trace is not None:
                 trace.record()
         with torch.no_grad():
-            out = task.step(learner.act(task.obs, policy_ids=0, deterministic=not args.stochastic)["action"])
+            if brace:
+                action, target_positions = external()
+                out = task.step(action, position_targets=target_positions)
+            else:
+                out = task.step(learner.act(task.obs, policy_ids=0, deterministic=not args.stochastic)["action"])
         m = out["metrics"]
+        if brace and bool(m["episode/numerical"].any()):
+            raise RuntimeError("Non-finite BRACE physics state")
         done = out["done"].bool() & (before >= 0)
         if args.planning_benchmark:
             first = (before >= 0) & (seconds_to_goal < 0.) & m["episode/goal_reached"].bool()
@@ -458,6 +479,7 @@ def main():
                                        operator_speed=speed, deterministic=not args.stochastic, finished=int(stats[jid, 0].sum()),
                                        target=S * args.episodes, seconds=round(time.time() - start), summary=summary, per_scene=result,
                                        **({"blind_variant": args.blind_variant, "blind_guide": str(args.blind_guide)} if blind else {}),
+                                       **({"external_tracker": "BRACE", "brace_provider": args.brace_provider} if brace else {}),
                                        **({"planning_benchmark": True, "plan_only": args.plan_only,
                                            "refusal_fix": args.refusal_fix, "initial_state_sha256": start_hash}
                                           if args.planning_benchmark else {})),

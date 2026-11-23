@@ -2188,7 +2188,7 @@ class CATTask:
         return ((self.zone_steps[:, :, 0] > 0) & valid).sum(-1), valid.sum(-1)
 
     @torch.no_grad()
-    def step(self,action):
+    def step(self,action,*,position_targets=None):
         if action.shape!=(self.num_envs,29):raise ValueError('Expected [num_envs,29] actions')
         ids=self.all_ids;i=self.info;d=self.data
         style_now=self._style_features() if getattr(self,'style_prior',None) is not None else None
@@ -2202,9 +2202,14 @@ class CATTask:
         self._push_signal=signal
         push=torch.stack((theta.cos(),theta.sin()),-1)*(signal*magnitude)[:,None]
         d.qvel[:,:2]+=push
-        targets=self.math.motor_targets(action,i['motor_targets'],self.nominal,self.lower,self.upper,
-            action_scale=float(_get(self.config,'action_scale',.5)),upper_action_scale=self.upper_action_scales,
-            upper_target_rate=float(_get(self.config,'upper_target_rate',2.)),dt=self.dt)
+        if position_targets is None:
+            targets=self.math.motor_targets(action,i['motor_targets'],self.nominal,self.lower,self.upper,
+                action_scale=float(_get(self.config,'action_scale',.5)),upper_action_scale=self.upper_action_scales,
+                upper_target_rate=float(_get(self.config,'upper_target_rate',2.)),dt=self.dt)
+        else:
+            if position_targets.shape != action.shape:
+                raise ValueError('Expected [num_envs,29] external PD targets')
+            targets = position_targets
         regions=torch.zeros((self.num_envs,6),dtype=torch.bool,device=self.device)
         robot_initiated=torch.zeros(self.num_envs,dtype=torch.bool,device=self.device) if self.reactive_objects is not None else None
         object_initiated=robot_initiated.clone() if robot_initiated is not None else None
