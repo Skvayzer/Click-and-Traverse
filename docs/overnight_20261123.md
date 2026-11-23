@@ -78,3 +78,17 @@ E5 on the plan-blind benchmark continues after 319349 with the same four obstacl
 The BRACE control uses zero-wrench compensation, the released PD gains and exact effort limits, with the standard CAT simulator and a 50 Hz control rate. CAT's physics step remains 2 ms and its nominal torque disturbances remain in the harness. The tracker sees its reference and proprioception. Scene perception enters through our common planner. The frozen BRACE ONNX and sidecar are checked against their release hashes. A CPU batch of four returned finite 29-joint targets, and batched rotation conversion passed its round trip. Full evaluation requires a dynamics and CUDA smoke check.
 
 The full-scene preflight caught one colliding U-trap start under CAT's broad random-yaw reset. E4 now prescribes two paired starts at each scene's authored pose, with yaw offsets of ±0.05 rad and initial forward velocity offsets of ±0.015 m/s. The CPU collision checker verified both starts in all 72 layouts. This avoids a checkpoint-dependent jump to a fallback reset. Results retain the initial-state hash to confirm pairing on both compute targets. The upstream observation tests have two known fixture failures reproduced on the pre-overnight code. Thirty other selected planner, energy and observation tests passed.
+
+### Updated E4 and E6 submissions
+
+The pending E4 jobs `319413–319419` were canceled before running after the fixed-start preflight. Input build `319412` is retained. Updated deployment `ac58626` uses the certified starts:
+
+| Job or host | Work | Resources | Limit | ETA after admission |
+| --- | --- | --- | --- | --- |
+| dep-1 | V7r u600, then released CAT, one at a time after plan-blind local work | RTX 6000 Ada, 4 CPU threads | 14,500 steps | 35–65 min per policy |
+| 319447 / 319448 / 319449 | E4 planner / field without reflex / plan-only, three seeds each | gpu, 1 GPU, 8 CPUs, 38000 MB | 3 h | 45–95 min per task |
+| 319450 / 319451 | E4 priced / price-free continuation | gpu, 1 GPU, 8 CPUs, 38000 MB | 3 h | 45–95 min per task |
+| 319455 | BRACE CUDA smoke, three scenes | gpu, 1 GPU, 8 CPUs, 40000 MB | 45 min | 5–15 min |
+| 319456 / 319457 | Frozen BRACE with the common planner, original 384 scenes / E4 | gpu, 1 GPU, 8 CPUs, 40000 MB | 7 h / 5 h | 2–4 h / 1–3 h |
+
+Local E4 outputs are `~/robotics/cat-energy-local-runs/overnight_E4_{reactive,released_cat}_seed0_local_ac58626`. Cluster E4 outputs keep the same convention with new job IDs. E6 outputs go to `/l/users/konstantin.smirnov/runs/overnight_E6_BRACE_<smoke|384|E4>_<job>`. Jobs 319456 and 319457 require a passing 319455. E4 also requires 319412. The BRACE adapter ran 200 finite MuJoCo CPU transitions with a full CAT planner reference before submission. Its separated inference overlay is ONNX Runtime 1.20.1 for CUDA 11.8 and cuDNN 8.9.6.50. Deployment inputs and weights were hash-checked on the cluster.
