@@ -133,3 +133,27 @@ The ×100 train/eval pipeline started on dep-1 at 2026-11-23 01:33 Dubai time. I
 Output is `/home/konstantinsmirnov/robotics/cat-energy-local-runs/Flip_arm100/` with `launch.log`, `run/status.json`, and a final `standing.json` on successful completion. The launch PID was 207579. Estimated training is 3–4 hours plus standing evaluation. Only the pending cluster counterparts 315813 and 315815 were canceled. The evaluated dependency list showed that 315815 was the sole downstream consumer of 315813.
 
 The CPU reference 315819 was still pending at this check due to `QOSMaxCpuPerUserLimit`, with no output at `/l/users/konstantin.smirnov/runs/energy_round3_reference_315819/` yet.
+
+## Reference videos and matched standing contact controls
+
+Reference job 315819 completed 300 threatened events. Arm-only was feasible on 298/300, lean/twist on 288/300, and one side step on 10/300. Median mech/heat J among feasible events were 0.565/31.12, 2.047/39.68, and 22.86/307.82 respectively. Event-matched median lean/arm ratios were 3.65 (mech) and 1.16 (heat). The signed same-event S2 and S2H mean-baseline excess ratios are in `/l/users/konstantin.smirnov/runs/energy_round3_reference_315819/reference.json`.
+
+The renderer reconstructed the minimum-heat candidate for each feasible arm, lean/twist, or step and checked its heat against the saved result. Both numbers shown describe the same rendered trajectory. The shared scene uses the authored primitive dimensions and rotation and the stored sweep endpoints. Object translation during the clip reconstructs the sweep because frame-level object motion was not saved. Verified 1280×720 H.264 deliverables are under `/home/konstantinsmirnov/.local/share/openresearch/files/humanoid-protection/energy-videos/`.
+
+- `reference-anticipation-row-0895-arm-lean-step.mp4`, 4.0 s
+- `reference-anticipation-row-0778-arm-lean.mp4`, 3.0 s
+- `reference-danger-row-1752-arm-lean.mp4`, 3.0 s
+
+The standing contact comparison runs pin `01dd3c8` in `~/cat_worktrees/energy_contact_01dd3c8`. Both load `generalist_robust_delay_v1_u150.pt` as a native warm start with fresh optimizer, seed 0, 12,288 worlds and 150 updates. Both use the S2 threat bank, 800-step horizons, nominal standing resets, mixed threat buckets at training, and the S2 latency, mount, friction, mass and pose randomization. All resets are standing reactive to concentrate both arms on the intervention. There is no feet-planted rule, drift or stillness shaping.
+
+| Job | Purpose | Partition | GPU / CPUs / RAM | Limit | Output below shared runs |
+| --- | --- | --- | --- | --- | --- |
+| 317952 | ENERGY_ONLY training and 2,000-row standing eval | ws-ia | 1 / 12 / 54000M | 8 h | `energy_contact_ENERGY_ONLY_317952` |
+| 317953 | CONTACT_ONLY training and 2,000-row standing eval | ws-ia | 1 / 12 / 54000M | 8 h | `energy_contact_CONTACT_ONLY_317953` |
+| 317954 | Four matched videos, array with at most two tasks running, after both evals succeed | ws-ia | 1 / 8 / 48000M per task | 90 min | `energy_contact_videos_317954` |
+
+Both retain the existing collision event penalty −1 and terminal collision, hand self-contact, fall and numerical safeguards. The shared contact/stability rewards are `hand_body_contact`, `foot_balance`, `foot_slip`, `straight_knee`, `joint_limits`, `smoothness_action`, `smoothness_joint`, and `action_rate`. A constant `standing_alive` weight +12/s supplies a survival incentive without a pose target. ENERGY_ONLY adds only `reactive_power=-0.02` with `heat` and alpha 500 W. The heat term is applied outside the native positive reward floor. CONTACT_ONLY has no energy price term.
+
+The profile zeros clearance, direction and retreat rewards (`handsdf`, `handsgf`, `wholebody_hand_clearance`, `wholebody_arm_clearance`, `reactive_event`), upper and torso posture shaping, arm-specific smoothness, ordinary torque cost, route progress and motion targets, and every other reward outside the listed shared whitelist. It removes inherited group-scale overrides, retreat-specific configuration, teleop and SGS. The launcher supplies no stance rule, hands-up term, teacher imitation or style prior. The first log line labeled `Standing contact profile` prints the full effective active weights and exact zeroed key list for each checkpoint contract.
+
+The prediction is higher arm-first and lower body-motion rates with energy pricing at comparable event success. The shared no-price arm and u150 checkpoint provide controls. A lower apparent body-first rate caused by failures or lower successful response is inconclusive for arm substitution. This is a single-seed, 150-update pilot. The videos use authored danger rows 0 and 3, anticipation rows 1 and 4, and seed 0 for all three policies.
