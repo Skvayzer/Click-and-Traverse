@@ -104,3 +104,18 @@ Standing α250 task 318296_2 and α1000 task 318296_3 will be compared with the 
 E1 seed 0 moved to dep-1 while the cluster tasks were still pending. Only our array elements `319389_0,319389_3,319389_6` were canceled. The remaining cluster array is `319389_[1-2,4-5,7-8]`. The three local tasks use the exact `1bc21af` code, seed-0 COMBO_FIX checkpoint, planner, selected goal fields and 384-scene sampling protocol. They run one at a time after the local E4 baselines, at about 1–2 h per task. Outputs are `~/robotics/cat-energy-local-runs/overnight_E1_{fallback,margin,both}_seed0_local_1bc21af`.
 
 A diagnostic field integration on the 72 held-out scenes reached the goal in all three families when it followed only the point-pelvis guidance at 0.75 m. A rigid nominal G1 proxy following the multi-point projection crossed the −4 cm sampled collision threshold in 24/24 U traps and 24/24 sideways-entry scenes. The table route has a certified raised posture, and tucking may also clear some widths. These CPU probes establish a whole-body clearance challenge. The U layouts should therefore be described as geometric dead ends with a point-field detour, without assuming every reactive controller falls into a field minimum.
+
+## Three-seed matched comparison on the original 384 scenes
+
+Round 4 is complete for three planner seeds and three matched reflex-off seeds. Input jobs are 315810/315811 for seed 0, 318295_0/_1 for seed 1 and 318295_2/_3 for seed 2. Each value is mean ± sample s.d. across training seeds. Rates are percentages and paired differences are percentage points with 95% t intervals over the three training seeds.
+
+| Case | Speed / family | clean | contact | refused | hands |
+| --- | --- | ---: | ---: | ---: | ---: |
+| COMBO_NOREFLEX | 0.15 | 61.94 ± 0.85 | 29.38 ± 1.21 | 8.51 ± 0.64 | 2.60 ± 0.26 |
+| COMBO_FIX | 0.15 | 61.07 ± 1.45 | 31.16 ± 0.99 | 7.73 ± 2.08 | 2.60 ± 0.00 |
+| COMBO_FIX − COMBO_NOREFLEX | 0.15 | -0.87 ± 1.17 [-3.77, +2.03] | +1.78 ± 1.63 [-2.26, +5.82] | -0.78 ± 2.61 [-7.27, +5.71] | +0.00 ± 0.26 [-0.65, +0.65] |
+| COMBO_NOREFLEX | 0.3 | 63.63 ± 0.74 | 27.13 ± 0.92 | 9.11 ± 0.39 | 3.34 ± 0.66 |
+| COMBO_FIX | 0.3 | 61.85 ± 1.58 | 28.12 ± 3.07 | 9.81 ± 2.26 | 2.86 ± 0.52 |
+| COMBO_FIX − COMBO_NOREFLEX | 0.3 | -1.78 ± 2.10 [-7.01, +3.45] | +1.00 ± 3.94 [-8.79, +10.79] | +0.69 ± 2.57 [-5.69, +7.08] | -0.48 ± 0.66 [-2.11, +1.15] |
+
+The original known-obstacle benchmark gives no clear gain from the 5 cm reflex. Clean traversal is slightly lower on average at both speeds, and hand contact moves by less than half a point. All four paired CIs cross zero at both speeds. This establishes the frozen baseline for E1 refusal recovery and makes the plan-blind test necessary for evaluating the reflex where obstacle information differs.

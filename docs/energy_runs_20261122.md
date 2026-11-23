@@ -342,3 +342,16 @@ The CPU benchmark regressions passed (15 tests). The short 12-world GPU smoke cr
 | 319350_1 | Standing arm×1, α500 W, seed 2, 150 updates then eval | `gpu`, same | 6 h / 3.5–4.5 h | `energy_round5_Flip_arm1_seed2_319350` |
 
 Cluster paths are relative to `/l/users/konstantin.smirnov/runs`. Training output tags are `stationary_hands_20261113_R5_<case>_319350/run`. The cluster deploy is `~/cat_worktrees/energy_plan_blind_a197178` with four exact local guide files staged in `blind_inputs/`. Array 319349 waits for 318295 to finish so the final seed 2 snapshots are available and the two-per-user `ws-ia` limit is respected. Both arrays allow two concurrent tasks within the scheduler's GPU quota. Round 4 α250 and α1000 proceed in 318296_2 and 318296_3. The 12 urgent furnished clips are complete.
+
+### Round 4 planner comparison, all three matched seeds
+
+Original 384 scenes, 768 episodes per seed per speed. Rows are mean ± sample s.d. in percent. Paired on-minus-off rows are percentage points with 95% t intervals over the three training seeds. The final seed pair 318295_2 and 318295_3 completed 150 updates each from COMBO1b u500 and then passed both evaluation speeds.
+
+| Case | Speed / family | clean | contact | refused | hands |
+| --- | --- | ---: | ---: | ---: | ---: |
+| COMBO_NOREFLEX | 0.15 | 61.94 ± 0.85 | 29.38 ± 1.21 | 8.51 ± 0.64 | 2.60 ± 0.26 |
+| COMBO_FIX | 0.15 | 61.07 ± 1.45 | 31.16 ± 0.99 | 7.73 ± 2.08 | 2.60 ± 0.00 |
+| COMBO_FIX − COMBO_NOREFLEX | 0.15 | -0.87 ± 1.17 [-3.77, +2.03] | +1.78 ± 1.63 [-2.26, +5.82] | -0.78 ± 2.61 [-7.27, +5.71] | +0.00 ± 0.26 [-0.65, +0.65] |
+| COMBO_NOREFLEX | 0.3 | 63.63 ± 0.74 | 27.13 ± 0.92 | 9.11 ± 0.39 | 3.34 ± 0.66 |
+| COMBO_FIX | 0.3 | 61.85 ± 1.58 | 28.12 ± 3.07 | 9.81 ± 2.26 | 2.86 ± 0.52 |
+| COMBO_FIX − COMBO_NOREFLEX | 0.3 | -1.78 ± 2.10 [-7.01, +3.45] | +1.00 ± 3.94 [-8.79, +10.79] | +0.69 ± 2.57 [-5.69, +7.08] | -0.48 ± 0.66 [-2.11, +1.15] |
