@@ -17,7 +17,8 @@ from .fields import sample_ragged_field
 
 class SceneBank:
     def __init__(self,manifest,*,device='cuda',reset_manifest=None,collision_manifest=None,
-                 proposal_path=None,verify_files=True,hand_protection=True,passage_rewards=None,goal_seed_cache=None):
+                 proposal_path=None,verify_files=True,hand_protection=True,passage_rewards=None,goal_seed_cache=None,
+                 goal_seed_scene_ids=None):
         from cat_ppo.furniture.generalist_fields import load_generalist_manifest,sampling_groups,scene_directory
         from cat_ppo.furniture.room_navigation import pack_room_scenes
         from cat_ppo.furniture.contrastive_rewards import pack_hand_contrast
@@ -68,9 +69,15 @@ class SceneBank:
             from .goal_seed import load_cache
             from .packing.field_packing import unpack_direction
             cache=Path(goal_seed_cache)
-            meta=load_cache(cache,self.manifest['manifest_sha256'],[r['scene_id'] for r in records])
+            bank_ids={r['scene_id'] for r in records}
+            cache_ids=bank_ids if goal_seed_scene_ids is None else set(goal_seed_scene_ids)
+            if not cache_ids or not cache_ids <= bank_ids:
+                raise ValueError('Goal-seed preview IDs must be known, nonempty bank scene IDs')
+            meta=load_cache(cache,self.manifest['manifest_sha256'],cache_ids)
             gf=self.fields['gf']
             for scene,offset,size in zip(records,offsets,sizes):
+                if scene['scene_id'] not in cache_ids:
+                    continue
                 codes=np.load(cache/scene['scene_id']/'gf.npy',allow_pickle=False)
                 if 'gf' in packed_names:
                     values=codes.reshape(-1,2)

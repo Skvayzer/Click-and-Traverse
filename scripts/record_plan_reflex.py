@@ -38,6 +38,9 @@ def main():
     p.add_argument("--steps", type=int, default=3000)
     p.add_argument("--bank", default="data/furniture/tablegap_v1")
     p.add_argument("--seed", type=int, default=1)
+    p.add_argument("--goal-seed-cache", type=Path,
+                   help="local copy of the exact goal-column cache for the forced recording scenes")
+    p.add_argument("--planner-checkpoint", type=Path, help="local copy of the checkpoint's online planner weights")
     p.add_argument("--fallback", type=float, nargs=2, metavar=("STALL_S", "HOLD_S"),
                    help="the stall rule: no progress along the route for STALL_S s drops the plan for HOLD_S s")
     args = p.parse_args()
@@ -46,6 +49,8 @@ def main():
     from cat_mjlab.runner import create_task
     from planner_render import world_qpos
     dev = "cuda:0"
+    torch.manual_seed(args.seed)
+    torch.cuda.manual_seed_all(args.seed)
     contract = torch.load(args.checkpoint, map_location="cpu", weights_only=True, mmap=True)["contract"]
     env = copy.deepcopy(contract["environment_config"])
     env.pop("side_gap_curriculum", None); env.pop("sgs", None); env.pop("robustness", None)
@@ -55,7 +60,16 @@ def main():
                                  rest_start_share=0.)
     if "teleop" in env:
         env["teleop"].update(fraction=0., cat_fraction=0., cat_scenes=False)
+    if args.goal_seed_cache:
+        goal_seed = env.get("goal_seed")
+        if goal_seed is None:
+            p.error("--goal-seed-cache requires a checkpoint trained with a goal-column cache")
+        goal_seed["cache"] = str(args.goal_seed_cache.resolve())
     tracker = env.get("tracker")
+    if args.planner_checkpoint:
+        if not tracker or not tracker.get("planner"):
+            p.error("--planner-checkpoint requires an online-planner tracker")
+        tracker["planner"]["path"] = str(args.planner_checkpoint.resolve())
     if tracker:
         tracker["mix"] = [[a, float(b)] for a, b in (item.split("=", 1) for item in args.mix.split(","))]
         if args.fallback:
@@ -66,7 +80,8 @@ def main():
     ns = SimpleNamespace(bank_manifest=Path(str(B) + "_packed/manifest.json"), body_collision_bank=Path(str(B) + "_collision/manifest.json"),
                          body_collision_resets=Path(str(B) + "_resets/manifest.json"), device=dev, seed=args.seed,
                          num_envs=len(scenes), compile_task=False, nconmax=contract["nconmax"], njmax=contract["njmax"],
-                         reactive_bank=None, reactive_row=None)
+                         reactive_bank=None, reactive_row=None,
+                         goal_seed_scene_ids=scenes if args.goal_seed_cache else None)
     task, sim, _ = create_task(ns, environment_config=env)
     names = [s["scene_id"] for s in task.bank.manifest["scenes"]]
     missing = [s for s in scenes if s not in names]

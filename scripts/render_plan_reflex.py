@@ -21,6 +21,7 @@ import shutil
 import subprocess
 import sys
 import tempfile
+import xml.etree.ElementTree as ET
 from pathlib import Path
 
 import numpy as np
@@ -65,6 +66,49 @@ def plan_pose(plan, t):
     return q
 
 
+
+def furnish_room(xml, layout):
+    """Restyle authored room boxes for the camera without changing the rollout geometry."""
+    root = ET.fromstring(xml)
+    asset, world = root.find("asset"), root.find("worldbody")
+    ET.SubElement(asset, "texture", name="room_tile", type="2d", builtin="checker", mark="edge",
+                  rgb1=".63 .60 .55", rgb2=".54 .52 .49", markrgb=".36 .34 .31", width="512", height="512")
+    ET.SubElement(asset, "material", name="room_tiled_floor", texture="room_tile", texuniform="true",
+                  texrepeat="1.25 1.25", reflectance=".06", shininess=".11", specular=".18")
+    floor = world.find("geom[@name='floor']")
+    floor.set("material", "room_tiled_floor")
+    floor.attrib.pop("rgba", None)
+    ET.SubElement(world, "light", name="room_key", pos="0 -4 7", dir=".25 .33 -.9", directional="true",
+                  diffuse=".78 .70 .59", specular=".30 .27 .22", castshadow="true")
+    ET.SubElement(world, "light", name="room_fill", pos="0 4 6", dir="-.35 -.4 -1", directional="true",
+                  diffuse=".38 .48 .61", specular=".11 .13 .17", castshadow="false")
+    colors = {
+        "tabletop": ".64 .37 .20", "table_leg": ".23 .15 .11", "chair_leg": ".10 .15 .17",
+        "chair_armrest": ".17 .24 .27", "wall": ".65 .61 .53", "crate": ".53 .30 .17",
+        "low_block": ".63 .28 .20", "partition": ".31 .48 .51", "shelf_edge": ".24 .43 .32",
+        "support": ".25 .25 .22", "cabinet": ".45 .30 .20",
+    }
+    upholstery = (".17 .44 .45", ".70 .33 .23", ".20 .36 .54", ".59 .44 .20", ".35 .49 .29")
+    boxes = layout["boxes"]
+    for geom in world.findall("geom"):
+        name = geom.get("name", "")
+        if not name.startswith("clutter_box_"):
+            continue
+        part = boxes[int(name.rsplit("_", 1)[1])]
+        category = part["category"]
+        color = colors.get(category, ".46 .36 .27")
+        if category in ("chair_seat", "chair_back"):
+            tag = part.get("furniture_id", part["name"].rsplit("_", 1)[0])
+            color = upholstery[sum(tag.encode()) % len(upholstery)]
+        if category == "wall":
+            # A low cutaway retains the room outline and keeps the robot in view.
+            size, position = geom.get("size").split(), geom.get("pos").split()
+            size[2], position[2] = ".16", ".16"
+            geom.set("size", " ".join(size)); geom.set("pos", " ".join(position)); geom.set("group", "0")
+        geom.set("rgba", f"{color} 1")
+    return ET.tostring(root, encoding="unicode")
+
+
 def clip_start(released, hand_clear, end, stride, frames):
     """Start near the earliest active release, or the closest hand approach."""
     active = np.flatnonzero(released[:end+1].any(axis=-1))
@@ -84,6 +128,8 @@ def main(argv=None):
     p.add_argument("--max-seconds", type=float, default=60.)
     p.add_argument("--clip-anchor", type=Path,
                    help="match the clip start to the planner recording's reflex/closest approach")
+    p.add_argument("--furnished", action="store_true", help="colored furniture, tiled floor and Keynote-safe audio")
+    p.add_argument("--scene-map", type=Path, help="JSON map of scene IDs to descriptive filenames and titles")
     p.add_argument("--ghost-ahead", type=float, default=AHEAD, help="s past the plan clock that the ghost shows")
     p.add_argument("--stills-only", action="store_true",
                    help="clean PNG stills for figures: no text, no candidate lines, no video; one per --times entry, or "
@@ -110,6 +156,7 @@ def main(argv=None):
     bank_manifest = Path(args.bank + "_packed/manifest.json")
     manifest = json.loads(bank_manifest.read_text())
     by_id = {r["scene_id"]: r for r in manifest["scenes"]}
+    scene_map = json.loads(args.scene_map.read_text()) if args.scene_map else {}
     args.out.mkdir(parents=True, exist_ok=True)
     try:
         font = ImageFont.truetype("DejaVuSans.ttf", 18)
@@ -149,9 +196,14 @@ def main(argv=None):
             xml, _ = resolve_xml_assets(Path(tmp) / "model.xml")
             model = mujoco.MjModel.from_xml_string(xml)
         model.vis.global_.offwidth, model.vis.global_.offheight = args.width, args.height
-        for g in range(model.ngeom):
-            if model.geom_bodyid[g] == 0 and model.geom_type[g] != mujoco.mjtGeom.mjGEOM_PLANE:
-                model.geom_rgba[g, 3] = 0.55
+        if args.furnished:
+            model.vis.quality.shadowsize = 4096
+            model.vis.headlight.ambient[:] = [.38, .37, .35]
+            model.vis.headlight.diffuse[:] = [.31, .32, .33]
+        else:
+            for g in range(model.ngeom):
+                if model.geom_bodyid[g] == 0 and model.geom_type[g] != mujoco.mjtGeom.mjGEOM_PLANE:
+                    model.geom_rgba[g, 3] = 0.55
         data, ghost = mujoco.MjData(model), mujoco.MjData(model)
         option = mujoco.MjvOption(); option.geomgroup[3:] = 0; option.sitegroup[:] = 0
         perturb, camera = mujoco.MjvPerturb(), mujoco.MjvCamera()
@@ -159,20 +211,29 @@ def main(argv=None):
         palms = [model.site(f"{side}_palm").id for side in sides]
         arm_bodies = {model.body(f"{side}_{link}").id: h for h, side in enumerate(sides) for link in ARM_LINKS}
         arms = [arm_bodies.get(body) for body in model.geom_bodyid]
-        reflex_color = np.array([.95, .15, .15])
+        reflex_color = np.array([1., .40, .055] if args.furnished else [.95, .15, .15])
+        reflex_label = "orange" if args.furnished else "red"
         q0 = z["qpos"][0, w]
         yaw0 = math.atan2(2 * (q0[3] * q0[6] + q0[4] * q0[5]), 1 - 2 * (q0[5] ** 2 + q0[6] ** 2))
         camera.distance, camera.elevation, camera.azimuth = args.camera[0], args.camera[1], math.degrees(yaw0) + args.camera[2]
         look = z["qpos"][steps[0], w, :2].copy()
-        kind = kind_of(scene_id)
-        if args.clip_anchor:
+        kind = scene_map[scene_id]["title"] if scene_id in scene_map else kind_of(scene_id)
+        if scene_id in scene_map:
+            name = scene_map[scene_id]["file"]
+        elif args.clip_anchor:
             scene_words = kind.replace(".", "-").replace(",", "").replace(" + ", " and ")
             name = f"{w:02d}-" + "-".join(scene_words.lower().split())
         else:
             name = f"{w:02d}_" + "".join(ch if ch.isalnum() else "_" for ch in kind).strip("_")
         cmd = [ffmpeg, "-hide_banner", "-loglevel", "error", "-y", "-f", "rawvideo", "-pix_fmt", "rgb24",
-               "-s", f"{args.width}x{args.height}", "-r", str(args.fps), "-i", "-", "-an", "-c:v", "libx264",
-               "-pix_fmt", "yuv420p", "-crf", "27", "-movflags", "+faststart", str(args.out / f"{name}.mp4")]
+               "-s", f"{args.width}x{args.height}", "-r", str(args.fps), "-i", "-"]
+        if args.furnished:
+            cmd += ["-f", "lavfi", "-i", "anullsrc=r=48000:cl=stereo", "-map", "0:v:0", "-map", "1:a:0",
+                    "-t", f"{len(steps) / args.fps:.3f}", "-c:a", "aac", "-b:a", "96k"]
+        else:
+            cmd += ["-an"]
+        cmd += ["-c:v", "libx264", "-threads", "4", "-pix_fmt", "yuv420p", "-crf", "21" if args.furnished else "27",
+                "-movflags", "+faststart", str(args.out / f"{name}.mp4")]
         proc = None if args.stills_only else subprocess.Popen(cmd, stdin=subprocess.PIPE, stdout=subprocess.DEVNULL)
         closest, still = 1e9, None
         reflex_steps = fallback_steps = 0
@@ -220,7 +281,7 @@ def main(argv=None):
                             cand_txt = "last replan " + f"{(t - int(z['ev_t'][e])) * dt:.1f} s ago: candidate clearances " + ", ".join(names)
                 for h in range(2):
                     if released[h]:
-                        add_sphere(sc, mujoco, data.site_xpos[palms[h]], (0.95, 0.15, 0.15, 0.85), 0.045)
+                        add_sphere(sc, mujoco, data.site_xpos[palms[h]], (*reflex_color, .80), .045)
                 reflex_steps += int(any(released)); fallback_steps += int(dropped)
                 frame = renderer.render().copy()
                 if args.stills_only:
@@ -236,14 +297,14 @@ def main(argv=None):
                 else:
                     status = "following the plan" if active else "reactive control"
                 body = "" if body_clear is None else f"  |  closest body point {100 * float(body_clear[t, w]):5.1f} cm"
-                lines = [f"{policy_name}  |  {kind_of(scene_id)}  |  t = {t * dt:5.1f} s  |  told {meta['speed']:.2f} m/s",
+                lines = [f"{policy_name}  |  {kind}  |  t = {t * dt:5.1f} s  |  told {meta['speed']:.2f} m/s",
                          f"{status}", f"closest hand {100 * clear:5.1f} cm{body}"]
                 if cand_txt:
                     lines.append(cand_txt)
                 frame = label(frame, lines, font)
                 legend = [] if reactive else [
                     f"blue ghost: the plan {args.ghost_ahead:.1f} s ahead  |  blue line: chosen plan  |  "
-                    f"red arm: hand within {100 * meta['band_m']:.0f} cm",
+                    f"{reflex_label} arm: hand within {100 * meta['band_m']:.0f} cm",
                     "other candidates: grey clear, amber turned 90 deg, red overlapping an obstacle",
                 ]
                 legend.append(f"episode: {outcome['result']}" + ("  (hand contact)" if outcome.get("hand_contact") else ""))
@@ -258,7 +319,7 @@ def main(argv=None):
             raise RuntimeError(f"ffmpeg failed for {name}")
         if still is not None:
             Image.fromarray(still).save(args.out / f"{name}.jpg", quality=88)
-        index.append(dict(video=f"{name}.mp4", scene=scene_id, kind=kind_of(scene_id), seconds=len(steps) / args.fps,
+        index.append(dict(video=f"{name}.mp4", scene=scene_id, kind=kind, seconds=len(steps) / args.fps,
                           start_s=round(steps[0] * dt, 2), end_s=round(steps[-1] * dt, 2),
                           reflex_share=round(reflex_steps / max(len(steps), 1), 3),
                           fallback_share=round(fallback_steps / max(len(steps), 1), 3), closest_hand_clearance_m=round(closest, 4),

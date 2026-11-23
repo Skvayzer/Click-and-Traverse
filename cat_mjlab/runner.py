@@ -1094,7 +1094,7 @@ def create_task(args, *, environment_config=None, sim_class=None):
     goal_cache = getattr(args, 'goal_seed_cache', None) or ((environment_config or {}).get('goal_seed') or {}).get('cache')
     bank = SceneBank(args.bank_manifest, device=args.device, reset_manifest=args.body_collision_resets,
                      collision_manifest=args.body_collision_bank, passage_rewards=getattr(args, "passage_rewards", None),
-                     goal_seed_cache=goal_cache)
+                     goal_seed_cache=goal_cache, goal_seed_scene_ids=getattr(args, 'goal_seed_scene_ids', None))
     collision = CollisionChecker(sim.model, args.body_collision_bank, field_manifest=args.bank_manifest, device=args.device)
     _rebalance_bank(bank, args)
     config = wholebody_config(environment_config, stabilization=True, hand_protection=True, hand_contrast=bank.has_contrast,
