@@ -245,3 +245,20 @@ def test_hand_knee_override_runs_in_a_batched_task():
     task = CATTask(_CPUSimulation(2), bank, config, seed=33)
     result = task.step(torch.zeros((2, 29)))
     assert result["metrics"]["reward/handsdf"].shape == (2,)
+
+
+def test_standing_contact_ablation_keeps_only_the_requested_price_difference():
+    from cat_mjlab.config import wholebody_config
+
+    common = dict(standing_contact_control=True, hand_body_contact_weight=-10.,
+                  action_rate_weight=-.02, joint_acc_weight=-.000005)
+    control = wholebody_config(**common, no_energy_price=True)
+    priced = wholebody_config(**common, energy_model="heat", reactive_power_weight=-.02)
+    active = lambda c: {k: v for k, v in c["reward_config"]["scales"].items() if v}
+    assert active(priced) == dict(active(control), reactive_power=-.02)
+    assert set(active(control)) == {
+        "foot_balance", "foot_slip", "straight_knee", "joint_limits", "smoothness_action",
+        "smoothness_joint", "action_rate", "hand_body_contact", "standing_alive",
+    }
+    assert control["teleop"]["fraction"] == 0
+    assert "reactive_stationary" not in control

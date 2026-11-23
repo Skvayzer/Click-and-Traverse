@@ -1835,6 +1835,8 @@ class CATTask:
                 rewards['reactive_feet_hold']=(moved/float(rule['feet_m'])).clamp(0.,1.).square()
         if self.reactive_objects is not None:
             s=self.reactive_objects.state;standing=(s['active']&~s['walking']).float()
+            if self.config.get('standing_contact_control'):
+                rewards['standing_alive']=standing
             if 'reactive_power' in scales:rewards['reactive_power']=power_all*standing
             telemetry['reactive_power_w']=power_all*standing;telemetry['reactive_standing']=standing
         # The global energy price applies outside standing reactive episodes and table scenes.
@@ -2020,6 +2022,9 @@ class CATTask:
             scaled={k:torch.where(v>0,v*keep,v) for k,v in scaled.items()}
             self.telemetry['passage_stalled']=stalled.float()
         clearance=scaled['wholebody_hand_clearance']*self.dt
+        if self.config.get('standing_contact_control') and 'reactive_power' in scaled:
+            # Keep the price visible even at transitions where native reward clipping fires.
+            clearance=clearance+scaled['reactive_power']*self.dt
         if 'overspeed' in scaled and not self.operator_speed.get('overspeed_inside'):
             # Outside the clip at 0 like hand clearance: one step of 2x overspeed must cost more than the ~0.8 a goal
             # bonus pays for arriving a step earlier, which a clipped term (at most the step's positive reward) cannot.

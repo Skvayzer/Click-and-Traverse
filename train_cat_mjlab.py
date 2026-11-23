@@ -83,6 +83,8 @@ def parser():
         target.add_argument("--hand-tight-passages", action="store_true",
                             help="With --hand-tight-cat-only: room passages (hand-contrast passages, width scaffolds) also get "
                                  "the room-scaled hand / elbow margins (between full-height walls only with --hand-tight-walls-only)")
+        target.add_argument("--standing-contact-control", action="store_true",
+                            help="All-standing contact-only comparison, with optional reactive energy price")
         target.add_argument("--energy-model", choices=("mech", "heat", "heat_eq", "metab"),
                             help="Price substep-averaged policy torque. Omission preserves legacy mechanical pricing.")
         target.add_argument("--energy-alpha", type=float, help="Heat model holding coefficient in watts (default 500)")

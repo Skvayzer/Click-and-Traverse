@@ -1166,6 +1166,7 @@ def create_task(args, *, environment_config=None, sim_class=None):
         arm_mult=getattr(args, 'arm_mult', None),
         leg_mult=getattr(args, 'leg_mult', None),
         no_energy_price=getattr(args, 'no_energy_price', False),
+        standing_contact_control=getattr(args, 'standing_contact_control', False),
         operator_speed=getattr(args, 'operator_speed', None),operator_rest_starts=getattr(args, 'operator_rest_starts', None),
         operator_v2=getattr(args, 'operator_v2', None),operator_v3=getattr(args, 'operator_v3', None),
         operator_v4=getattr(args, 'operator_v4', None),operator_v5=getattr(args, 'operator_v5', None),
@@ -1246,6 +1247,12 @@ def create_task(args, *, environment_config=None, sim_class=None):
                                  f'{pinned_id} in the pinned base')
         objects = StandingObjects(bank=str(reactive_manifest), num_envs=len(sim.data.qpos),
                                   model=sim.model, device=sim.data.qpos.device)
+    if config.get('standing_contact_control'):
+        if objects is None:
+            raise ValueError("The standing contact experiment needs a reactive bank")
+        if getattr(args, 'reactive_walking_fraction', 0.) or getattr(args, 'experience_reactive_share', None) is not None:
+            raise ValueError("The standing contact experiment uses all standing worlds")
+        objects.reactive_fraction = 1.
     task = CATTask(sim, bank, config, collision=collision, seed=args.seed, analytic_objects=objects)
     if args.compile_task:
         task.enable_compilation()
@@ -1407,6 +1414,13 @@ def run(args):
     from .energy import print_motor_weights
     print_motor_weights()
     _configure_reactive(task, args)
+    if environment_config.get('standing_contact_control'):
+        if getattr(args, 'style_library', None) or getattr(args, 'distill_expert', None):
+            raise ValueError("The standing contact comparison cannot use style or distillation")
+        scales = environment_config['reward_config']['scales']
+        print("Standing contact profile:", json.dumps(
+            dict(active={k:v for k,v in scales.items() if v}, zeroed=sorted(k for k,v in scales.items() if not v),
+                 collision_event=-1., reactive_reset_fraction=1.), sort_keys=True), flush=True)
     style_schedule = None
     if getattr(args, 'style_library', None):
         from .style_prior import StylePrior, StyleSchedule

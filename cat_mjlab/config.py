@@ -63,7 +63,8 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
                      table_hands_up_band=None,table_center_weight=None,table_zone_facing_weight=None,passage_progress=None,
                      table_power_weight=None,global_power_weight=None,hand_tight_passages=None,passage_stall_factor=None,
                      passage_soft_contact=None,passage_stall_gate=None,route_energy=None,route_energy_p0=None,
-                     energy_model=None,energy_alpha=None,arm_mult=None,leg_mult=None,no_energy_price=False,operator_speed=None,
+                     energy_model=None,energy_alpha=None,arm_mult=None,leg_mult=None,no_energy_price=False,
+                     standing_contact_control=False,operator_speed=None,
                      operator_rest_starts=None,operator_v2=None,operator_v3=None,operator_v4=None,operator_v5=None,operator_v6=None,overspeed_weight=None,goal_seed_cache=None,goal_ground=None,tracker=None):
     from cat_ppo.furniture.generalist_config import released_config
     from .collision import PROPOSAL
@@ -613,4 +614,22 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
             for key in PRICE_TERMS:
                 weights.pop(key,None)
         config.pop('route_energy',None)
+    if standing_contact_control or config.get('standing_contact_control'):
+        standing_contact_profile(config)
     return config
+
+
+def standing_contact_profile(config):
+    """Common survival, contact and balance objective for a standing energy ablation."""
+    config['standing_contact_control'] = True
+    scales = config['reward_config']['scales']
+    retained = {'foot_balance', 'foot_slip', 'straight_knee', 'joint_limits', 'smoothness_action',
+                'smoothness_joint', 'action_rate', 'hand_body_contact', 'reactive_power'}
+    for term in scales.keys() - retained:
+        scales[term] = 0.
+    scales['standing_alive'] = 12.
+    for key in ('reward_group_scales', 'reactive_stationary', 'reactive_hand_clearance', 'reactive_far_threat_only',
+                'reactive_retreat_success_m', 'stand_still', 'standing_requires_stillness_speed', 'sgs',
+                'passage_stall_gate', 'contact_penalty', 'passage_soft_contact'):
+        config.pop(key, None)
+    config.setdefault('teleop', {}).update(fraction=0., cat_fraction=0., cat_scenes=False)
