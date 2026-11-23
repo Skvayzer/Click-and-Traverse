@@ -327,3 +327,18 @@ The test asks whether the 5 cm reflex limits hand contacts when the route planne
 The primary prediction is at least a 3 percentage-point reduction in inserted-object hand contact under reflex on versus off at each speed, with fewer than five percentage points more refusals. A nonnegative hand-contact difference, or a large clean-traversal loss through extra refusals, fails this prediction. Static-bank runs from Rounds 3 and 4 are the on-map reference. Analyze all assigned episodes, and report placement coverage plus realized reveal before comparing conditional outcomes. Compute mean and sample s.d. over the three matched training seeds and average seed-wise on-minus-off differences. Use three paired seed 0 videos from predefined trace rows on the narrow-scene list. Training-free video traces use exactly the evaluated worlds.
 
 The standing replication uses training seed 2 for α500 arm×30 and arm×1, 150 warm-start updates each from `stationary_hands_S2_seed1_u180.pt` with the u150 anchor, recipe `f93f1c2`; eval uses `3a6f7db`. Reuse the same standing motion and response outcomes. The seed 1 contrast shifted arm-first into failures, so an increase in failures again falsifies arm-to-body substitution for this seed.
+
+The CPU benchmark regressions passed (15 tests). The short 12-world GPU smoke created 12 placements, exercised 11 actual reveals and recorded one physical inserted hand contact. dep-1 generated all four full schedules with 768/768 valid placements per speed/variant and exact shared initial states across static and moving. The evaluator pins `a197178` and the guide manifest pins bank `0ebc2cf93afba59319d6ec0306985e0e499e213ed388833a706ddffc9740dca2`. No blind training is involved.
+
+| Job | Purpose | Partition/resources | Limit / ETA after allocation | Eval output |
+| --- | --- | --- | --- | --- |
+| dep-1 local, 23:25 Dubai | COMBO_FIX seed 0, all four blind protocols and video traces | one RTX 6000 Ada, dedicated CUDA environment | 4–6 h expected | `/home/konstantinsmirnov/robotics/cat-energy-local-runs/PlanBlind_COMBO_FIX_seed0` |
+| 319349_0 | COMBO_NOREFLEX seed 0, plus traces | `ws-ia`, 1 GPU / 12 CPUs / 54000M | 8 h / 4–6 h | `energy_round5_blind_COMBO_NOREFLEX_seed0_319349` |
+| 319349_1 | COMBO_FIX seed 1 | `ws-ia`, same | 8 h / 4–6 h | `energy_round5_blind_COMBO_FIX_seed1_319349` |
+| 319349_2 | COMBO_NOREFLEX seed 1 | `ws-ia`, same | 8 h / 4–6 h | `energy_round5_blind_COMBO_NOREFLEX_seed1_319349` |
+| 319349_3 | COMBO_FIX seed 2 | `ws-ia`, same | 8 h / 4–6 h | `energy_round5_blind_COMBO_FIX_seed2_319349` |
+| 319349_4 | COMBO_NOREFLEX seed 2 | `ws-ia`, same | 8 h / 4–6 h | `energy_round5_blind_COMBO_NOREFLEX_seed2_319349` |
+| 319350_0 | Standing arm×30, α500 W, seed 2, 150 updates then eval | `gpu`, 1 GPU / 8 CPUs / 24000M | 6 h / 3.5–4.5 h | `energy_round5_Flip_arm30_seed2_319350` |
+| 319350_1 | Standing arm×1, α500 W, seed 2, 150 updates then eval | `gpu`, same | 6 h / 3.5–4.5 h | `energy_round5_Flip_arm1_seed2_319350` |
+
+Cluster paths are relative to `/l/users/konstantin.smirnov/runs`. Training output tags are `stationary_hands_20261113_R5_<case>_319350/run`. The cluster deploy is `~/cat_worktrees/energy_plan_blind_a197178` with four exact local guide files staged in `blind_inputs/`. Array 319349 waits for 318295 to finish so the final seed 2 snapshots are available and the two-per-user `ws-ia` limit is respected. Both arrays allow two concurrent tasks within the scheduler's GPU quota. Round 4 α250 and α1000 proceed in 318296_2 and 318296_3. The 12 urgent furnished clips are complete.
