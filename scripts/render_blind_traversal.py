@@ -103,7 +103,7 @@ def main():
             frame = np.empty((720,1280,3),dtype=np.uint8)
             for i,(trace,title) in enumerate(((on,'Reflex on'),(off,'Reflex off'))):
                 j = sample[i]; data.qpos[:] = trace['qpos'][j,w]
-                visible = trace['active'][j,w] and j == t
+                visible = trace['active'][j,w]
                 data.mocap_pos[mocap] = trace['position'][j,w] if visible else (0.,0.,-20.)
                 mujoco.mj_forward(model,data)
                 renderer.update_scene(data,camera=camera,scene_option=opt)
@@ -124,6 +124,7 @@ def main():
                 text=[f"{title}   {on_meta['variant'].capitalize()} obstacle   {t*dt:.1f} s"]
                 if trace['hand_contact'][:j+1,w].any(): text.append('Hand contacted the inserted obstacle')
                 elif released.any(): text.append('Orange arm released from plan tracking')
+                if j < t: text.append('Episode ended')
                 view=label(renderer.render(),text,font)
                 frame[:,640*i:640*(i+1)]=view
             frame[:,638:642]=0

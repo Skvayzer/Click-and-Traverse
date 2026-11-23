@@ -167,10 +167,16 @@ def main():
         if take > 0:
             chosen[:take] = jobs[cursor[0]:cursor[0] + take]; cursor[0] += take
         env_scene[env_ids] = chosen
+        collision = task.collision
         if blind and sim.obstacle is not None:
             sim.obstacle.enabled[env_ids] = sim.obstacle.valid[env_ids] & (chosen >= 0)
+            # Initial-pose certification works on selected rows and static geometry.
+            task.collision = static_collision
         filler = torch.tensor(ids, device=dev)[torch.randint(S, (n,), device=dev)]
-        out_ = original_reset(env_ids, torch.where(chosen >= 0, chosen % NS, filler))
+        try:
+            out_ = original_reset(env_ids, torch.where(chosen >= 0, chosen % NS, filler))
+        finally:
+            task.collision = collision
         if K > 1:
             s_ = speed_of[torch.where(chosen >= 0, chosen // NS, 0)]
             for name in ("op_far", "op_near", "op_speed", "op_speed_ema"):
