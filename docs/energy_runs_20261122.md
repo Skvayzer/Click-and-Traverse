@@ -287,3 +287,13 @@ Rendered on dep-1's RTX 6000 Ada under the single-GPU lock on 2026-11-23. The fi
 | `scene_06_storage_room.mp4` | `random-generic_clutter-pilot-train-20261128-d0a7e2a3e991` |
 
 The MuJoCo camera uses colored furniture boxes from the authored geometry, a tiled floor material, shadow-casting lighting and low cutaway walls for visibility. The captured physical trajectories use the original walls and fields. The live plan is blue and arms currently released inside the 5 cm band turn orange. Living room and meeting room contain active-release frames. The paired cameras use the same settings and planner time-window anchor, with shorter reactive clips where their episodes end sooner. All 12 clips were checked for 1280×720 H.264 yuv420p, 48 kHz stereo silent AAC, faststart atom order, and durations of 3.48–14.88 s.
+
+### Round 4 arm×30 seed 1 result
+
+Response shares use danger and anticipation events, including truncated failures. Feet violation uses all 2,000 worlds and `≥5 cm` is the threatened-event max foot-displacement statistic.
+
+| Case | Threat events | Feet violation | Feet ≥5 cm | Body-first | Arm-first | Failure | Foot p50/p90/p95, cm | Pelvis p50/p90/p95, cm | Hand retreat p50/p90/p95, cm |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- | --- |
+| Flip_arm30_seed1 | 4077 | 2.45% | 0.27% | 0.25% | 31.71% | 18.79% | 0.72 / 1.54 / 1.95 | 2.81 / 4.72 / 5.53 | 7.54 / 17.27 / 19.18 |
+
+Task 318296_0 completed all 150 updates and the 2,000-row standing evaluation. Native completed-event success was 75.42%, with zero recorded falls. The seed 0 ×30 run had 25.80% worlds with a shadow feet violation, versus 2.45% for seed 1. The matched seed 1 arm×1 evaluation is required for the pricing contrast.
