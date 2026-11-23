@@ -346,7 +346,7 @@ class InverseReference:
             torques[i] = torque
         return integrate_cost(torques,velocity[:,6:],time,self.limits,self.weights)
 
-    def solve(self, event):
+    def solve(self, event, *, keep_trajectories=False):
         ref = event["reference"]
         q0 = np.asarray(ref["qpos"])
         start,end = np.asarray(ref["sweep_start"]),np.asarray(ref["sweep_end"])
@@ -373,6 +373,8 @@ class InverseReference:
                           self.step_paths(q0,times,feet,orient))
         result = dict(initial_gap_m=float(initial), target_gap_m=float(goal),
                       achieved_target=bool(goal==achieved), energies={})
+        if keep_trajectories:
+            result['trajectories'] = {}
         for name, candidates in zip(STRATEGIES,strategy_paths):
             best = {metric: None for metric in MODELS}
             if name != "step" and initial >= goal-.003:
@@ -384,6 +386,8 @@ class InverseReference:
                     continue
                 energy = self.inverse(path,ref["seconds"],support)
                 if energy is not None:
+                    if keep_trajectories and (best["heat"] is None or energy["heat"] < best["heat"]):
+                        result["trajectories"][name] = {"qpos": path.copy(), "energy": energy.copy()}
                     for metric in MODELS:
                         if best[metric] is None or energy[metric] < best[metric]:
                             best[metric] = energy[metric]
