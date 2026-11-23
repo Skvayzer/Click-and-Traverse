@@ -119,3 +119,57 @@ Round 4 is complete for three planner seeds and three matched reflex-off seeds. 
 | COMBO_FIX − COMBO_NOREFLEX | 0.3 | -1.78 ± 2.10 [-7.01, +3.45] | +1.00 ± 3.94 [-8.79, +10.79] | +0.69 ± 2.57 [-5.69, +7.08] | -0.48 ± 0.66 [-2.11, +1.15] |
 
 The original known-obstacle benchmark gives no clear gain from the 5 cm reflex. Clean traversal is slightly lower on average at both speeds, and hand contact moves by less than half a point. All four paired CIs cross zero at both speeds. This establishes the frozen baseline for E1 refusal recovery and makes the plan-blind test necessary for evaluating the reflex where obstacle information differs.
+
+### E4 frozen baseline results
+
+The two local baselines completed all 144 episodes per speed. Initial pose and velocity hashes match. Each paired interval resamples complete scene pairs within the indicated family. Rates are percent and deltas are percentage points. Faster times condition on the policy's clean arrivals, so they describe different subsets when clean rates differ.
+
+| Case | Speed / family | clean | contact | refused | hands | time to clean goal (s) | episode min palm (cm) |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| V7r | 0.15 | 58.33 | 41.67 | 0.00 | 20.14 | 20.53 | 3.09 |
+| Released CAT | 0.15 | 14.58 | 85.42 | 0.00 | 27.08 | 5.70 | 4.38 |
+| Released CAT − V7r | 0.15 | -43.75 [-53.47, -33.33] | +43.75 [+33.33, +53.47] | +0.00 [+0.00, +0.00] | +6.94 [+0.00, +14.58] | — | — |
+| V7r | 0.15 / early-turn | 10.42 | 89.58 | 0.00 | 54.17 | 11.10 | 0.47 |
+| Released CAT | 0.15 / early-turn | 0.00 | 100.00 | 0.00 | 75.00 | — | 0.69 |
+| Released CAT − V7r | 0.15 / early-turn | -10.42 [-20.83, -2.08] | +10.42 [+2.08, +20.83] | +0.00 [+0.00, +0.00] | +20.83 [+2.08, +39.58] | — | — |
+| V7r | 0.15 / table-gap | 72.92 | 27.08 | 0.00 | 0.00 | 28.73 | 4.42 |
+| Released CAT | 0.15 / table-gap | 2.08 | 97.92 | 0.00 | 4.17 | 13.66 | 0.35 |
+| Released CAT − V7r | 0.15 / table-gap | -70.83 [-83.33, -56.25] | +70.83 [+56.25, +83.33] | +0.00 [+0.00, +0.00] | +4.17 [+0.00, +10.42] | — | — |
+| V7r | 0.15 / u-trap | 91.67 | 8.33 | 0.00 | 6.25 | 15.08 | 4.38 |
+| Released CAT | 0.15 / u-trap | 41.67 | 58.33 | 0.00 | 2.08 | 5.30 | 12.11 |
+| Released CAT − V7r | 0.15 / u-trap | -50.00 [-66.67, -33.33] | +50.00 [+33.33, +66.67] | +0.00 [+0.00, +0.00] | -4.17 [-12.50, +4.17] | — | — |
+| V7r | 0.3 | 56.25 | 43.75 | 0.00 | 23.61 | 15.82 | 3.04 |
+| Released CAT | 0.3 | 18.75 | 79.86 | 1.39 | 22.92 | 5.09 | 4.46 |
+| Released CAT − V7r | 0.3 | -37.50 [-46.53, -28.47] | +36.11 [+27.08, +45.14] | +1.39 [+0.00, +3.47] | -0.69 [-5.56, +4.17] | — | — |
+| V7r | 0.3 / early-turn | 2.08 | 97.92 | 0.00 | 70.83 | 9.78 | 0.22 |
+| Released CAT | 0.3 / early-turn | 0.00 | 100.00 | 0.00 | 64.58 | — | 1.00 |
+| Released CAT − V7r | 0.3 / early-turn | -2.08 [-6.25, +0.00] | +2.08 [+0.00, +6.25] | +0.00 [+0.00, +0.00] | -6.25 [-20.83, +8.33] | — | — |
+| V7r | 0.3 / table-gap | 66.67 | 33.33 | 0.00 | 0.00 | 22.41 | 4.27 |
+| Released CAT | 0.3 / table-gap | 0.00 | 97.92 | 2.08 | 4.17 | — | 0.20 |
+| Released CAT − V7r | 0.3 / table-gap | -66.67 [-79.17, -54.17] | +64.58 [+52.08, +77.08] | +2.08 [+0.00, +6.25] | +4.17 [+0.00, +10.42] | — | — |
+| V7r | 0.3 / u-trap | 100.00 | 0.00 | 0.00 | 0.00 | 11.56 | 4.64 |
+| Released CAT | 0.3 / u-trap | 56.25 | 41.67 | 2.08 | 0.00 | 5.09 | 12.17 |
+| Released CAT − V7r | 0.3 / u-trap | -43.75 [-58.33, -27.08] | +41.67 [+25.00, +58.33] | +2.08 [+0.00, +6.25] | +0.00 [+0.00, +0.00] | — | — |
+| V7r | 0.5 | 52.08 | 46.53 | 1.39 | 26.39 | 12.88 | 2.91 |
+| Released CAT | 0.5 | 12.50 | 87.50 | 0.00 | 24.31 | 4.92 | 5.09 |
+| Released CAT − V7r | 0.5 | -39.58 [-49.31, -29.86] | +40.97 [+31.25, +50.69] | -1.39 [-3.47, +0.00] | -2.08 [-8.33, +4.17] | — | — |
+| V7r | 0.5 / early-turn | 6.25 | 93.75 | 0.00 | 72.92 | 7.19 | 0.28 |
+| Released CAT | 0.5 / early-turn | 0.00 | 100.00 | 0.00 | 72.92 | — | 2.70 |
+| Released CAT − V7r | 0.5 / early-turn | -6.25 [-16.67, +0.00] | +6.25 [+0.00, +16.67] | +0.00 [+0.00, +0.00] | +0.00 [-16.67, +16.67] | — | — |
+| V7r | 0.5 / table-gap | 66.67 | 33.33 | 0.00 | 2.08 | 17.57 | 3.96 |
+| Released CAT | 0.5 / table-gap | 0.00 | 100.00 | 0.00 | 0.00 | — | 0.55 |
+| Released CAT − V7r | 0.5 / table-gap | -66.67 [-79.17, -52.08] | +66.67 [+52.08, +79.17] | +0.00 [+0.00, +0.00] | -2.08 [-6.25, +0.00] | — | — |
+| V7r | 0.5 / u-trap | 83.33 | 12.50 | 4.17 | 4.17 | 9.56 | 4.48 |
+| Released CAT | 0.5 / u-trap | 37.50 | 62.50 | 0.00 | 0.00 | 4.92 | 12.01 |
+| Released CAT − V7r | 0.5 / u-trap | -45.83 [-62.50, -29.17] | +50.00 [+33.33, +66.67] | -4.17 [-10.42, +0.00] | -4.17 [-10.42, +0.00] | — | — |
+
+At 0.50 m/s, V7r already clears 40/48 U traps with no contact, while only 3/48 turn-before-entry cases are clean. The early-turn family is the stronger room for a planning gain on this common field-guidance protocol. The two local launches took about four minutes apiece with first-goal termination. The planner variants still need comparable rollouts.
+
+### E7 first α sensitivity result
+
+| Heat coefficient, same training seed | Threats | Feet moved, % of worlds | Arm-first, % | Body-first, % | Failure, % | Foot p90, cm | Pelvis p90, cm | Hand retreat p90, cm | Policy mechanical W |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| α250, 318296_2 | 3945 | 5.45 | 43.68 | 0.35 | 9.46 | 1.64 | 4.97 | 16.27 | 21.38 |
+| α500, 318296_1 | 4026 | 2.05 | 38.85 | 0.35 | 11.90 | 1.37 | 4.91 | 14.43 | 19.38 |
+
+Both runs finished 150 updates from S2 seed 1 u180 and had zero falls in the benchmark. Mechanical watts are comparable across α values. Reported heat uses each checkpoint's α and changes units of the holding contribution accordingly, so the raw heat numbers do not isolate a behavioral change. The α1000 run 318296_3 started on gpu.
