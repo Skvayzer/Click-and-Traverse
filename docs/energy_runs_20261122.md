@@ -220,3 +220,51 @@ Wrapper `68206db` is deployed as `~/jobs/energy_round4_68206db.sbatch` with SHA-
 | 318296_3 | S2H arm×1, α1000 W | gpu / 8 | 1 | `energy_round4_Heat1000_seed1_318296` |
 
 Training directories use `stationary_hands_20261113_R4_<case>_<array-id>/run`. Report planner mean and sample s.d. across the three independent training seeds at each speed for clean/contact/refused/hand-contact rates, and seed-wise reflex-on minus reflex-off differences before averaging. For standing, compare threatened-event response shares and foot motion at matched seed 1, with the existing seed 0 ×30 result for context. The sensitivity comparison holds arm and leg prices equal and changes only α. The evaluator inherits each checkpoint’s α for heat telemetry, so compare motion and mechanical energy on common scales.
+
+## Standing contact-control evaluations
+
+Threats include danger and anticipation. The four response classes include terminal failures. "Standing eval event success" uses the native completed-event denominator across all three buckets. The feet violation column is the fraction of worlds ever tripping the shadow feet rule. The step column requires ≥5 cm foot travel and ≥2 cm lift on the same foot.
+
+| Policy | Threat events | Arm-first / body-first / still-success / failure | Standing eval event success | Classified threat success | World feet violation | Per-threat step |
+| --- | --- | --- | --- | --- | --- | --- |
+| u150 | 4064 | 623 (15.3%) / 242 (6.0%) / 2356 (58.0%) / 843 (20.7%) | 71.1% | 79.3% | 48.8% | 4.8% |
+| CONTACT_ONLY | 3824 | 877 (22.9%) / 11 (0.3%) / 2034 (53.2%) / 902 (23.6%) | 71.6% | 76.4% | 57.0% | 0.2% |
+| ENERGY_ONLY | 2216 | 421 (19.0%) / 3 (0.1%) / 1272 (57.4%) / 520 (23.5%) | 68.9% | 76.5% | 7.6% | 0.1% |
+
+Max displacement p50 / p90 / p95 in cm. Standing policy-attributable group powers in legs / waist / arms order.
+
+| Policy | Feet | Pelvis | Torso-relative hand retreat | Mech W | Size-weighted heat W |
+| --- | --- | --- | --- | --- | --- |
+| u150 | 1.65 / 5.24 / 10.93 | 4.36 / 7.84 / 10.01 | 6.60 / 13.58 / 15.77 | 17.65 / 7.42 / 9.37 | 28.96 / 14.98 / 16.84 |
+| CONTACT_ONLY | 1.39 / 2.99 / 3.69 | 3.09 / 4.78 / 5.47 | 6.12 / 15.14 / 18.01 | 15.16 / 5.23 / 8.14 | 25.79 / 10.57 / 16.06 |
+| ENERGY_ONLY | 0.82 / 1.96 / 2.47 | 2.84 / 4.57 / 5.23 | 6.06 / 12.61 / 14.65 | 12.03 / 4.17 / 8.52 | 14.80 / 6.86 / 12.96 |
+
+| Policy / bucket | Threat events | Arm-first / body-first / still-success / failure counts | Feet p50/p90/p95, cm | Pelvis p50/p90/p95, cm | Hand retreat p50/p90/p95, cm |
+| --- | --- | --- | --- | --- | --- |
+| u150 / danger | 1980 | 389 / 173 / 1177 / 241 | 1.98 / 7.90 / 14.13 | 4.71 / 8.84 / 11.23 | 7.99 / 15.37 / 16.80 |
+| u150 / anticipation | 2084 | 234 / 69 / 1179 / 602 | 1.35 / 3.66 / 5.69 | 3.97 / 7.10 / 8.46 | 5.36 / 11.57 / 13.21 |
+| CONTACT_ONLY / danger | 1821 | 557 / 8 / 989 / 267 | 1.60 / 3.30 / 4.07 | 3.34 / 5.09 / 5.98 | 7.66 / 16.83 / 19.46 |
+| CONTACT_ONLY / anticipation | 2003 | 320 / 3 / 1045 / 635 | 1.23 / 2.68 / 3.29 | 2.86 / 4.40 / 5.01 | 5.04 / 12.66 / 15.68 |
+| ENERGY_ONLY / danger | 1065 | 282 / 1 / 639 / 143 | 0.87 / 2.09 / 2.67 | 3.03 / 4.76 / 5.38 | 7.46 / 13.32 / 15.63 |
+| ENERGY_ONLY / anticipation | 1151 | 139 / 2 / 633 / 377 | 0.77 / 1.79 / 2.24 | 2.68 / 4.30 / 5.03 | 4.85 / 10.74 / 13.36 |
+
+Per-response threat energy uses policy-attributable torques. Mean W is energy divided by aggregate event duration. Each cell is legs / waist / arms.
+
+| Policy / class | Threat events | Mean mech J | Mech W | Mean heat J | Heat W |
+| --- | --- | --- | --- | --- | --- |
+| u150 / arm_first | 623 | 54.20 / 23.58 / 27.33 | 17.58 / 7.65 / 8.86 | 77.60 / 48.47 / 49.04 | 25.17 / 15.72 / 15.90 |
+| u150 / body_first | 242 | 108.64 / 27.02 / 31.72 | 29.51 / 7.34 / 8.62 | 169.84 / 51.25 / 51.59 | 46.14 / 13.92 / 14.01 |
+| u150 / still_success | 2356 | 58.81 / 24.45 / 28.77 | 17.76 / 7.38 / 8.69 | 95.20 / 49.51 / 51.62 | 28.75 / 14.95 / 15.59 |
+| u150 / failure | 843 | 43.95 / 19.43 / 22.79 | 16.52 / 7.30 / 8.57 | 70.90 / 39.42 / 41.74 | 26.64 / 14.81 / 15.69 |
+| CONTACT_ONLY / arm_first | 877 | 45.03 / 15.72 / 24.38 | 14.45 / 5.04 / 7.82 | 73.83 / 30.54 / 50.87 | 23.68 / 9.80 / 16.32 |
+| CONTACT_ONLY / body_first | 11 | 90.72 / 18.50 / 30.88 | 22.98 / 4.68 / 7.82 | 159.14 / 32.71 / 60.79 | 40.31 / 8.28 / 15.40 |
+| CONTACT_ONLY / still_success | 2034 | 50.05 / 17.51 / 25.73 | 14.96 / 5.23 / 7.69 | 86.27 / 35.61 / 53.54 | 25.79 / 10.65 / 16.01 |
+| CONTACT_ONLY / failure | 902 | 35.74 / 13.03 / 18.62 | 14.76 / 5.38 / 7.69 | 62.49 / 27.11 / 38.73 | 25.82 / 11.20 / 16.00 |
+| ENERGY_ONLY / arm_first | 421 | 36.15 / 13.04 / 21.29 | 11.88 / 4.29 / 7.00 | 42.61 / 21.84 / 39.17 | 14.01 / 7.18 / 12.88 |
+| ENERGY_ONLY / body_first | 3 | 139.54 / 32.07 / 52.12 | 22.46 / 5.16 / 8.39 | 194.07 / 52.92 / 82.13 | 31.24 / 8.52 / 13.22 |
+| ENERGY_ONLY / still_success | 1272 | 34.00 / 12.93 / 20.87 | 11.20 / 4.26 / 6.87 | 45.12 / 22.35 / 37.22 | 14.86 / 7.36 / 12.26 |
+| ENERGY_ONLY / failure | 520 | 25.70 / 9.97 / 15.73 | 11.18 / 4.34 / 6.85 | 33.43 / 17.50 / 28.47 | 14.55 / 7.62 / 12.39 |
+
+Across the full benchmark, adding the energy term reduced policy-attributable heat from 52.42 to 34.61 W and max per-threat foot displacement p90 from 2.99 to 1.96 cm. Shadow feet violations fell from 56.95% to 7.65% of worlds. Arm-first decreased from 22.93% to 19.00% across all recorded threats, with similar classified failure (23.59% vs 23.47%). Body-first was rare in both (11 vs 3 events). The main shift was toward still-success. These are single-seed results and the u150 checkpoint is contextual.
+
+Exposure differed substantially. Of 1,334 authored threat rows, CONTACT_ONLY recorded an approach in 1,308 and ENERGY_ONLY in 1,098. Across all 2,000 worlds, 2,039 vs 7,310 standing episodes ended, with zero falls in both evaluations. On the 1,090 rows that both recorded, the paired first-event arm-first share was 12.20% vs 15.14%. The ENERGY_ONLY minus CONTACT_ONLY difference was +2.94 percentage points (95% paired row bootstrap interval +0.64 to +5.32, 5,000 draws, seed 0). In those same rows, first-event p90 foot motion fell from 2.96 to 1.95 cm and p90 arm retreat fell from 12.23 to 11.30 cm. The bootstrap conditions on recording a threat in both policies and describes benchmark-row variation for this seed. The exposure imbalance and opposite shifts across event populations make the proposed arm-first substitution inconclusive.
