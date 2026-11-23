@@ -272,3 +272,18 @@ Exposure differed substantially. Of 1,334 authored threat rows, CONTACT_ONLY rec
 All four matched standing videos were delivered under `/home/konstantinsmirnov/.local/share/openresearch/files/humanoid-protection/energy-videos/`. Each is an 8 s H.264 1280×720 three-panel clip at the same authored row and seed 0. Array 317958 delivered `standing-controls-danger-row-0003.mp4` and `standing-controls-anticipation-row-0001.mp4`. Tasks 317958_0 and 317958_3 completed the recordings, then failed when FFmpeg on `ws-l2-010` loaded conflicting XCB libraries. The two failed clips were recomputed and encoded one at a time on dep-1, with the same three checkpoints, recording arguments and `c115ef1` code. Local row 0 ran 15:57–16:05 Dubai and row 4 ran 16:05–16:13, each on one RTX 6000 Ada. The local u150 file hash matches the warm start recorded in both training contracts. Delivered `standing-controls-danger-row-0000.mp4` and `standing-controls-anticipation-row-0004.mp4` passed the same checks.
 
 The pending Round 4 `gpu` tasks 318296_1, 318296_2 and 318296_3 were updated to 24000M host RAM each based on <12 GB measured host peaks in the prior same-recipe runs. 318296_0 retains its original 54000M request. All GPU, CPU, time, training and evaluation settings were retained. With two `ws-ia` planner tasks and one `gpu` standing task running, the remaining GPU tasks report a scheduler GRES quota.
+
+## Furnished traversal clips for Keynote
+
+Rendered on dep-1's RTX 6000 Ada under the single-GPU lock on 2026-11-23. The first pair completed at 17:59 Dubai and the remaining pairs at 18:16. All 12 files are under `/home/konstantinsmirnov/videos/cluttered/{planner_reflex,reactive}/`. The policies are final COMBO_FIX from 315808 and reactive `slow_V7r_u400.pt`. Every pair uses the same scene, seed 1 and a 0.15 m/s operator command. The living room uses the exact two rollouts captured by 317981. Five new pairs were recorded on dep-1 using the same planner weights and exact goal-column cache fields for their selected scenes, for up to 2,000 control steps. Code is `6e9cf84`.
+
+| Filename in both folders | Authored scene ID |
+| --- | --- |
+| `scene_01_living_room.mp4` | `random-furniture-dense-train-004004-b43029cf3054` |
+| `scene_02_dining_room.mp4` | `random-furniture-dense-train-004008-73ed3af356e1` |
+| `scene_03_cabinet_room.mp4` | `contrast-train-20260920-r2-w0.580000-forward_protected-96a57ca86054` |
+| `scene_04_meeting_room.mp4` | `random-furniture-dense-train-20261213-a64e30780040` |
+| `scene_05_cluttered_workshop.mp4` | `random-generic_clutter-dense-train-20261045-50861c5526b3` |
+| `scene_06_storage_room.mp4` | `random-generic_clutter-pilot-train-20261128-d0a7e2a3e991` |
+
+The MuJoCo camera uses colored furniture boxes from the authored geometry, a tiled floor material, shadow-casting lighting and low cutaway walls for visibility. The captured physical trajectories use the original walls and fields. The live plan is blue and arms currently released inside the 5 cm band turn orange. Living room and meeting room contain active-release frames. The paired cameras use the same settings and planner time-window anchor, with shorter reactive clips where their episodes end sooner. All 12 clips were checked for 1280×720 H.264 yuv420p, 48 kHz stereo silent AAC, faststart atom order, and durations of 3.48–14.88 s.
