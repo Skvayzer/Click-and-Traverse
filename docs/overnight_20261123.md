@@ -203,3 +203,46 @@ Both runs completed 768 episodes per speed using the same obstacle schedule and 
 | 0.30 | -0.39 [-3.26, +2.47] | -1.82 [-5.47, +1.82] | +1.95 [-0.52, +4.56] | -0.91 [-3.52, +1.69] | -2.08 [-4.30, +0.13] |
 
 The first seed points to lower collision rates and higher refusal rates. Exposure remained above 98.5% in both conditions. Neither static speed passes the joint clean/contact criterion on this seed.
+
+### E4 first planner seed versus V7r
+
+Same validated initial-state hash and 144 episodes per speed. Paired 95% intervals resample whole scene rows for this one training seed. The 0.50 m/s clean change on U traps and sideways-entry layouts combined was +3.12 pp, below the +5 pp prediction for the benchmark. On all layouts the 0.50 m/s policy reduced hand contact but lost clean traversal. Table gaps accounted for 10 of its 11 refusals. Those 10 refusals spanned widths from 0.460 to 0.578 m. Early-turn hand contact fell by 20.83 pp, while total contact stayed high. This points to two separate bottlenecks for the remaining comparisons.
+
+| Case | Speed / family | clean | contact | refused | hands | time to clean goal (s) | episode min palm (cm) |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| V7r | 0.15 | 58.33 | 41.67 | 0.00 | 20.14 | 20.53 | 3.09 |
+| COMBO_FIX | 0.15 | 54.86 | 43.06 | 2.08 | 27.08 | 30.91 | 3.58 |
+| COMBO_FIX − V7r | 0.15 | -3.47 [-9.72, +3.47] | +1.39 [-5.56, +8.33] | +2.08 [+0.00, +5.56] | +6.94 [+0.69, +13.19] | — | — |
+| V7r | 0.15 / early-turn | 10.42 | 89.58 | 0.00 | 54.17 | 11.10 | 0.47 |
+| COMBO_FIX | 0.15 / early-turn | 10.42 | 89.58 | 0.00 | 79.17 | 18.29 | -0.02 |
+| COMBO_FIX − V7r | 0.15 / early-turn | +0.00 [-8.33, +8.33] | +0.00 [-8.33, +8.33] | +0.00 [+0.00, +0.00] | +25.00 [+10.42, +39.58] | — | — |
+| V7r | 0.15 / table-gap | 72.92 | 27.08 | 0.00 | 0.00 | 28.73 | 4.42 |
+| COMBO_FIX | 0.15 / table-gap | 58.33 | 35.42 | 6.25 | 2.08 | 52.71 | 3.06 |
+| COMBO_FIX − V7r | 0.15 / table-gap | -14.58 [-27.08, +0.00] | +8.33 [-6.25, +22.92] | +6.25 [+0.00, +16.67] | +2.08 [+0.00, +6.25] | — | — |
+| V7r | 0.15 / u-trap | 91.67 | 8.33 | 0.00 | 6.25 | 15.08 | 4.38 |
+| COMBO_FIX | 0.15 / u-trap | 95.83 | 4.17 | 0.00 | 0.00 | 19.01 | 7.70 |
+| COMBO_FIX − V7r | 0.15 / u-trap | +4.17 [-6.25, +14.58] | -4.17 [-14.58, +6.25] | +0.00 [+0.00, +0.00] | -6.25 [-14.58, +0.00] | — | — |
+| V7r | 0.3 | 56.25 | 43.75 | 0.00 | 23.61 | 15.82 | 3.04 |
+| COMBO_FIX | 0.3 | 52.08 | 44.44 | 3.47 | 20.14 | 21.14 | 4.04 |
+| COMBO_FIX − V7r | 0.3 | -4.17 [-10.42, +1.39] | +0.69 [-5.56, +6.94] | +3.47 [+0.69, +6.94] | -3.47 [-9.72, +2.78] | — | — |
+| V7r | 0.3 / early-turn | 2.08 | 97.92 | 0.00 | 70.83 | 9.78 | 0.22 |
+| COMBO_FIX | 0.3 / early-turn | 2.08 | 97.92 | 0.00 | 60.42 | 9.92 | 0.01 |
+| COMBO_FIX − V7r | 0.3 / early-turn | +0.00 [-6.25, +6.25] | +0.00 [-6.25, +6.25] | +0.00 [+0.00, +0.00] | -10.42 [-27.08, +8.33] | — | — |
+| V7r | 0.3 / table-gap | 66.67 | 33.33 | 0.00 | 0.00 | 22.41 | 4.27 |
+| COMBO_FIX | 0.3 / table-gap | 54.17 | 35.42 | 10.42 | 0.00 | 36.87 | 3.78 |
+| COMBO_FIX − V7r | 0.3 / table-gap | -12.50 [-29.17, +4.17] | +2.08 [-14.58, +18.75] | +10.42 [+2.08, +20.83] | +0.00 [+0.00, +0.00] | — | — |
+| V7r | 0.3 / u-trap | 100.00 | 0.00 | 0.00 | 0.00 | 11.56 | 4.64 |
+| COMBO_FIX | 0.3 / u-trap | 100.00 | 0.00 | 0.00 | 0.00 | 12.85 | 8.34 |
+| COMBO_FIX − V7r | 0.3 / u-trap | +0.00 [+0.00, +0.00] | +0.00 [+0.00, +0.00] | +0.00 [+0.00, +0.00] | +0.00 [+0.00, +0.00] | — | — |
+| V7r | 0.5 | 52.08 | 46.53 | 1.39 | 26.39 | 12.88 | 2.91 |
+| COMBO_FIX | 0.5 | 46.53 | 45.83 | 7.64 | 18.06 | 15.56 | 3.76 |
+| COMBO_FIX − V7r | 0.5 | -5.56 [-14.58, +2.78] | -0.69 [-8.33, +6.94] | +6.25 [+1.39, +11.11] | -8.33 [-14.58, -2.78] | — | — |
+| V7r | 0.5 / early-turn | 6.25 | 93.75 | 0.00 | 72.92 | 7.19 | 0.28 |
+| COMBO_FIX | 0.5 / early-turn | 4.17 | 95.83 | 0.00 | 52.08 | 9.88 | 0.22 |
+| COMBO_FIX − V7r | 0.5 / early-turn | -2.08 [-6.25, +0.00] | +2.08 [+0.00, +6.25] | +0.00 [+0.00, +0.00] | -20.83 [-35.42, -6.25] | — | — |
+| V7r | 0.5 / table-gap | 66.67 | 33.33 | 0.00 | 2.08 | 17.57 | 3.96 |
+| COMBO_FIX | 0.5 / table-gap | 43.75 | 35.42 | 20.83 | 0.00 | 24.55 | 3.18 |
+| COMBO_FIX − V7r | 0.5 / table-gap | -22.92 [-41.67, -4.17] | +2.08 [-16.67, +20.83] | +20.83 [+10.42, +31.25] | -2.08 [-6.25, +0.00] | — | — |
+| V7r | 0.5 / u-trap | 83.33 | 12.50 | 4.17 | 4.17 | 9.56 | 4.48 |
+| COMBO_FIX | 0.5 / u-trap | 91.67 | 6.25 | 2.08 | 2.08 | 11.53 | 7.87 |
+| COMBO_FIX − V7r | 0.5 / u-trap | +8.33 [-8.33, +25.00] | -6.25 [-18.80, +6.25] | -2.08 [-8.33, +4.17] | -2.08 [-8.33, +4.17] | — | — |
