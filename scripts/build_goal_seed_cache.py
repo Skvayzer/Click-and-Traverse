@@ -48,12 +48,18 @@ def main(argv=None):
     p.add_argument('--out', required=True)
     p.add_argument('--workers', type=int, default=8)
     p.add_argument('--reuse', help='an existing cache whose scenes (same id, same packed gf input) are hard-linked, not recomputed')
+    p.add_argument('--scenes', type=Path, help='build a subset from a file of scene IDs')
     args = p.parse_args(argv)
     from cat_ppo.furniture.generalist_fields import load_generalist_manifest, scene_directory
     from cat_mjlab.goal_seed import SCHEMA, SEED_RADIUS, COLUMN_Z, R_PROJ_CELLS
     path = Path(str(args.bank) + '_packed/manifest.json').resolve()
     manifest = load_generalist_manifest(path, verify_files=False)
     records = manifest['scenes']; out = Path(args.out); out.mkdir(parents=True, exist_ok=True)
+    if args.scenes:
+        selected = set(args.scenes.read_text().split())
+        records = [record for record in records if record["scene_id"] in selected]
+        if not selected or len(records) != len(selected):
+            p.error("The scene list is empty or contains an unknown ID")
     jobs = [(str(scene_directory(manifest, path, r)), r, str(out)) for r in records]
     start = time.time(); scenes = {}; kept = []
     if args.reuse:

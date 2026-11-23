@@ -1040,6 +1040,14 @@ class CATTask:
             fresh=(info['step']==0)[:,None]
             sdf_rate=torch.where(fresh,0.,(current-self.info['sdf_rate_prev'][ids])/self.dt).clamp(-3.,3.)
             self.info['sdf_rate_prev'][ids]=current
+        if self.config.get('eval_hide_actor_fields'):
+            info['gf_delay'] = torch.zeros_like(info['gf_delay'])
+            info['bf_delay'] = torch.zeros_like(info['bf_delay'])
+            info['sdf_delay'] = torch.full_like(info['sdf_delay'], .5)
+            elbow_actor = torch.zeros_like(elbow_actor)
+            elbow_actor[:, -2:] = .5
+            if sdf_rate is not None:
+                sdf_rate = torch.zeros_like(sdf_rate)
         result=self.math.observations(keep_yaw=bool(self.config.get('yaw_command') or self.config.get('heading_command')),sdf_rate=sdf_rate,joint_pos=self.data.qpos[ids,7:],joint_vel=self.data.qvel[ids,6:],nominal=self.nominal,
             gyro=self._sensor('gyro_pelvis',ids),gravity=gravity,linear_velocity=self._sensor('local_linvel_pelvis',ids),
             noise=noise,last_action=info['last_act'],targets=info['motor_targets'],command=info['command'],
@@ -2350,6 +2358,8 @@ class CATTask:
         if self.config.get('teleop') and getattr(self,'joystick_mask',None) is not None:
             lengths=torch.where(self.joystick_mask,int(round(float(self.config['teleop']['episode_seconds'])/self.dt)),lengths)
         timeout=i['wrapper_steps']>=lengths
+        if self.config.get('eval_goal_stop'):
+            timeout = timeout | self.episode['goal_reached']
         hold=self.config.get('goal_hold_seconds')
         if hold:
             # Reaching the goal never ended a room episode: a robot that arrived at step 500 stood

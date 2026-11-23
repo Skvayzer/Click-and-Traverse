@@ -6,6 +6,7 @@ import argparse
 from concurrent.futures import ProcessPoolExecutor
 import json
 import os
+import shutil
 from pathlib import Path
 import sys
 
@@ -162,7 +163,10 @@ def main():
             destination = output / record["path"]
             destination.mkdir(parents=True)
             for file in parent.iterdir():
-                os.link(file, destination / file.name)
+                try:
+                    os.link(file, destination / file.name)
+                except OSError:
+                    shutil.copy2(file, destination / file.name)
     fragment = output / "addition.json"
     fragment.write_text(json.dumps(dict(kind="planning-benchmark", scenes=records), indent=1) + "\n")
     marker = dict(base["flat_balance"], schema="cat-extended-balance-v1",

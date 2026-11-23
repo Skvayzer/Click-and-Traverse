@@ -23,6 +23,7 @@ inputs (no SDF-rate or tracker block), which is the archive's contract.
 from __future__ import annotations
 
 import argparse
+import hashlib
 import copy
 import json
 import sys
@@ -65,6 +66,8 @@ def main():
                         "its plan for HOLD_S s, then replans")
     p.add_argument("--stall-audit", action="store_true", help="log before/during-stall terms for refused scenes")
     p.add_argument("--refusal-fix", choices=("fallback", "margin", "both"))
+    p.add_argument("--planning-benchmark", action="store_true", help="use certified benchmark starts and report traversal metrics")
+    p.add_argument("--plan-only", action="store_true", help="hide actor obstacle inputs while retaining plan references")
     p.add_argument("--refused-rewards", action="store_true",
                    help="Aggregate named scaled terms per transition over eventually refused episodes")
     p.add_argument("--goal-seed-cache", type=Path, help="exact goal-column cache for the selected scene IDs")
@@ -99,6 +102,8 @@ def main():
     env.pop("side_gap_curriculum", None)                 # standard CAT starts, every width
     env["push_config"]["enable"] = False
     env.pop("sgs", None)                                 # every scene gets its K jobs, no success-guided resampling
+    if args.planning_benchmark:
+        env["eval_goal_stop"] = True
     speeds = [float(x) for x in args.operator_speeds] if args.operator_speeds else (
         [float(args.operator_speed)] if args.operator_speed is not None else [None])
     if speeds[0] is not None:
@@ -133,12 +138,18 @@ def main():
         if not env.get("goal_seed") or not wanted:
             p.error("A relocated goal cache needs a column-goal policy and an explicit @scene list")
         env["goal_seed"]["cache"] = str(args.goal_seed_cache.resolve())
+    if args.plan_only:
+        if args.tracker_mix != "plan=1" or args.refusal_fix:
+            p.error("Plan-only needs --tracker-mix plan=1 without a recovery variant")
+        env["eval_hide_actor_fields"] = True
     if args.planner_checkpoint:
         if not env.get("tracker", {}).get("planner"):
             p.error("A relocated planner needs an online-planner tracker")
         env["tracker"]["planner"]["path"] = str(args.planner_checkpoint.resolve())
-    if blind and (not env.get("tracker", {}).get("planner") or args.tracker_mix != "plan=1"):
-        p.error("Plan-blind benchmark needs an online-planner tracker and --tracker-mix plan=1")
+    if args.write_blind_guide and (not env.get("tracker", {}).get("planner") or args.tracker_mix != "plan=1"):
+        p.error("Generating a blind guide needs an online-planner tracker and --tracker-mix plan=1")
+    if args.planning_benchmark and not wanted:
+        p.error("The planning benchmark requires an explicit @scene list")
     B = ROOT / args.bank
     ns = SimpleNamespace(bank_manifest=Path(str(B) + "_packed/manifest.json"), body_collision_bank=Path(str(B) + "_collision/manifest.json"),
                          body_collision_resets=Path(str(B) + "_resets/manifest.json"), device=dev, seed=args.seed, num_envs=args.num_envs,
@@ -157,7 +168,21 @@ def main():
             p.error("The selected scene list includes an unknown bank scene ID")
     else:
         ids = [i for i, s in enumerate(scenes) if args.scenes == "all" or s.get("task_kind") == args.scenes]
+    if args.planning_benchmark:
+        if not all("planning_benchmark" in scenes[i]["source"] for i in ids):
+            p.error("Planning benchmark selection contains unrelated scenes")
+        field_worlds = [i for i in ids if scenes[i]["source"]["planning_benchmark"]["family"] != "table-gap"]
+        # These layouts retain native field guidance, with the same tight start region
+        # and goal-radius success rule as the table worlds.
+        task.bank.reset_is_cat[field_worlds] = False
+        task.bank.crossed_is_plane[field_worlds] = False
+        task.bank.reset_xy_scale[field_worlds] = .08
+        task.bank.episode_lengths[field_worlds] = 4000
+        task.raised_reset_fraction = 0.
+        task.generator.manual_seed(args.seed)
     S = len(ids); NS = len(scenes); K = len(speeds)
+    if args.planning_benchmark and args.num_envs != S * K * args.episodes:
+        p.error("The planning benchmark needs one simulator world per matched episode")
     if blind and args.num_envs != S * args.episodes:
         p.error("Plan-blind evaluation uses exactly one initial simulator world per matched episode")
     # A job is scene + NS * (speed index); statistics are kept per job id.
@@ -197,6 +222,12 @@ def main():
     task.reset = queued
     task.reset()
     trace = None
+    if args.planning_benchmark:
+        if bool(task.acceptance_reset_regions.any() | task.episode["reset_replaced"].any()):
+            raise RuntimeError("An authored planning benchmark start touched an obstacle")
+        start_hash = hashlib.sha256(task.data.qpos.cpu().numpy().tobytes() +
+                                    task.data.qvel.cpu().numpy().tobytes()).hexdigest()
+        print(json.dumps(dict(initial_state_sha256=start_hash)), flush=True)
     if blind:
         pose = task.data.qpos.cpu().numpy()
         velocity = task.data.qvel.cpu().numpy()
@@ -270,6 +301,10 @@ def main():
         task.measure_track_progress = True
         audit = StallAudit(task.num_envs, NS * K, dev, task.dt)
     target = S * args.episodes * K
+    if args.planning_benchmark:
+        seconds_to_goal = torch.full_like(path, -1.)
+        min_palm = task.info["sdf"][:, 5:7, 0].amin(-1).clone()
+        traversal = torch.zeros((NS * K, 3), dtype=torch.float64, device=dev)
     start = time.time()
     for t in range(args.max_steps):
         before = env_scene.clone(); root0 = task.data.qpos[:, :2].clone()
@@ -281,6 +316,10 @@ def main():
             out = task.step(learner.act(task.obs, policy_ids=0, deterministic=not args.stochastic)["action"])
         m = out["metrics"]
         done = out["done"].bool() & (before >= 0)
+        if args.planning_benchmark:
+            first = (before >= 0) & (seconds_to_goal < 0.) & m["episode/goal_reached"].bool()
+            seconds_to_goal = torch.where(first, m["episode_length"] * task.dt, seconds_to_goal)
+            min_palm = torch.minimum(min_palm, m["acceptance/hand_clearance"].amin(-1))
         if blind:
             inserted_hits |= sim.hits
             if trace is not None:
@@ -324,6 +363,13 @@ def main():
                 refusal_totals.index_add_(0, sc, torch.where(refused[:, None], refusal_acc[d], 0.))
                 refusal_steps.index_add_(0, sc, torch.where(refused, m["episode_length"][d], 0).float())
                 refusal_acc[d] = 0.
+            if args.planning_benchmark:
+                arrived = flags[1][d]
+                traversal[:, 0].index_add_(0, sc, arrived.double())
+                traversal[:, 1].index_add_(0, sc, torch.where(arrived, seconds_to_goal[d], 0.))
+                traversal[:, 2].index_add_(0, sc, min_palm[d].double())
+                seconds_to_goal[d] = -1.
+                min_palm[d] = task.info["sdf"][d, 5:7, 0].amin(-1)
             stats[:, 6].index_add_(0, sc, m["episode_length"][d].double())
             episode_j = m['energy/episode_j'][d].double()
             group_energy.index_add_(0, sc, episode_j)
@@ -347,6 +393,16 @@ def main():
                                f"Revealed {int(sim.revealed.sum())}, with {int(inserted_hits[:,5].sum())} "
                                "physical inserted hand contacts. No aggregate scores were saved.")
         blind_names = ("inserted_scheduled", "inserted_revealed", "inserted_contact", "inserted_hand_contact")
+    if args.planning_benchmark:
+        if finished != target:
+            raise RuntimeError(f"Planning benchmark completed only {finished}/{target} episodes")
+        traversal = traversal.cpu()
+
+    def traversal_summary(totals, count):
+        goals, time_sum, clearance_sum = totals.tolist()
+        return dict(clean_goals=int(goals), mean_time_to_clean_goal_s=time_sum / goals if goals else None,
+                    mean_episode_min_palm_field_m=clearance_sum / count)
+
     group_energy = group_energy.cpu()
     for k, speed in enumerate(speeds):
         jid = [i + NS * k for i in ids]
@@ -366,6 +422,9 @@ def main():
             if float(near_steps[j]) > 0:
                 row["near_speed_ratio"] = round(float(near_v[j] / near_cmd[j].clamp_min(1e-9)), 3)
                 row["near_mean_speed_ratio"] = round(float(near_vbar[j] / near_cmd[j].clamp_min(1e-9)), 3)
+            if args.planning_benchmark:
+                row.update(traversal_summary(traversal[j], e))
+                row["layout_family"] = scenes[i]["source"]["planning_benchmark"]["family"]
             result[scenes[i]["scene_id"]] = row
         E = stats[jid, 0].sum().clamp_min(1)
         summary = {c: round(float(stats[jid, c_].sum() / E), 4) for c_, c in enumerate(cols) if 0 < c_ < 9}
@@ -373,6 +432,8 @@ def main():
             summary.update(dict(zip(blind_names, (split_stats[jid].sum(0) / E).cpu().tolist())))
         if audit is not None:
             summary["stall_windows"] = audit.summary(jid)
+        if args.planning_benchmark:
+            summary.update(traversal_summary(traversal[jid].sum(0), float(E)))
         if args.refused_rewards:
             count = float(refusal_steps[jid].sum())
             summary["refused_reward_terms_per_step"] = {
@@ -396,7 +457,10 @@ def main():
         out.write_text(json.dumps(dict(checkpoint=str(args.checkpoint), env_from=args.env_from, scenes=args.scenes, episodes_per_scene=args.episodes,
                                        operator_speed=speed, deterministic=not args.stochastic, finished=int(stats[jid, 0].sum()),
                                        target=S * args.episodes, seconds=round(time.time() - start), summary=summary, per_scene=result,
-                                       **({"blind_variant": args.blind_variant, "blind_guide": str(args.blind_guide)} if blind else {})),
+                                       **({"blind_variant": args.blind_variant, "blind_guide": str(args.blind_guide)} if blind else {}),
+                                       **({"planning_benchmark": True, "plan_only": args.plan_only,
+                                           "refusal_fix": args.refusal_fix, "initial_state_sha256": start_hash}
+                                          if args.planning_benchmark else {})),
                                   indent=1) + "\n")
         print(json.dumps(dict(out=str(out), finished=int(stats[jid, 0].sum()), target=S * args.episodes, summary=summary)))
 
