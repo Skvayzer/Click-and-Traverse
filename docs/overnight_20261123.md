@@ -172,4 +172,6 @@ At 0.50 m/s, V7r already clears 40/48 U traps with no contact, while only 3/48 t
 | α250, 318296_2 | 3945 | 5.45 | 43.68 | 0.35 | 9.46 | 1.64 | 4.97 | 16.27 | 21.38 |
 | α500, 318296_1 | 4026 | 2.05 | 38.85 | 0.35 | 11.90 | 1.37 | 4.91 | 14.43 | 19.38 |
 
-Both runs finished 150 updates from S2 seed 1 u180 and had zero falls in the benchmark. Mechanical watts are comparable across α values. Reported heat uses each checkpoint's α and changes units of the holding contribution accordingly, so the raw heat numbers do not isolate a behavioral change. The α1000 run 318296_3 started on gpu.
+Both runs finished 150 updates from S2 seed 1 u180 and had zero falls in the benchmark. Mechanical watts are comparable across α values. Reported heat uses each checkpoint's α and scales the holding contribution accordingly, so the raw heat numbers do not isolate a behavioral change. The α1000 run 318296_3 started on gpu.
+
+E4 seed 0 for COMBO_FIX and COMBO_NOREFLEX moved to dep-1 while tasks 319447_0 and 319448_0 were pending. Those two tasks were canceled. The other seeds remain on gpu. The local run uses `ac58626` and the certified E4 bank after the active E1 fallback run releases the GPU lock. Its outputs are `~/robotics/cat-energy-local-runs/overnight_E4_{planner,field_no_reflex}_seed0_local_ac58626`.
