@@ -30,6 +30,7 @@ import time
 from pathlib import Path
 from types import SimpleNamespace
 
+import numpy as np
 import torch
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -64,12 +65,24 @@ def main():
                         "its plan for HOLD_S s, then replans")
     p.add_argument("--refused-rewards", action="store_true",
                    help="Aggregate named scaled terms per transition over eventually refused episodes")
+    p.add_argument("--goal-seed-cache", type=Path, help="exact goal-column cache for the selected scene IDs")
+    p.add_argument("--planner-checkpoint", type=Path, help="relocate the trained online planner checkpoint")
+    p.add_argument("--blind-variant", choices=("static", "moving"))
+    guide_mode = p.add_mutually_exclusive_group()
+    guide_mode.add_argument("--write-blind-guide", type=Path, help="write matched episodes and obstacle schedule without evaluation")
+    guide_mode.add_argument("--blind-guide", type=Path, help="precomputed obstacle schedules shared by all policy checkpoints")
+    p.add_argument("--blind-record", type=Path, help="save short traces of both predefined guide episodes")
     p.add_argument("--out", type=Path)
     p.add_argument("--out-dir", type=Path)
     args = p.parse_args()
+    blind = args.write_blind_guide is not None or args.blind_guide is not None
+    if blind != (args.blind_variant is not None) or (args.blind_record and not args.blind_guide):
+        p.error("Blind guide generation/evaluation needs --blind-variant, and tracing needs an existing guide")
+    if blind and (args.operator_speed is None or args.operator_speeds or args.episodes < 1 or args.stochastic or not args.nominal):
+        p.error("Plan-blind evaluation requires nominal deterministic episodes and one fixed operator speed")
     if args.operator_speeds and (args.operator_speed is not None or args.out_dir is None or args.out is not None):
         p.error("--operator-speeds needs --out-dir (and neither --operator-speed nor --out)")
-    if not args.operator_speeds and args.out is None:
+    if not args.operator_speeds and args.out is None and not args.write_blind_guide:
         p.error("--out is required")
     from record_mjlab_rollout import load_policy
     from cat_mjlab.runner import create_task
@@ -104,18 +117,40 @@ def main():
             env["tracker"]["fallback"] = dict(stall_s=float(args.tracker_fallback[0]), hold_s=float(args.tracker_fallback[1]))
     if "teleop" in env:
         env["teleop"].update(fraction=0., cat_fraction=0., cat_scenes=False)
+    wanted = None
+    if args.scenes.startswith("@"):
+        wanted = {line.strip() for line in Path(args.scenes[1:]).read_text().splitlines() if line.strip()}
+    if args.goal_seed_cache:
+        if not env.get("goal_seed") or not wanted:
+            p.error("A relocated goal cache needs a column-goal policy and an explicit @scene list")
+        env["goal_seed"]["cache"] = str(args.goal_seed_cache.resolve())
+    if args.planner_checkpoint:
+        if not env.get("tracker", {}).get("planner"):
+            p.error("A relocated planner needs an online-planner tracker")
+        env["tracker"]["planner"]["path"] = str(args.planner_checkpoint.resolve())
+    if blind and (not env.get("tracker", {}).get("planner") or args.tracker_mix != "plan=1"):
+        p.error("Plan-blind benchmark needs an online-planner tracker and --tracker-mix plan=1")
     B = ROOT / args.bank
     ns = SimpleNamespace(bank_manifest=Path(str(B) + "_packed/manifest.json"), body_collision_bank=Path(str(B) + "_collision/manifest.json"),
                          body_collision_resets=Path(str(B) + "_resets/manifest.json"), device=dev, seed=args.seed, num_envs=args.num_envs,
-                         compile_task=not args.no_compile, nconmax=contract["nconmax"], njmax=contract["njmax"], reactive_bank=None, reactive_row=None)
-    task, sim, _ = create_task(ns, environment_config=env)
+                         compile_task=not args.no_compile and not args.write_blind_guide, nconmax=contract["nconmax"],
+                         njmax=contract["njmax"], reactive_bank=None, reactive_row=None,
+                         goal_seed_scene_ids=wanted if args.goal_seed_cache else None)
+    sim_class = None
+    if blind:
+        from cat_mjlab.plan_blind import BlindObstacle, BlindSimulation, BlindTrace, candidate_placements
+        sim_class = BlindSimulation
+    task, sim, _ = create_task(ns, environment_config=env, sim_class=sim_class)
     scenes = task.bank.manifest["scenes"]
-    if args.scenes.startswith("@"):
-        wanted = {l.strip() for l in open(args.scenes[1:]) if l.strip()}
+    if wanted is not None:
         ids = [i for i, s in enumerate(scenes) if s["scene_id"] in wanted]
+        if len(ids) != len(wanted):
+            p.error("The selected scene list includes an unknown bank scene ID")
     else:
         ids = [i for i, s in enumerate(scenes) if args.scenes == "all" or s.get("task_kind") == args.scenes]
     S = len(ids); NS = len(scenes); K = len(speeds)
+    if blind and args.num_envs != S * args.episodes:
+        p.error("Plan-blind evaluation uses exactly one initial simulator world per matched episode")
     # A job is scene + NS * (speed index); statistics are kept per job id.
     jobs = torch.tensor([i + NS * k for k in range(K) for i in ids], device=dev).repeat(args.episodes)
     speed_of = torch.tensor([x if x is not None else 0. for x in speeds], device=dev)
@@ -132,6 +167,8 @@ def main():
         if take > 0:
             chosen[:take] = jobs[cursor[0]:cursor[0] + take]; cursor[0] += take
         env_scene[env_ids] = chosen
+        if blind and sim.obstacle is not None:
+            sim.obstacle.enabled[env_ids] = sim.obstacle.valid[env_ids] & (chosen >= 0)
         filler = torch.tensor(ids, device=dev)[torch.randint(S, (n,), device=dev)]
         out_ = original_reset(env_ids, torch.where(chosen >= 0, chosen % NS, filler))
         if K > 1:
@@ -144,6 +181,43 @@ def main():
 
     task.reset = queued
     task.reset()
+    trace = None
+    if blind:
+        pose = task.data.qpos.cpu().numpy()
+        velocity = task.data.qvel.cpu().numpy()
+        ordered_scenes = np.array([scenes[i]["scene_id"] for i in env_scene.tolist()])
+        meta = dict(bank=task.bank.manifest["manifest_sha256"], seed=args.seed,
+                    speed=args.operator_speed, variant=args.blind_variant, episodes=args.episodes)
+        if args.write_blind_guide:
+            schedule = candidate_placements(task, task.all_ids, args.blind_variant)
+            valid_ids = np.flatnonzero(schedule["valid"])
+            chosen = []
+            for prefix in ("sidegap", "contrast", "random"):
+                found = [i for i in valid_ids if ordered_scenes[i].startswith(prefix)]
+                if found:
+                    chosen.append(min(found, key=lambda i: abs(schedule["planned_hand_gap"][i] + .018)))
+            if not chosen and len(valid_ids):
+                chosen = [valid_ids[0]]
+            args.write_blind_guide.parent.mkdir(parents=True, exist_ok=True)
+            np.savez_compressed(args.write_blind_guide, meta=json.dumps(meta, sort_keys=True), scenes=ordered_scenes,
+                                pose=pose, velocity=velocity, clip_rows=np.array(chosen, dtype=np.int64), **schedule)
+            print(json.dumps(dict(guide=str(args.write_blind_guide), safe=int(len(valid_ids)), total=len(pose),
+                                  clips=ordered_scenes[chosen].tolist())), flush=True)
+            return
+        with np.load(args.blind_guide, allow_pickle=False) as source:
+            schedule = dict(source)
+        if (str(schedule["meta"]) != json.dumps(meta, sort_keys=True) or not np.array_equal(ordered_scenes, schedule["scenes"])
+                or not np.allclose(pose, schedule["pose"], rtol=0., atol=2.e-6)
+                or not np.allclose(velocity, schedule["velocity"], rtol=0., atol=2.e-6)):
+            raise ValueError("Guide metadata, episode assignment or initial robot state differs")
+        sim.obstacle = BlindObstacle(schedule, args.blind_variant, dev)
+        task.analytic_objects = sim.obstacle
+        static_collision = task.collision
+        task.collision = lambda scene, data: static_collision(scene, data) | sim.hits
+        split_stats = torch.zeros((NS * K, 4), device=dev)
+        inserted_hits = torch.zeros_like(sim.hits)
+        if args.blind_record:
+            trace = BlindTrace(task, sim.obstacle, schedule["clip_rows"], ordered_scenes, meta, args.checkpoint)
     if archive:
         from cat_mjlab.learning import Learner, LearnerConfig
         from cat_mjlab.conversion import load_array_archive
@@ -177,10 +251,18 @@ def main():
     start = time.time()
     for t in range(args.max_steps):
         before = env_scene.clone(); root0 = task.data.qpos[:, :2].clone()
+        if blind:
+            sim.hits.zero_()
+            if trace is not None:
+                trace.record()
         with torch.no_grad():
             out = task.step(learner.act(task.obs, policy_ids=0, deterministic=not args.stochastic)["action"])
         m = out["metrics"]
         done = out["done"].bool() & (before >= 0)
+        if blind:
+            inserted_hits |= sim.hits
+            if trace is not None:
+                trace.finish(done, sim.hits)
         # Energy and root position metrics include the terminal transition.
         moving = (before >= 0) & ~done
         v_bar = torch.where(done[:, None], 0., .95 * v_bar + .05 * task.data.qvel[:, :2])
@@ -209,6 +291,9 @@ def main():
             d = torch.nonzero(done).flatten(); sc = before[d]
             for c, f in enumerate(flags):
                 stats[:, c].index_add_(0, sc, f[d].double())
+            if blind:
+                flags_blind = (sim.obstacle.valid, sim.revealed, inserted_hits.any(-1), inserted_hits[:, 5])
+                split_stats.index_add_(0, sc, torch.stack(flags_blind, -1)[d].float())
             if args.refused_rewards:
                 refused = flags[3][d]
                 refusal_totals.index_add_(0, sc, torch.where(refused[:, None], refusal_acc[d], 0.))
@@ -228,6 +313,15 @@ def main():
             print(f"step {t}: {finished}/{target} episodes, {time.time() - start:.0f}s", flush=True)
         if finished >= target:
             break
+    if blind:
+        sim.capacity_report()
+        if trace is not None:
+            trace.save(args.blind_record)
+        if finished != target:
+            raise RuntimeError(f"Plan-blind benchmark stopped at {finished}/{target} completed episodes. "
+                               f"Revealed {int(sim.revealed.sum())}, with {int(inserted_hits[:,5].sum())} "
+                               "physical inserted hand contacts. No aggregate scores were saved.")
+        blind_names = ("inserted_scheduled", "inserted_revealed", "inserted_contact", "inserted_hand_contact")
     group_energy = group_energy.cpu()
     for k, speed in enumerate(speeds):
         jid = [i + NS * k for i in ids]
@@ -237,6 +331,8 @@ def main():
             if e == 0:
                 continue
             row = dict(episodes=int(e), **{c: round(float(stats[j, c_]) / e, 4) for c_, c in enumerate(cols) if 0 < c_ < 9},)
+            if blind:
+                row.update(dict(zip(blind_names, (split_stats[j] / e).cpu().tolist())))
             row["energy"] = report_energy(group_energy[j], e, float(stats[j, 6]) * task.dt)
             row["power_w"] = round(float(stats[j, 7] / (stats[j, 6] * task.dt).clamp_min(1e-9)), 2)
             row["cot"] = round(float(stats[j, 9] / stats[j, 10]), 4) if float(stats[j, 10]) else None
@@ -246,6 +342,8 @@ def main():
             result[scenes[i]["scene_id"]] = row
         E = stats[jid, 0].sum().clamp_min(1)
         summary = {c: round(float(stats[jid, c_].sum() / E), 4) for c_, c in enumerate(cols) if 0 < c_ < 9}
+        if blind:
+            summary.update(dict(zip(blind_names, (split_stats[jid].sum(0) / E).cpu().tolist())))
         if args.refused_rewards:
             count = float(refusal_steps[jid].sum())
             summary["refused_reward_terms_per_step"] = {
@@ -268,7 +366,8 @@ def main():
         out.parent.mkdir(parents=True, exist_ok=True)
         out.write_text(json.dumps(dict(checkpoint=str(args.checkpoint), env_from=args.env_from, scenes=args.scenes, episodes_per_scene=args.episodes,
                                        operator_speed=speed, deterministic=not args.stochastic, finished=int(stats[jid, 0].sum()),
-                                       target=S * args.episodes, seconds=round(time.time() - start), summary=summary, per_scene=result),
+                                       target=S * args.episodes, seconds=round(time.time() - start), summary=summary, per_scene=result,
+                                       **({"blind_variant": args.blind_variant, "blind_guide": str(args.blind_guide)} if blind else {})),
                                   indent=1) + "\n")
         print(json.dumps(dict(out=str(out), finished=int(stats[jid, 0].sum()), target=S * args.episodes, summary=summary)))
 
