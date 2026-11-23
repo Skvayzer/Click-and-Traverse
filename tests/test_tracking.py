@@ -232,6 +232,24 @@ class TrackingTest(unittest.TestCase):
         self.assertIn(0, t.due().tolist())                    # then a fresh plan is due
         self.assertEqual(float(t.fallback_t[0]), 0.)
 
+    def test_progress_fallback_waits_for_actual_forward_motion(self):
+        t = tr.ReferenceTracker(2, 'cpu', mix=(('plan', 1.),), fallback=dict(stall_s=2., until_progress=True),
+                                generator=torch.Generator().manual_seed(0))
+        ids = torch.arange(2); v = torch.full((2,), .3)
+        robot = torch.zeros(2, 2)
+        t.reset(ids, robot, torch.zeros(2), sample_dir=east, op_speed=v)
+        self.straight_plan(t, ids)
+        for i in range(150):
+            robot[0, 0] = .01 * (i % 2)
+            robot[1, 0] += .3 * .02
+            t.step(robot, .02, sample_dir=east, op_speed=v)
+        self.assertFalse(bool(t.valid[0]))
+        self.assertTrue(bool(t.valid[1]))
+        self.assertNotIn(0, t.due().tolist())
+        robot[0, 0] += .06
+        t.step(robot, .02, sample_dir=east, op_speed=v)
+        self.assertIn(0, t.due().tolist())
+
     def test_hold_worlds_can_get_a_stand_still_plan(self):
         t = tr.ReferenceTracker(4, 'cpu', mix=(('field', 1.),), hold_plan=1., generator=torch.Generator().manual_seed(0))
         ids = torch.arange(4); hold = torch.tensor([True, False, True, False])

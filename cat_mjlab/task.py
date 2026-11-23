@@ -134,7 +134,7 @@ class CATTask:
                 self.online_planner=OnlinePlanner(pc['path'],mujoco.MjModel.from_xml_string(assemble_training_xml()),self.device,
                     samples=pc.get('samples',4),steps=pc.get('steps',6),guidance=pc.get('guidance',2.),horizon=pc.get('horizon',2.),
                     interval=pc.get('interval',(.3,1.)),clear_cap=pc.get('clear_cap',.10),side_penalty=pc.get('side_penalty',.02),
-                    switch_penalty=pc.get('switch_penalty',.1),seed=seed+17)
+                    switch_penalty=pc.get('switch_penalty',.1),seed=seed+17, clearance_margins=pc.get('clearance_margins'))
                 self.plan_clear=torch.zeros(self.num_envs,device=self.device);self.plan_side=torch.zeros_like(self.plan_clear)
                 self.plan_fresh=torch.zeros_like(self.plan_clear);self.plan_cont=torch.zeros_like(self.plan_clear)
         # Home pose for the upper-body posture cost only (observations and the action
@@ -840,6 +840,11 @@ class CATTask:
         xy,yaw,z,upper,interval,stats=op.plan(qpos,qvel,self.scene_ids[ids],self.bank,goal_xy,goal_yaw,
                                               t.route_speed[ids],t.still[ids],prev_xy=prev,prev_yaw=prev_yaw,prev_ok=prev_ok)
         t.set_plan(ids,xy,yaw,z,upper,interval,roll=stats.get('roll'),pitch=stats.get('pitch'),legs=stats.get('legs'))
+        if 'margin_accepted' in stats:
+            rejected = ids[~stats['margin_accepted']]
+            t.has_plan[rejected] = False
+            t.has_full[rejected] = False
+            t.plan_retry[rejected] = .6
         self.plan_clear[ids]=stats['min_clear'];self.plan_side[ids]=stats['sideways'];self.plan_fresh[ids]=1.
         self.plan_cont[ids]=cont.float()
 
@@ -2416,6 +2421,9 @@ class CATTask:
                 'reactive/event_retreat_m':self.reactive_objects.state['event_retreat'].clone()})
         metrics['acceptance/hand_clearance']=i['sdf'][:,5:7,0].clone()
         metrics['acceptance/root_xy']=d.qpos[:,:2].clone()
+        if getattr(self, 'measure_track_progress', False):
+            metrics['track_route_advance_m'] = self.track_info['route_advance'].clone()
+            metrics['track_route_moving'] = self.track_info['route_moving'].clone()
         from .response_split import initial, advance, PREFIX
         if PREFIX+'active' not in i:  # Legacy checkpoint.
             i.update({PREFIX+k:v for k,v in initial(d.qpos[:,:3]).items()})

@@ -63,6 +63,8 @@ def main():
     p.add_argument("--tracker-fallback", type=float, nargs=2, metavar=("STALL_S", "HOLD_S"),
                    help="The monitor's stall rule: a plan world without progress along its route for STALL_S s acts without "
                         "its plan for HOLD_S s, then replans")
+    p.add_argument("--stall-audit", action="store_true", help="log before/during-stall terms for refused scenes")
+    p.add_argument("--refusal-fix", choices=("fallback", "margin", "both"))
     p.add_argument("--refused-rewards", action="store_true",
                    help="Aggregate named scaled terms per transition over eventually refused episodes")
     p.add_argument("--goal-seed-cache", type=Path, help="exact goal-column cache for the selected scene IDs")
@@ -115,6 +117,13 @@ def main():
             env["tracker"]["hold_plan"] = float(args.tracker_hold_plan)
         if args.tracker_fallback:
             env["tracker"]["fallback"] = dict(stall_s=float(args.tracker_fallback[0]), hold_s=float(args.tracker_fallback[1]))
+    if args.refusal_fix:
+        if not env.get("tracker", {}).get("planner") or args.tracker_mix != "plan=1":
+            p.error("Refusal fixes require an online planner and --tracker-mix plan=1")
+        if args.refusal_fix in ("fallback", "both"):
+            env["tracker"]["fallback"] = dict(stall_s=2., until_progress=True, progress_m=.05)
+        if args.refusal_fix in ("margin", "both"):
+            env["tracker"]["planner"]["clearance_margins"] = [.05, .03]
     if "teleop" in env:
         env["teleop"].update(fraction=0., cat_fraction=0., cat_scenes=False)
     wanted = None
@@ -253,6 +262,13 @@ def main():
         refusal_acc = torch.zeros((task.num_envs, len(refusal_terms)), device=dev)
         refusal_totals = torch.zeros((NS * K, len(refusal_terms)), device=dev)
         refusal_steps = torch.zeros(NS * K, device=dev)
+    audit = None
+    if args.stall_audit:
+        if task.tracker is None or args.tracker_mix != "plan=1":
+            p.error("Stall audit needs --tracker-mix plan=1")
+        from stall_audit import StallAudit
+        task.measure_track_progress = True
+        audit = StallAudit(task.num_envs, NS * K, dev, task.dt)
     target = S * args.episodes * K
     start = time.time()
     for t in range(args.max_steps):
@@ -269,6 +285,9 @@ def main():
             inserted_hits |= sim.hits
             if trace is not None:
                 trace.finish(done, sim.hits)
+        if audit is not None:
+            refused = done & ~m["episode/goal_reached"].bool() & ~m["episode/obstacle"].bool() & ~m["episode/fall"].bool()
+            audit.observe(m, before, done, refused)
         # Energy and root position metrics include the terminal transition.
         moving = (before >= 0) & ~done
         v_bar = torch.where(done[:, None], 0., .95 * v_bar + .05 * task.data.qvel[:, :2])
@@ -339,6 +358,8 @@ def main():
             row = dict(episodes=int(e), **{c: round(float(stats[j, c_]) / e, 4) for c_, c in enumerate(cols) if 0 < c_ < 9},)
             if blind:
                 row.update(dict(zip(blind_names, (split_stats[j] / e).cpu().tolist())))
+            if audit is not None:
+                row["stall_windows"] = audit.summary([j])
             row["energy"] = report_energy(group_energy[j], e, float(stats[j, 6]) * task.dt)
             row["power_w"] = round(float(stats[j, 7] / (stats[j, 6] * task.dt).clamp_min(1e-9)), 2)
             row["cot"] = round(float(stats[j, 9] / stats[j, 10]), 4) if float(stats[j, 10]) else None
@@ -350,6 +371,8 @@ def main():
         summary = {c: round(float(stats[jid, c_].sum() / E), 4) for c_, c in enumerate(cols) if 0 < c_ < 9}
         if blind:
             summary.update(dict(zip(blind_names, (split_stats[jid].sum(0) / E).cpu().tolist())))
+        if audit is not None:
+            summary["stall_windows"] = audit.summary(jid)
         if args.refused_rewards:
             count = float(refusal_steps[jid].sum())
             summary["refused_reward_terms_per_step"] = {

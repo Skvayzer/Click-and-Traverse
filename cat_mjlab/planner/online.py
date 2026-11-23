@@ -46,7 +46,7 @@ def heading_offsets(samples):
 class OnlinePlanner:
     def __init__(self, path, mj_model, device, *, samples=4, steps=6, guidance=2.0, horizon=2.0, interval=(0.3, 1.0),
                  clear_cap=0.10, side_penalty=0.02, switch_penalty=0.1, bf16=True, seed=0, block=256, grid_chunk=64,
-                 score_frames=4000):
+                 score_frames=4000, clearance_margins=None):
         self.device = torch.device(device)
         ck = torch.load(path, map_location='cpu', weights_only=True)
         self.model = FlowPlanner(**ck['config']).to(self.device).eval()
@@ -62,6 +62,7 @@ class OnlinePlanner:
         self.clear_cap, self.side_penalty, self.switch_penalty = float(clear_cap), float(side_penalty), float(switch_penalty)
         self.bf16 = bool(bf16) and self.device.type == 'cuda'
         self.block, self.grid_chunk, self.score_frames = int(block), int(grid_chunk), int(score_frames)
+        self.clearance_margins = clearance_margins
         self.capture, self.last, self._parts = False, None, []     # capture=True keeps the chunks of the last call (recordings)
         self.offsets = torch.tensor(heading_offsets(self.samples), device=self.device)
         self.generator = torch.Generator(device=self.device).manual_seed(int(seed))
@@ -150,6 +151,13 @@ class OnlinePlanner:
                 turn = wrap(yaw0[:, None, None] + chunks[:, :, :10, 3] - prev_yaw[:, None]).abs().mean(-1)
                 gap = gap + .2 * turn
             score = score - self.switch_penalty * gap * prev_ok[:, None].float()
+        accepted = None
+        if self.clearance_margins is not None:
+            high, low = self.clearance_margins
+            strong = sc['min_clear'] >= high
+            eligible = torch.where(strong.any(-1, keepdim=True), strong, sc['min_clear'] >= low)
+            accepted = eligible.any(-1)
+            score = torch.where(accepted[:, None] & ~eligible, -torch.inf, score)
         best = score.argmax(-1)
         rows = torch.arange(m, device=self.device)
         pick = chunks[rows, best]                                                              # [m, H, 35]
@@ -170,4 +178,6 @@ class OnlinePlanner:
         interval = lo + (hi - lo) * torch.rand(m, device=self.device, generator=self.generator)
         stats = dict(min_clear=sc['min_clear'][rows, best], sideways=(offset[rows, best] != 0).float(),
                      any_clear=(sc['min_clear'].amax(-1) >= -.01).float(), roll=roll, pitch=pitch, legs=legs)
+        if accepted is not None:
+            stats['margin_accepted'] = accepted
         return xy, yaw, z, upper, interval, stats

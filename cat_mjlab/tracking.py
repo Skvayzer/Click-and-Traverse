@@ -141,6 +141,8 @@ class ReferenceTracker:
         self.stall_t = z(self.n)                        # s without progress along the route (fallback rule)
         self.fallback_t = z(self.n)                     # s left without a plan (fallback rule)
         self.prev_s = z(self.n)
+        self.progress_mark = z(self.n)
+        self.plan_retry = z(self.n)
 
     # ------------------------------------------------------------------ helpers
     def _rand(self, *shape, low=0., high=1.):
@@ -182,7 +184,7 @@ class ReferenceTracker:
 
     def due(self):
         """Plan worlds that need a new chunk: no chunk yet, or their replan time has come."""
-        return torch.nonzero(self.is_plan & (self.fallback_t <= 0) & (~self.has_plan | (self.replan_in <= 0)), as_tuple=False)[:, 0]
+        return torch.nonzero(self.is_plan & (self.fallback_t <= 0) & (self.plan_retry <= 0) & (~self.has_plan | (self.replan_in <= 0)), as_tuple=False)[:, 0]
 
     def route_goal(self, ids, horizon, from_xy=None):
         """The point horizon s ahead of the robot's progress along the guidance path (or, with from_xy [n, 2], of that
@@ -309,6 +311,7 @@ class ReferenceTracker:
         self.source[ids] = source; self.still[ids] = still
         self.has_plan[ids] = False; self.has_full[ids] = False; self.plan_t[ids] = 0.; self.replan_in[ids] = 0.
         self.stall_t[ids] = 0.; self.fallback_t[ids] = 0.
+        self.progress_mark[ids] = 0.; self.plan_retry[ids] = 0.; self.prev_s[ids] = 0.
         self.route_speed[ids] = torch.where(still, torch.zeros_like(op_speed), op_speed)
         self.path[ids] = root_xy[:, None].expand(-1, P, -1)
         self.count[ids] = 1; self.s[ids] = 0.; self.lost[ids] = False
@@ -380,7 +383,20 @@ class ReferenceTracker:
             self.speed = torch.where(plan, length / .3, self.speed)
             along = (off * motion).sum(-1) / length.clamp_min(1e-6)
             plan_lead = torch.where(plan & self.has_plan & (length > .03), along.clamp_min(0.), plan_lead)
-        if self.fallback is not None and bool(plan.any()):
+        advance = self.s - self.prev_s
+        self.plan_retry = (self.plan_retry - dt).clamp_min(0.)
+        if self.fallback and self.fallback.get('until_progress'):
+            was = self.fallback_t > 0.
+            moving = plan & ~self.still & (self.route_speed > .05) & (self.has_plan | was)
+            self.progress_mark = torch.where(moving, self.progress_mark + advance, 0.)
+            resumed = self.progress_mark >= float(self.fallback.get('progress_m', .05))
+            self.stall_t = torch.where(moving & ~was & ~resumed, self.stall_t + dt, 0.)
+            start = self.stall_t >= float(self.fallback.get('stall_s', 2.)) - 1e-5
+            self.fallback_t = (start | (was & ~resumed)).float()
+            self.has_plan &= ~start
+            self.stall_t = torch.where(start, 0., self.stall_t)
+            self.progress_mark = torch.where(start | resumed, 0., self.progress_mark)
+        elif self.fallback is not None and bool(plan.any()):
             fb = self.fallback
             moving = plan & ~self.still & (self.route_speed > .05)
             progress = (self.s - self.prev_s) / dt
@@ -419,14 +435,15 @@ class ReferenceTracker:
             here = torch.where(plan[:, None], self.plan_at(ids, self.plan_t)[0], here)
         self.lost = valid & (torch.linalg.vector_norm(here - root_xy, dim=-1) > LOST)
         lead = torch.where(plan, plan_lead, (s_robot - self.s).clamp_min(0.))
-        return dict(lag=lag, distance=dist, lead=lead)
+        return dict(lag=lag, distance=dist, lead=lead, route_advance=advance,
+                    route_moving=plan & ~self.still & (self.route_speed > .05))
 
     def reanchor(self, ids, root_xy, root_yaw, *, sample_dir, op_speed):
         """Lost worlds: a fresh reference of the same source from where the robot is."""
         if len(ids) == 0:
             return
         keep = self.source[ids].clone()
-        self.path[ids] = root_xy[:, None].expand(-1, P, -1); self.count[ids] = 1; self.s[ids] = 0.
+        self.path[ids] = root_xy[:, None].expand(-1, P, -1); self.count[ids] = 1; self.s[ids] = 0.; self.prev_s[ids] = 0.
         self._start_yaw[ids] = root_yaw
         rnd = ids[keep == SOURCES.index('random')]
         if len(rnd):
@@ -522,5 +539,5 @@ class ReferenceTracker:
             track_height=torch.exp(-((root_z - z_ref) / .05).square()) * self.mask_height * valid,
             track_upper=upper * self.mask_upper * valid,
         ), dict(track_error_m=d * valid, track_valid=valid, track_lost=self.lost.float(),
-                track_plan=(plan & self.has_plan).float(), track_fallback=(self.fallback_t > 0).float(),
+                track_plan=(plan & self.has_plan).float(), track_fallback=((self.fallback_t > 0) | (self.plan_retry > 0)).float(),
                 track_released=(torch.zeros_like(d) if released is None else released.float().mean(-1)) * valid)
