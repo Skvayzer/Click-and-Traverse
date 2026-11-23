@@ -175,3 +175,27 @@ The emitted zero-weight list for both is `body_motion`, `body_rotation`, `feetdf
 Job 317981 renders two policies on `gpu` with 1 GPU, 12 CPUs, 54000M RAM and a 2 h limit. Estimated runtime is 20–45 min. It pins `bca153c` in `~/cat_worktrees/energy_reflex_video_bca153c`. Cluster output is `/l/users/konstantin.smirnov/runs/videos/current_5cm_band_317981`, with stdout in `/l/users/konstantin.smirnov/runs/logs/current_5cm_video_317981.out`. Local destination is `/home/konstantinsmirnov/videos/planner_reflex/current_5cm_band/`, with `planner_reflex` and `reactive` subfolders.
 
 The planned arm uses final `stationary_hands_20261113_COMBO_FIX/run/resume.pt` (job 315808, 150 updates), with continuing plans and a .05 m palm-clearance reflex band. The reactive arm uses the existing `slow_V7r_u400.pt` checkpoint with no tracker. Both use `~/jobs/video_scenes_v2.txt`, the same 11 `COMBO2_u500_v2/plans` scene IDs, tablegap_v1, seed 1, nominal deterministic actions, 3,000 control steps, and a .15 m/s command. The original camera geometry, 25 fps, blue 0.3 s look-ahead ghost and candidate lines are reused. Red arm coloring denotes active release from plan tracking. The shared clip window centers on the planner's earliest active release, or its closest hand approach if it has no release. Where the reactive episode ends before the chosen window, its final segment is shown with its actual elapsed time in the overlay. Each clip is capped at 15 s.
+
+## Round 3 completed outcomes
+
+The two-speed evaluations completed 768 episodes per speed. Entries are percentages of clean / contact / refused episodes. Falls account for the remainder up to rounding. These are checkpoint comparisons with one training seed per ablation.
+
+| Policy | Eval | 0.15 m/s | 0.30 m/s |
+| --- | ---: | --- | --- |
+| COMBO1b u500 | 315347 | 55.99 / 18.49 / 25.52 | 59.51 / 17.19 / 23.31 |
+| COMBO_NOPRICE u50 | 315778 | 54.43 / 16.02 / 29.43 | 57.16 / 15.89 / 26.82 |
+| COMBO_FIX u150 | 315810 | 59.77 / 30.08 / 10.03 | 61.59 / 25.52 / 12.37 |
+| COMBO_NOREFLEX u150 | 315811 | 61.98 / 29.95 / 8.07 | 63.02 / 28.12 / 8.72 |
+
+Refusal decreased under COMBO_FIX while contact increased. Turning off the 5 cm band yielded a further modest increase in clean rate, with hand-contact rates rising from 2.60% to 2.86% at 0.15 m/s and 2.34% to 2.73% at 0.30 m/s. `speed_0.15.json` and `speed_0.3.json` in both evaluation folders include transition-averaged refused-episode reward terms. For COMBO_FIX the logged `stall` term averaged −3.19 and −3.05, and `goal_progress` averaged +1.49 and +0.90 at the two speeds. The separate no-price fine-tune modestly reduced contacts and increased refusals at both speeds.
+
+The ×30 continuation finished on the cluster and the ×100 run finished on dep-1 in 2 h 20 min of training plus about 5 min of eval. Both completed 150 updates and 2,000 standing worlds. Threat classes here exclude the negative bucket and include aborted failures. Native event success uses completed events across all three buckets. Foot/pelvis/hand entries are p50 / p90 / p95 maximum displacements in cm.
+
+| Policy | Threat events | Arm-first / body-first / still-success / failure | Native event success | Worlds with feet violation | Foot motion | Pelvis motion | Torso-relative hand retreat |
+| --- | ---: | --- | ---: | ---: | --- | --- | --- |
+| ×30 u150 (315814) | 4035 | 29.64% / 1.96% / 51.95% / 16.46% | 74.48% | 25.80% | 0.92 / 2.57 / 4.05 | 3.17 / 5.78 / 6.93 | 8.29 / 15.51 / 17.25 |
+| ×100 u150 (dep-1) | 3901 | 34.66% / 2.28% / 54.06% / 9.00% | 75.88% | 28.50% | 1.24 / 2.97 / 4.07 | 3.70 / 6.59 / 7.98 | 10.14 / 19.02 / 20.92 |
+
+For these two runs, more foot and pelvis motion at ×100 coincided with more hand retreat and a larger arm-first share. The predicted arm-to-body substitution did not appear. The maximum foot displacement reached 5 cm on 3.99% and 3.67% of threats, respectively, so the contrast depends on the motion statistic.
+
+The inverse reference median [p25, p75] J for arm, lean/twist and side-step was 0.565 [0.421, 0.764], 2.047 [1.239, 3.103], and 22.862 [22.094, 24.128] under mech, and 31.122 [21.364, 44.574], 39.681 [27.689, 59.606], and 307.818 [281.975, 360.692] under size-weighted heat. Paired lean/arm energy-ratio medians [p25, p75] were 3.653 [2.429, 5.081] mech and 1.162 [0.989, 1.636] heat. Mean-baseline excess / optimal arm-only ratios for S2 (52 eligible threats) had signed medians −1.76 mech and −0.093 heat. For S2H (64 threats) they were −1.71 and −0.232. Negative values indicate measured consumption below the matched still-success baseline over that window. The signed ratios do not measure an absolute efficiency gain.
