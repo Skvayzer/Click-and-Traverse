@@ -175,3 +175,18 @@ At 0.50 m/s, V7r already clears 40/48 U traps with no contact, while only 3/48 t
 Both runs finished 150 updates from S2 seed 1 u180 and had zero falls in the benchmark. Mechanical watts are comparable across α values. Reported heat uses each checkpoint's α and scales the holding contribution accordingly, so the raw heat numbers do not isolate a behavioral change. The α1000 run 318296_3 started on gpu.
 
 E4 seed 0 for COMBO_FIX and COMBO_NOREFLEX moved to dep-1 while tasks 319447_0 and 319448_0 were pending. Those two tasks were canceled. The other seeds remain on gpu. The local run uses `ac58626` and the certified E4 bank after the active E1 fallback run releases the GPU lock. Its outputs are `~/robotics/cat-energy-local-runs/overnight_E4_{planner,field_no_reflex}_seed0_local_ac58626`.
+
+### E1 seed-0 stall fallback pilot
+
+The local 384-scene run completed both speeds at 768 episodes each. Intervals resample paired scene rows and describe the uncertainty for this checkpoint. Faster fallback may trade refusal for contact. The slower command showed a clean gain and lower mean contact.
+
+| Case | Speed / family | clean | contact | refused | hands |
+| --- | --- | ---: | ---: | ---: | ---: |
+| COMBO_FIX | 0.15 | 59.77 | 30.08 | 10.03 | 2.60 |
+| Stall fallback | 0.15 | 63.15 | 27.60 | 9.24 | 2.73 |
+| Stall fallback − COMBO_FIX | 0.15 | +3.39 [+1.04, +5.86] | -2.47 [-5.73, +0.91] | -0.78 [-3.26, +1.70] | +0.13 [-1.43, +1.69] |
+| COMBO_FIX | 0.3 | 61.59 | 25.52 | 12.37 | 2.34 |
+| Stall fallback | 0.3 | 61.46 | 28.91 | 9.51 | 2.60 |
+| Stall fallback − COMBO_FIX | 0.3 | -0.13 [-2.73, +2.60] | +3.39 [+0.52, +6.25] | -2.86 [-4.95, -0.78] | +0.26 [-0.91, +1.43] |
+
+At 0.30 m/s, the lower refusal rate came with 3.39 pp more contact, so fallback alone fails the prespecified clean/contact criterion for this seed at that speed. At 0.15 m/s, clean traversal gained 3.39 pp. The remaining seeds and candidate filter are needed before selection.
