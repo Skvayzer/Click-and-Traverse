@@ -1073,7 +1073,7 @@ class CATTask:
         return result
 
     @torch.no_grad()
-    def reset(self,env_ids=None,scene_ids=None):
+    def reset(self,env_ids=None,scene_ids=None,*,initial_pose=None,initial_velocity=None):
         ids=self.all_ids if env_ids is None else env_ids.long();n=len(ids)
         if n==0:return self.obs
         if getattr(self,'_style_age',None) is not None:self._style_age[ids]=0     # strided style pairs restart
@@ -1174,6 +1174,10 @@ class CATTask:
             self.reactive_air[ids]=0
             self.reactive_settle_at[ids]=int((self.reactive_stationary or SHADOW_STATIONARY)['grace_steps'])
             self.reactive_settled[ids]=False;self.reactive_calm[ids]=0
+        if initial_pose is not None:
+            if initial_pose.shape != (n, 36) or initial_velocity is None or initial_velocity.shape != (n, 35):
+                raise ValueError("A prescribed reset needs one pose and velocity per world")
+            qpos = initial_pose
         self.sim.reset_data(ids)
         self.data.qpos[ids]=qpos;self.data.qvel[ids]=0.;self.data.qvel[ids,:6]=self._rand((n,6),-.5,.5)
         if self.raised_reset_fraction:
@@ -1182,6 +1186,8 @@ class CATTask:
             self.data.qvel[ids]=torch.where(self.op_rest[ids][:,None],0.,self.data.qvel[ids])
         if self.reactive_objects is not None:
             self.data.qvel[ids]=torch.where(reactive_active[:,None],0.,self.data.qvel[ids])
+        if initial_pose is not None:
+            self.data.qvel[ids] = initial_velocity
         self.data.ctrl[ids]=qpos[:,7:];self.sim.forward(ids)
         if self.reactive_objects is not None and self.reactive_objects.nominal_reset and bool(reactive_active.any()):
             # Aim the first object at where the hand IS in the ordinary reset pose.

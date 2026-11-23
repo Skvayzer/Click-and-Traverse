@@ -41,6 +41,21 @@ sys.path.insert(0, str(ROOT)); sys.path.insert(0, str(ROOT / "scripts"))
 from cat_mjlab.energy import SHAPE, report_energy
 
 
+def benchmark_start(task, scene_ids, trial, trials):
+    """Shared narrow start envelope in the geometry's declared facing frame."""
+    pose = task.init_q.expand(len(scene_ids), -1).clone()
+    pose[:, :3] = task.bank.starts[scene_ids]
+    spread = 2. * trial / max(trials - 1, 1) - float(trials > 1)
+    yaw = (task.bank.reset_yaws[scene_ids] + .05 * spread) / 2
+    zeros = torch.zeros_like(yaw)
+    orientation = torch.stack((yaw.cos(), zeros, zeros, yaw.sin()), dim=1)
+    pose[:, 3:7] = task.math.quat_mul(pose[:, 3:7], orientation)
+    velocity = pose.new_zeros(len(scene_ids), 35)
+    velocity[:, 0] = .015 * spread * (2 * yaw).cos()
+    velocity[:, 1] = .015 * spread * (2 * yaw).sin()
+    return dict(initial_pose=pose, initial_velocity=velocity)
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("checkpoint")
@@ -199,7 +214,8 @@ def main():
     # A job is scene + NS * (speed index); statistics are kept per job id.
     jobs = torch.tensor([i + NS * k for k in range(K) for i in ids], device=dev).repeat(args.episodes)
     speed_of = torch.tensor([x if x is not None else 0. for x in speeds], device=dev)
-    jobs = jobs[torch.randperm(len(jobs), device=dev, generator=torch.Generator(device=dev).manual_seed(args.seed))]
+    order = torch.randperm(len(jobs), device=dev, generator=torch.Generator(device=dev).manual_seed(args.seed))
+    jobs = jobs[order]
     cursor = [0]
     env_scene = torch.full((task.num_envs,), -1, dtype=torch.long, device=dev)      # -1: no job (ignored)
     original_reset = task.reset
@@ -208,9 +224,14 @@ def main():
         env_ids = task.all_ids if env_ids is None else env_ids.long()
         n = len(env_ids)
         take = min(n, len(jobs) - cursor[0])
+        trial = torch.zeros(n, dtype=torch.long, device=dev) if args.planning_benchmark else None
         chosen = torch.full((n,), -1, dtype=torch.long, device=dev)
         if take > 0:
-            chosen[:take] = jobs[cursor[0]:cursor[0] + take]; cursor[0] += take
+            batch = slice(cursor[0], cursor[0] + take)
+            chosen[:take] = jobs[batch]
+            if trial is not None:
+                trial[:take] = order[batch] // (S * K)
+            cursor[0] += take
         env_scene[env_ids] = chosen
         collision = task.collision
         if blind and sim.obstacle is not None:
@@ -219,7 +240,9 @@ def main():
             task.collision = static_collision
         filler = torch.tensor(ids, device=dev)[torch.randint(S, (n,), device=dev)]
         try:
-            out_ = original_reset(env_ids, torch.where(chosen >= 0, chosen % NS, filler))
+            selected = torch.where(chosen >= 0, chosen % NS, filler)
+            start = benchmark_start(task, selected, trial, args.episodes) if trial is not None else {}
+            out_ = original_reset(env_ids, selected, **start)
         finally:
             task.collision = collision
         if K > 1:
