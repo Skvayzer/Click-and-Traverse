@@ -49,3 +49,16 @@ The E4 report ends each world at its first goal, collision or timeout. One world
 ## E5 ablation protocol
 
 The ladder is reactive V7r, plan-only (COMBO_NOREFLEX with masked actor fields), plan plus field (COMBO_NOREFLEX), and plan plus field and reflex (COMBO_FIX). Each tracker rung uses the three available seed checkpoints. The difference between the two no-reflex rungs isolates removal of actor fields at inference, so it measures the frozen policy's use of those inputs and may also expose sensitivity to the changed observation distribution. Collisions and planner inputs stay intact. E3's target comparison is the paired change in inserted-object hand contact, alongside clean traversal and exposures. The available COMBO1b and COMBO_NOPRICE checkpoints differ in training duration and the price-free model continues from the priced model. Their paired-scene contrast is exploratory. A full factorial conclusion about the energy term requires identically initialized price-on and price-off fine-tunes with a common budget.
+
+### E4 and E5 submissions
+
+Local bank validation generated 72 unique layouts and 72 goal-column fields. The native CPU check certified 32 reset poses in each of 3,663 bank scenes. U traps have 5.1–6.0 cm of certified root-cylinder clearance along the detour, and turn-before-entry passages have 3.1–6.4 cm along the channel. The cluster independently rebuilds the exact geometry under deployment `38b62ce` in `~/cat_worktrees/energy_overnight_38b62ce/inputs/planning_v1_{packed,collision,resets,goal}`. The E4 aggregate separates time-to-goal on clean arrivals and mean episode-minimum palm clearance over all episodes.
+
+| Job | Work | Resources on gpu | Limit | Expected runtime per task |
+| --- | --- | --- | --- | --- |
+| 319412 | Build and certify E4 inputs | 1 GPU, 8 CPUs, 38000 MB | 1 h 30 min | 10–25 min, CPU work |
+| 319413 / 319414 | E4 V7r u600 / released CAT | 1 GPU, 8 CPUs, 38000 MB | 3 h | 35–65 min |
+| 319415 / 319416 / 319417 | E4 current COMBO_FIX / COMBO_NOREFLEX / plan-only, seeds 0–2 each | 1 GPU, 8 CPUs, 38000 MB | 3 h | 45–95 min |
+| 319418 / 319419 | E4 COMBO1b u500 / COMBO_NOPRICE u50 | 1 GPU, 8 CPUs, 38000 MB | 3 h | 45–95 min |
+
+Results go to `/l/users/konstantin.smirnov/runs/overnight_E4_<model>_seed<seed>_<job>`, with files for 0.15, 0.30 and 0.50 m/s. E4 rollout jobs depend on 319412. The seed arrays also depend on completion of round 4. These current-planner results establish the reference for a winner selected after E1/E2. Baseline trace archive SHA256 is `0c3f6fa49f7d472b9ccf7b463111e01fec1106579b2fbe420b7d8a4198b58bca`.
