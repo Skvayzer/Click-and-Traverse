@@ -308,3 +308,14 @@ Tasks 318295_0 and 318295_1 completed both speeds. Rates use the same 384 scenes
 | 0.30 m/s | 63.54 / 27.34 / 8.98 / 2.86 | 63.41 / 26.95 / 9.51 / 4.04 | +0.13 / +0.39 / −0.52 / −1.17 |
 
 The clean count differs by one episode per speed for this pair. The seed 1 refusal contrast favors reflex on at both speeds and reverses the seed 0 direction. Tasks 318295_2 and 318295_3 are the third pair used in the final mean and sample s.d.
+
+### Round 4 matched standing price flip
+
+Response shares use danger and anticipation events, including truncated failures. Feet violation uses all 2,000 worlds and `≥5 cm` is the threatened-event max foot-displacement statistic.
+
+| Case | Threat events | Feet violation | Feet ≥5 cm | Body-first | Arm-first | Failure | Foot p50/p90/p95, cm | Pelvis p50/p90/p95, cm | Hand retreat p50/p90/p95, cm |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: | --- | --- | --- |
+| Flip_arm30_seed1 | 4077 | 2.45% | 0.27% | 0.25% | 31.71% | 18.79% | 0.72 / 1.54 / 1.95 | 2.81 / 4.72 / 5.53 | 7.54 / 17.27 / 19.18 |
+| Flip_arm1_seed1 | 4026 | 2.05% | 0.30% | 0.35% | 38.85% | 11.90% | 0.64 / 1.37 / 1.68 | 2.93 / 4.91 / 5.92 | 9.32 / 14.43 / 15.93 |
+
+At fixed seed 1 and α500, arm×30 versus arm×1 changed arm-first by −7.14 pp, body-first by −0.10 pp, and failure by +6.89 pp. Per-threat feet p90 rose 0.17 cm while pelvis p90 fell 0.19 cm. These threat outcomes support an increase in failures in place of arm-first successes, with foot motion changes below the threshold for a class shift. Native completed-event success across all buckets was 75.42% versus 74.99%, and neither run fell. The higher arm-first share at seed 0 under the longer, higher price experiments and the very different seed 0 world-violation rate limit generalization from this one matched pair.
