@@ -297,3 +297,14 @@ Response shares use danger and anticipation events, including truncated failures
 | Flip_arm30_seed1 | 4077 | 2.45% | 0.27% | 0.25% | 31.71% | 18.79% | 0.72 / 1.54 / 1.95 | 2.81 / 4.72 / 5.53 | 7.54 / 17.27 / 19.18 |
 
 Task 318296_0 completed all 150 updates and the 2,000-row standing evaluation. Native completed-event success was 75.42%, with zero recorded falls. The seed 0 ×30 run had 25.80% worlds with a shadow feet violation, versus 2.45% for seed 1. The matched seed 1 arm×1 evaluation is required for the pricing contrast.
+
+### Round 4 planner seed 1 pair
+
+Tasks 318295_0 and 318295_1 completed both speeds. Rates use the same 384 scenes and 768 episodes per policy per speed. Entries are clean / contact / refusal / hand contact percentages and paired differences in percentage points.
+
+| Speed | Reflex on | Reflex off | On − off |
+| --- | --- | --- | --- |
+| 0.15 m/s | 62.63 / 31.38 / 5.99 / 2.60 | 62.76 / 27.99 / 9.24 / 2.34 | −0.13 / +3.39 / −3.26 / +0.26 |
+| 0.30 m/s | 63.54 / 27.34 / 8.98 / 2.86 | 63.41 / 26.95 / 9.51 / 4.04 | +0.13 / +0.39 / −0.52 / −1.17 |
+
+The clean count differs by one episode per speed for this pair. The seed 1 refusal contrast favors reflex on at both speeds and reverses the seed 0 direction. Tasks 318295_2 and 318295_3 are the third pair used in the final mean and sample s.d.
