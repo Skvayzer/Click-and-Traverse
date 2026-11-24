@@ -442,3 +442,9 @@ The plan-only masked actor completed all episodes with contact, yielding zero cl
 | Plan and field − Plan-only actor | 0.5 / u-trap | +93.75 [+85.42, +100.00] | -93.75 [-100.00, -85.42] | +0.00 [+0.00, +0.00] | -64.58 [-75.00, -54.17] | — | — |
 
 At 07:39 the last audit, `319388_2`, moved from gpu to an idle ws-ia slot and started on `ws-l2-014`. It retains the 1 GPU, 8 CPU, 30,000 MB, 3 h request and the same output path. We caught an absolute manifest path before pending build 319412 started. The body collision builder now loads the project's existing relocation mapping before opening the pinned source. Recipe commit `29666df` replaces the pending build as `320478` on ws-ia with 1 GPU, 8 CPUs, 38,000 MB and a 90 min limit. It waits for 319388_2. Source and output path are unchanged. The six remaining planner ablation tasks, the two price runs and the BRACE E4 job were verified against the new dependency before our old build was canceled. Expected bank time remains 10–25 min after admission.
+
+### E6 local CUDA smoke and held-out rollout
+
+The original public BRACE checkpoint passed its dep-1 CUDA inference smoke from 07:42 to 07:45 Dubai. The three selected worlds ran up to 500 control steps, with finite outputs and no numerical transition. One episode reached its ordinary terminal state before the smoke cutoff. The full 72-layout E4 BRACE job started on dep-1 at 07:47 under the single-GPU lock, commit `ac58626`. Its output is `~/robotics/cat-energy-local-runs/overnight_E6_BRACE_E4_local_ac58626`. It uses the same three speeds and prescribed starts. Only our pending duplicate 319457 was canceled.
+
+Cluster jobs 319455 and 319456 retain their IDs, 1 GPU, 8 CPUs and 40,000 MB and now use ws-ia. The cluster smoke starts after the remapping-corrected bank build 320478, then gates the original 384-scene BRACE evaluation. The cluster smoke remains a distinct check of the isolated Slurm environment.
