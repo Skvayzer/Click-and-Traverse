@@ -1440,8 +1440,13 @@ class CATTask:
             # stayed at 0-1% and RL had nothing to reinforce). The episode flags still record the touch, so
             # success stays strict: a touched episode is never a clean goal.
             hands=regions[:,5]|((i['sdf'][:,5:7]<threshold).flatten(1).any(-1)&grace)
-            done=fall|self_contact|numerical|hands
-            self._soft_contact=obstacle&~hands
+            if self.config.get('contact_soft_hands'):
+                # Fully soft phase (SONIC latent adaptor, first third of training): no contact ends the episode.
+                done=fall|self_contact|numerical
+                self._soft_contact=obstacle|hands
+            else:
+                done=fall|self_contact|numerical|hands
+                self._soft_contact=obstacle&~hands
         elif self.config.get('passage_soft_contact') is not None and bool(self.soft_passage_scene.any()):
             # Room passages (E3): only a hand contact, or the root leaving the navigation corridor (which would also stop
             # the route command for good), ends the episode; any other touch costs passage_soft_contact per step. With

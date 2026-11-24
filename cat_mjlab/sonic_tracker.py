@@ -211,6 +211,17 @@ class SonicTracker:
         self.offsets = torch.arange(FUTURE_FRAMES, device=dev) * FUTURE_DT
         self.history = None
         self.last_action = torch.zeros(self.n, 29, device=dev)
+        self.provider = provider
+        self.latent = None
+        if provider == "torch":
+            # GPU-batched torch port with the pre-FSQ latent exposed (cat_mjlab/sonic_torch.py); default variant only.
+            if variant != "default":
+                raise ValueError("The torch backend ports the default release")
+            from .sonic_torch import SonicTorch
+            self.model = SonicTorch(encoder_path, decoder_path, device=dev)
+            self.batched_error = [0., 0.]
+            self.ref_q = self.ref_quat = None
+            return
         encoder, decoder = batched_models(encoder_path, decoder_path, variant)
         self.batched_error = verify_batched(encoder_path, decoder_path, (encoder, decoder))
         if max(self.batched_error) > 1e-4:
@@ -295,15 +306,23 @@ class SonicTracker:
         return torch.from_numpy(session.run(None, {"obs_dict": x.cpu().numpy()})[0]).to(self.device)
 
     @torch.no_grad()
-    def __call__(self):
+    def __call__(self, residual=None, scale=.1):
         task = self.task
         reset = task.info["step"] == 0
         self.last_action[reset] = 0.
         pose, qd = self.reference()
         self.ref_q, self.ref_pose = pose[:, 0, 7:], pose[:, 0]
         proprio = self._proprio()
-        tokens = self._run(self.encoder, self._encoder_input(pose, qd), 64)
-        action = self._run(self.decoder, torch.cat((tokens, proprio), -1), 29).clamp(-ACTION_CLIP, ACTION_CLIP)
+        x = self._encoder_input(pose, qd)
+        if self.provider == "torch":
+            a, b = self.anchor_slice
+            action, self.latent, _ = self.model.act(x[:, 4:584], x[:, a:b], proprio, residual, scale)
+            action = action.clamp(-ACTION_CLIP, ACTION_CLIP)
+        else:
+            if residual is not None:
+                raise ValueError("Latent residuals need the torch backend")
+            tokens = self._run(self.encoder, x, 64)
+            action = self._run(self.decoder, torch.cat((tokens, proprio), -1), 29).clamp(-ACTION_CLIP, ACTION_CLIP)
         if not bool(torch.isfinite(action).all()):
             raise RuntimeError("SONIC produced non-finite actions")
         self.last_action = action

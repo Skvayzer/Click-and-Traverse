@@ -418,7 +418,11 @@ def parser():
         target.add_argument("--body-collision-bank", type=Path, required=True)
         target.add_argument("--body-collision-resets", type=Path, required=True)
         target.add_argument("--run-dir", type=Path, required=True)
-        target.add_argument("--sonic-residual", choices=("whole", "arms"),
+        target.add_argument("--sonic-latent-scale", type=float, default=.3, help="latent mode: z += scale * action")
+        target.add_argument("--sonic-soft-fraction", type=float, default=1 / 3,
+                            help="latent mode: share of the requested updates with soft (non-terminal) contacts")
+        target.add_argument("--sonic-contact-cost", type=float, default=2., help="latent mode: soft contact cost per step")
+        target.add_argument("--sonic-residual", choices=("whole", "arms", "latent"),
                             help="Residual policy on frozen GEAR-SONIC (cat_mjlab/sonic_residual.py); needs --from-scratch")
         target.add_argument("--sonic-env-from", type=Path, help="Checkpoint whose environment the residual trains in")
         target.add_argument("--sonic-residual-scale", type=float, default=.3, help="Residual limit in rad")

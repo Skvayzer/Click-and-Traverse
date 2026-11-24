@@ -1360,6 +1360,11 @@ def run(args):
         contract_env = torch.load(args.sonic_env_from, map_location="cpu", weights_only=True, mmap=True)["contract"][
             "environment_config"]
         config_source, removed_terms = residual_environment(contract_env, args.tracker_planner)
+        if sonic_mode == "latent":
+            # The task's action is SONIC's own action (observation bookkeeping); the adaptor's smoothness is charged
+            # by the wrapper on its 66 actions instead.
+            for key in ("action_rate", "smoothness_action"):
+                config_source["reward_config"]["scales"][key] = 0.
         print("SONIC residual: reward terms removed " + json.dumps(removed_terms), flush=True)
     from .observation_contract import ACTOR_SIZE, CRITIC_SIZE, actor_size, critic_size
     tracker = bool(tracker_spec(args) or (config_source or {}).get('tracker'))
@@ -1367,13 +1372,17 @@ def run(args):
                     else (config_source or {}).get('sdf_rate_obs', False))
     cadence = bool(getattr(args, 'cadence', None) or (config_source or {}).get('cadence'))
     sizes = (actor_size(sdf_rate, tracker, cadence), critic_size(tracker, cadence))
-    if sonic_mode:
+    if sonic_mode == "latent":
+        from .sonic_latent import ACTIONS, EXTRA_OBS
+        sizes = (sizes[0] + EXTRA_OBS, sizes[1] + EXTRA_OBS)
+        config = replace(config, action_size=ACTIONS)
+    elif sonic_mode:
         sizes = (sizes[0] + 29, sizes[1] + 29)          # + SONIC's current raw action
     if (config.actor_obs, config.critic_obs) != sizes:
         config = replace(config, actor_obs=sizes[0], critic_obs=sizes[1])
     if getattr(args, 'lipschitz', None) is not None:
         config = replace(config, lipschitz=float(args.lipschitz))
-    if (config.actor_obs, config.critic_obs, config.action_size) != (*sizes, 29):
+    if (config.actor_obs, config.critic_obs, config.action_size) != (*sizes, 66 if sonic_mode == "latent" else 29):
         raise ValueError('Native training requires actor 222 / critic 310 and 29 actions. '
                          'Use --from-scratch; obsolete observation contracts are not converted.')
     overrides = {name: getattr(args, name) for name in ("max_action_std", "max_action_std_arms", "discounting", "num_minibatches")
@@ -1425,7 +1434,17 @@ def run(args):
         if getattr(args, "init_action_std_arms", None) is not None:
             migration["initial_action_std_arms"] = args.init_action_std_arms
     task, sim, environment_config = create_task(args, environment_config=config_source)
-    if sonic_mode:
+    if sonic_mode == "latent":
+        from .sonic_latent import LatentAdaptorTask
+        from .sonic_residual import zero_residual_mean
+        soft = int(args.max_updates * unroll * args.sonic_soft_fraction) if not args.resume else 0
+        task = LatentAdaptorTask(task, latent_scale=args.sonic_latent_scale, soft_steps=soft,
+                                 contact_cost=args.sonic_contact_cost)
+        if not args.resume:
+            zero_residual_mean(learner)
+        migration["sonic_latent"] = dict(latent_scale=args.sonic_latent_scale, soft_steps=soft,
+                                         contact_cost=args.sonic_contact_cost, env_from=str(args.sonic_env_from))
+    elif sonic_mode:
         from .sonic_residual import SonicResidualTask, zero_residual_mean
         task = SonicResidualTask(task, mode=sonic_mode, scale=args.sonic_residual_scale,
                                  penalty=args.sonic_residual_penalty, sessions=args.sonic_generator_sessions,
