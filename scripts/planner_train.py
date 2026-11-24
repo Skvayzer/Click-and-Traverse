@@ -158,7 +158,7 @@ def main(argv=None):
             record = dict(step=step, val_loss=round(val_loss(ema), 4), **quick_eval(ema), minutes=round((time.time() - t0) / 60, 1))
             print("EVAL " + json.dumps(record), flush=True)
             torch.save(dict(schema="wbp-planner-v1", model=ema.state_dict(), norm=norm.state_dict(),
-                            config=dict(width=args.width, layers=args.layers), step=step, args=vars(args) | dict(data=str(args.data), out=str(args.out))),
+                            config=dict(width=args.width, layers=args.layers), step=step, args={k: (str(v) if isinstance(v, Path) else v) for k, v in vars(args).items()}),
                        args.out / "planner.pt")
     print("TRAIN DONE " + json.dumps(dict(steps=args.steps, minutes=round((time.time() - t0) / 60, 1))), flush=True)
 
