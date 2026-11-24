@@ -123,7 +123,8 @@ def main():
                         add_line(sc,mujoco,path,(.13,.50,1.,.96),.013)
                 text=[f"{title}   {on_meta['variant'].capitalize()} obstacle   {t*dt:.1f} s"]
                 if trace['hand_contact'][:j+1,w].any(): text.append('Hand contacted the inserted obstacle')
-                elif released.any(): text.append('Orange arm released from plan tracking')
+                elif released.any():
+                    text.append(f'Orange marks a hand inside the {100*on_meta["band"]:g} cm reflex band')
                 if j < t: text.append('Episode ended')
                 view=label(renderer.render(),text,font)
                 frame[:,640*i:640*(i+1)]=view
