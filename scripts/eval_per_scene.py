@@ -355,6 +355,7 @@ def main():
         learner, _ = load_policy(args.checkpoint, device=dev, policy_id=0)
         if (args.plan_select not in (None, "clear")) or args.plan_arbitrate is not None:
             task.value_fn = lambda o: learner.model.value(o, torch.zeros(o.shape[:-1], dtype=torch.long, device=o.device))
+            task.value_samples = []
     cols = ("episodes", "clean", "contact", "refused", "fall", "hands", "length", "energy_j", "path_m", "cot", "cot_episodes")
     # Near obstacles (any body point within 15 cm): actual vs commanded pelvis speed, both feet off the ground.
     near_steps = torch.zeros(NS * K, dtype=torch.float64, device=dev); near_v = torch.zeros_like(near_steps)
@@ -538,6 +539,11 @@ def main():
             summary["plan_value"] = dict(select=args.plan_select, samples=args.plan_samples, arbitrate=args.plan_arbitrate,
                                          replans=int(r_), switched=round(vd["switched"] / r_, 4), rejected=round(vd["rejected"] / r_, 4),
                                          mean_spread=round(vd["spread"] / r_, 4), mean_gain_over_none=round(vd["gain"] / r_, 4))
+            if task.value_samples:
+                g_ = torch.cat(task.value_samples)
+                q_ = torch.tensor([.05, .1, .25, .5, .75, .9, .95])
+                summary["plan_value"]["gain_quantiles"] = [round(float(x), 3) for x in torch.quantile(g_[:, 0], q_)]
+                summary["plan_value"]["spread_quantiles"] = [round(float(x), 3) for x in torch.quantile(g_[:, 1], q_)]
         n_ = near_steps[jid].sum().clamp_min(1); c_sum = near_cmd[jid].sum().clamp_min(1e-9)
         summary["near_obstacle"] = dict(steps=int(near_steps[jid].sum()), speed_ratio=round(float(near_v[jid].sum() / c_sum), 3),
                                         mean_speed=round(float(near_v[jid].sum() / n_), 3), flight_fraction=round(float(near_flight[jid].sum() / n_), 4),

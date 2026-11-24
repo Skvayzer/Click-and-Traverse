@@ -880,6 +880,10 @@ class CATTask:
             vd=self.value_diag;vd['replans']+=len(ids);vd['switched']+=float(stats['value_switched'].sum())
             vd['spread']+=float(stats['value_spread'].sum());vd['gain']+=float((stats['value_chosen']-stats['value_none']).sum())
             if 'margin_accepted' in stats:vd['rejected']+=float((~stats['margin_accepted']).sum())
+            keep_=getattr(self,'value_samples',None)
+            if keep_ is not None and sum(len(x) for x in keep_)<400000:
+                keep_.append(torch.stack((stats['value_chosen']-stats['value_none'],stats['value_spread'],
+                                          self.scene_ids[ids].float()),-1).cpu())
         t.set_plan(ids,xy,yaw,z,upper,interval,roll=stats.get('roll'),pitch=stats.get('pitch'),legs=stats.get('legs'))
         if 'margin_accepted' in stats:
             rejected = ids[~stats['margin_accepted']]
