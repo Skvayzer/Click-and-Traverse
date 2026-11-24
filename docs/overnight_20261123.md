@@ -555,3 +555,9 @@ Public BRACE with the common planner completed 144 matched episodes per speed on
 | COMBO_FIX − BRACE with common planner | 0.5 / u-trap | +91.67 [+83.33, +97.92] | -93.75 [-100.00, -85.42] | +2.08 [+0.00, +6.25] | -66.67 [-79.17, -52.08] | — | — |
 | V7r | 0.5 / u-trap | 83.33 | 12.50 | 4.17 | 4.17 | 9.56 | 4.48 |
 | V7r − BRACE with common planner | 0.5 / u-trap | +83.33 [+70.83, +93.75] | -87.50 [-95.83, -77.08] | +4.17 [+0.00, +10.42] | -64.58 [-79.17, -50.00] | — | — |
+
+### Mechanical price provenance in the planner checkpoints
+
+The six frozen checkpoint contracts confirm that both seed-0 arms explicitly price policy torque averaged over substeps, with unit arm and leg multipliers. Both arms at seeds 1 and 2 use the compatibility objective based on the final applied-torque sample. The three energy term coefficients agree within each paired seed. The primary on/off comparison remains paired. Its aggregate averages a reflex contrast over two mechanical pricing implementations, and the E3 report also shows the two repeat seeds that share the legacy objective. E2 will preserve the energy contract of each matched parent.
+
+The held-out report measures differences in minimum palm clearance and conditional mean time to clean goal. Within a training seed it pools eligible episodes, matches scenes for resampling and retains the clean-arrival denominator for each policy. A policy with zero clean arrivals has no conditional time estimate. Rates and point estimates elsewhere retain the original episode budgets.

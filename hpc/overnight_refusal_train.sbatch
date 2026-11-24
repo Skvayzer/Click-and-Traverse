@@ -19,6 +19,8 @@ export ANCHOR=$L/checkpoints/stationary_hands_E2_u300.pt
 test -s "$STUDENT"
 test -s "$ANCHOR"
 unset ENERGY_RESUME_FROM SMOKE
+# Keep each parent's price model, including the legacy default of seeds 1–2.
+unset ENERGY_MODEL ENERGY_ALPHA ARM_MULT LEG_MULT NO_ENERGY_PRICE ROUTE_ENERGY ROUTE_ENERGY_P0
 export VARIANT=COMBO_FIX FRESH=--fresh-optimizer NUM_ENVS=12288
 export EXTRA="--max-updates 150 --seed $seed --refusal-training"
 export ENERGY_RUN_TAG=overnight_E2_seed${seed}_$SLURM_ARRAY_JOB_ID

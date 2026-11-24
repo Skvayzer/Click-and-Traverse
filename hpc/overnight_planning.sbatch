@@ -25,6 +25,14 @@ case "$MODEL" in
     if [[ "$MODEL" == plan_only ]]; then policy+=(--plan-only); fi
     if [[ "$MODEL" == planner && -n "${VARIANT:-}" ]]; then policy+=(--refusal-fix "$VARIANT"); fi
     ;;
+  refusal_trained)
+    seed=${SLURM_ARRAY_TASK_ID:?}
+    run="$L/runs/stationary_hands_20261113_overnight_E2_seed${seed}_${REFUSAL_JOB:?}/run"
+    grep -q completed_requested_updates "$run/status.json"
+    grep -qE '"updates":[[:space:]]*150,' "$run/status.json"
+    CHECKPOINT="$run/resume.pt"
+    policy=(--tracker-mix plan=1)
+    ;;
   reactive) seed=0; policy=() ;;
   released_cat) seed=0; policy=(--env-from "${ENV_CHECKPOINT:?}") ;;
   no_price|price_reference) seed=0; policy=(--tracker-mix plan=1) ;;

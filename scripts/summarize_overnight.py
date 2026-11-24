@@ -12,6 +12,8 @@ from scipy.stats import t
 
 
 RATES = ("clean", "contact", "refused", "hands")
+GOAL_TIME = "mean_time_to_clean_goal_s"
+PALM_CLEARANCE = "mean_episode_min_palm_field_m"
 LEGACY_GROUPS = {
     "Side gaps": ("sidegap",),
     "Cabinets": ("contrast",),
@@ -53,7 +55,7 @@ def confidence_interval(values):
 
 def weighted(rows, metric):
     selected = [v for v in rows.values() if v.get(metric) is not None]
-    weight = "clean_goals" if metric == "mean_time_to_clean_goal_s" else "episodes"
+    weight = "clean_goals" if metric == GOAL_TIME else "episodes"
     denominator = sum(v[weight] for v in selected)
     return sum(v[metric] * v[weight] for v in selected) / denominator if denominator else None
 
@@ -85,12 +87,44 @@ def stall_report(paths):
                 print("| " + " | ".join([speed, group, window, str(total), *vals]) + " |")
 
 
-def per_scene_delta(a, b, metric):
-    if a.keys() != b.keys():
-        raise ValueError("Paired evaluation scenes differ")
-    if any(a[k]["episodes"] != b[k]["episodes"] for k in a):
-        raise ValueError("Paired episode counts differ")
-    return np.array([a[k][metric] - b[k][metric] for k in sorted(a)]) * 100
+def paired_sample(rows, metric):
+    weight = "clean_goals" if metric == GOAL_TIME else "episodes"
+    scale = 1. if metric == GOAL_TIME else 100.
+    values = [rows[k] for k in sorted(rows)]
+    counts = np.array([r[weight] if r.get(metric) is not None else 0 for r in values])
+    sums = np.array([(r.get(metric) or 0.) * scale for r in values]) * counts
+    return sums, counts
+
+
+def paired_difference(left, right, metric):
+    values = []
+    pairs = []
+    for a, b in zip(left, right, strict=True):
+        if a.keys() != b.keys() or any(a[k]["episodes"] != b[k]["episodes"] for k in a):
+            raise ValueError("Paired evaluation scenes or episode counts differ")
+        sums_a, counts_a = paired_sample(a, metric)
+        sums_b, counts_b = paired_sample(b, metric)
+        if counts_a.sum() and counts_b.sum():
+            pairs.append(((sums_a, counts_a), (sums_b, counts_b)))
+            values.append(sums_a.sum() / counts_a.sum() - sums_b.sum() / counts_b.sum())
+    if not values:
+        return "—"
+    if len(values) > 1:
+        lo, hi = confidence_interval(values)
+    elif len(left) == 1:
+        (sums_a, counts_a), (sums_b, counts_b) = pairs[0]
+        rng = np.random.default_rng(20261124)
+        idx = rng.integers(0, len(sums_a), size=(4000, len(sums_a)))
+        count_a = counts_a[idx].sum(1)
+        count_b = counts_b[idx].sum(1)
+        keep = (count_a > 0) & (count_b > 0)
+        boot = sums_a[idx[keep]].sum(1) / count_a[keep] - sums_b[idx[keep]].sum(1) / count_b[keep]
+        if not boot.size:
+            return format_stats(values, paired=True)
+        lo, hi = np.quantile(boot, [.025, .975])
+    else:
+        return f"{format_stats(values, paired=True)} (one paired seed with both estimates)"
+    return f"{format_stats(values, paired=True)} [{lo:+.2f}, {hi:+.2f}]"
 
 
 def rate_report(conditions, speeds, file_names, *, family=False, include_inserted=False):
@@ -119,9 +153,9 @@ def rate_report(conditions, speeds, file_names, *, family=False, include_inserte
                 rows = [subset(r) for r, _ in loaded[label]]
                 values = [format_stats([100 * weighted(r, metric) for r in rows]) for metric in metrics]
                 if family:
-                    time = [x for r in rows if (x := weighted(r, "mean_time_to_clean_goal_s")) is not None]
+                    time = [x for r in rows if (x := weighted(r, GOAL_TIME)) is not None]
                     values.append(format_stats(time) if time else "—")
-                    values.append(format_stats([100 * weighted(r, "mean_episode_min_palm_field_m") for r in rows]))
+                    values.append(format_stats([100 * weighted(r, PALM_CLEARANCE) for r in rows]))
                 print("| " + " | ".join([label, mark, *values]) + " |")
                 if label == baseline:
                     continue
@@ -130,19 +164,8 @@ def rate_report(conditions, speeds, file_names, *, family=False, include_inserte
                 right = base * n if len(base) == 1 else base
                 if len(left) != len(right):
                     raise ValueError("Multi-seed paired conditions need the same number of seeds")
-                differences = []
-                for metric in metrics:
-                    scenes = np.stack([per_scene_delta(a, b, metric) for a,b in zip(left, right, strict=True)])
-                    values = scenes.mean(-1)
-                    if len(values) > 1:
-                        interval = confidence_interval(values)
-                    else:
-                        rng = np.random.default_rng(20261124)
-                        boot = rng.choice(scenes[0], size=(4000, scenes.shape[1]), replace=True).mean(-1)
-                        interval = np.quantile(boot, [.025,.975])
-                    differences.append(f"{format_stats(values, paired=True)} [{interval[0]:+.2f}, {interval[1]:+.2f}]")
-                if family:
-                    differences.extend(["—", "—"])
+                paired_metrics = (*metrics, GOAL_TIME, PALM_CLEARANCE) if family else metrics
+                differences = [paired_difference(left, right, metric) for metric in paired_metrics]
                 print("| " + " | ".join([f"{label} − {baseline}", mark, *differences]) + " |")
 
 
