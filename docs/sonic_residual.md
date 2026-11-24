@@ -119,3 +119,43 @@ the release files are in `/l/users/konstantin.smirnov/sonic_release`. Smoke 3220
 scenes at 0.15 and 0.30 m/s, 2 episodes, 7 h limit) and 322020 (72 E4 layouts at 0.15, 0.30 and 0.50 m/s, the same
 certified starts, 5 h limit). All three run on ws-ia or gpu with 1 GPU, 12 CPUs and 54 GB. Outputs are
 `/l/users/konstantin.smirnov/runs/sonic_G2_{smoke,384,E4}_<job>`.
+
+## Results so far (2026-11-24 21:30 +04)
+
+**G2: plain SONIC with zero residual** (cluster jobs 322019 and 322020, code `91a5467`, 2 episodes per scene, every
+episode finished; full JSON in `/l/users/konstantin.smirnov/runs/sonic_G2_{384_322019,E4_322020}`). The generator
+command is at least 0.30 m/s, so SONIC walks at about 0.21 m/s at every operator speed.
+
+| Benchmark | Speed (m/s) | Clean % | Contact % | Refused % | Hands % | Fall % |
+| --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| 384 narrow scenes | 0.15 | 12.89 | 87.11 | 0.00 | 19.40 | 0 |
+| 384 narrow scenes | 0.30 | 12.89 | 86.33 | 0.78 | 20.96 | 0 |
+| E4, 72 layouts | 0.15 | 0.00 | 100.00 | 0.00 | 37.50 | 0 |
+| E4, 72 layouts | 0.30 | 0.00 | 100.00 | 0.00 | 39.58 | 0 |
+| E4, 72 layouts | 0.50 | 0.00 | 100.00 | 0.00 | 50.69 | 0 |
+
+The reference rates on the same protocols are 61–62% clean on the 384 scenes (planner–reflex, three-seed mean). On E4
+they are 47–55% clean for COMBO_FIX seed 0 and 52–58% for V7r. On E4, SONIC's episodes end after a mean of 0.6–0.7 m of
+path.
+
+**G3: residual training at u300** (both variants completed 300 updates at 20:05–20:07 +04).
+- Training clean-goal rate went 0 → 1.3% (whole) and 0 → 1.4% (arms).
+- CAT-course obstacle-contact rate stayed at 100%.
+- Residual cost fell from −0.20 to −0.05 per step (whole) and from −0.10 to −0.02 (arms).
+- Action σ went 0.30 → 0.13 (whole) and stayed at 0.25 (arms).
+- No falls.
+
+The residual did not learn obstacle avoidance at this budget, and the u300 checkpoints have not yet been evaluated on G2.
+
+**Obstacle videos.** `artifacts/sonic-videos/obstacles/` holds 10 scene types: hurdle, overhead beam, side gap 0.53 m,
+cabinet passage 0.58 m, table gap, mixed CAT course, cluttered workshop, and the living, dining and meeting rooms. Each
+scene has four 1280×720 clips (plain SONIC, residual whole-body u300, residual arms-only u300, planner–reflex), all at
+0.30 m/s from the same certified start, plus a 2×2 side-by-side clip. Clips are at most 15 s; episodes longer than 15 s
+play at 2×. Script `scripts/sonic_obstacle_videos.py`, commit `5fc5d13`.
+
+| Policy | Clean of 10 | Contact or timeout |
+| --- | ---: | --- |
+| Plain SONIC | 0 | Contact in all 10 (side gap: hand), after 2.8–4.3 s on CAT, cabinet and table scenes and 8–18 s in rooms |
+| Residual whole u300 | 0 | Contact in all 10 (side gap: hand) |
+| Residual arms u300 | 0 | Contact in all 10 (side gap: hand) |
+| Planner–reflex (COMBO_FIX s0) | 6 | Contact on hurdle, side gap and CAT course; 30 s timeout on table gap and dining room |
