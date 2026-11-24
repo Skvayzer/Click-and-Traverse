@@ -722,3 +722,80 @@ Cluster smoke 320663 completed up to its 500-step budget on ws-l2-012 with the C
 ### E2 launched (Claude, 2026-11-24 12:00 +04)
 
 Gate met: E0 three-seed audit shows the stall balance (goal progress collapses, tracking/posture credit persists), and no E1 variant raised clean traversal without raising contact at both speeds (combined: contact +0.26 pp at 0.15, +2.91 pp at 0.30). Submitted array **320785** (seeds 0–2, `%2`), partition ws-ia,gpu, 1 GPU / 12 CPUs / 54000 MB / 8 h, code f31f3b9 staged at `~/cat_worktrees/energy_overnight_e2_f31f3b9`, script `hpc/overnight_refusal_train.sbatch` (150 updates warm-started from each COMBO_FIX seed, `--refusal-training`, then 384-scene eval at 0.15/0.30 m/s with stall audit). Prediction (pre-registered in E2 protocol): ≥2 pp mean clean gain and ≥2 pp refusal drop with no mean contact increase at either speed. Outputs `overnight_E2_seed{0,1,2}_320785`.
+
+### E6b SONIC baseline (Claude, 2026-11-24 13:10 +04, branch `feature/sonic-baseline`)
+
+**Outcome: SONIC failed both preregistered flat-ground gates, so the 72-layout and 384-scene benchmarks and the side-by-side videos were not run.** Pass required a median root error ≤ 10 cm and no fall. The adapter itself was validated: SONIC tracks NVIDIA's own released G1 walk in our harness at 3.5–4.3 cm. Our reactive walk and our planner's plans lift the swing foot only about 3–4.5 cm. SONIC's roughly 0.06 rad joint-tracking error removes that clearance, so it shuffles in place instead of travelling.
+
+**Checkpoint.** We used the public GEAR-SONIC release [`nvidia/GEAR-SONIC`](https://huggingface.co/nvidia/GEAR-SONIC) at revision `6733128a3d8a523b1418b06bca3cdf61c8b0987f`, dated 2026-08-26. The variant is "Default SONIC", which the release README describes as the "general-purpose motion tracking, planning, and teleoperation" controller. Files are `model_encoder.onnx` (SHA256 `013ab028…62d3`), `model_decoder.onnx` (`c7241a12…18ed`) and `observation_config.yaml`; the training config `sonic_release/config.yaml` was used to check the observation definitions. Local copies are under `~/robotics/sonic/hf_gear_sonic/`.
+
+- The on-disk `sonic_manipulation_base` (`last.pt` SHA256 `62f3e336…`) is the GRAIL pick-up/manipulation base from the same token family. It was not used, because the default release is the official general locomotion-capable controller.
+- SONIC v1.1 (`sonic_v1_1/`, encoder `fb97de22…`, decoder `34bae857…`) is heading-normalized and meant for teleoperation and VLA use. It ran as a secondary check with the release's recommended ankle-pitch gain ×1.5.
+- The low-latency variant was not tried.
+
+**Adapter.** Code is in `cat_mjlab/sonic_tracker.py` and `scripts/sonic_gates.py`; the unit test is `tests/test_sonic_tracker.py` (3/3 pass). `SonicTracker` exposes the same interface as `BraceTracker`, returning actions and PD targets for `task.step`. The contract was taken from the official C++ deployment (`gear_sonic_deploy/.../policy_parameters.hpp` and `g1_deploy_onnx_ref.cpp`) and cross-checked against the training config and the DEXTRAH frozen-SONIC loader.
+
+- **Encoder input (g1 mode, mode id 0).** The reference has ten frames 0.1 s apart, with frame 0 at the current plan time. Each frame carries absolute joint positions in IsaacLab order; all ten position frames come first, then all ten velocity frames. Joint velocities are central differences over ±0.05 s of the piecewise-linear plan. The pelvis reference orientation enters in the robot's pelvis frame as quat_inv(q_robot)·q_ref, using the first two rotation columns flattened row-wise. The ONNX graph slices confirm that the g1 branch reads only inputs [4:584] and [601:661]. The teleop and SMPL blocks are zero.
+- **Decoder input.** It takes the 64 tokens plus ten-sample histories, oldest first, of pelvis gyro, q − q_default, q̇, the last raw action and gravity in the pelvis frame. This order matches the training PolicyCfg.
+- **Action and PD.** Targets are q_default + action·scale, with scale = 0.25·effort/Kp, Kp = armature·(2π·10)² and Kd = 4·armature·(2π·10). Actions are clipped to ±20, as in training. Upper-body gravity feed-forward and target averaging are off. Control runs at 50 Hz.
+- **Batching.** The released ONNX has a fixed batch of 1. We made the batch symbolic in memory. Batched outputs differ from per-row release outputs by at most 0 (encoder) and 1.9e-6 (decoder).
+- **Joint maps.** These were checked against the deployment's `isaaclab_to_mujoco` and `mujoco_to_isaaclab` arrays.
+
+| Item | Our harness (CAT G1) | SONIC | Used in E6b |
+| --- | --- | --- | --- |
+| Joint order | MuJoCo/URDF | IsaacLab for the policy, MuJoCo for the deploy tables | Mapped by name |
+| Default pose | Hip pitch −0.1, knee 0.3, ankle −0.2, shoulder roll ±0.3, elbow 1.28 | Hip pitch −0.312, knee 0.669, ankle −0.363, shoulder pitch 0.2, shoulder roll ±0.2, elbow 0.6 | SONIC |
+| Kp, legs / waist / arms | Hips 100, knee 200, ankle 80/20 / 300 / 90–20 | 99.1 hips and knee, 40.2 hip yaw, 28.5 ankle / 40.2, 28.5 / 14.3, wrist pitch and yaw 16.8 | SONIC |
+| Kd | 1–10 | 0.9–6.3 | SONIC |
+| Action scale | 0.5 for legs, per-joint for arms | 0.25·effort/Kp, 0.07–0.55 rad | SONIC |
+| Hip-pitch torque limit and armature | 88 Nm, 0.0102 | 139 Nm, 0.0251 (7520-22) | Harness. 0% of joint-steps saturated in any gate |
+| Physics step | 2 ms, 10 substeps | 5 ms, 4 substeps | Harness |
+| Control rate | 50 Hz | 50 Hz | Same |
+| Torque injection | Up to 15% of the limit per substep (`rfi`) | None | Harness default; gates repeated with it zeroed |
+
+**Gates.** Each gate is one world on CPU MuJoCo for 8 s on the flat scene `flat-balance-walk-v1` of the `planning_v1` bank. Gate (a) records a V7r u600 walk at 0.30 m/s, then gives SONIC that whole-body clip open-loop in time from the identical initial state. Gate (b) has SONIC track the shared planner's online plans (`/tmp/cat-plan-blind/planner.pt`, COMBO_FIX environment), as in the BRACE flat check. The control row replays NVIDIA's released sample `walk_forward_amateur_001__A001`, from 9 s into the clip, resampled to 50 Hz. Plan error is the distance to the plan's current point. "Our policy" is COMBO_FIX seed 0 on the identical plan check. No SONIC run fell. Heading error was at most 0.03 rad in every run, and torque saturation was 0%. Raw JSON is in `artifacts/overnight/sonic-gates/`.
+
+| Gate | SONIC variant | Torque noise | Reference path (m) | Robot net travel (m) | Median root or plan error (cm) | p90 (cm) | Median joint error (rad) | Max swing-foot lift, L/R (cm) | Pass |
+| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | --- | --- |
+| NVIDIA sample walk (control) | default | on | 3.94 | 3.72 | 4.3 | — | 0.057 | 13.8 / 15.0 | yes |
+| NVIDIA sample walk (control) | default | off | 3.94 | 3.75 | 3.5 | — | 0.059 | 14.0 / 14.3 | yes |
+| NVIDIA sample walk (control) | v1.1 | on | 3.94 | 3.33 | 18.8 | — | 0.069 | 15.1 / 15.8 | no |
+| (a) V7r replay, 0.30 m/s | default | on | 2.52 | 0.21 | 101.5 | — | 0.063 | 3.0 / 1.6 | **no** |
+| (a) V7r replay, 0.30 m/s | default | off | 2.52 | 0.22 | 99.4 | — | 0.063 | 2.7 / 1.6 | no |
+| (a) V7r replay, 0.30 m/s | v1.1 | on | 2.52 | 0.23 | 99.2 | — | 0.049 | 2.9 / 2.5 | no |
+| (b) plans, 0.15 m/s | default | on | — | dx 0.00 | 25.3 | 47.7 | 0.062 | — | **no** |
+| (b) plans, 0.15 m/s | default | off | — | dx 0.03 | 23.7 | 45.8 | 0.060 | — | no |
+| (b) plans, 0.15 m/s | v1.1 | on | — | dx −0.07 | 26.2 | 50.2 | 0.055 | — | no |
+| (b) plans, 0.30 m/s | default | on | — | dx 1.22 | 21.2 | 47.0 | 0.057 | — | **no** |
+| (b) plans, 0.30 m/s | default | off | — | dx 1.38 | 15.2 | 37.7 | 0.056 | — | no |
+| (b) plans, 0.30 m/s | v1.1 | on | — | dx 0.04 | 20.7 | 49.6 | 0.062 | — | no |
+| Our policy on the same plans, 0.15 m/s | — | on | — | dx 1.22 | 3.2 | 6.3 | 0.112 (legs untracked) | — | yes |
+| Our policy on the same plans, 0.30 m/s | — | on | — | dx 2.36 | 3.9 | 6.2 | 0.111 | — | yes |
+
+The earlier BRACE flat check moved 0.81 m in 400 steps at 0.30 m/s with a 28 cm median plan error.
+
+**Diagnosis.**
+
+1. **Frames, joint order, gains and physics are correct.** The same adapter and harness track NVIDIA's sample walk to 3.5–4.3 cm over 3.9 m.
+2. **Heading alignment is not the cause.** Median yaw error was 0.012–0.029 rad in every run.
+3. **Reference rate and lead are not the cause.** The plan's frame spacing (0.1 s) equals SONIC's future spacing. On a 4 s V7r replay, shifting the reference ahead by 0, 0.04, 0.10 or 0.20 s gave 0.17–0.25 m of travel against 1.18 m in the reference. Cross-correlation of the knee angle with the reference showed zero lag.
+4. **Torque noise, the torque limit and the checkpoint variant are not the cause.** Zeroing the noise changed travel by at most 0.16 m, no joint saturated, and v1.1 was no better.
+5. **Cause: our gait's low swing clearance relative to SONIC's tracking precision.**
+   - V7r lifts the swing foot by at most 2.7–3.9 cm, with a mean of about 1 cm. The planner's plans, which are trained on our policies' rollouts, lift it by at most 2.9–4.5 cm (p95 2.4–3.2 cm), computed by forward kinematics of the plan legs.
+   - SONIC tracks every reference with a mean joint error of about 0.06 rad. Over a 0.7 m leg that is about 4 cm at the foot, the whole swing height of our gait. By contrast, the mocap walk has 14 cm of swing.
+   - Under SONIC, swing lift falls to at most 1.6–3.0 cm in the V7r replay. On the plans, p95 lift falls to 0.1–0.2 cm at 0.15 m/s, so the stance feet never unload and the robot makes no net progress. At 0.30 m/s, p95 lift is 1.9–2.6 cm; this partial stepping gives about half the commanded progress.
+
+**Interpretation and caveats.**
+
+- With its released weights, SONIC cannot execute our planner's whole-body plans on flat ground in this harness. A plan-then-track comparison on the obstacle benchmarks would therefore measure this locomotion failure, not obstacle handling.
+- The result concerns our low-clearance gait references. It is not evidence about SONIC with its own motion sources.
+- The harness differs from SONIC's training robot in physics step (2 ms against 5 ms), hip-pitch actuator and joint friction. The NVIDIA control shows that these differences do not prevent normal walking.
+- Gates are single-world and deterministic. The plan gates are closed-loop with replanning.
+
+**Not run, for a decision.** Three possible ways forward:
+
+1. Drive SONIC's own released kinematic locomotion planner (`planner_sonic.onnx`) with our planner's root path and upper-body plan. SONIC would then supply its own legs, which makes this a different baseline.
+2. Retarget the plan legs to a human-like swing clearance before SONIC. This changes our plans.
+3. Fine-tune the SONIC decoder on our gait.
+
+Any of these needs a new preregistration.
