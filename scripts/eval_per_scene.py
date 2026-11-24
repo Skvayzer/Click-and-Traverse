@@ -327,6 +327,8 @@ def main():
         task.collision = lambda scene, data: static_collision(scene, data) | sim.hits
         split_stats = torch.zeros((NS * K, 4), device=dev)
         throw_stats = torch.zeros((NS * K, 4, 3), device=dev)    # launched, skipped, hand hit, any hit per speed tier
+        flight_steps = torch.zeros((), device=dev, dtype=torch.float64); released_steps = torch.zeros_like(flight_steps)
+        hand_band = float((task.reflex or {}).get("hand_band", 0.)) if task.tracker is not None else 0.
         inserted_hits = torch.zeros_like(sim.hits)
         if args.blind_record:
             trace = BlindTrace(task, sim.obstacle, schedule["clip_rows"], ordered_scenes, meta, args.checkpoint)
@@ -402,6 +404,13 @@ def main():
             inserted_hits |= sim.hits
             if args.blind_variant == "throw":
                 sim.obstacle.observe(sim.hits)
+                alive = (before >= 0) & ~out["done"].bool()
+                _, flying = sim.obstacle.locate(sim.ids, task.data.time)
+                flying = flying & alive
+                flight_steps += flying.sum()
+                if hand_band > 0.:
+                    released = (task.info["sdf"][:, 5:7, 0] < hand_band).any(-1) & task.tracker.valid
+                    released_steps += (flying & released).sum()
             if trace is not None:
                 trace.finish(done, sim.hits)
         if audit is not None:
@@ -520,6 +529,8 @@ def main():
             if args.blind_variant == "throw":
                 from cat_mjlab.threats import SPEEDS
                 counts = throw_stats[jid].sum(0).cpu()
+                summary["reflex_released_during_flight"] = float(released_steps / flight_steps.clamp_min(1)) if hand_band > 0. else None
+                summary["flight_steps"] = int(flight_steps)
                 summary["throws"] = {f"{speed:g}": dict(launched=int(counts[0, i]), skipped=int(counts[1, i]), hand_hits=int(counts[2, i]),
                                                         any_hits=int(counts[3, i])) for i, speed in enumerate(SPEEDS)}
         if audit is not None:
