@@ -90,7 +90,8 @@ def main():
                    help="Aggregate named scaled terms per transition over eventually refused episodes")
     p.add_argument("--goal-seed-cache", type=Path, help="exact goal-column cache for the selected scene IDs")
     p.add_argument("--planner-checkpoint", type=Path, help="relocate the trained online planner checkpoint")
-    p.add_argument("--blind-variant", choices=("static", "moving"))
+    p.add_argument("--blind-variant", choices=("static", "moving", "throw"))
+    p.add_argument("--pushes", action="store_true", help="keep the checkpoint's random push disturbances (A2 robustness); default: pushes off")
     guide_mode = p.add_mutually_exclusive_group()
     guide_mode.add_argument("--write-blind-guide", type=Path, help="write matched episodes and obstacle schedule without evaluation")
     guide_mode.add_argument("--blind-guide", type=Path, help="precomputed obstacle schedules shared by all policy checkpoints")
@@ -102,6 +103,8 @@ def main():
     blind = args.write_blind_guide is not None or args.blind_guide is not None
     if blind != (args.blind_variant is not None) or (args.blind_record and not args.blind_guide):
         p.error("Blind guide generation/evaluation needs --blind-variant, and tracing needs an existing guide")
+    if args.blind_variant == "throw" and args.write_blind_guide:
+        p.error("Throw guides come from scripts/make_throw_guide.py")
     if args.blind_replay_starts and (not args.blind_guide or args.planning_benchmark):
         p.error("Blind start replay requires an existing blind guide")
     if blind and (args.operator_speed is None or args.operator_speeds or args.episodes < 1 or args.stochastic or not args.nominal):
@@ -127,7 +130,7 @@ def main():
     if archive:
         env["sdf_rate_obs"] = False; env.pop("tracker", None)
     env.pop("side_gap_curriculum", None)                 # standard CAT starts, every width
-    env["push_config"]["enable"] = False
+    env["push_config"]["enable"] = bool(args.pushes)
     env.pop("sgs", None)                                 # every scene gets its K jobs, no success-guided resampling
     env.pop("refusal_training", None)                    # compare policies with the same physical deadline
     if args.planning_benchmark:
@@ -314,11 +317,16 @@ def main():
         if args.blind_replay_starts:
             start_hash = hashlib.sha256(pose.tobytes() + velocity.tobytes()).hexdigest()
             print(json.dumps(dict(blind_initial_state_sha256=start_hash)), flush=True)
-        sim.obstacle = BlindObstacle(schedule, args.blind_variant, dev)
+        if args.blind_variant == "throw":
+            from cat_mjlab.threats import ThrownObstacle
+            sim.obstacle = ThrownObstacle(schedule, task, dev)
+        else:
+            sim.obstacle = BlindObstacle(schedule, args.blind_variant, dev)
         task.analytic_objects = sim.obstacle
         static_collision = task.collision
         task.collision = lambda scene, data: static_collision(scene, data) | sim.hits
         split_stats = torch.zeros((NS * K, 4), device=dev)
+        throw_stats = torch.zeros((NS * K, 4, 3), device=dev)    # launched, skipped, hand hit, any hit per speed tier
         inserted_hits = torch.zeros_like(sim.hits)
         if args.blind_record:
             trace = BlindTrace(task, sim.obstacle, schedule["clip_rows"], ordered_scenes, meta, args.checkpoint)
@@ -372,6 +380,8 @@ def main():
         before = env_scene.clone(); root0 = task.data.qpos[:, :2].clone()
         if blind:
             sim.hits.zero_()
+            if args.blind_variant == "throw":
+                sim.obstacle.update(task)
             if trace is not None:
                 trace.record()
         with torch.no_grad():
@@ -390,6 +400,8 @@ def main():
             min_palm = torch.minimum(min_palm, m["acceptance/hand_clearance"].amin(-1))
         if blind:
             inserted_hits |= sim.hits
+            if args.blind_variant == "throw":
+                sim.obstacle.observe(sim.hits)
             if trace is not None:
                 trace.finish(done, sim.hits)
         if audit is not None:
@@ -426,6 +438,9 @@ def main():
             if blind:
                 flags_blind = (sim.obstacle.valid, sim.revealed, inserted_hits.any(-1), inserted_hits[:, 5])
                 split_stats.index_add_(0, sc, torch.stack(flags_blind, -1)[d].float())
+                if args.blind_variant == "throw":
+                    episode_throws = sim.obstacle.per_episode()
+                    throw_stats.index_add_(0, sc, torch.stack([episode_throws[x] for x in ("launched", "skipped", "hand", "any")], 1)[d].float())
             if args.refused_rewards:
                 refused = flags[3][d]
                 refusal_totals.index_add_(0, sc, torch.where(refused[:, None], refusal_acc[d], 0.))
@@ -459,7 +474,9 @@ def main():
         if finished != target:
             raise RuntimeError(f"Plan-blind benchmark stopped at {finished}/{target} completed episodes. "
                                f"Revealed {int(sim.revealed.sum())}, with {int(inserted_hits[:,5].sum())} "
-                               "physical inserted hand contacts. No aggregate scores were saved.")
+                               "physical inserted hand contacts. No aggregate scores were saved." +
+                               (f" Throws launched {int(sim.obstacle.launched.sum())}, skipped {int(sim.obstacle.skipped.sum())}, "
+                                f"hand hits {int((sim.obstacle.slot_hand & sim.obstacle.launched).sum())}." if args.blind_variant == "throw" else ""))
         blind_names = ("inserted_scheduled", "inserted_revealed", "inserted_contact", "inserted_hand_contact")
     if args.planning_benchmark:
         if finished != target:
@@ -482,6 +499,8 @@ def main():
             row = dict(episodes=int(e), **{c: round(float(stats[j, c_]) / e, 4) for c_, c in enumerate(cols) if 0 < c_ < 9},)
             if blind:
                 row.update(dict(zip(blind_names, (split_stats[j] / e).cpu().tolist())))
+                if args.blind_variant == "throw":
+                    row["throws"] = throw_stats[j].cpu().tolist()
             if audit is not None:
                 row["stall_windows"] = audit.summary([j])
             row["energy"] = report_energy(group_energy[j], e, float(stats[j, 6]) * task.dt)
@@ -498,6 +517,11 @@ def main():
         summary = {c: round(float(stats[jid, c_].sum() / E), 4) for c_, c in enumerate(cols) if 0 < c_ < 9}
         if blind:
             summary.update(dict(zip(blind_names, (split_stats[jid].sum(0) / E).cpu().tolist())))
+            if args.blind_variant == "throw":
+                from cat_mjlab.threats import SPEEDS
+                counts = throw_stats[jid].sum(0).cpu()
+                summary["throws"] = {f"{speed:g}": dict(launched=int(counts[0, i]), skipped=int(counts[1, i]), hand_hits=int(counts[2, i]),
+                                                        any_hits=int(counts[3, i])) for i, speed in enumerate(SPEEDS)}
         if audit is not None:
             summary["stall_windows"] = audit.summary(jid)
         if args.planning_benchmark:
