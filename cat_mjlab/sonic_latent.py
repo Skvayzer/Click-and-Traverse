@@ -24,7 +24,7 @@ import numpy as np
 import torch
 
 SONIC_DIR = Path(os.environ.get("SONIC_DIR", "/home/konstantinsmirnov/robotics/sonic/hf_gear_sonic"))
-LIBRARY = Path(os.environ.get("SONIC_GAIT_LIBRARY", "/tmp/cat-sonic/latent/gait_library.npz"))
+LIBRARY = Path(os.environ.get("SONIC_GAIT_LIBRARY", Path(__file__).resolve().parents[1] / "data/sonic_gait_library_v1.npz"))
 EXTRA_OBS = 64 + 29 + 2 + 1 + 1
 ACTIONS = 64 + 2
 RAMP_S = .8
