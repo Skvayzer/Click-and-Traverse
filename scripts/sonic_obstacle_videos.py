@@ -33,6 +33,7 @@ sys.path[:0] = [str(ROOT), str(ROOT / "scripts")]
 BANK = Path(os.environ.get("CAT_BANK", "/home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab/data/furniture/tablegap_v1"))
 COMBO = Path(os.environ.get("COMBO_CKPT", "/tmp/cat-energy-current-videos/inputs/COMBO_FIX_315808_u150.pt"))
 PLANNER = Path(os.environ.get("PLANNER_CKPT", "/tmp/cat-plan-blind/planner.pt"))
+DEVICE = os.environ.get("SONIC_VIDEO_DEVICE", "cuda:0")      # cpu: CPU MuJoCo, one world per process
 SCENES = {
     "published-hurdle1": ("hurdle", "hurdle"),
     "D8G0L1O1S4": ("overhead beam", "beam"),
@@ -69,11 +70,15 @@ def build(policy, scene_ids, speed):
         env["teleop"].update(fraction=0., cat_fraction=0., cat_scenes=False)
     args = SimpleNamespace(bank_manifest=Path(str(BANK) + "_packed/manifest.json"),
                            body_collision_bank=Path(str(BANK) + "_collision/manifest.json"),
-                           body_collision_resets=Path(str(BANK) + "_resets/manifest.json"), device="cuda:0", seed=1,
+                           body_collision_resets=Path(str(BANK) + "_resets/manifest.json"), device=DEVICE, seed=1,
                            num_envs=len(scene_ids), compile_task=False, nconmax=contract["nconmax"],
                            njmax=contract["njmax"], reactive_bank=None, reactive_row=None,
                            goal_seed_scene_ids=set(scene_ids))
-    task, _, _ = create_task(args, environment_config=env)
+    sim_class = None
+    if DEVICE == "cpu":
+        from cat_mjlab.sim_cpu import CPUSimulation
+        sim_class = CPUSimulation
+    task, _, _ = create_task(args, environment_config=env, sim_class=sim_class)
     records = task.bank.manifest["scenes"]
     index = {scene["scene_id"]: i for i, scene in enumerate(records)}
     ids = torch.tensor([index[s] for s in scene_ids], device=task.device)
@@ -92,12 +97,12 @@ def record(policy, out, scene_ids, speed, max_steps):
     task, rows = build(kind, scene_ids, speed)
     n = len(scene_ids)
     if kind == "combo":
-        learner, _ = load_policy(COMBO, device="cuda:0", policy_id=0)
+        learner, _ = load_policy(COMBO, device=DEVICE, policy_id=0)
         act = lambda: (learner.act(task.obs, policy_ids=0, deterministic=True)["action"], None)
         label = "Our planner-reflex policy (COMBO_FIX seed 0)"
     elif kind in ("gait", "latent"):
         from cat_mjlab.sonic_latent import LatentController
-        adaptor = load_policy(policy.split(":", 1)[1], device="cuda:0", policy_id=0)[0] if kind == "latent" else None
+        adaptor = load_policy(policy.split(":", 1)[1], device=DEVICE, policy_id=0)[0] if kind == "latent" else None
         act = LatentController(task, adaptor=adaptor)
         label = ("SONIC (frozen) + latent adaptor" if adaptor is not None
                  else "Plain SONIC (frozen) on its own gait, along our route")
@@ -106,7 +111,7 @@ def record(policy, out, scene_ids, speed, max_steps):
         residual, mode = None, "whole"
         if kind == "residual":
             _, path, mode = policy.split(":")
-            residual = load_policy(path, device="cuda:0", policy_id=0)[0]
+            residual = load_policy(path, device=DEVICE, policy_id=0)[0]
         controller = SonicController(task, residual=residual, mode=mode)
         act = controller
         label = ("SONIC (frozen) + residual reflex, " + ("whole body" if mode == "whole" else "arms only")

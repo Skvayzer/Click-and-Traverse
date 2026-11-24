@@ -228,3 +228,24 @@ environment, ramp length and steering were ruled out first.
 **Gate 2 (throughput): pending.** Cluster job 322754 (4096 worlds, unroll 16, 3 updates; code `457e442` in
 `~/cat_worktrees/sonic_457e442`) waits on the per-user CPU limit. The same test is queued on dep-1 behind three
 lock-holders' jobs.
+
+**Gate 2 (throughput): FAIL on the stated criterion; the harness is the cause, not SONIC.** Measured on cluster
+gpu-04 (RTX 5000 Ada 32 GB), job 322876, code `910307a`.
+
+| Pipeline | Worlds | Control steps per second | Seconds per update | Transitions per update | Peak VRAM (GiB) |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| SONIC + latent adaptor | 4096 | 7,203 | 8.8–9.3 | 65,536 (16 steps) | 21.0 |
+| Native planner–reflex (E2 322679, same GPU type) | 12,288 | 5,206 | 75.5 | 393,216 (32 steps) | 24.7 |
+
+At 4096 worlds × 16 steps, ≤ 2 s per update would need about 33,000 control steps per second. That is 6× what the
+harness reaches without SONIC. The only lever inside the criterion is a 4-step unroll, which trades samples per update
+rather than fixing speed, so it was not adopted. The torch SONIC path and the batched reference make the pipeline faster
+than the native one (7.2k vs 5.2k steps per second).
+
+**Gate 3 (training): running.** Cluster job 322876 runs 600 updates. Contacts are soft for the first 200 updates
+(3,200 control steps). Settings: 4096 worlds, unroll 16, batch 1024 × 4 minibatches, latent scale 0.3, initial σ 0.3,
+seed 0. Snapshots every 50 updates go to `/l/users/konstantin.smirnov/runs/sonic_latent_seed0_322876`. ETA about
+03:35 +04 on 2026-11-25. Before it started, the job waited about 3 h for a GPU because of the per-user GPU quota and
+the dep-1 lock queue.
+
+Zero-adaptor evaluations (plain SONIC on the batched reference) are queued: 322877 (384 scenes) and 322878 (E4).
