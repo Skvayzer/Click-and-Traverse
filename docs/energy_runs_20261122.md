@@ -358,7 +358,7 @@ Original 384 scenes, 768 episodes per seed per speed. Rows are mean ± sample s.
 
 ### E3 paired videos
 
-Three original seed-0 episode pairs are in the project `energy-videos/` artifacts folder. They use synchronized recorded poses, the same camera and the authored inserted box in both panels. Blue shows the plan and orange shows a released arm. Software EGL kept the local GPU available for evaluation. All clips passed checks for 1280×720 H.264 yuv420p, stereo 48 kHz silent AAC and faststart atom order.
+Three original seed-0 episode pairs are in the project `energy-videos/` artifacts folder. They use synchronized recorded poses, the same camera and the authored inserted box in both panels. Blue shows the plan. Orange marks a hand within the 5 cm band used to remove that arm's tracking reward in training. Software EGL kept the local GPU available for evaluation. All clips passed checks for 1280×720 H.264 yuv420p, stereo 48 kHz silent AAC and faststart atom order.
 
 | File | Scenario | Clip duration | Inserted hand contact |
 | --- | --- | ---: | --- |
@@ -366,7 +366,7 @@ Three original seed-0 episode pairs are in the project `energy-videos/` artifact
 | `plan-blind-moving-015.mp4` | Moving at 0.15 m/s, angled 0.51 m side gap, row 370 | 13.80 s | Neither controller |
 | `plan-blind-moving-030.mp4` | Moving at 0.30 m/s, cabinet passage, row 62 | 11.72 s | Reflex off only |
 
-The selected traces show 20, 3 and 17 control transitions with an active arm reflex, respectively. Selection favored visible reflex activity. The third clip shows a paired example of avoiding the inserted-object hand contact.
+The selected traces show 20, 3 and 17 control transitions within the training reflex band, respectively. Selection favored visible reflex activity. The third clip shows a paired example of avoiding the inserted-object hand contact.
 
 ### E7 complete heat-price sensitivity
 
