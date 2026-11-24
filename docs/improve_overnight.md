@@ -82,5 +82,5 @@ slots and is only scheduled if the frozen-tracker result passes.
 | --- | --- | --- | --- | --- |
 | A | control (K=4, clearest), value_safe K=4, clear K=8, value_safe K=8, no reference (none=1) | 0 | dep-1, one lock hold, 5 in parallel, `92afe4e` | `~/robotics/cat-energy-local-runs/improve_<tag>_seed0_92afe4e` |
 | E2 | refusal-pricing fine-tune (from the brief) | 0 | 322679_0 ws-ia | `overnight_E2_seed0_322679` |
-| E2 | seeds 1–2: 322679_1/2 and 322686 failed at the GPU-memory check on shared gpu nodes; resubmitted 322708 (`MAX_FOREIGN_MIB=40000`, gpu, %1) | 1–2 | gpu | `overnight_E2_seed{1,2}_322708` |
+| E2 | seeds 1–2: 322679_1/2 and 322686 stopped at the foreign-GPU-memory check on gpu nodes; 322708 with the check relaxed then ran out of GPU memory (other users' processes held 25–26 GB of the same GPU), so the check was right: gpu-partition GPUs are shared. Seeds 1–2 now wait for the seed-0 pilot (decision: run them on ws-ia/dep-1 only if seed 0 gains ≥ 1 pp clean without more contact) | 1–2 | — | — |
 | I5 | expert iteration collect + fine-tune | — | 322717 ws-ia (pending a slot) | `runs/wbp/planner_ei1` |
