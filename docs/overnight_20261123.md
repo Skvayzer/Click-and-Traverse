@@ -561,3 +561,17 @@ Public BRACE with the common planner completed 144 matched episodes per speed on
 The six frozen checkpoint contracts confirm that both seed-0 arms explicitly price policy torque averaged over substeps, with unit arm and leg multipliers. Both arms at seeds 1 and 2 use the compatibility objective based on the final applied-torque sample. The three energy term coefficients agree within each paired seed. The primary on/off comparison remains paired. Its aggregate averages a reflex contrast over two mechanical pricing implementations, and the E3 report also shows the two repeat seeds that share the legacy objective. E2 will preserve the energy contract of each matched parent.
 
 The held-out report measures differences in minimum palm clearance and conditional mean time to clean goal. Within a training seed it pools eligible episodes, matches scenes for resampling and retains the clean-arrival denominator for each policy. A policy with zero clean arrivals has no conditional time estimate. Rates and point estimates elsewhere retain the original episode budgets.
+
+### Runtime update after the E4 input build
+
+Job 320478 completed on ws-l5-006 in 10 min 9 s and certified 117,216 reset poses. Its 72-scene goal-column cache has SHA256 `07905c3fb37972c872bbb078b1104be7f7831fc12523cbd4d9fa317c92a5c`. All three planner families and both exploratory pricing jobs are ready on gpu, with the pending tasks gated by the active standing control's scheduler quota. E2 commit `f31f3b9` and all three saved warm-start paths are staged in `~/cat_worktrees/energy_overnight_e2_f31f3b9`. E2 training has not launched because the E1 gate remains open.
+
+BRACE smoke 319455 failed before inference. A separate process occupied 24.60 GiB on its assigned 31.47 GiB GPU at ws-l5-006 when the scene bank tried to load. The scheduler canceled its dependent 319456 before it ran. Two explicit ws-ia chains now make room for all four E1 evaluations while gpu runs the third-seed standing control. They preserve the former E1, E5 and E6 protocols. The updated jobs exclude ws-l5-004, ws-l5-005 and ws-l5-006.
+
+| Job | Purpose | Scheduling | Resources | Limit / runtime estimate | Output directory under `/l/users/konstantin.smirnov/runs` |
+| --- | --- | --- | --- | --- | --- |
+| 319389_2 → 319389_5 | E1 fallback, then margin, seed 2 | ws-ia, first started on ws-l2-012 | 1 GPU, 8 CPUs, 30000 MB | 3 h / 1–2 h each | `overnight_E1_{fallback,margin}_seed2_319389` |
+| 319389_1 → 319389_4 | E1 fallback, then margin, seed 1 | ws-ia, after 319349_4 | 1 GPU, 8 CPUs, 30000 MB | 3 h / 1–2 h each | `overnight_E1_{fallback,margin}_seed1_319389` |
+| 320528 → 320529 | BRACE smoke, then 384 scenes | ws-ia, after 319389_5 | 1 GPU, 8 CPUs, 40000 MB | 30 min / 3 h limits; 3–8 min / 1–2 h estimates | `overnight_E6_BRACE_smoke_320528`, `overnight_E6_BRACE_384_320529` |
+
+After 319389_4, the existing E5 plan-only array 319436 now runs one task at a time, followed by 319438 then 319439. The second chain runs 319437 after the BRACE 384 job terminates. Both chains together reserve at most two concurrent ws-ia jobs. E1's combined variant remains on dep-1. Standing 319350_0 completed 150 updates and its seed-2 arm×30 eval, with 26.15% of worlds moving feet and 17.07% of threatened events classified as failures. Its matched arm×1 control 319350_1 started on gpu-02 at approximately 08:42 Dubai. A cross-seed effect awaits that control.
