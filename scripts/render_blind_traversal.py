@@ -41,11 +41,11 @@ def scene_model(bank, row):
         xml, _ = resolve_xml_assets(directory / 'model.xml')
         if row.get('task_kind') == 'room':
             xml = furnish_room(xml, json.loads((directory / 'scene.json').read_text()))
-    root = ET.fromstring(xml)
-    body = ET.SubElement(root.find('worldbody'), 'body', name='replay_probe', mocap='true', pos='0 0 -20')
-    ET.SubElement(body, 'geom', type='box', size=' '.join(map(str, BOX_HALF)),
-                  rgba='.91 .13 .31 1', contype='0', conaffinity='0')
-    model = mujoco.MjModel.from_xml_string(ET.tostring(root, encoding='unicode'))
+        root = ET.fromstring(xml)
+        body = ET.SubElement(root.find('worldbody'), 'body', name='replay_probe', mocap='true', pos='0 0 -20')
+        ET.SubElement(body, 'geom', type='box', size=' '.join(map(str, BOX_HALF)),
+                      rgba='.91 .13 .31 1', contype='0', conaffinity='0')
+        model = mujoco.MjModel.from_xml_string(ET.tostring(root, encoding='unicode'))
     model.vis.global_.offwidth, model.vis.global_.offheight = 640, 720
     model.vis.quality.shadowsize = 2048
     return model
