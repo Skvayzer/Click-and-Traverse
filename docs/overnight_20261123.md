@@ -1,11 +1,12 @@
 # Overnight summary
 
-Provisional at 06:00 Dubai, November 24. The completed comparisons have yet to show a joint gain in clean traversal and contact.
+Provisional at 09:16 Dubai, November 24. The completed comparisons have yet to show a joint gain in clean traversal and contact.
 
 - Original 384 scenes, three paired seeds. Reflex-on clean deltas were −0.87 and −1.78 pp at 0.15 and 0.30 m/s. The corresponding hand-contact deltas were 0.00 and −0.48 pp. All paired 95% intervals include zero.
 - Plan-blind seed 0. Reflex reduced any contact by 1.69–3.12 pp and increased refusals by 1.95–4.43 pp across the four protocols. Two more seed pairs are pending. The three synchronized replays are available in the project energy-videos folder.
 - Held-out layouts at 0.50 m/s, seed 0. Against the reflex-off tracker, reflex-on cut hand contact by 4.17 pp and raised refusals by 6.25 pp with equal total contact.
-- E0's first temporal audit found persistent positive posture and tracking rewards during stalls. E2's warm-start reward profile passed CPU checks and awaits the full E0/E1 gate.
+- E0's full three-seed audit found that goal-progress reward fell from 2.74 to 0.70 at 0.30 m/s around the first stall. Posture and tracking credit persisted. E2's warm-start profile passed CPU checks. The two pending E1 seed comparisons determine whether E2 launches.
+- On E4 at 0.50 m/s, COMBO_FIX seed 0 gained 46.53 pp clean traversal [36.11, 56.94] and reduced contact by 54.17 pp [43.75, 64.58] versus the released BRACE tracker with the common planner. These confidence intervals resample scenes. The original 384-scene BRACE evaluation is queued.
 - At 250, 500 and 1,000 W in the single-seed sensitivity test, arm-first fell from 43.68% to 38.85% to 33.06%. Failures rose from 9.46% to 11.90% to 14.19%. The 500 W run had the fewest worlds moving their feet.
 
 ## E0 — existing evidence on traversal refusals
@@ -590,3 +591,7 @@ Release check on 2026-11-24. The closest navigation systems below would require 
 | Perceptive Humanoid Parkour | Public depth-backbone and locomotion-student ONNX files include a MuJoCo path with direction commands, D435i depth and a separate G1 collision model. The released student takes a direction command for parkour. The release provides no sparse-goal indoor navigation layer. A matched comparison would need the calibrated depth pipeline and a shared way of supplying course directions. [Student release](https://github.com/amazon-far/php_parkour/releases/tag/student-assets-v1), [deployment](https://github.com/amazon-far/php_parkour/blob/main/wbt_training/DEPLOY.md) |
 
 The focused CPU suite now passes all 34 selected planner, blind-obstacle, energy, inverse-dynamics and refusal-training tests on the current training branch.
+
+### E4 local transfer for the field and price comparisons
+
+At 09:16 Dubai, pending tasks 319449_1, 319449_2, 319450 and 319451 were moved to dep-1. Only those four pending cluster jobs were canceled. They use the verified original checkpoints, the local ac58626 evaluator and the same certified 72 layouts, starts and three speeds. The single-GPU sequence starts after the existing E1 combined seed 2 evaluation, in order plan-only seed 1, plan-only seed 2, COMBO1b u500 and COMBO_NOPRICE u50. Outputs are `~/robotics/cat-energy-local-runs/overnight_E4_<model>_seed<seed>_local_ac58626`. Observed comparable local run times are 2–5 min for the masked actors and about 35–60 min for the priced and price-free planners. The four frozen E4 planner and reflex-off replications remain queued on gpu.
