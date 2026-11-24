@@ -104,6 +104,9 @@ def main():
     p.add_argument("--plan-arbitrate", type=float, metavar="DELTA",
                    help="Mode arbitration: act without the plan (same network, no reference) for 0.6 s when the chosen "
                         "plan's critic value is below the no-reference value + DELTA")
+    p.add_argument("--subset-fields", action="store_true",
+                   help="load scene fields only for the --scenes @file selection (others get a tiny zero grid and are "
+                        "never sampled): several evaluations then share one GPU")
     p.add_argument("--out", type=Path)
     p.add_argument("--out-dir", type=Path)
     args = p.parse_args()
@@ -198,6 +201,11 @@ def main():
         p.error("Generating a blind guide needs an online-planner tracker and --tracker-mix plan=1")
     if args.planning_benchmark and not wanted:
         p.error("The planning benchmark requires an explicit @scene list")
+    if args.subset_fields:
+        if not wanted or blind:
+            p.error("--subset-fields needs an explicit @scene list and a static benchmark")
+        from planner_collect import install_subset_loader
+        install_subset_loader(wanted)
     B = ROOT / args.bank
     ns = SimpleNamespace(bank_manifest=Path(str(B) + "_packed/manifest.json"), body_collision_bank=Path(str(B) + "_collision/manifest.json"),
                          body_collision_resets=Path(str(B) + "_resets/manifest.json"), device=dev, seed=args.seed, num_envs=args.num_envs,
