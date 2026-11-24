@@ -1,10 +1,16 @@
 # Overnight summary
 
-In progress. Updated at phase boundaries. Full conclusions and uncertainty will replace this note after E0–E7.
+Provisional at 06:00 Dubai, November 24. The completed comparisons have yet to show a joint gain in clean traversal and contact.
+
+- Original 384 scenes, three paired seeds. Reflex-on clean deltas were −0.87 and −1.78 pp at 0.15 and 0.30 m/s. The corresponding hand-contact deltas were 0.00 and −0.48 pp. All paired 95% intervals include zero.
+- Plan-blind seed 0. Reflex reduced any contact by 1.69–3.12 pp and increased refusals by 1.95–4.43 pp across the four protocols. Two more seed pairs are pending. The three synchronized replays are available in the project energy-videos folder.
+- Held-out layouts at 0.50 m/s, seed 0. Against the reflex-off tracker, reflex-on cut hand contact by 4.17 pp and raised refusals by 6.25 pp with equal total contact.
+- E0's first temporal audit found persistent positive posture and tracking rewards during stalls. E2's warm-start reward profile passed CPU checks and awaits the full E0/E1 gate.
+- At 250, 500 and 1,000 W in the single-seed sensitivity test, arm-first fell from 43.68% to 38.85% to 33.06%. Failures rose from 9.46% to 11.90% to 14.19%. The 500 W run had the fewest worlds moving their feet.
 
 ## E0 — existing evidence on traversal refusals
 
-Opened 2026-11-23, Dubai time. Inputs are COMBO_FIX seed 0 eval 315810 and seed 1 318295_0. Each uses 384 scenes and two episodes per scene at each speed. Rates are means ± sample s.d. over the two available training seeds. Seed 2 is evaluating in 318295_2. Terms are the logged weighted terms averaged over all transitions from eventually refused episodes and then averaged over seeds.
+Opened 2026-11-23, Dubai time. Inputs are COMBO_FIX seed 0 eval 315810 and seed 1 318295_0. Each uses 384 scenes and two episodes per scene at each speed. Rates are means ± sample s.d. over the two available training seeds. Seed 2 was still evaluating in 318295_2 when this first analysis was written. Terms are the logged weighted terms averaged over all transitions from eventually refused episodes and then averaged over seeds.
 
 | Scene group | Scenes | Refused at 0.15 m/s, % | Refused at 0.30 m/s, % |
 | --- | ---: | ---: | ---: |
@@ -330,3 +336,46 @@ The largest negative term before stalls was global power, −0.64 and −0.73 at
 The optional profile prices eight consecutive seconds without a 5 cm net route advance at a terminal cost at least as large as the configured obstacle-contact event. The moving planner must be past its first second. An unfinished moving-plan episode at its existing deadline uses the same terminal cost. When the stall clock reaches two seconds, positive upright, stand-tall, plan position, heading, height and upper-body tracking bonuses pause. Field guidance and penalties remain active. This tests the largest positive balances observed during stalls. Negative head, feet, knees, shoulders, hand and arm clearance in side gaps, cabinets, width scaffolds and table passages scales with pelvis distance. A cost integrated over a metre has the same scale as progress at the 0.30 m/s reference. The profile is disabled in frozen evaluation to preserve episode budgets across checkpoints.
 
 If the three-seed E0 results confirm the persistent balance and none of the E1 variants raises clean traversal without increasing contact at both speeds, warm-start all three current COMBO_FIX seeds for 150 updates apiece. The existing anchor and recipe remain the controls. Predict at least a 2 pp mean gain in clean traversal and a 2 pp drop in refusal with no increase in mean contact at either speed. Evaluate the matched seeds with the original 384 scenes and the standard budget, then check the selected checkpoint family on E4. Thirty selected CPU tests passed. A MuJoCo CPU smoke produced the expected −1 terminal event and suppressed the watched positive stall bonuses.
+
+### E4 first matched reflex ablation seed
+
+Both planner conditions matched the initial-state hash of the two frozen baselines and completed all 144 paired episodes per speed. At 0.50 m/s, reflex activation changed overall hand contact by −4.17 pp and refusals by +6.25 pp, with equal total contact. Table-gap refusals increased from 2 to 10 of 48 episodes. At 0.30 m/s, clean traversal fell by 7.64 pp with a scene-resampling interval from −13.89 to −1.39. These intervals pertain to one training seed. Seeds 1 and 2 remain in the GPU queue.
+
+| Case | Speed / family | clean | contact | refused | hands | time to clean goal (s) | episode min palm (cm) |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Reflex off | 0.15 | 59.03 | 40.28 | 0.69 | 24.31 | 28.57 | 3.30 |
+| Reflex on | 0.15 | 54.86 | 43.06 | 2.08 | 27.08 | 30.91 | 3.58 |
+| Reflex on − Reflex off | 0.15 | -4.17 [-9.72, +1.39] | +2.78 [-4.17, +9.03] | +1.39 [-1.39, +4.86] | +2.78 [-3.47, +9.03] | — | — |
+| Reflex off | 0.15 / early-turn | 6.25 | 93.75 | 0.00 | 72.92 | 17.89 | 0.02 |
+| Reflex on | 0.15 / early-turn | 10.42 | 89.58 | 0.00 | 79.17 | 18.29 | -0.02 |
+| Reflex on − Reflex off | 0.15 / early-turn | +4.17 [-4.17, +12.50] | -4.17 [-12.50, +4.17] | +0.00 [+0.00, +0.00] | +6.25 [-10.42, +25.00] | — | — |
+| Reflex off | 0.15 / table-gap | 70.83 | 27.08 | 2.08 | 0.00 | 43.51 | 2.27 |
+| Reflex on | 0.15 / table-gap | 58.33 | 35.42 | 6.25 | 2.08 | 52.71 | 3.06 |
+| Reflex on − Reflex off | 0.15 / table-gap | -12.50 [-25.00, +0.00] | +8.33 [-8.33, +25.00] | +4.17 [-4.17, +14.58] | +2.08 [+0.00, +6.25] | — | — |
+| Reflex off | 0.15 / u-trap | 100.00 | 0.00 | 0.00 | 0.00 | 18.66 | 7.62 |
+| Reflex on | 0.15 / u-trap | 95.83 | 4.17 | 0.00 | 0.00 | 19.01 | 7.70 |
+| Reflex on − Reflex off | 0.15 / u-trap | -4.17 [-10.42, +0.00] | +4.17 [+0.00, +10.42] | +0.00 [+0.00, +0.00] | +0.00 [+0.00, +0.00] | — | — |
+| Reflex off | 0.3 | 59.72 | 40.28 | 0.00 | 22.92 | 18.47 | 3.51 |
+| Reflex on | 0.3 | 52.08 | 44.44 | 3.47 | 20.14 | 21.14 | 4.04 |
+| Reflex on − Reflex off | 0.3 | -7.64 [-13.89, -1.39] | +4.17 [-2.08, +11.11] | +3.47 [+0.69, +6.94] | -2.78 [-9.05, +3.47] | — | — |
+| Reflex off | 0.3 / early-turn | 8.33 | 91.67 | 0.00 | 66.67 | 10.89 | 0.37 |
+| Reflex on | 0.3 / early-turn | 2.08 | 97.92 | 0.00 | 60.42 | 9.92 | 0.01 |
+| Reflex on − Reflex off | 0.3 / early-turn | -6.25 [-14.58, +0.00] | +6.25 [+0.00, +14.58] | +0.00 [+0.00, +0.00] | -6.25 [-25.00, +12.50] | — | — |
+| Reflex off | 0.3 / table-gap | 70.83 | 29.17 | 0.00 | 2.08 | 26.90 | 2.14 |
+| Reflex on | 0.3 / table-gap | 54.17 | 35.42 | 10.42 | 0.00 | 36.87 | 3.78 |
+| Reflex on − Reflex off | 0.3 / table-gap | -16.67 [-35.42, +0.00] | +6.25 [-12.50, +25.00] | +10.42 [+2.08, +20.83] | -2.08 [-6.25, +0.00] | — | — |
+| Reflex off | 0.3 / u-trap | 100.00 | 0.00 | 0.00 | 0.00 | 13.12 | 8.03 |
+| Reflex on | 0.3 / u-trap | 100.00 | 0.00 | 0.00 | 0.00 | 12.85 | 8.34 |
+| Reflex on − Reflex off | 0.3 / u-trap | +0.00 [+0.00, +0.00] | +0.00 [+0.00, +0.00] | +0.00 [+0.00, +0.00] | +0.00 [+0.00, +0.00] | — | — |
+| Reflex off | 0.5 | 52.78 | 45.83 | 1.39 | 22.22 | 14.38 | 3.50 |
+| Reflex on | 0.5 | 46.53 | 45.83 | 7.64 | 18.06 | 15.56 | 3.76 |
+| Reflex on − Reflex off | 0.5 | -6.25 [-13.89, +1.39] | +0.00 [-7.64, +7.64] | +6.25 [+2.78, +10.42] | -4.17 [-12.50, +4.17] | — | — |
+| Reflex off | 0.5 / early-turn | 4.17 | 95.83 | 0.00 | 66.67 | 11.57 | 0.49 |
+| Reflex on | 0.5 / early-turn | 4.17 | 95.83 | 0.00 | 52.08 | 9.88 | 0.22 |
+| Reflex on − Reflex off | 0.5 / early-turn | +0.00 [-8.33, +10.42] | +0.00 [-10.42, +8.33] | +0.00 [+0.00, +0.00] | -14.58 [-39.58, +8.33] | — | — |
+| Reflex off | 0.5 / table-gap | 60.42 | 35.42 | 4.17 | 0.00 | 18.20 | 2.40 |
+| Reflex on | 0.5 / table-gap | 43.75 | 35.42 | 20.83 | 0.00 | 24.55 | 3.18 |
+| Reflex on − Reflex off | 0.5 / table-gap | -16.67 [-33.33, +0.00] | +0.00 [-16.67, +16.67] | +16.67 [+8.33, +27.08] | +0.00 [+0.00, +0.00] | — | — |
+| Reflex off | 0.5 / u-trap | 93.75 | 6.25 | 0.00 | 0.00 | 12.04 | 7.60 |
+| Reflex on | 0.5 / u-trap | 91.67 | 6.25 | 2.08 | 2.08 | 11.53 | 7.87 |
+| Reflex on − Reflex off | 0.5 / u-trap | -2.08 [-12.50, +8.33] | +0.00 [-10.42, +10.42] | +2.08 [+0.00, +6.25] | +2.08 [+0.00, +6.25] | — | — |
