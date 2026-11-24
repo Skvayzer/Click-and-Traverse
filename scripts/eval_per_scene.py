@@ -70,7 +70,9 @@ def main():
     p.add_argument("--sonic", action="store_true", help="CHECKPOINT is 'zero' (plain SONIC driven by its generator along "
                    "the field route) or a SONIC residual policy (cat_mjlab/sonic_residual.py); needs --env-from, "
                    "--tracker-mix field=1 and --nominal")
-    p.add_argument("--sonic-residual-mode", choices=("whole", "arms"), default="whole")
+    p.add_argument("--sonic-residual-mode", choices=("whole", "arms", "latent"), default="whole",
+                   help="latent: SONIC on the batched gait reference (cat_mjlab/sonic_latent.py), CHECKPOINT zero or adaptor")
+    p.add_argument("--sonic-latent-scale", type=float, default=.3)
     p.add_argument("--sonic-residual-scale", type=float, default=.3)
     p.add_argument("--sonic-generator-sessions", type=int, default=8)
     p.add_argument("--stochastic", action="store_true")
@@ -338,6 +340,10 @@ def main():
         load_array_archive(learner, args.checkpoint, restore_optimizer=False)
         if task.observation_size != learner.model.config.actor_obs:
             raise ValueError(f"task gives {task.observation_size} actor inputs, the archive expects {learner.model.config.actor_obs}")
+    elif sonic and args.sonic_residual_mode == "latent":
+        from cat_mjlab.sonic_latent import LatentController
+        adaptor = None if args.checkpoint == "zero" else load_policy(args.checkpoint, device=dev, policy_id=0)[0]
+        external = LatentController(task, adaptor=adaptor, latent_scale=args.sonic_latent_scale)
     elif sonic:
         from cat_mjlab.sonic_residual import SonicController
         residual = None if args.checkpoint == "zero" else load_policy(args.checkpoint, device=dev, policy_id=0)[0]

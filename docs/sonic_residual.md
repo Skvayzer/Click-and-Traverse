@@ -159,3 +159,72 @@ play at 2×. Script `scripts/sonic_obstacle_videos.py`, commit `5fc5d13`.
 | Residual whole u300 | 0 | Contact in all 10 (side gap: hand) |
 | Residual arms u300 | 0 | Contact in all 10 (side gap: hand) |
 | Planner–reflex (COMBO_FIX s0) | 6 | Contact on hurdle, side gap and CAT course; 30 s timeout on table gap and dining room |
+
+## SONIC + latent adaptor (overnight program approved 2026-11-24 ~21:45 +04)
+
+This follows the play2perfect/GRAIL frozen latent-adaptor design, not joint residuals. The policy outputs a 64-D
+residual that is added to SONIC's g1 encoder latent before FSQ, z' = z + 0.3·a. It also outputs 2 bounded command
+modulations: gait speed × (1 + 0.5 a_s) and yaw rate + 0.5 a_t rad/s. The SONIC encoder, quantizer and decoder are
+frozen. The mean head is zero-initialized, so training starts as plain SONIC.
+
+**GPU port (`cat_mjlab/sonic_torch.py`).** The g1 encoder MLP (640→2048→1024→512→512→64, SiLU), the FSQ (2 tokens × 32
+dimensions, 32 levels, `tanh(z+0.032237)·15.5155−0.5`, round, /16; straight-through) and the g1_dyn decoder
+(994→2048→2048→1024→1024→512→512→29) are rebuilt from the hash-checked release ONNX initializers. `SonicTracker` has a
+`provider="torch"` backend that exposes the latent.
+
+**Batched reference (`cat_mjlab/sonic_latent.GaitReference`).** The batch-1, 774 MB generator (27–34 ms per call)
+cannot serve 4096 worlds, so it is replaced by a phase-indexed replay of its own strides:
+- `scripts/build_sonic_gait_library.py` rolls out `planner_sonic.onnx` open-loop exactly as deployed. For each speed it
+  phase-folds the steady strides; empty bins are circularly interpolated.
+- The output is `data/sonic_gait_library_v1.npz`. It contains strides for generator commands 0.3, 0.4, 0.5, 0.6 and 0.8:
+
+  | Generator command (m/s) | Stride period (s) | Forward speed (m/s) | Fold RMS residual (rad) |
+  | ---: | ---: | ---: | ---: |
+  | 0.3 | 1.76 | 0.26 | 0.074 |
+  | 0.4 | 1.28 | 0.35 | 0.070 |
+  | 0.5 | 1.02 | 0.46 | 0.070 |
+  | 0.6 | 1.00 | 0.52 | 0.003 |
+  | 0.8 | 1.00 | 0.69 | 0.003 |
+
+- Only the clean 0.6 and 0.8 strides are used. Slower commands time-scale the 0.6 stride, with a floor of 0.25 m/s
+  kinematic; IDLE gives the standing pose. Pelvis heading integrates the yaw rate, the pelvis keeps the stride's
+  roll/pitch, and 0.8 s ramps take the robot in and out of standing.
+- Route command: walk toward the field-route point 0.6 m ahead, with yaw rate 1.5 × heading error (capped at 0.6 rad/s).
+
+**Gate 1: PASS.** `tests/test_sonic_latent.py`, together with `tests/test_sonic_tracker.py`, passes 5/5.
+- On 256 random inputs the torch port reproduces every FSQ code of the release (0 mismatches). The action chain matches
+  ONNX within 3.7e-6.
+- A zero residual is bitwise identical to plain SONIC.
+- Gradients reach the residual through the straight-through FSQ and reach the adaptor's zero-initialized head. SONIC's
+  weights receive no gradient and are `requires_grad=False`.
+
+**Flat-ground check of the batched reference** (1 world, CPU MuJoCo, harness torque noise on, 12 s, plain SONIC):
+
+| Operator command (m/s) | Gait command (kinematic, m/s) | Mean speed achieved (m/s) | Median route error (cm) | p90 (cm) | Max foot lift (cm) | Fall |
+| ---: | ---: | ---: | ---: | ---: | --- | --- |
+| 0.15 | 0.25 (floor) | 0.184 | 4.6 | 8.6 | 8.0 / 8.5 | no |
+| 0.30 | 0.30 | 0.28 | 4.6 | 8.0 | 8.5 / 8.9 | no |
+| 0.50 | 0.50 | 0.48 | 2.8 | 5.3 | 9.7 / 9.8 | no |
+
+Without the floor, a 0.15 m/s gait command became slow motion, and SONIC moved only 0.06 m/s. The floor gives 0.184
+m/s, which stays under the overspeed limit for a 0.15 m/s operator command. This driving tracks better than the ONNX
+generator in G1, which gave 0.215 m/s at its 0.30 command.
+
+Diagnosis log: the first library left half of the phase bins empty, because a 1.0 s stride sampled at 50 Hz fills only
+50 of 100 bins. Open-loop replay at exactly native cadence never sampled those bins, while closed-loop speeds did. That
+produced 0.2 m/s walking with a 0.15 rad heading error. Interpolating the empty bins fixed it. Backend (torch vs ONNX),
+environment, ramp length and steering were ruled out first.
+
+**Reward and schedule.**
+- The task terms are the COMBO_FIX ones kept for the residual project: field, contact/clearance, progress, speed gate,
+  upright and joint limits. The task's own action-rate terms are removed, because the task's "action" is now SONIC's.
+- The wrapper charges −0.02·‖Δa‖² on the adaptor's 66 actions.
+- Falls always end an episode. For the first third of the requested updates every contact, including hand contact,
+  costs 2 per step and is not terminal (new task flag `contact_soft_hands`). After that, contacts are terminal again.
+- There is no latent-size penalty.
+- The observation adds SONIC's last latent (×0.5), last raw action (×0.25), gait phase sin/cos, gait speed and yaw rate,
+  97 extra inputs on top of the actor observation.
+
+**Gate 2 (throughput): pending.** Cluster job 322754 (4096 worlds, unroll 16, 3 updates; code `457e442` in
+`~/cat_worktrees/sonic_457e442`) waits on the per-user CPU limit. The same test is queued on dep-1 behind three
+lock-holders' jobs.

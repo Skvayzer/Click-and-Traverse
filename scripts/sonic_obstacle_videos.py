@@ -95,6 +95,12 @@ def record(policy, out, scene_ids, speed, max_steps):
         learner, _ = load_policy(COMBO, device="cuda:0", policy_id=0)
         act = lambda: (learner.act(task.obs, policy_ids=0, deterministic=True)["action"], None)
         label = "Our planner-reflex policy (COMBO_FIX seed 0)"
+    elif kind in ("gait", "latent"):
+        from cat_mjlab.sonic_latent import LatentController
+        adaptor = load_policy(policy.split(":", 1)[1], device="cuda:0", policy_id=0)[0] if kind == "latent" else None
+        act = LatentController(task, adaptor=adaptor)
+        label = ("SONIC (frozen) + latent adaptor" if adaptor is not None
+                 else "Plain SONIC (frozen) on its own gait, along our route")
     else:
         from cat_mjlab.sonic_residual import SonicController
         residual, mode = None, "whole"
@@ -169,7 +175,8 @@ def render(src, outdir):
     label, speed = str(d["label"]), float(d["speed"])
     font = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 24)
     small = ImageFont.truetype("/usr/share/fonts/truetype/dejavu/DejaVuSans.ttf", 20)
-    tag = {"sonic": "plain-sonic", "combo": "planner-reflex"}.get(str(d["policy"]).split(":")[0])
+    tag = {"sonic": "plain-sonic", "combo": "planner-reflex", "gait": "plain-sonic-gait",
+           "latent": "sonic-latent"}.get(str(d["policy"]).split(":")[0])
     if tag is None:
         tag = "sonic-residual-" + str(d["policy"]).rsplit(":", 1)[1]
     outputs = []
