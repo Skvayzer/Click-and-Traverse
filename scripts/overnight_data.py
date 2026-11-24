@@ -131,6 +131,12 @@ def build_benchmark(path_fn, speeds, family_of=None, groups=None):
                      ("Planner–reflex", "Planner–reflex, plan off"), ("Planner–reflex", "Plan only (fields masked)")):
             if a in datasets and b in datasets:
                 entry["deltas"][f"{a} − {b}"] = {k: S.ci_delta(S.matrix(datasets[a], k, scenes), S.matrix(datasets[b], k, scenes)) for k in RATES}
+        if family_of:
+            fam = {s_: next(iter(datasets.values()))[0]["per_scene"][s_]["layout_family"] for s_ in scenes}
+            ut = [s_ for s_ in scenes if fam[s_] in ("u-trap", "early-turn")]
+            for key, d_ in entry["deltas"].items():
+                a_, b_ = key.split(" − ")
+                d_["u_turn_clean"] = S.ci_delta(S.matrix(datasets[a_], "clean", ut), S.matrix(datasets[b_], "clean", ut))
         out[speed] = entry
     return out
 
