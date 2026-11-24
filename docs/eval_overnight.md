@@ -63,3 +63,10 @@ Third standing flip seed (319350_0, _1), α sensitivity (318296), E5 (320668–3
 * α sensitivity (seed 1): arm-first 43.7 / 38.9 / 33.1 % and failure 9.5 / 11.9 / 14.2 % at 250 / 500 / 1,000 W; body-first stays below 1%.
 * E5 (reactive 320668, price reference 320669, plan-only 319436) and E6 BRACE 384 (320664) JSONs are mirrored under `/tmp/cat-eval-overnight/data/cluster`; BRACE 384 is in the figures. E5 no-price 320670 still running.
 * SONIC plain (G2 384 and E4) from the SONIC agent's cluster outputs is included in the figures and the website as "SONIC (plain)".
+
+### A4: E5 ladder on the plan-blind obstacles (collected 22:58; no-price 320670 still running, 2 of 4 protocols done)
+Full table with paired scene-bootstrap CIs: `artifacts/overnight/e5_table.md` (script `scripts/e5_table.py`). Headlines (planner–reflex = 3 seeds, others 1 checkpoint except plan-only 3 seeds):
+* Reflex on minus off: no protocol shows a clean or any-contact change whose CI excludes zero. Inserted-object hand contact is lower in all four protocols except moving 0.15 (point estimates −0.9, −0.6, +0.6, −1.3 pp), CI excludes zero only at moving 0.30 m/s (−1.26 [−2.52, −0.00]), which is E3's single localized effect.
+* Masking the actor's field inputs (plan only): 1–2% clean and 65–75% hand contact, i.e. the plan alone cannot carry the policy.
+* Reactive V7r is cleaner than planner–reflex in all four plan-blind protocols (planner–reflex minus reactive clean −3.1, −4.6, −3.7, −6.6 pp, all CIs exclude zero) and has lower any inserted-object contact (+11.1, +5.6, +15.5, +4.8 pp for planner–reflex), while planner–reflex has lower hand contact with the inserted object at 0.15 m/s static (−4.5 [−7.2, −1.7]).
+* The older priced COMBO1b u500 and the price-free continuation have 15–21 pp *less* any contact than the current planner–reflex at similar clean, an unresolved difference between checkpoints (not a price effect: the budgets differ).
