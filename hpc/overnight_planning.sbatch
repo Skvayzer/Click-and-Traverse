@@ -44,11 +44,14 @@ mkdir "$R"
 echo "== $BENCH $MODEL seed $seed, $(git rev-parse HEAD), $CHECKPOINT, $R"
 if [[ "$BENCH" == E4 ]]; then
   "${EVAL[@]}" "$CHECKPOINT" --bank "$B" --scenes "@${B}_packed/scene_ids.txt"     --goal-seed-cache "${B}_goal" --planning-benchmark --episodes 2 --num-envs 432 --nominal     --max-steps 14500 --operator-speeds .15 .3 .5 --out-dir "$R" "${policy[@]}"
-else
+elif [[ "$BENCH" == E5 ]]; then
+  if [[ "$MODEL" != plan_only ]]; then policy+=(--blind-replay-starts); fi
   for mode in static moving; do
     for speed in 0.15 0.3; do
       stem=${mode}_$speed
       "${EVAL[@]}" "$CHECKPOINT" --bank "$B" --scenes "@${GUIDES:?}/scenes.txt"         --blind-guide "$GUIDES/$stem.npz" --blind-variant "$mode" --episodes 2 --num-envs 768         --max-steps 21000 --nominal --operator-speed "$speed" --out "$R/$stem.json" "${policy[@]}"
     done
   done
+else
+  exit 2
 fi

@@ -95,12 +95,15 @@ def main():
     guide_mode.add_argument("--write-blind-guide", type=Path, help="write matched episodes and obstacle schedule without evaluation")
     guide_mode.add_argument("--blind-guide", type=Path, help="precomputed obstacle schedules shared by all policy checkpoints")
     p.add_argument("--blind-record", type=Path, help="save short traces of both predefined guide episodes")
+    p.add_argument("--blind-replay-starts", action="store_true", help="replay guide starts for a checkpoint with a different reset")
     p.add_argument("--out", type=Path)
     p.add_argument("--out-dir", type=Path)
     args = p.parse_args()
     blind = args.write_blind_guide is not None or args.blind_guide is not None
     if blind != (args.blind_variant is not None) or (args.blind_record and not args.blind_guide):
         p.error("Blind guide generation/evaluation needs --blind-variant, and tracing needs an existing guide")
+    if args.blind_replay_starts and (not args.blind_guide or args.planning_benchmark):
+        p.error("Blind start replay requires an existing blind guide")
     if blind and (args.operator_speed is None or args.operator_speeds or args.episodes < 1 or args.stochastic or not args.nominal):
         p.error("Plan-blind evaluation requires nominal deterministic episodes and one fixed operator speed")
     if args.operator_speeds and (args.operator_speed is not None or args.out_dir is None or args.out is not None):
@@ -185,7 +188,7 @@ def main():
                          goal_seed_scene_ids=wanted if args.goal_seed_cache else None)
     sim_class = None
     if blind:
-        from cat_mjlab.plan_blind import BlindObstacle, BlindSimulation, BlindTrace, candidate_placements
+        from cat_mjlab.plan_blind import BlindObstacle, BlindSimulation, BlindTrace, candidate_placements, replay_assignments
         sim_class = BlindSimulation
     task, sim, _ = create_task(ns, environment_config=env, sim_class=sim_class)
     scenes = task.bank.manifest["scenes"]
@@ -217,6 +220,22 @@ def main():
     speed_of = torch.tensor([x if x is not None else 0. for x in speeds], device=dev)
     order = torch.randperm(len(jobs), device=dev, generator=torch.Generator(device=dev).manual_seed(args.seed))
     jobs = jobs[order]
+    guide_starts = None
+    if blind:
+        meta = dict(bank=task.bank.manifest["manifest_sha256"], seed=args.seed,
+                    speed=args.operator_speed, variant=args.blind_variant, episodes=args.episodes)
+    if args.blind_guide:
+        with np.load(args.blind_guide, allow_pickle=False) as source:
+            schedule = dict(source)
+        if str(schedule["meta"]) != json.dumps(meta, sort_keys=True):
+            raise ValueError("Blind guide metadata differs from this protocol")
+        if args.blind_replay_starts:
+            assigned = replay_assignments(schedule, {scenes[i]["scene_id"]: i for i in ids}, args.episodes)
+            jobs = torch.as_tensor(assigned, dtype=torch.long, device=dev)
+            guide_starts = {
+                name: torch.as_tensor(schedule[key], dtype=task.data.qpos.dtype, device=dev)
+                for name, key in (("initial_pose", "pose"), ("initial_velocity", "velocity"))
+            }
     cursor = [0]
     env_scene = torch.full((task.num_envs,), -1, dtype=torch.long, device=dev)      # -1: no job (ignored)
     original_reset = task.reset
@@ -243,6 +262,10 @@ def main():
         try:
             selected = torch.where(chosen >= 0, chosen % NS, filler)
             start = benchmark_start(task, selected, trial, args.episodes) if trial is not None else {}
+            if guide_starts is not None and take:
+                if take != task.num_envs or not torch.equal(env_ids, task.all_ids):
+                    raise RuntimeError("Blind initial states must be replayed together in guide order")
+                start = guide_starts
             out_ = original_reset(env_ids, selected, **start)
         finally:
             task.collision = collision
@@ -267,8 +290,6 @@ def main():
         pose = task.data.qpos.cpu().numpy()
         velocity = task.data.qvel.cpu().numpy()
         ordered_scenes = np.array([scenes[i]["scene_id"] for i in env_scene.tolist()])
-        meta = dict(bank=task.bank.manifest["manifest_sha256"], seed=args.seed,
-                    speed=args.operator_speed, variant=args.blind_variant, episodes=args.episodes)
         if args.write_blind_guide:
             schedule = candidate_placements(task, task.all_ids, args.blind_variant)
             valid_ids = np.flatnonzero(schedule["valid"])
@@ -285,12 +306,14 @@ def main():
             print(json.dumps(dict(guide=str(args.write_blind_guide), safe=int(len(valid_ids)), total=len(pose),
                                   clips=ordered_scenes[chosen].tolist())), flush=True)
             return
-        with np.load(args.blind_guide, allow_pickle=False) as source:
-            schedule = dict(source)
-        if (str(schedule["meta"]) != json.dumps(meta, sort_keys=True) or not np.array_equal(ordered_scenes, schedule["scenes"])
-                or not np.allclose(pose, schedule["pose"], rtol=0., atol=2.e-6)
+        if not np.array_equal(ordered_scenes, schedule["scenes"]):
+            raise ValueError("Blind guide episode assignment differs")
+        if (not np.allclose(pose, schedule["pose"], rtol=0., atol=2.e-6)
                 or not np.allclose(velocity, schedule["velocity"], rtol=0., atol=2.e-6)):
-            raise ValueError("Guide metadata, episode assignment or initial robot state differs")
+            raise ValueError("Blind guide initial robot state differs")
+        if args.blind_replay_starts:
+            start_hash = hashlib.sha256(pose.tobytes() + velocity.tobytes()).hexdigest()
+            print(json.dumps(dict(blind_initial_state_sha256=start_hash)), flush=True)
         sim.obstacle = BlindObstacle(schedule, args.blind_variant, dev)
         task.analytic_objects = sim.obstacle
         static_collision = task.collision
@@ -503,6 +526,7 @@ def main():
                                        operator_speed=speed, deterministic=not args.stochastic, finished=int(stats[jid, 0].sum()),
                                        target=S * args.episodes, seconds=round(time.time() - start), summary=summary, per_scene=result,
                                        **({"blind_variant": args.blind_variant, "blind_guide": str(args.blind_guide)} if blind else {}),
+                                       **({"blind_initial_state_sha256": start_hash} if args.blind_replay_starts else {}),
                                        **({"external_tracker": "BRACE", "brace_provider": args.brace_provider} if brace else {}),
                                        **({"planning_benchmark": True, "plan_only": args.plan_only,
                                            "refusal_fix": args.refusal_fix, "initial_state_sha256": start_hash}

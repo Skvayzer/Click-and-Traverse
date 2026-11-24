@@ -1,7 +1,9 @@
 import mujoco
+import numpy as np
+import pytest
 import torch
 
-from cat_mjlab.plan_blind import BlindObstacle, LEAD, OBSTACLE, obstacle_xml
+from cat_mjlab.plan_blind import BlindObstacle, LEAD, OBSTACLE, obstacle_xml, replay_assignments
 
 
 def test_schedule_hides_object_and_sweeps_before_intercept():
@@ -34,3 +36,13 @@ def test_mocap_box_is_a_physical_contact_with_the_approved_palm_proxy():
     contacts = [touch for touch in data.contact if geom in touch.geom and touch.dist < 0]
     assert len(contacts) > 0
     assert any(model.geom(g).name.startswith('blind_proxy_hands') for hit in contacts for g in hit.geom)
+
+
+def test_guide_replay_preserves_order_and_rejects_changed_trials():
+    guide = dict(scenes=np.array(["B", "A", "A", "B"]), pose=np.zeros((4, 36)), velocity=np.zeros((4, 35)))
+    ids = {"A": 7, "B": 9}
+    assert replay_assignments(guide, ids, 2) == [9, 7, 7, 9]
+    with pytest.raises(ValueError, match="scene repeats"):
+        replay_assignments({**guide, "scenes": np.array(["A", "B", "B", "B"])}, ids, 2)
+    with pytest.raises(ValueError, match="Invalid blind guide pose"):
+        replay_assignments({**guide, "pose": np.full((4, 36), np.nan)}, ids, 2)

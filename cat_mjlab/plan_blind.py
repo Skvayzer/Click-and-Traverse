@@ -51,6 +51,19 @@ def box_distance(points, center, half):
     return torch.linalg.vector_norm(gap.clamp_min(0.), dim=-1) + gap.amax(-1).clamp_max(0.)
 
 
+def replay_assignments(schedule, scene_ids, repeats):
+    """Map each recorded row to its bank scene and validate initial state tensors."""
+    names = schedule["scenes"]
+    expected = sorted(list(scene_ids) * repeats)
+    if names.shape != (len(expected),) or sorted(names.tolist()) != expected:
+        raise ValueError("Blind guide does not contain the requested scene repeats")
+    for key, width in (("pose", 36), ("velocity", 35)):
+        values = schedule[key]
+        if values.shape != (len(expected), width) or not np.isfinite(values).all():
+            raise ValueError(f"Invalid blind guide {key}")
+    return [scene_ids[name] for name in names]
+
+
 class BlindObstacle:
     """One immutable world-coordinate schedule plus an episode-assignment mask."""
     def __init__(self, guide, variant, device):

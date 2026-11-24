@@ -1187,6 +1187,9 @@ class CATTask:
             if initial_pose.shape != (n, 36) or initial_velocity is None or initial_velocity.shape != (n, 35):
                 raise ValueError("A prescribed reset needs one pose and velocity per world")
             qpos = initial_pose
+            if self.raised_reset_fraction:
+                raised = torch.isclose(self.raised_reset_pool[scenes], qpos[:, None], rtol=0., atol=2e-6).all(-1)
+                seeded = self.raised_reset_eligible[scenes] & raised.any(-1)
         self.sim.reset_data(ids)
         self.data.qpos[ids]=qpos;self.data.qvel[ids]=0.;self.data.qvel[ids,:6]=self._rand((n,6),-.5,.5)
         if self.raised_reset_fraction:
