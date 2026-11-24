@@ -76,6 +76,14 @@ Falsifier: clean gain < 1.5 pp, or contact up > 0.5 pp, or E4 clean down > 3 pp.
 A tracker fine-tune with the new planner (the second half of the brief's item 4) costs ~5 h per seed on the free ws-ia
 slots and is only scheduled if the frozen-tracker result passes.
 
+## Batch C decision rules (fixed 23:58, before any batch B result)
+
+`scripts/improve_local/plan_batch_c.py` runs when batch C gets the GPU lock and applies the rules above to batch B's seed-0
+files: (1) I3 arbitration with δ = 10th percentile of V(plan) − V(none) from the value_safe K=4 run, on top of value_safe
+K=4 and of the default clearest rule; (2) seeds 1–2 for the passing variant with the largest mean clean gain (none if no
+variant passes the pilot gate); (3) E4 held-out seed-0 runs for the same-code control and that variant; (4) if the expert-
+iteration planner is ready, the seed-1 and seed-2 trackers with it (seed 0 runs on the cluster in 322842).
+
 ## Run ledger
 
 | Id | Variant | Seed | Where | Output |
