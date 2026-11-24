@@ -1,9 +1,9 @@
 # Overnight summary
 
-Provisional at 09:16 Dubai, November 24. The completed comparisons have yet to show a joint gain in clean traversal and contact.
+Provisional at 09:49 Dubai, November 24. The completed comparisons have yet to show a joint gain in clean traversal and contact.
 
 - Original 384 scenes, three paired seeds. Reflex-on clean deltas were −0.87 and −1.78 pp at 0.15 and 0.30 m/s. The corresponding hand-contact deltas were 0.00 and −0.48 pp. All paired 95% intervals include zero.
-- Plan-blind seed 0. Reflex reduced any contact by 1.69–3.12 pp and increased refusals by 1.95–4.43 pp across the four protocols. Two more seed pairs are pending. The three synchronized replays are available in the project energy-videos folder.
+- Plan-blind evaluation, three paired seeds. The 5 cm band reduced inserted-object hand contact at 0.30 m/s with a moving box by 1.26 pp (95% CI 0.59–1.93 pp reduction). The four-protocol adjusted interval crosses zero. Mean clean traversal fell by 0.09–0.78 pp and the four intervals include zero. Three synchronized replays are in the project energy-videos folder.
 - Held-out layouts at 0.50 m/s, seed 0. Against the reflex-off tracker, reflex-on cut hand contact by 4.17 pp and raised refusals by 6.25 pp with equal total contact.
 - E0's full three-seed audit found that goal-progress reward fell from 2.74 to 0.70 at 0.30 m/s around the first stall. Posture and tracking credit persisted. E2's warm-start profile passed CPU checks. The two pending E1 seed comparisons determine whether E2 launches.
 - On E4 at 0.50 m/s, COMBO_FIX seed 0 gained 46.53 pp clean traversal [36.11, 56.94] and reduced contact by 54.17 pp [43.75, 64.58] versus the released BRACE tracker with the common planner. These confidence intervals resample scenes. The original 384-scene BRACE evaluation is queued.
@@ -595,3 +595,45 @@ The focused CPU suite now passes all 34 selected planner, blind-obstacle, energy
 ### E4 local transfer for the field and price comparisons
 
 At 09:16 Dubai, pending tasks 319449_1, 319449_2, 319450 and 319451 were moved to dep-1. Only those four pending cluster jobs were canceled. They use the verified original checkpoints, the local ac58626 evaluator and the same certified 72 layouts, starts and three speeds. The single-GPU sequence starts after the existing E1 combined seed 2 evaluation, in order plan-only seed 1, plan-only seed 2, COMBO1b u500 and COMBO_NOPRICE u50. Outputs are `~/robotics/cat-energy-local-runs/overnight_E4_<model>_seed<seed>_local_ac58626`. Observed comparable local run times are 2–5 min for the masked actors and about 35–60 min for the priced and price-free planners. The four frozen E4 planner and reflex-off replications remain queued on gpu.
+
+### E3 complete plan-blind comparison
+
+All three paired seeds finished all four obstacle protocols. Each run scored two episodes per scene for 384 scenes, or 768 episodes per protocol. The planner's original hand path supplied the insertion schedule, which was fixed before policy rollout. All 768 guide rows per protocol had a valid placement. Mean exposure ranged from 98.35% to 98.70% across the pooled seed-condition rows. The reflex contrast compares separately warm-trained single actors with a 5 cm or 0 cm arm-tracking reward band. At seeds 1 and 2 both policies used the legacy mechanical power objective. At seed 0 both used explicit substep mechanical pricing. Across-seed values are mean ± sample s.d. The signed differences are percentage points with nominal paired seed-level 95% t intervals.
+
+| Case | Protocol | Clean | Any contact | Refused | Any hand contact | Inserted-object hand contact | Box revealed |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Reflex off | Static, 0.15 m/s | 30.64 ± 1.61 | 63.15 ± 2.93 | 6.12 ± 1.32 | 20.14 ± 1.39 | 17.40 ± 0.80 | 98.70 ± 0.13 |
+| Reflex on | Static, 0.15 m/s | 29.86 ± 1.09 | 62.07 ± 4.38 | 7.99 ± 3.26 | 18.84 ± 1.26 | 16.49 ± 1.26 | 98.70 ± 0.26 |
+| Reflex on − Reflex off | Static, 0.15 m/s | -0.78 ± 0.60 [-2.26, +0.70] | -1.09 ± 2.02 [-6.10, +3.93] | +1.87 ± 2.26 [-3.76, +7.49] | -1.30 ± 2.29 [-6.99, +4.38] | -0.91 ± 1.79 [-5.36, +3.54] | +0.00 ± 0.34 [-0.86, +0.86] |
+| Reflex off | Static, 0.30 m/s | 33.51 ± 3.18 | 56.81 ± 3.40 | 9.46 ± 0.40 | 13.54 ± 0.79 | 10.07 ± 0.60 | 98.35 ± 0.33 |
+| Reflex on | Static, 0.30 m/s | 33.03 ± 1.04 | 56.64 ± 2.59 | 10.03 ± 1.63 | 12.89 ± 2.44 | 9.46 ± 1.73 | 98.61 ± 0.20 |
+| Reflex on − Reflex off | Static, 0.30 m/s | -0.48 ± 2.61 [-6.95, +5.99] | -0.17 ± 3.55 [-9.00, +8.66] | +0.56 ± 1.31 [-2.69, +3.82] | -0.65 ± 1.71 [-4.89, +3.59] | -0.61 ± 2.33 [-6.41, +5.19] | +0.26 ± 0.23 [-0.30, +0.82] |
+| Reflex off | Moving, 0.15 m/s | 31.55 ± 2.08 | 60.81 ± 3.53 | 7.60 ± 1.43 | 12.63 ± 0.23 | 9.55 ± 0.46 | 98.70 ± 0.13 |
+| Reflex on | Moving, 0.15 m/s | 31.47 ± 0.78 | 59.64 ± 2.88 | 8.85 ± 2.83 | 12.54 ± 0.53 | 10.11 ± 0.54 | 98.70 ± 0.26 |
+| Reflex on − Reflex off | Moving, 0.15 m/s | -0.09 ± 2.83 [-7.12, +6.94] | -1.17 ± 4.11 [-11.39, +9.04] | +1.26 ± 2.68 [-5.39, +7.91] | -0.09 ± 0.74 [-1.93, +1.75] | +0.56 ± 0.59 [-0.89, +2.02] | +0.00 ± 0.39 [-0.97, +0.97] |
+| Reflex off | Moving, 0.30 m/s | 33.25 ± 1.24 | 57.12 ± 1.87 | 9.38 ± 0.57 | 12.59 ± 0.99 | 8.98 ± 0.79 | 98.44 ± 0.13 |
+| Reflex on | Moving, 0.30 m/s | 33.16 ± 1.66 | 56.55 ± 2.20 | 10.16 ± 1.63 | 11.33 ± 1.03 | 7.73 ± 0.54 | 98.48 ± 0.20 |
+| Reflex on − Reflex off | Moving, 0.30 m/s | -0.09 ± 1.96 [-4.95, +4.78] | -0.56 ± 1.95 [-5.42, +4.29] | +0.78 ± 1.19 [-2.18, +3.75] | -1.26 ± 1.56 [-5.14, +2.63] | -1.26 ± 0.27 [-1.93, -0.59] | +0.04 ± 0.15 [-0.33, +0.42] |
+
+At 0.30 m/s with a moving box, inserted-object hand contact decreased from 8.98% to 7.73%. The effect was negative in all three seed pairs (−1.17, −1.04 and −1.56 pp) with practically unchanged reveal rate. The 95% interval adjusted across the four insertion protocols is [−2.65, +0.13] pp. The reversed slow-moving-box point estimate was +0.56 pp [−0.89, +2.02]. Mean any-contact rates decreased 0.17–1.17 pp across the four protocols, and mean refusals increased 0.56–1.87 pp. Clean traversal means decreased 0.09–0.78 pp. The paired intervals for these all-scene outcomes include zero. The localized faster-moving-box effect is promising and the data leave open whether it generalizes across protocols or improves traversal.
+
+The three matched-image replays use the same scene geometry and obstacle schedule on both sides. They are under `energy-videos` in the project artifacts as `plan-blind-static-015.mp4`, `plan-blind-moving-015.mp4` and `plan-blind-moving-030.mp4`. All three are H.264 1280×720 yuv420p with silent stereo AAC, fast-start layout and durations of 15.00, 13.80 and 11.72 seconds respectively. The clips show selected episodes.
+
+#### Same-price sensitivity using repeat seeds 1 and 2
+
+This subset checks the contrast under a common energy implementation across seeds. Its intervals have one degree of freedom.
+
+| Case | Protocol | Clean | Any contact | Refused | Any hand contact | Inserted-object hand contact | Box revealed |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Reflex off | Static, 0.15 m/s | 29.75 ± 0.64 | 64.65 ± 1.93 | 5.53 ± 1.20 | 19.53 ± 1.29 | 17.06 ± 0.74 | 98.76 ± 0.09 |
+| Reflex on | Static, 0.15 m/s | 29.23 ± 0.09 | 64.58 ± 0.55 | 6.12 ± 0.55 | 18.68 ± 1.75 | 16.34 ± 1.75 | 98.57 ± 0.18 |
+| Reflex on − Reflex off | Static, 0.15 m/s | -0.52 ± 0.55 [-5.48, +4.44] | -0.07 ± 1.38 [-12.47, +12.34] | +0.59 ± 0.64 [-5.20, +6.38] | -0.85 ± 3.04 [-28.14, +26.45] | -0.72 ± 2.49 [-23.05, +21.62] | -0.20 ± 0.09 [-1.02, +0.63] |
+| Reflex off | Static, 0.30 m/s | 33.01 ± 4.33 | 57.49 ± 4.51 | 9.24 ± 0.18 | 13.80 ± 0.92 | 9.90 ± 0.74 | 98.18 ± 0.18 |
+| Reflex on | Static, 0.30 m/s | 32.49 ± 0.64 | 58.14 ± 0.09 | 9.11 ± 0.55 | 13.28 ± 3.31 | 10.03 ± 2.03 | 98.50 ± 0.09 |
+| Reflex on − Reflex off | Static, 0.30 m/s | -0.52 ± 3.68 [-33.61, +32.57] | +0.65 ± 4.60 [-40.71, +42.01] | -0.13 ± 0.74 [-6.75, +6.49] | -0.52 ± 2.39 [-22.03, +20.99] | +0.13 ± 2.76 [-24.69, +24.95] | +0.33 ± 0.28 [-2.16, +2.81] |
+| Reflex off | Moving, 0.15 m/s | 31.05 ± 2.67 | 61.59 ± 4.60 | 7.36 ± 1.93 | 12.70 ± 0.28 | 9.77 ± 0.37 | 98.76 ± 0.09 |
+| Reflex on | Moving, 0.15 m/s | 31.51 ± 1.10 | 61.26 ± 0.83 | 7.23 ± 0.28 | 12.50 ± 0.74 | 10.03 ± 0.74 | 98.57 ± 0.18 |
+| Reflex on − Reflex off | Moving, 0.15 m/s | +0.46 ± 3.77 [-33.46, +34.37] | -0.33 ± 5.43 [-49.13, +48.48] | -0.13 ± 1.66 [-15.02, +14.76] | -0.20 ± 1.01 [-9.29, +8.90] | +0.26 ± 0.37 [-3.05, +3.57] | -0.20 ± 0.28 [-2.68, +2.29] |
+| Reflex off | Moving, 0.30 m/s | 32.62 ± 0.83 | 57.81 ± 2.03 | 9.24 ± 0.74 | 12.37 ± 1.29 | 9.24 ± 0.92 | 98.37 ± 0.09 |
+| Reflex on | Moving, 0.30 m/s | 32.62 ± 1.93 | 57.81 ± 0.37 | 9.38 ± 1.29 | 11.91 ± 0.28 | 7.94 ± 0.55 | 98.37 ± 0.09 |
+| Reflex on − Reflex off | Moving, 0.30 m/s | +0.00 ± 2.76 [-24.82, +24.82] | +0.00 ± 2.39 [-21.51, +21.51] | +0.13 ± 0.55 [-4.83, +5.09] | -0.46 ± 1.01 [-9.56, +8.64] | -1.30 ± 0.37 [-4.61, +2.01] | +0.00 ± 0.18 [-1.65, +1.65] |

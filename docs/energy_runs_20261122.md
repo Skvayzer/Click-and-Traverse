@@ -379,3 +379,26 @@ All cases used 150 updates from `stationary_hands_S2_seed1_u180.pt` with trainin
 | 1000 | 318296_3 / 1 | 4038 | 11.85 | 33.06 | 0.94 | 14.19 | 0.72 / 1.92 / 2.62 | 2.86 / 4.94 / 5.82 | 8.52 / 14.66 / 16.65 | 9.70 / 3.14 / 5.51 |
 
 For this training seed, stronger heat moved the measured arm-first share down and the failure share up. The 500 W run had the smallest feet-moved share, and body-first remained below 1% even at 1,000 W. This is a dose response at one training seed. The third arm-multiplier replication is the remaining standing comparison.
+
+### E3 complete plan-blind comparison
+
+All three paired seeds finished all four obstacle protocols. Each run scored two episodes per scene for 384 scenes, or 768 episodes per protocol. The planner's original hand path supplied the insertion schedule, which was fixed before policy rollout. All 768 guide rows per protocol had a valid placement. Mean exposure ranged from 98.35% to 98.70% across the pooled seed-condition rows. The reflex contrast compares separately warm-trained single actors with a 5 cm or 0 cm arm-tracking reward band. At seeds 1 and 2 both policies used the legacy mechanical power objective. At seed 0 both used explicit substep mechanical pricing. Across-seed values are mean ± sample s.d. The signed differences are percentage points with nominal paired seed-level 95% t intervals.
+
+| Case | Protocol | Clean | Any contact | Refused | Any hand contact | Inserted-object hand contact | Box revealed |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Reflex off | Static, 0.15 m/s | 30.64 ± 1.61 | 63.15 ± 2.93 | 6.12 ± 1.32 | 20.14 ± 1.39 | 17.40 ± 0.80 | 98.70 ± 0.13 |
+| Reflex on | Static, 0.15 m/s | 29.86 ± 1.09 | 62.07 ± 4.38 | 7.99 ± 3.26 | 18.84 ± 1.26 | 16.49 ± 1.26 | 98.70 ± 0.26 |
+| Reflex on − Reflex off | Static, 0.15 m/s | -0.78 ± 0.60 [-2.26, +0.70] | -1.09 ± 2.02 [-6.10, +3.93] | +1.87 ± 2.26 [-3.76, +7.49] | -1.30 ± 2.29 [-6.99, +4.38] | -0.91 ± 1.79 [-5.36, +3.54] | +0.00 ± 0.34 [-0.86, +0.86] |
+| Reflex off | Static, 0.30 m/s | 33.51 ± 3.18 | 56.81 ± 3.40 | 9.46 ± 0.40 | 13.54 ± 0.79 | 10.07 ± 0.60 | 98.35 ± 0.33 |
+| Reflex on | Static, 0.30 m/s | 33.03 ± 1.04 | 56.64 ± 2.59 | 10.03 ± 1.63 | 12.89 ± 2.44 | 9.46 ± 1.73 | 98.61 ± 0.20 |
+| Reflex on − Reflex off | Static, 0.30 m/s | -0.48 ± 2.61 [-6.95, +5.99] | -0.17 ± 3.55 [-9.00, +8.66] | +0.56 ± 1.31 [-2.69, +3.82] | -0.65 ± 1.71 [-4.89, +3.59] | -0.61 ± 2.33 [-6.41, +5.19] | +0.26 ± 0.23 [-0.30, +0.82] |
+| Reflex off | Moving, 0.15 m/s | 31.55 ± 2.08 | 60.81 ± 3.53 | 7.60 ± 1.43 | 12.63 ± 0.23 | 9.55 ± 0.46 | 98.70 ± 0.13 |
+| Reflex on | Moving, 0.15 m/s | 31.47 ± 0.78 | 59.64 ± 2.88 | 8.85 ± 2.83 | 12.54 ± 0.53 | 10.11 ± 0.54 | 98.70 ± 0.26 |
+| Reflex on − Reflex off | Moving, 0.15 m/s | -0.09 ± 2.83 [-7.12, +6.94] | -1.17 ± 4.11 [-11.39, +9.04] | +1.26 ± 2.68 [-5.39, +7.91] | -0.09 ± 0.74 [-1.93, +1.75] | +0.56 ± 0.59 [-0.89, +2.02] | +0.00 ± 0.39 [-0.97, +0.97] |
+| Reflex off | Moving, 0.30 m/s | 33.25 ± 1.24 | 57.12 ± 1.87 | 9.38 ± 0.57 | 12.59 ± 0.99 | 8.98 ± 0.79 | 98.44 ± 0.13 |
+| Reflex on | Moving, 0.30 m/s | 33.16 ± 1.66 | 56.55 ± 2.20 | 10.16 ± 1.63 | 11.33 ± 1.03 | 7.73 ± 0.54 | 98.48 ± 0.20 |
+| Reflex on − Reflex off | Moving, 0.30 m/s | -0.09 ± 1.96 [-4.95, +4.78] | -0.56 ± 1.95 [-5.42, +4.29] | +0.78 ± 1.19 [-2.18, +3.75] | -1.26 ± 1.56 [-5.14, +2.63] | -1.26 ± 0.27 [-1.93, -0.59] | +0.04 ± 0.15 [-0.33, +0.42] |
+
+At 0.30 m/s with a moving box, inserted-object hand contact decreased from 8.98% to 7.73%. The effect was negative in all three seed pairs (−1.17, −1.04 and −1.56 pp) with practically unchanged reveal rate. The 95% interval adjusted across the four insertion protocols is [−2.65, +0.13] pp. The reversed slow-moving-box point estimate was +0.56 pp [−0.89, +2.02]. Mean any-contact rates decreased 0.17–1.17 pp across the four protocols, and mean refusals increased 0.56–1.87 pp. Clean traversal means decreased 0.09–0.78 pp. The paired intervals for these all-scene outcomes include zero. The localized faster-moving-box effect is promising and the data leave open whether it generalizes across protocols or improves traversal.
+
+The three matched-image replays use the same scene geometry and obstacle schedule on both sides. They are under `energy-videos` in the project artifacts as `plan-blind-static-015.mp4`, `plan-blind-moving-015.mp4` and `plan-blind-moving-030.mp4`. All three are H.264 1280×720 yuv420p with silent stereo AAC, fast-start layout and durations of 15.00, 13.80 and 11.72 seconds respectively. The clips show selected episodes.
