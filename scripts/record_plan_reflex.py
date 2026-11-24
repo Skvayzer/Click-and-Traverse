@@ -43,6 +43,7 @@ def main():
     p.add_argument("--planner-checkpoint", type=Path, help="local copy of the checkpoint's online planner weights")
     p.add_argument("--fallback", type=float, nargs=2, metavar=("STALL_S", "HOLD_S"),
                    help="the stall rule: no progress along the route for STALL_S s drops the plan for HOLD_S s")
+    p.add_argument("--device", default="cuda:0", help="cuda:0, or cpu (CPU MuJoCo, one scene per run)")
     p.add_argument("--plan-select", choices=("clear", "value", "value_safe"))
     p.add_argument("--plan-safe-m", type=float, default=.05)
     p.add_argument("--plan-samples", type=int)
@@ -52,7 +53,11 @@ def main():
     from record_mjlab_rollout import load_policy
     from cat_mjlab.runner import create_task
     from planner_render import world_qpos
-    dev = "cuda:0"
+    dev = args.device
+    if dev == "cpu" and len(scenes) != 1:
+        p.error("the CPU simulation runs one world: pass one scene")
+    from planner_collect import install_subset_loader
+    install_subset_loader(set(scenes))                  # load only the recorded scenes' fields
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed_all(args.seed)
     contract = torch.load(args.checkpoint, map_location="cpu", weights_only=True, mmap=True)["contract"]
@@ -94,7 +99,12 @@ def main():
                          num_envs=len(scenes), compile_task=False, nconmax=contract["nconmax"], njmax=contract["njmax"],
                          reactive_bank=None, reactive_row=None,
                          goal_seed_scene_ids=scenes if args.goal_seed_cache else None)
-    task, sim, _ = create_task(ns, environment_config=env)
+    sim_class = None
+    if dev == "cpu":
+        from cat_mjlab.sim_cpu import CPUSimulation as sim_class
+    task, sim, _ = create_task(ns, environment_config=env, sim_class=sim_class)
+    if dev == "cpu":
+        task.collision_every_substep = False
     names = [s["scene_id"] for s in task.bank.manifest["scenes"]]
     missing = [s for s in scenes if s not in names]
     if missing:
