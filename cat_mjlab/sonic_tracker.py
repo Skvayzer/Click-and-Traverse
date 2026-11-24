@@ -180,7 +180,6 @@ class SonicTracker:
 
     def __init__(self, task, encoder_path, decoder_path, *, provider="cuda", reference=None, torque_limits="harness",
                  variant="default", ankle_gain=1.):
-        import onnxruntime as ort
 
         names = [task.model.joint(i).name for i in range(1, 30)]
         if tuple(names) != MUJOCO_JOINTS:
@@ -222,6 +221,8 @@ class SonicTracker:
             self.batched_error = [0., 0.]
             self.ref_q = self.ref_quat = None
             return
+        import onnxruntime as ort
+
         encoder, decoder = batched_models(encoder_path, decoder_path, variant)
         self.batched_error = verify_batched(encoder_path, decoder_path, (encoder, decoder))
         if max(self.batched_error) > 1e-4:
