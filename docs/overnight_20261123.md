@@ -667,3 +667,54 @@ The combined recovery raised mean clean traversal at both speeds and raised mean
 | COMBO_FIX | 0.3 | 61.85 ± 1.58 | 28.12 ± 3.07 | 9.81 ± 2.26 | 2.86 ± 0.52 |
 | both | 0.3 | 63.06 ± 0.72 | 31.03 ± 1.86 | 5.77 ± 1.17 | 3.17 ± 0.15 |
 | both − COMBO_FIX | 0.3 | +1.22 ± 1.17 [-1.68, +4.11] | +2.91 ± 1.21 [-0.10, +5.91] | -4.04 ± 1.26 [-7.16, -0.92] | +0.30 ± 0.54 [-1.04, +1.65] |
+
+### E4 field-input and energy-price controls
+
+All three masked plan-only seeds completed 144 held-out episodes per speed. Each scored 0% clean and 100% contact at each of the three speeds. Their initial-state hash matched the unmasked policies. The intervention measures the frozen actors' dependence on field inputs under a changed observation distribution.
+
+On the 72-layout benchmark, the price-free COMBO1b continuation improved clean traversal by 8.33 pp and reduced contact by 9.72 pp at 0.15 m/s compared with the original u500 checkpoint. This comparison has one training seed and a 50-update difference in training duration. It is an exploratory effect of the continuation recipe. It does not identify the causal effect of price removal. CIs below resample matched scenes.
+
+| Case | Speed / family | clean | contact | refused | hands | time to clean goal (s) | episode min palm (cm) |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| price_reference | 0.15 | 47.92 | 41.67 | 10.42 | 22.22 | 29.07 | 4.26 |
+| no_price | 0.15 | 56.25 | 31.94 | 11.81 | 23.61 | 33.45 | 4.28 |
+| no_price − price_reference | 0.15 | +8.33 [+3.47, +13.89] | -9.72 [-16.67, -3.47] | +1.39 [-4.86, +8.33] | +1.39 [-2.78, +6.25] | +4.38 [-4.60, +13.11] | +0.02 [-0.44, +0.49] |
+| price_reference | 0.15 / early-turn | 8.33 | 91.67 | 0.00 | 66.67 | 15.68 | 0.21 |
+| no_price | 0.15 / early-turn | 8.33 | 89.58 | 2.08 | 70.83 | 17.21 | 0.11 |
+| no_price − price_reference | 0.15 / early-turn | +0.00 [-6.25, +6.25] | -2.08 [-10.42, +4.17] | +2.08 [+0.00, +6.25] | +4.17 [-8.33, +16.72] | +1.52 [-0.02, +3.01] | -0.11 [-0.40, +0.17] |
+| price_reference | 0.15 / table-gap | 35.42 | 33.33 | 31.25 | 0.00 | 60.82 | 4.20 |
+| no_price | 0.15 / table-gap | 60.42 | 6.25 | 33.33 | 0.00 | 57.66 | 4.60 |
+| no_price − price_reference | 0.15 / table-gap | +25.00 [+12.50, +39.58] | -27.08 [-43.75, -10.42] | +2.08 [-16.67, +22.92] | +0.00 [+0.00, +0.00] | -3.16 [-36.35, +23.59] | +0.40 [-0.77, +1.60] |
+| price_reference | 0.15 / u-trap | 100.00 | 0.00 | 0.00 | 0.00 | 18.94 | 8.36 |
+| no_price | 0.15 / u-trap | 100.00 | 0.00 | 0.00 | 0.00 | 20.17 | 8.12 |
+| no_price − price_reference | 0.15 / u-trap | +0.00 [+0.00, +0.00] | +0.00 [+0.00, +0.00] | +0.00 [+0.00, +0.00] | +0.00 [+0.00, +0.00] | +1.24 [+0.62, +1.87] | -0.24 [-0.84, +0.37] |
+| price_reference | 0.3 | 50.00 | 39.58 | 10.42 | 25.69 | 25.59 | 4.58 |
+| no_price | 0.3 | 52.78 | 35.42 | 11.81 | 24.31 | 24.42 | 4.84 |
+| no_price − price_reference | 0.3 | +2.78 [-2.78, +8.33] | -4.17 [-9.72, +0.69] | +1.39 [-5.56, +7.64] | -1.39 [-6.94, +3.47] | -1.18 [-6.28, +3.71] | +0.26 [-0.18, +0.72] |
+| price_reference | 0.3 / early-turn | 2.08 | 97.92 | 0.00 | 77.08 | 12.22 | -0.12 |
+| no_price | 0.3 / early-turn | 6.25 | 93.75 | 0.00 | 72.92 | 13.45 | 0.00 |
+| no_price − price_reference | 0.3 / early-turn | +4.17 [+0.00, +12.50] | -4.17 [-12.50, +0.00] | +0.00 [+0.00, +0.00] | -4.17 [-20.83, +10.42] | +1.23 [+1.20, +1.34] | +0.13 [-0.17, +0.41] |
+| price_reference | 0.3 / table-gap | 47.92 | 20.83 | 31.25 | 0.00 | 47.02 | 4.72 |
+| no_price | 0.3 / table-gap | 52.08 | 12.50 | 35.42 | 0.00 | 42.44 | 5.67 |
+| no_price − price_reference | 0.3 / table-gap | +4.17 [-10.42, +16.67] | -8.33 [-22.92, +4.17] | +4.17 [-14.58, +22.92] | +0.00 [+0.00, +0.00] | -4.58 [-18.42, +9.38] | +0.95 [-0.15, +2.05] |
+| price_reference | 0.3 / u-trap | 100.00 | 0.00 | 0.00 | 0.00 | 15.61 | 9.14 |
+| no_price | 0.3 / u-trap | 100.00 | 0.00 | 0.00 | 0.00 | 15.72 | 8.84 |
+| no_price − price_reference | 0.3 / u-trap | +0.00 [+0.00, +0.00] | +0.00 [+0.00, +0.00] | +0.00 [+0.00, +0.00] | +0.00 [+0.00, +0.00] | +0.11 [-0.27, +0.47] | -0.30 [-0.90, +0.34] |
+| price_reference | 0.5 | 49.31 | 36.11 | 14.58 | 23.61 | 18.39 | 5.19 |
+| no_price | 0.5 | 52.08 | 36.11 | 11.81 | 24.31 | 20.75 | 4.98 |
+| no_price − price_reference | 0.5 | +2.78 [-3.47, +9.03] | +0.00 [-5.56, +5.56] | -2.78 [-6.25, +0.69] | +0.69 [-4.17, +6.25] | +2.36 [+0.15, +5.13] | -0.21 [-0.66, +0.24] |
+| price_reference | 0.5 / early-turn | 4.17 | 95.83 | 0.00 | 70.83 | 12.04 | 0.17 |
+| no_price | 0.5 / early-turn | 6.25 | 93.75 | 0.00 | 72.92 | 11.69 | 0.13 |
+| no_price − price_reference | 0.5 / early-turn | +2.08 [-6.25, +10.42] | -2.08 [-10.42, +6.25] | +0.00 [+0.00, +0.00] | +2.08 [-12.50, +18.75] | -0.35 [-2.72, +2.04] | -0.04 [-0.40, +0.37] |
+| price_reference | 0.5 / table-gap | 45.83 | 10.42 | 43.75 | 0.00 | 28.96 | 6.04 |
+| no_price | 0.5 / table-gap | 52.08 | 12.50 | 35.42 | 0.00 | 35.10 | 5.36 |
+| no_price − price_reference | 0.5 / table-gap | +6.25 [-10.42, +20.83] | +2.08 [-10.42, +16.67] | -8.33 [-18.75, +2.08] | +0.00 [+0.00, +0.00] | +6.15 [+1.67, +12.39] | -0.68 [-1.75, +0.45] |
+| price_reference | 0.5 / u-trap | 97.92 | 2.08 | 0.00 | 0.00 | 13.71 | 9.35 |
+| no_price | 0.5 / u-trap | 97.92 | 2.08 | 0.00 | 0.00 | 13.70 | 9.44 |
+| no_price − price_reference | 0.5 / u-trap | +0.00 [-6.25, +6.25] | +0.00 [-6.25, +6.25] | +0.00 [+0.00, +0.00] | +0.00 [+0.00, +0.00] | -0.02 [-0.41, +0.37] | +0.09 [-0.59, +0.75] |
+
+### Scheduling after the completed E4 price pair
+
+At 11:45 Dubai, the pending original E4 COMBO_FIX seed-2 job 319447_2 moved to the available dep-1 GPU following the two completed price jobs. Only that pending job was canceled. The evaluation uses commit `ac58626`, the same frozen checkpoint from round 4, three speeds and the same certified resets. Expected duration is about 35 min. Output is `~/robotics/cat-energy-local-runs/overnight_E4_planner_seed2_local_ac58626`.
+
+Cluster smoke 320663 completed up to its 500-step budget on ws-l2-012 with the CUDA inference provider. The full BRACE evaluation 320664 started there at approximately 11:40 Dubai. The exact 3,591-scene goal cache and E2 anchor are staged on dep-1 in case all E1 variants miss the gate. The cache digest matches the seed-2 parent contract, and the anchor is byte-for-byte the cluster input. This allows a matched local 12,288-world E2 run after the current held-out evaluation if the E1 gate triggers. No E2 training has started.
