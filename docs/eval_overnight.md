@@ -73,3 +73,10 @@ Full table with paired scene-bootstrap CIs: `artifacts/overnight/e5_table.md` (s
 
 ### A3 prior evidence on the 384 scenes (existing runs, COMBO1b u500, one seed, 2 episodes per scene; `speed_sweep/COMBO1b_u500_{plan,none}`)
 The same network with its plan input on (`--tracker-mix plan=1`) or off (`none=1`). Plan on minus plan off (percentage points, 95% scene-bootstrap CI): at 0.15 m/s clean −8.6 [−11.7, −5.5], any contact −12.1 [−15.2, −9.1], refused +20.8 [+17.2, +24.6], hand contact −1.2 [−2.6, +0.1]; at 0.30 m/s clean −5.7 [−8.3, −3.1], contact −10.2 [−13.5, −6.9], refused +15.9 [+12.6, +19.3], hand contact −1.6 [−2.9, −0.4]. Following the plan trades contact for refusals and loses clean traversal on these known-obstacle scenes. The pre-registered A3 test below uses the current COMBO_FIX networks on the held-out layouts.
+
+### A1 interim (03:50): walking at 0.15 m/s, object thrown at the live hand
+Runs: planner–reflex seeds 0 (local), 1, 2 (cluster 322712); reflex-off seed 1 (cluster 322713_1). 768 episodes per run, 95% of episodes had at least one throw launched (0 skipped); 1,500 throws per run, split evenly over the three speed tiers.
+* Planner–reflex (3 seeds): clean 27.3 [24.8, 29.9]%, any object contact 46.8 [44.4, 49.1]%, object hit a hand in 19.8 [18.1, 21.7]% of episodes. Per throw the hand is hit in 2.8 / 10.0 / 17.0% at 0.4 / 0.8 / 1.2 m/s.
+* Reflex off (seed 1): clean 27.5, object hand contact 19.8 [17.1, 22.5]%, per-tier 3.1 / 9.2 / 17.7%.
+* Planner–reflex minus reflex-off (all three on-seeds against the one off-seed): object hand contact +0.04 pp [−2.91, +2.95], clean −0.17 [−3.17, +2.86]; seed-1-only matched pair: object hand contact −0.65 [−4.30, +2.99], clean +0.13 [−3.78, +4.04]. Pre-registered H1a (≤ −2 pp with CI upper < 0) is **not met** at 0.15 m/s. The per-tier differences are −0.4, +0.7 and −1.2 pp, none different from zero.
+* The thrown-object benchmark is hard for every policy (clean falls from ~61% to ~27%), so the absence of a reflex effect is not a floor or ceiling artefact: hand hits scale from 3% to 17% with object speed, which a working reflex should have reduced.
