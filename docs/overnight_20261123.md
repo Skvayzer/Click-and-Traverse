@@ -637,3 +637,18 @@ This subset checks the contrast under a common energy implementation across seed
 | Reflex off | Moving, 0.30 m/s | 32.62 ± 0.83 | 57.81 ± 2.03 | 9.24 ± 0.74 | 12.37 ± 1.29 | 9.24 ± 0.92 | 98.37 ± 0.09 |
 | Reflex on | Moving, 0.30 m/s | 32.62 ± 1.93 | 57.81 ± 0.37 | 9.38 ± 1.29 | 11.91 ± 0.28 | 7.94 ± 0.55 | 98.37 ± 0.09 |
 | Reflex on − Reflex off | Moving, 0.30 m/s | +0.00 ± 2.76 [-24.82, +24.82] | +0.00 ± 2.39 [-21.51, +21.51] | +0.13 ± 0.55 [-4.83, +5.09] | -0.46 ± 1.01 [-9.56, +8.64] | -1.30 ± 0.37 [-4.61, +2.01] | +0.00 ± 0.18 [-1.65, +1.65] |
+
+### E1 and E6 retries and the E5 guide-start check
+
+Seed 2's E1 fallback run 319389_2 finished both speeds. Its margin follow-on, 319389_5, failed in Warp before physics with a CUDA primary-context error. Slurm never started dependent BRACE jobs 320528 and 320529. Margin retry 320662_5 now runs the same frozen checkpoint and exact E1 recipe on ws-l2-012, where the paired fallback finished. BRACE smoke and full evaluation are now 320663 and 320664, with the same resources and output naming as the previous pair. Their dependency starts after 320662 succeeds.
+
+The E5 reactive job 319437 stopped at its exact guide-match check before issuing any score. Commit `b1a73a3` lets the external E5 checkpoints replay the guide's recorded scene assignments and initial physical states before the simulator creates observations. It validates metadata and requested repetitions, checks the realized states against the guide after reset and records their hash. Raised-hand starts restore the corresponding controller history from the actual recorded joint state. All four guide files have the same 768-state hash `ef07a14c4969755b2bde621308d0cb7e07a0188bc4b2d2f0f626847c943b0c86`. The 35 focused CPU tests passed. A 30-step local reactive startup smoke waits for the dep-1 single-GPU lock after the active E1 run. The completed reflex pairs and the plan-only controls retain their original reset checks.
+
+| Job | Partition / resources | Runtime estimate / limit | Scheduling | Output under `/l/users/konstantin.smirnov/runs` |
+| --- | --- | --- | --- | --- |
+| 320662_5 | ws-ia, 1 GPU, 8 CPUs, 30000 MB | 1–2 h / 3 h | Running on ws-l2-012 | `overnight_E1_margin_seed2_320662` |
+| 320663 → 320664 | ws-ia, 1 GPU, 8 CPUs, 40000 MB | 3–8 min / 30 min and 1–2 h / 3 h | After 320662 | `overnight_E6_BRACE_smoke_320663`, `overnight_E6_BRACE_384_320664` |
+| 320668 | ws-ia, 1 GPU, 12 CPUs, 54000 MB | 2–4 h / 7 h | After 320664 | `overnight_E5_reactive_seed0_320668` |
+| 320669 → 320670 | ws-ia, 1 GPU, 12 CPUs, 54000 MB | 2–4 h / 7 h each | After serial array 319436 | `overnight_E5_price_reference_seed0_320669`, `overnight_E5_no_price_seed0_320670` |
+
+The E5 price-reference and price-free cells replace only the two pending tasks 319438 and 319439. They use the frozen COMBO1b and COMBO_NOPRICE checkpoints and all four original obstacle schedules. The replacement state replay uses the same guide tested on the original bands. The schedule preserves the two ws-ia dependency chains.
