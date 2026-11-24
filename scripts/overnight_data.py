@@ -236,7 +236,8 @@ def standing_row(path):
                 still=share("still_success"), feet_moved_worlds=100 * d["envs_ever_violating"],
                 feet_p50=float(np.percentile(feet, 50)), feet_p90=float(np.percentile(feet, 90)), feet_p95=float(np.percentile(feet, 95)),
                 feet_ge5=float(100 * np.mean(feet >= 5)), retreat_p50=float(np.percentile([a["retreat_m"] for a in ev], 50) * 100),
-                power_w=d["power_W"]["total"]["standing"], feet_cm=[float(x) for x in feet])
+                power_w=d["power_W"]["total"]["standing"], feet_cm=[float(x) for x in feet],
+                feet_q=[float(x) for x in np.percentile(feet, np.linspace(0, 100, 101))])
 
 
 def standing():

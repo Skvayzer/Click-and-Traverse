@@ -47,3 +47,19 @@ Third standing flip seed (319350_0, _1), α sensitivity (318296), E5 (320668–3
 
 ## Run log
 (Entries are appended below as the runs start and finish.)
+
+### 22:20–23:00 Dubai, setup
+* Code: `cat_mjlab/threats.py` (A1 thrown objects, `ThrownObstacle`), `scripts/make_throw_guide.py`, `--blind-variant throw` and `--pushes` in `scripts/eval_per_scene.py`,
+  `scripts/eval_stats.py` (paired scene bootstrap), `scripts/overnight_data.py` (all numbers into `results.json`), `scripts/overnight_figures.py`, `hpc/eval_overnight.sbatch`.
+  Commits on `feature/eval-overnight` (local worktree `~/robotics/cat-energy-eval`).
+* Smoke (flat 1,500 steps of the full 768-episode throw benchmark, COMBO_FIX seed 1, 0.3 m/s): 1,256 throws launched, 0 skipped, 143 physical hand contacts, no capacity overflow, no exception.
+* Throw guides `throw_0.15.npz`, `throw_0.3.npz` copy the 768 episode assignments and initial states of the E3 plan-blind guides (same bank hash) and add the schedule (seed 20261125). They live in `/tmp/cat-eval-overnight/guides` and on the cluster in `~/cat_worktrees/eval_overnight_inputs`.
+* Cluster (gpu partition): A1 planner array 322712 (seeds 1–2; seed 0 runs locally), noreflex 322713 (1–2), A3 plan-off array 322692 (seed 1 ran, seeds 0 and 2 hit foreign GPU memory on gpu-02/03; seed 0 resubmitted as 322716). The gpu partition allows one GPU per user at a time here, so most queued jobs wait.
+* Local GPU (dep-1, shared lock): A1 seed 0 planner–reflex 0.15 m/s started 22:35; the remaining local jobs run two at a time inside one lock hold (`/tmp/cat-eval-overnight/run-batch-local.sh`, log `batch-local.log`).
+* Local outputs: `/tmp/cat-eval-overnight/runs/{A1,A2,A3}_*_local`.
+
+### A4 collection (status at 22:50)
+* Standing flip seed 2 (319350_0/_1) collected: arm×1 → ×30 moves arm-first 40.4% → 33.0%, failure 12.1% → 17.1%, body-first 0.95% → 0.77%, worlds with a foot moved 8.0% → 26.2% (`results.json`, standing).
+* α sensitivity (seed 1): arm-first 43.7 / 38.9 / 33.1 % and failure 9.5 / 11.9 / 14.2 % at 250 / 500 / 1,000 W; body-first stays below 1%.
+* E5 (reactive 320668, price reference 320669, plan-only 319436) and E6 BRACE 384 (320664) JSONs are mirrored under `/tmp/cat-eval-overnight/data/cluster`; BRACE 384 is in the figures. E5 no-price 320670 still running.
+* SONIC plain (G2 384 and E4) from the SONIC agent's cluster outputs is included in the figures and the website as "SONIC (plain)".
