@@ -283,3 +283,15 @@ Three original seed-0 episode pairs are in the project `energy-videos/` artifact
 | `plan-blind-moving-030.mp4` | Moving at 0.30 m/s, cabinet passage, row 62 | 11.72 s | Reflex off only |
 
 The selected traces show 20, 3 and 17 control transitions with an active arm reflex, respectively. Selection favored visible reflex activity. The third clip shows a paired example of avoiding the inserted-object hand contact.
+
+### E7 complete heat-price sensitivity
+
+All cases used 150 updates from `stationary_hands_S2_seed1_u180.pt` with training seed 1, then the same 2,000-world standing benchmark for 800 steps. Feet moved is the share of worlds with a shadow stance violation. Response shares and displacement quantiles use danger and anticipation events. All three recorded zero falls. Use mechanical group watts for cross-α comparison because the size-weighted heat meter scales its holding term with the tested α.
+
+| α, W | Job / seed | Threats | Feet moved, % | Arm-first, % | Body-first, % | Failure, % | Feet p50/p90/p95, cm | Pelvis p50/p90/p95, cm | Retreat p50/p90/p95, cm | Policy mechanical W, legs/waist/arms |
+| ---: | --- | ---: | ---: | ---: | ---: | ---: | --- | --- | --- | --- |
+| 250 | 318296_2 / 1 | 3945 | 5.45 | 43.68 | 0.35 | 9.46 | 0.72 / 1.64 / 2.14 | 2.97 / 4.97 / 5.83 | 10.00 / 16.27 / 18.11 | 11.07 / 3.51 / 6.79 |
+| 500 | 318296_1 / 1 | 4026 | 2.05 | 38.85 | 0.35 | 11.90 | 0.64 / 1.37 / 1.68 | 2.93 / 4.91 / 5.92 | 9.32 / 14.43 / 15.93 | 10.16 / 3.35 / 5.88 |
+| 1000 | 318296_3 / 1 | 4038 | 11.85 | 33.06 | 0.94 | 14.19 | 0.72 / 1.92 / 2.62 | 2.86 / 4.94 / 5.82 | 8.52 / 14.66 / 16.65 | 9.70 / 3.14 / 5.51 |
+
+For this training seed, stronger heat moved the measured arm-first share down and the failure share up. The 500 W run had the smallest feet-moved share, and body-first remained below 1% even at 1,000 W. This is a dose response at one training seed. The third arm-multiplier replication is the remaining standing comparison.
