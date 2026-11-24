@@ -41,7 +41,7 @@ case "$BENCH" in
     for push in nopush push; do
       extra=(); [[ "$push" == push ]] && extra=(--pushes)
       mkdir "$R/$push"
-      "${EVAL[@]}" "$CK" --bank "${BANK:?}" --scenes "@${GUIDES:?}/scenes.txt" --episodes 2 --num-envs 1536 --max-steps 21000 \
+      "${EVAL[@]}" "$CK" --bank "${BANK:?}" --scenes "@${GUIDES:?}/scenes.txt" --episodes 1 --num-envs 768 --max-steps 21000 \
         --operator-speeds .15 .3 --out-dir "$R/$push" "${extra[@]}" "${policy[@]}"
     done ;;
   A3)
