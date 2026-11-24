@@ -59,7 +59,28 @@ unchanged or contact up > 0.5 pp.
 per-scene oracle takes, per scene and speed, the better of reactive V7r and COMBO_FIX (clean first, then no contact), as an
 upper bound on what arbitration between the two policies could reach. It is reported only as a bound.
 
+## I5 — expert iteration of the planner (one planner fine-tune, frozen trackers)
+
+Hypothesis: planner v1 learned from reactive policies' motions (V7, E2, T2); the tracker it now drives executes some of its
+chunks poorly. Retraining it on the planner–reflex tracker's own contact-free windows (hindsight goals: what the tracker
+actually did in the next 2 s), especially its successful close passes, moves the planner's distribution toward motions this
+tracker executes, so plans stall less.
+Recipe (`99fb69c`, `hpc/improve_expert_iter.sbatch`, job 322717 on ws-ia): collect from COMBO_FIX seed 0 with the plan
+source only, 4096 worlds × 1500 steps × 3 rounds plus a held-out round, the 384 evaluation scenes excluded from collection
+(asserted), side-gap/narrow/protected/transition/table-edge scene counts doubled, at most 150k new training windows; merge
+with planner v1's V7/E2/T2 data; fine-tune planner v1 (warm start, normalizer kept) for 20k steps at lr 1e-4. Then
+evaluate the frozen COMBO_FIX trackers (seeds 0–2) with the new planner on the 384 scenes and the 72 held-out layouts.
+Planner v1's original training scenes already overlap the 384 evaluation scenes; the E4 layouts were never collected.
+Prediction: refusal falls ≥ 2 pp and clean rises ≥ 1.5 pp on seed 0, with contact ≤ +0.5 pp; on E4 clean does not fall.
+Falsifier: clean gain < 1.5 pp, or contact up > 0.5 pp, or E4 clean down > 3 pp.
+A tracker fine-tune with the new planner (the second half of the brief's item 4) costs ~5 h per seed on the free ws-ia
+slots and is only scheduled if the frozen-tracker result passes.
+
 ## Run ledger
 
 | Id | Variant | Seed | Where | Output |
 | --- | --- | --- | --- | --- |
+| A | control (K=4, clearest), value_safe K=4, clear K=8, value_safe K=8, no reference (none=1) | 0 | dep-1, one lock hold, 5 in parallel, `92afe4e` | `~/robotics/cat-energy-local-runs/improve_<tag>_seed0_92afe4e` |
+| E2 | refusal-pricing fine-tune (from the brief) | 0 | 322679_0 ws-ia | `overnight_E2_seed0_322679` |
+| E2 | seeds 1–2: 322679_1/2 and 322686 failed at the GPU-memory check on shared gpu nodes; resubmitted 322708 (`MAX_FOREIGN_MIB=40000`, gpu, %1) | 1–2 | gpu | `overnight_E2_seed{1,2}_322708` |
+| I5 | expert iteration collect + fine-tune | — | 322717 ws-ia (pending a slot) | `runs/wbp/planner_ei1` |
