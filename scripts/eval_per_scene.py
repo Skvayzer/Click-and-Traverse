@@ -126,6 +126,7 @@ def main():
     env.pop("side_gap_curriculum", None)                 # standard CAT starts, every width
     env["push_config"]["enable"] = False
     env.pop("sgs", None)                                 # every scene gets its K jobs, no success-guided resampling
+    env.pop("refusal_training", None)                    # compare policies with the same physical deadline
     if args.planning_benchmark:
         env["eval_goal_stop"] = True
     if brace:

@@ -1137,6 +1137,7 @@ def create_task(args, *, environment_config=None, sim_class=None):
         sideways_bonus_progress=getattr(args, 'sideways_bonus_progress', None), contact_penalty=getattr(args, 'contact_penalty', None),
         stall_weight=getattr(args, 'stall_weight', None), goal_progress_weight=getattr(args, 'goal_progress_weight', None),
         goal_bonus_weight=getattr(args, 'goal_bonus_weight', None), timeout_failure=getattr(args, 'timeout_failure', None),
+        refusal_training=getattr(args, 'refusal_training', None),
         reward_group_room=getattr(args, 'reward_group_room', None), commanded_blocking_map=getattr(args, 'commanded_blocking_map', None),
         hand_tight_cat_only=getattr(args, 'hand_tight_cat_only', None),
         upper_target_average=getattr(args, 'upper_target_average', None),

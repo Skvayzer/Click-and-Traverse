@@ -241,6 +241,8 @@ def parser():
         target.add_argument("--stall-weight", type=float, help="CAT scenes: cost while 1-s forward speed < 0.1 m/s > 0.5 m before the goal (negative)")
         target.add_argument("--goal-progress-weight", type=float, help="CAT scenes: reward for forward speed toward the goal plane (capped 0.6 m/s)")
         target.add_argument("--goal-bonus-weight", type=float, help="CAT scenes: one-step bonus when the goal is reached")
+        target.add_argument("--refusal-training", action="store_true", default=None,
+                            help="Fine-tune moving planner worlds with refusal timeout and distance-based clearance")
         target.add_argument("--timeout-failure", action="store_true", default=None,
                             help="CAT scenes: a full-length episode that times out without reaching the goal is terminal (no bootstrap)")
         target.add_argument("--contact-penalty", type=float, metavar="W",

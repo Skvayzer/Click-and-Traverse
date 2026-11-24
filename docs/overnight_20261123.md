@@ -295,3 +295,38 @@ All cases used 150 updates from `stationary_hands_S2_seed1_u180.pt` with trainin
 | 1000 | 318296_3 / 1 | 4038 | 11.85 | 33.06 | 0.94 | 14.19 | 0.72 / 1.92 / 2.62 | 2.86 / 4.94 / 5.82 | 8.52 / 14.66 / 16.65 | 9.70 / 3.14 / 5.51 |
 
 For this training seed, stronger heat moved the measured arm-first share down and the failure share up. The 500 W run had the smallest feet-moved share, and body-first remained below 1% even at 1,000 W. This is a dose response at one training seed. The third arm-multiplier replication is the remaining standing comparison.
+
+### E0 window audit, seed 0
+
+All 384 layouts completed one nominal episode at each speed. The first complete stall window was available for all 27 refusals at 0.15 m/s and 43 of 50 at 0.30 m/s. A complete before-window was available for 26 and 40 episodes. Furniture had no refused episodes with these windows. Values are weighted reward terms per control step.
+
+| Speed | Scene group | Window | Episodes across seeds | Stall | Tracking | Clearance | Field | Posture and motion | Energy | Goal progress |
+| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 0.15 | Side gaps | before | 6 | -0.52 | 2.58 | -0.10 | 2.07 | 5.32 | -0.63 | 2.76 |
+| 0.15 | Side gaps | during | 6 | -1.64 | 3.28 | -0.13 | 2.14 | 4.29 | -0.56 | 1.49 |
+| 0.15 | Cabinets | before | 5 | 0.00 | 6.01 | -0.01 | 2.27 | 5.94 | -0.64 | 3.72 |
+| 0.15 | Cabinets | during | 5 | -1.56 | 5.28 | -0.03 | 2.37 | 5.96 | -0.64 | 1.38 |
+| 0.15 | Furniture | before | 0 | — | — | — | — | — | — | — |
+| 0.15 | Furniture | during | 0 | — | — | — | — | — | — | — |
+| 0.15 | Clutter | before | 1 | 0.00 | 2.97 | -0.00 | 2.29 | 5.67 | -0.54 | 0.00 |
+| 0.15 | Clutter | during | 1 | 0.00 | 1.79 | -0.00 | 2.27 | 5.83 | -0.45 | 0.00 |
+| 0.15 | CAT courses | before | 14 | -0.57 | 4.07 | -0.02 | 2.17 | 4.84 | -0.65 | 3.08 |
+| 0.15 | CAT courses | during | 15 | -1.61 | 3.55 | -0.06 | 2.14 | 3.53 | -0.64 | 1.34 |
+| 0.3 | Side gaps | before | 10 | 0.00 | 4.53 | -0.12 | 2.41 | 5.75 | -0.64 | 2.85 |
+| 0.3 | Side gaps | during | 10 | -2.65 | 3.13 | -0.08 | 2.21 | 5.20 | -0.56 | 0.67 |
+| 0.3 | Cabinets | before | 8 | 0.00 | 5.29 | -0.02 | 2.07 | 5.65 | -0.73 | 3.69 |
+| 0.3 | Cabinets | during | 8 | -2.09 | 3.89 | -0.05 | 2.28 | 5.87 | -0.63 | 0.69 |
+| 0.3 | Furniture | before | 0 | — | — | — | — | — | — | — |
+| 0.3 | Furniture | during | 0 | — | — | — | — | — | — | — |
+| 0.3 | Clutter | before | 1 | 0.00 | 2.03 | -0.00 | 2.38 | 5.75 | -0.64 | 0.00 |
+| 0.3 | Clutter | during | 1 | 0.00 | 3.41 | -0.00 | 2.31 | 5.86 | -0.50 | 0.00 |
+| 0.3 | CAT courses | before | 21 | -0.28 | 3.61 | -0.03 | 2.23 | 5.44 | -0.77 | 2.79 |
+| 0.3 | CAT courses | during | 24 | -2.17 | 3.19 | -0.05 | 2.18 | 4.90 | -0.76 | 0.78 |
+
+The largest negative term before stalls was global power, −0.64 and −0.73 at 0.15 and 0.30 m/s. During stalls the largest negative was the stall term, −1.55 and −2.22. Goal progress dropped across side gaps, cabinets and CAT courses, while their summed tracking, posture and field terms stayed positive. The clearance cost remained small. This pattern supports testing a reward balance intervention if the frozen recovery variants keep trading refusals for contacts. It gives an association at stall onset conditional on eventual refusal. Seeds 1 and 2 are needed for the full diagnosis.
+
+### E2 prepared conditional training protocol
+
+The optional profile prices eight consecutive seconds without a 5 cm net route advance at a terminal cost at least as large as the configured obstacle-contact event. The moving planner must be past its first second. An unfinished moving-plan episode at its existing deadline uses the same terminal cost. When the stall clock reaches two seconds, positive upright, stand-tall, plan position, heading, height and upper-body tracking bonuses pause. Field guidance and penalties remain active. This tests the largest positive balances observed during stalls. Negative head, feet, knees, shoulders, hand and arm clearance in side gaps, cabinets, width scaffolds and table passages scales with pelvis distance. A cost integrated over a metre has the same scale as progress at the 0.30 m/s reference. The profile is disabled in frozen evaluation to preserve episode budgets across checkpoints.
+
+If the three-seed E0 results confirm the persistent balance and none of the E1 variants raises clean traversal without increasing contact at both speeds, warm-start all three current COMBO_FIX seeds for 150 updates apiece. The existing anchor and recipe remain the controls. Predict at least a 2 pp mean gain in clean traversal and a 2 pp drop in refusal with no increase in mean contact at either speed. Evaluate the matched seeds with the original 384 scenes and the standard budget, then check the selected checkpoint family on E4. Thirty selected CPU tests passed. A MuJoCo CPU smoke produced the expected −1 terminal event and suppressed the watched positive stall bonuses.

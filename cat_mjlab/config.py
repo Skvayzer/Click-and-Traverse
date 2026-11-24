@@ -55,7 +55,7 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
                      teleop_cat_fraction=None,heading_lookaheads=None,heading_blocking_probes=None,sideways_bonus_weight=None,
                      side_gap_curriculum=None,height_curriculum=None,cadence=None,hip_deviation_weight=None,teleop_side_prob=None,hand_tight_walls_only=None,side_gap_tumbling=None,
                      sideways_bonus_progress=None,contact_penalty=None,stall_weight=None,goal_progress_weight=None,
-                     goal_bonus_weight=None,timeout_failure=None,reward_group_room=None,commanded_blocking_map=None,
+                     goal_bonus_weight=None,timeout_failure=None,refusal_training=None,reward_group_room=None,commanded_blocking_map=None,
                      hand_tight_cat_only=None,sgs=None,robustness=None,upper_target_average=None,
                      reactive_stationary=None,reactive_power_weight=None,reactive_feet_hold_weight=None,
                      reactive_hand_clearance=None,reactive_far_threat_only=None,reactive_retreat_success=None,table_facing_weight=None,
@@ -616,6 +616,11 @@ def wholebody_config(base_config=None,*,bank_manifest=None,stabilization=True,
         config.pop('route_energy',None)
     if standing_contact_control or config.get('standing_contact_control'):
         standing_contact_profile(config)
+    if refusal_training:
+        from .refusal_training import SETTINGS
+        if not config.get('tracker', {}).get('planner') or not config.get('operator_speed'):
+            raise ValueError('Refusal training needs an online planner and operator-speed tasks')
+        config['refusal_training'] = dict(SETTINGS)
     return config
 
 

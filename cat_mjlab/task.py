@@ -192,6 +192,15 @@ class CATTask:
         kinds=set(self.config.get('progress_passage_kinds') or ())
         self.passage_scene=torch.tensor([(s.get('source') or {}).get('kind') in kinds for s in self.bank.manifest['scenes']],
                                         dtype=torch.bool,device=self.device)
+        self.refusal_training = self.config.get('refusal_training')
+        if self.refusal_training:
+            from .refusal_training import PASSAGE_KINDS
+            self.refusal_passages = torch.tensor(
+                [record.get('source', {}).get('kind') in PASSAGE_KINDS for record in self.bank.manifest['scenes']],
+                dtype=torch.bool, device=self.device)
+            event_cost = float(_get(self.config, 'wholebody.body_collision.event_penalty', 1.))
+            soft_cost = float(self.config.get('contact_penalty') or self.config.get('passage_soft_contact') or 0.)
+            self.refusal_timeout_cost = max(1., event_cost + soft_cost)
         # Room passages whose hand / elbow margins shrink with the room like CAT side gaps (hand_clearance_tight.passages):
         # between full-height cabinets the certified best hand clearance is ~11 cm, so the rooms' 9 cm / 20 cm margins
         # made every step inside a penalty the robot could not avoid, and stopping in front of the passage cost less.
@@ -1250,6 +1259,9 @@ class CATTask:
         defaults['phase']=torch.where(left[:,None],qpos.new_tensor([0.,np.pi]),qpos.new_tensor([np.pi,0.]))
         defaults['foot_height']=self._rand((n,),*_get(self.config,'gait_config.foot_height_range',[.07,.07]))
         defaults['progress_ema']=torch.zeros(n,device=self.device)
+        if self.refusal_training:
+            for name in ('refusal_progress_m', 'refusal_clock_s', 'refusal_travel_m'):
+                defaults[name] = torch.zeros(n, device=self.device)
         defaults['goal_prev']=torch.zeros(n,dtype=torch.bool,device=self.device)
         defaults['kp']=self._rand((n,),*_get(self.config,'dm_rand_config.kp_range',[.75,1.25])) if _get(self.config,'dm_rand_config.enable_pd',True) else torch.ones(n,device=self.device)
         defaults['kd']=self._rand((n,),*_get(self.config,'dm_rand_config.kd_range',[.75,1.25])) if _get(self.config,'dm_rand_config.enable_pd',True) else torch.ones(n,device=self.device)
@@ -2040,6 +2052,12 @@ class CATTask:
             keep=(~stalled).float()
             scaled={k:torch.where(v>0,v*keep,v) for k,v in scaled.items()}
             self.telemetry['passage_stalled']=stalled.float()
+        if self.refusal_training:
+            from .refusal_training import apply_terms
+            stalled = i['refusal_clock_s'] >= self.refusal_training['gate_s']
+            apply_terms(scaled, self.refusal_passages[self.scene_ids] & self.track_info['route_moving'],
+                        stalled, i['refusal_travel_m'], self.dt,
+                        self.refusal_training['clearance_reference_speed_mps'])
         clearance=scaled['wholebody_hand_clearance']*self.dt
         if self.config.get('standing_contact_control') and 'reactive_power' in scaled:
             # Keep the price visible even at transitions where native reward clipping fires.
@@ -2197,6 +2215,8 @@ class CATTask:
     def step(self,action,*,position_targets=None):
         if action.shape!=(self.num_envs,29):raise ValueError('Expected [num_envs,29] actions')
         ids=self.all_ids;i=self.info;d=self.data
+        if self.refusal_training:
+            previous_xy = d.qpos[:, :2].clone()
         style_now=self._style_features() if getattr(self,'style_prior',None) is not None else None
         if self.config.get('teleop') and getattr(self,'joystick_mask',None) is not None:
             self._teleop_resample()
@@ -2355,6 +2375,14 @@ class CATTask:
         i['last_last_act']=i['last_act'].clone();i['last_act']=action.clone()
         self._observe(ids,contacts[:,:2])
         terminated,faults=self._termination(regions,contacts)
+        if self.refusal_training:
+            from .refusal_training import advance_clock
+            moving_route = (self.track_info['route_moving'] & ~self.episode['goal_reached']
+                            & ~self.episode['obstacle'] & (i['step'] > 50))
+            i['refusal_progress_m'], i['refusal_clock_s'] = advance_clock(
+                i['refusal_progress_m'], i['refusal_clock_s'], moving_route,
+                self.track_info['route_advance'], self.dt, self.refusal_training['progress_m'])
+            i['refusal_travel_m'] = torch.linalg.vector_norm(d.qpos[:, :2] - previous_xy, dim=-1)
         reward,components=self._rewards(action,contacts)
         penalty=-float(_get(self.config,'wholebody.body_collision.event_penalty',1.))*regions.any(-1)
         if getattr(self,'_soft_contact',None) is not None:
@@ -2388,6 +2416,15 @@ class CATTask:
             plane_=self.bank.crossed_is_plane[self.scene_ids]
             i['ground_goal_steps']=torch.where(self.episode['goal_reached']&plane_,i['ground_goal_steps']+1,0)
             timeout=timeout|(i['ground_goal_steps']*self.dt>=float(ground['hold_seconds']))
+        if self.refusal_training:
+            from .refusal_training import refusal_failure
+            failed = refusal_failure(moving_route, i['refusal_clock_s'], timeout, terminated,
+                                     self.episode['obstacle'], self.episode['fall'], self.episode['goal_reached'],
+                                     self.refusal_training['timeout_s'])
+            refusal_cost = -self.refusal_timeout_cost * failed.float()
+            reward += refusal_cost
+            components['refusal_timeout_event'] = refusal_cost
+            terminated = terminated | failed
         if self.config.get('timeout_failure'):
             # A CAT-type episode that runs out of time without reaching the goal is a FAILURE (terminal, no bootstrap):
             # the task is "cross within the time limit" (Pardo et al. 2018). Bootstrapping it valued refusing as if the
