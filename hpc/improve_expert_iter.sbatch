@@ -33,4 +33,16 @@ if [[ ! -f $D/train/DONE ]]; then
   touch "$D/train/DONE"
 fi
 .venv-mjlab/bin/python scripts/planner_eval.py --data "$D/all" --checkpoint "$D/train/planner.pt" --out "$D/eval" --save-plans 0 || true
+# Frozen COMBO_FIX seed 0 tracker with the new planner: 384 scenes (2 speeds), then the 72 held-out layouts (3 speeds).
+AID=$SLURM_JOB_ID; T=$L/runs/stationary_hands_20261113_COMBO_FIX/run/resume.pt; E4=$HOME/cat_worktrees/energy_overnight_38b62ce/inputs/planning_v1
+O=$L/runs/improve_ei1_seed0_$AID; mkdir -p "$O"
+echo "== eval 384 at $(date -Is) -> $O"
+.venv-mjlab/bin/python -u scripts/eval_per_scene.py "$T" --bank data/furniture/tablegap_v1 --subset-fields \
+  --scenes "@$HOME/jobs/retention_scenes_20261114.txt" --episodes 2 --num-envs 1536 --max-steps 21000 --nominal \
+  --operator-speeds .15 .3 --tracker-mix plan=1 --planner-checkpoint "$D/train/planner.pt" --out-dir "$O" > "$O/evaluation.log" 2>&1
+O=$L/runs/improve_ei1_E4_seed0_$AID; mkdir -p "$O"
+echo "== eval E4 at $(date -Is) -> $O"
+.venv-mjlab/bin/python -u scripts/eval_per_scene.py "$T" --bank "$E4" --scenes "@${E4}_packed/scene_ids.txt" \
+  --goal-seed-cache "${E4}_goal" --planning-benchmark --episodes 2 --num-envs 432 --nominal --max-steps 14500 \
+  --operator-speeds .15 .3 .5 --tracker-mix plan=1 --planner-checkpoint "$D/train/planner.pt" --out-dir "$O" > "$O/evaluation.log" 2>&1
 echo "== EXPERT ITERATION DONE at $(date -Is)" | tee -a "$D/run_info.txt"
