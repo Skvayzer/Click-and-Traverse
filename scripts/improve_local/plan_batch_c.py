@@ -48,6 +48,8 @@ def main():
     # (added 02:45 after the seed-0 no-reference result, before any other batch B result): replicate it on seeds 1-2
     for seed, ck in SEEDS.items():
         big.append(f"none_seed{seed}|{ck}|--tracker-mix none=1")
+    if EI.exists():   # I5 pilot: frozen seed-0 tracker with the expert-iteration planner (03:20 addition)
+        big.append(f"ei1_seed0|{S0}|--tracker-mix plan=1 --planner-checkpoint {EI}")
     big.append(f"arb_vsafe_k4_seed0|{S0}|{ARGS['vsafe_k4']} --plan-arbitrate {delta}")
     big.append(f"arb0_clear_k4_seed0|{S0}|--tracker-mix plan=1 --plan-select clear --plan-arbitrate 0")
     if passing:
@@ -63,6 +65,8 @@ def main():
     # held-out E4 layouts (seed 0): the same-code control and the no-reference mode
     out.append(f"E4:ctrl_k4_seed0|{S0}|--tracker-mix plan=1")
     out.append(f"E4:none_seed0|{S0}|--tracker-mix none=1")
+    if EI.exists():
+        out.append(f"E4:ei1_seed0|{S0}|--tracker-mix plan=1 --planner-checkpoint {EI}")
     print(json.dumps(notes), file=sys.stderr)
     print("\n".join(out))
 

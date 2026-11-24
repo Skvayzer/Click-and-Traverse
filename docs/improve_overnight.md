@@ -107,6 +107,21 @@ Batch C rule change (02:45, before any other batch B result was read): the no-re
 and value arbitration at δ = 0 ("follow the plan only when the critic prefers it to no reference", ~70% of replans rejected
 in the smoke) is added; at most 5 full runs plus 2 E4 runs fit in GPU memory, so lower-priority runs are deferred.
 
+### E2 seed 0 — refusal-pricing fine-tune (322679_0, 03:20)
+
+150 updates from COMBO_FIX seed 0 with `--refusal-training`, then the standard 384-scene evaluation (cluster, same lineage as
+315810). Scene-bootstrap 95% intervals.
+
+| Speed | clean | contact | refused | hands |
+| --- | --- | --- | --- | --- |
+| 0.15 | 59.77 → 60.55, +0.78 [−1.82, +3.39] | 30.08 → 31.64, +1.56 [−1.56, +4.56] | 10.03 → 7.55, −2.47 [−4.30, −0.78] | 2.60 → 1.82 |
+| 0.30 | 61.59 → 62.24, +0.65 [−1.82, +3.12] | 25.52 → 27.08, +1.56 [−1.17, +4.43] | 12.37 → 10.55, −1.82 [−4.04, +0.39] | 2.34 → 2.34 |
+
+Pre-registered prediction (≥ 2 pp clean, ≥ 2 pp fewer refusals, no more contact at either speed): **not met** — refusals
+fall, but as with the E1 recovery rules they turn mostly into CAT-course contacts (contact 64 → 73% at 0.15) rather than clean
+passes; side gaps gain +10 pp clean at 0.15 [+1.2, +20.0]. By the seed-0 pilot rule, E2 seeds 1–2, E4 and plan-blind runs
+are not spent. Checkpoint: `/l/users/konstantin.smirnov/runs/stationary_hands_20261113_overnight_E2_seed0_322679/run/resume.pt`.
+
 ## Run ledger
 
 | Id | Variant | Seed | Where | Output |
