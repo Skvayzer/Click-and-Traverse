@@ -381,3 +381,16 @@ Both planner conditions matched the initial-state hash of the two frozen baselin
 | Reflex on − Reflex off | 0.5 / u-trap | -2.08 [-12.50, +8.33] | +0.00 [-10.42, +10.42] | +2.08 [+0.00, +6.25] | +2.08 [+0.00, +6.25] | — | — |
 
 At 06:02 Dubai, the pending E0 seed 1 audit also moved to dep-1. Its exact warm-trained COMBO_FIX weights were copied from 318295_0, and the matching audit output is `~/robotics/cat-energy-local-runs/overnight_E0_baseline_seed1_local_1bc21af`. Only 319388_1 was canceled. Slurm E1's six remaining tasks now wait on `319388_2`, the single remaining remote audit. The pending E4 plan-only seed 0 evaluation moved from 319449_0 to `~/robotics/cat-energy-local-runs/overnight_E4_plan_only_seed0_local_ac58626`. Seeds 1 and 2 remain on gpu. Both local runs queue behind the active E1 combined variant on the single-GPU lock.
+
+### E1 complete three-variant pilot, seed 0
+
+The combined fallback and clearance filter increased clean traversal by 3.26 pp at 0.15 m/s with a lower contact point estimate. At 0.30 m/s it reduced refusal by 5.47 pp and increased contacts by 3.91 pp. All three E1 variants raised the faster command's mean contact rate on seed 0. This strengthens the motivation to test the conditional reward intervention. The two remaining seed pairs determine whether any frozen variant passes the joint criterion.
+
+| Case | Speed / family | clean | contact | refused | hands |
+| --- | --- | ---: | ---: | ---: | ---: |
+| COMBO_FIX | 0.15 | 59.77 | 30.08 | 10.03 | 2.60 |
+| Fallback and clearance filter | 0.15 | 63.02 | 28.39 | 8.07 | 2.86 |
+| Fallback and clearance filter − COMBO_FIX | 0.15 | +3.26 [+0.91, +5.86] | -1.69 [-4.95, +1.56] | -1.95 [-4.56, +0.65] | +0.26 [-1.30, +1.82] |
+| COMBO_FIX | 0.3 | 61.59 | 25.52 | 12.37 | 2.34 |
+| Fallback and clearance filter | 0.3 | 63.54 | 29.43 | 6.90 | 3.26 |
+| Fallback and clearance filter − COMBO_FIX | 0.3 | +1.95 [-0.78, +4.56] | +3.91 [+0.78, +7.29] | -5.47 [-8.20, -2.86] | +0.91 [-0.39, +2.21] |
