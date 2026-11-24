@@ -54,8 +54,12 @@ def err(est):
 # ------------------------------------------------------------------------------------------------ F1 scatter
 def fig_scatter(R, out, speeds=("0.3",)):
     for sp in speeds:
-        fig, axes = plt.subplots(1, 2, figsize=(TEXT, 2.6))
-        for ax, (key, title) in zip(axes, (("narrow", f"Narrow scenes, 384 scenes, {sp} m/s"), ("e4", f"Held-out layouts, 72 layouts, {sp} m/s"))):
+        only_e4 = sp not in R["narrow"]
+        fig, axes = plt.subplots(1, 1 if only_e4 else 2, figsize=(TEXT / (1.9 if only_e4 else 1), 2.6), squeeze=False)
+        axes = axes[0]
+        pairs = ((("e4", f"Held-out layouts, 72 layouts, {sp} m/s"),) if only_e4 else
+                 (("narrow", f"Narrow scenes, 384 scenes, {sp} m/s"), ("e4", f"Held-out layouts, 72 layouts, {sp} m/s")))
+        for ax, (key, title) in zip(axes, pairs):
             e = R[key].get(sp)
             if not e:
                 continue
@@ -69,7 +73,9 @@ def fig_scatter(R, out, speeds=("0.3",)):
             ax.set_xlabel("any contact (% of episodes)"); ax.set_ylabel("clean traversal (% of episodes)")
             ax.set_xlim(-3, 103); ax.set_ylim(-3, 103); ax.grid(color=GRID, lw=.4)
             ax.text(.5, 1.02, title, transform=ax.transAxes, ha="center", va="bottom", fontsize=8)
-        panel(axes[0], "a"); panel(axes[1], "b")
+        panel(axes[0], "a")
+        if not only_e4:
+            panel(axes[1], "b")
         handles = [Line2D([], [], marker=STYLE[n][1], color=STYLE[n][0], mfc=STYLE[n][0] if STYLE[n][2] else "white", ls="none", ms=5, mew=1.1, label=n)
                    for n in STYLE if any(n in R[k].get(sp, {}).get("policies", {}) for k in ("narrow", "e4"))]
         fig.legend(handles=handles, loc="lower center", ncol=4, frameon=False, bbox_to_anchor=(.5, -.12), columnspacing=1.2, handletextpad=.3)
@@ -279,7 +285,7 @@ def main():
     p.add_argument("--out", type=Path, required=True)
     a = p.parse_args()
     R = json.loads(a.data.read_text())
-    fig_scatter(R, a.out, ("0.3", "0.15"))
+    fig_scatter(R, a.out, ("0.3", "0.15", "0.5"))
     fig_families(R, a.out)
     fig_refusal(R, a.out)
     fig_energy(R, a.out)
