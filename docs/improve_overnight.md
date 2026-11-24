@@ -84,6 +84,29 @@ K=4 and of the default clearest rule; (2) seeds 1–2 for the passing variant wi
 variant passes the pilot gate); (3) E4 held-out seed-0 runs for the same-code control and that variant; (4) if the expert-
 iteration planner is ready, the seed-1 and seed-2 trackers with it (seed 0 runs on the cluster in 322842).
 
+## Results
+
+### I4 seed 0 — the planner–reflex network without any reference (02:45)
+
+`--tracker-mix none=1` on COMBO_FIX seed 0 (`0772f2b`, dep-1), against the original seed-0 evaluation 315810 (cluster, older
+code; the same-code control from batch B follows). Scene-bootstrap 95% intervals, pp.
+
+| Speed | clean | contact | refused | hands |
+| --- | --- | --- | --- | --- |
+| 0.15 | 59.77 → 64.84, +5.08 [+2.73, +7.55] | 30.08 → 26.82, −3.26 [−6.51, 0.00] | 10.03 → 8.07, −1.95 [−4.43, +0.39] | 2.60 → 2.99 |
+| 0.30 | 61.59 → 63.80, +2.21 [−0.39, +4.82] | 25.52 → 29.43, +3.91 [+0.78, +7.16] | 12.37 → 6.64, −5.73 [−8.46, −2.99] | 2.34 → 2.99 |
+
+Against reactive V7r (314948) the no-reference mode gains +5.86 [+2.47, +9.38] clean and −9.24 [−12.89, −5.60] contact at
+0.15, and +0.91 [−2.47, +4.30] clean, −3.12 [−6.51, +0.26] contact at 0.30. By group, it raises clean traversal in cabinets
+(81 → 87/89%) and furniture rooms and lowers contact there; in CAT courses and side gaps it converts plan-mode refusals into
+contacts (at 0.30: CAT contact 58 → 73%, side gaps 39 → 58%). The best-of-both oracle per scene reaches 67–68% clean.
+Reading: training with planner references (and 25% reference-free worlds) produced a better reactive policy than V7r; at
+inference the plan helps mainly by making the robot stop in front of passages it would otherwise hit. Seed 0 only.
+
+Batch C rule change (02:45, before any other batch B result was read): the no-reference mode gets seeds 1–2 and an E4 run,
+and value arbitration at δ = 0 ("follow the plan only when the critic prefers it to no reference", ~70% of replans rejected
+in the smoke) is added; at most 5 full runs plus 2 E4 runs fit in GPU memory, so lower-priority runs are deferred.
+
 ## Run ledger
 
 | Id | Variant | Seed | Where | Output |

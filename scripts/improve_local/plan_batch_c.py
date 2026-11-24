@@ -44,20 +44,25 @@ def main():
     q = summary("vsafe_k4", "0.3")["plan_value"]["gain_quantiles"]
     delta = q[1]
     notes["arbitrate_delta"] = delta
-    out.append(f"arb_vsafe_k4_seed0|{S0}|{ARGS['vsafe_k4']} --plan-arbitrate {delta}")
-    out.append(f"arb_clear_k4_seed0|{S0}|--tracker-mix plan=1 --plan-select clear --plan-arbitrate {delta}")
+    big = []   # at most 5 full 384-scene runs fit in 48 GB next to the two E4 runs (~6.7 GB each with --subset-fields)
+    # (added 02:45 after the seed-0 no-reference result, before any other batch B result): replicate it on seeds 1-2
+    for seed, ck in SEEDS.items():
+        big.append(f"none_seed{seed}|{ck}|--tracker-mix none=1")
+    big.append(f"arb_vsafe_k4_seed0|{S0}|{ARGS['vsafe_k4']} --plan-arbitrate {delta}")
+    big.append(f"arb0_clear_k4_seed0|{S0}|--tracker-mix plan=1 --plan-select clear --plan-arbitrate 0")
     if passing:
         best = max(passing)[1]
         notes["best"] = best
         for seed, ck in SEEDS.items():
-            out.append(f"{best}_seed{seed}|{ck}|{ARGS[best]}")
-    # held-out E4 layouts (seed 0): the same-code control and the best variant
-    out.append(f"E4:ctrl_k4_seed0|{S0}|--tracker-mix plan=1")
-    if passing:
-        out.append(f"E4:{best}_seed0|{S0}|{ARGS[best]}")
+            big.append(f"{best}_seed{seed}|{ck}|{ARGS[best]}")
     if EI.exists():
         for seed, ck in SEEDS.items():
-            out.append(f"ei1_seed{seed}|{ck}|--tracker-mix plan=1 --planner-checkpoint {EI}")
+            big.append(f"ei1_seed{seed}|{ck}|--tracker-mix plan=1 --planner-checkpoint {EI}")
+    notes["deferred"] = big[5:]
+    out += big[:5]
+    # held-out E4 layouts (seed 0): the same-code control and the no-reference mode
+    out.append(f"E4:ctrl_k4_seed0|{S0}|--tracker-mix plan=1")
+    out.append(f"E4:none_seed0|{S0}|--tracker-mix none=1")
     print(json.dumps(notes), file=sys.stderr)
     print("\n".join(out))
 
