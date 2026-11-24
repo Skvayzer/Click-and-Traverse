@@ -14,11 +14,12 @@ The wrapper forwards every other attribute to the wrapped CATTask, so the native
 from __future__ import annotations
 
 import copy
+import os
 from pathlib import Path
 
 import torch
 
-SONIC_DIR = Path("/home/konstantinsmirnov/robotics/sonic/hf_gear_sonic")
+SONIC_DIR = Path(os.environ.get("SONIC_DIR", "/home/konstantinsmirnov/robotics/sonic/hf_gear_sonic"))
 ARM_JOINTS = tuple(range(15, 29))
 # Terms kept from the COMBO_FIX reward: potential-field guidance/clearance, contact and clearance costs, progress
 # (route tracking, goal progress/bonus, stall), the speed gate, uprightness, joint limits and residual smoothness.
