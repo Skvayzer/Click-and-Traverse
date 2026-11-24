@@ -575,3 +575,18 @@ BRACE smoke 319455 failed before inference. A separate process occupied 24.60 Gi
 | 320528 → 320529 | BRACE smoke, then 384 scenes | ws-ia, after 319389_5 | 1 GPU, 8 CPUs, 40000 MB | 30 min / 3 h limits; 3–8 min / 1–2 h estimates | `overnight_E6_BRACE_smoke_320528`, `overnight_E6_BRACE_384_320529` |
 
 After 319389_4, the existing E5 plan-only array 319436 now runs one task at a time, followed by 319438 then 319439. The second chain runs 319437 after the BRACE 384 job terminates. Both chains together reserve at most two concurrent ws-ia jobs. E1's combined variant remains on dep-1. Standing 319350_0 completed 150 updates and its seed-2 arm×30 eval, with 26.15% of worlds moving feet and 17.07% of threatened events classified as failures. Its matched arm×1 control 319350_1 started on gpu-02 at approximately 08:42 Dubai. A cross-seed effect awaits that control.
+
+### E6 additional release checks
+
+Release check on 2026-11-24. The closest navigation systems below would require their missing trained components. BRACE is the released reference-tracking control evaluated with our common planner. The other available G1 weights cover distinct command interfaces and are documented here for future matched comparisons.
+
+| Candidate | Release evidence and scope |
+| --- | --- |
+| Gallant | The official repository contains the voxel-grid training code and lists evaluation scripts as forthcoming. Its complete main tree and release list contain no policy weight files. [Project](https://gallantloco.github.io/), [code](https://github.com/Sage-PhysicalAI/Gallant) |
+| LP-NavOA | The authors publish an mjlab fork for limited-perception goal recovery and obstacle bypass. The evaluation command expects trained local planner and locomotion-backbone files. Its complete main tree and release list contain neither. [Project](https://shenqiqishi.github.io/LP-NavOA/), [code](https://github.com/shenqiqishi/LP-NavOA-code) |
+| Moving Through Clutter | The paper reports a Unitree G1 generalist and a new benchmark. The paper and coauthor's publication page link the paper and video. No downloadable generalist weights or evaluation bundle were located in those sources. [Paper](https://arxiv.org/html/2609.21107v1), [coauthor publications](https://people.cs.gmu.edu/~xiao/) |
+| REACH | The G1 crawling project lists code as forthcoming. Its height controller, transition policy and lidar planner are unavailable through the project page. [Project](https://aislab-sustech.github.io/REACH/) |
+| NEXUS | A 29-joint fixed-batch ONNX tracker and inference config are available. The checkpoint requires time-aligned reference motion and processed depth. The release targets terrain-adaptive motion tracking and does not supply a sparse-goal navigation planner. [Release and interface](https://gamma-robot.github.io/NEXUS/guides/pretrained-model.html) |
+| Perceptive Humanoid Parkour | Public depth-backbone and locomotion-student ONNX files include a MuJoCo path with direction commands, D435i depth and a separate G1 collision model. The released student takes a direction command for parkour. The release provides no sparse-goal indoor navigation layer. A matched comparison would need the calibrated depth pipeline and a shared way of supplying course directions. [Student release](https://github.com/amazon-far/php_parkour/releases/tag/student-assets-v1), [deployment](https://github.com/amazon-far/php_parkour/blob/main/wbt_training/DEPLOY.md) |
+
+The focused CPU suite now passes all 34 selected planner, blind-obstacle, energy, inverse-dynamics and refusal-training tests on the current training branch.
