@@ -193,16 +193,26 @@ At 0.30 m/s, the lower refusal rate came with 3.39 pp more contact, so fallback 
 
 E0 seed 0 moved to dep-1 using the identical one-episode audit protocol and deployment `1bc21af`. Only our pending `319388_0` was canceled. The six remaining E1 tasks now depend on `319388_1` and `319388_2` individually, and Slurm confirmed the revised dependencies. The local GPU lock queues the audit behind existing local work. Its output is `~/robotics/cat-energy-local-runs/overnight_E0_baseline_seed0_local_1bc21af`.
 
-### E3 static-obstacle pilot, seed 0
+### E3 complete four-protocol pilot, seed 0
 
-Both runs completed 768 episodes per speed using the same obstacle schedule and validated matching initial state. Reflex-on ran on dep-1, and reflex-off ran on ws-ia. These intervals resample paired scenes for this seed, so they quantify scene variation while the two remaining seed pairs are pending.
+Both runs completed 768 episodes per protocol using the same obstacle schedule and validated matching initial state. Reflex-on ran on dep-1, and reflex-off ran on ws-ia. These intervals resample paired scenes for this seed. The other two seed pairs still run.
 
-| Command (m/s) | Clean, on − off | Contact, on − off | Refused, on − off | All hand contact, on − off | Inserted hand contact, on − off |
-| --- | ---: | ---: | ---: | ---: | ---: |
-| 0.15 | -1.30 [-4.17, +1.43] | -3.12 [-6.64, +0.39] | +4.43 [+2.08, +6.77] | -2.21 [-5.08, +0.52] | -1.30 [-3.91, +1.17] |
-| 0.30 | -0.39 [-3.26, +2.47] | -1.82 [-5.47, +1.82] | +1.95 [-0.52, +4.56] | -0.91 [-3.52, +1.69] | -2.08 [-4.30, +0.13] |
+| Case | Speed / family | clean | contact | refused | hands | inserted_hand_contact | inserted_revealed |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Reflex off | static_0.15 | 32.42 | 60.16 | 7.29 | 21.35 | 18.10 | 98.57 |
+| Reflex on | static_0.15 | 31.12 | 57.03 | 11.72 | 19.14 | 16.80 | 98.96 |
+| Reflex on − Reflex off | static_0.15 | -1.30 [-4.17, +1.43] | -3.12 [-6.64, +0.39] | +4.43 [+2.08, +6.77] | -2.21 [-5.08, +0.52] | -1.30 [-3.91, +1.17] | +0.39 [+0.00, +0.91] |
+| Reflex off | static_0.3 | 34.51 | 55.47 | 9.90 | 13.02 | 10.42 | 98.70 |
+| Reflex on | static_0.3 | 34.11 | 53.65 | 11.85 | 12.11 | 8.33 | 98.83 |
+| Reflex on − Reflex off | static_0.3 | -0.39 [-3.26, +2.47] | -1.82 [-5.47, +1.82] | +1.95 [-0.52, +4.56] | -0.91 [-3.52, +1.69] | -2.08 [-4.30, +0.13] | +0.13 [+0.00, +0.39] |
+| Reflex off | moving_0.15 | 32.55 | 59.24 | 8.07 | 12.50 | 9.11 | 98.57 |
+| Reflex on | moving_0.15 | 31.38 | 56.38 | 12.11 | 12.63 | 10.29 | 98.96 |
+| Reflex on − Reflex off | moving_0.15 | -1.17 [-3.91, +1.56] | -2.86 [-6.25, +0.52] | +4.04 [+1.95, +6.12] | +0.13 [-2.47, +2.73] | +1.17 [-1.17, +3.52] | +0.39 [+0.00, +0.91] |
+| Reflex off | moving_0.3 | 34.51 | 55.73 | 9.64 | 13.02 | 8.46 | 98.57 |
+| Reflex on | moving_0.3 | 34.24 | 54.04 | 11.72 | 10.16 | 7.29 | 98.70 |
+| Reflex on − Reflex off | moving_0.3 | -0.26 [-3.12, +2.47] | -1.69 [-4.95, +1.69] | +2.08 [-0.13, +4.17] | -2.86 [-5.47, -0.26] | -1.17 [-3.39, +1.04] | +0.13 [-0.26, +0.65] |
 
-The first seed points to lower collision rates and higher refusal rates. Exposure remained above 98.5% in both conditions. Neither static speed passes the joint clean/contact criterion on this seed.
+Across all four protocols, contact fell by 1.69 to 3.12 pp and clean traversal fell by 0.26 to 1.30 pp. Refusals rose by 1.95 to 4.43 pp. The inserted object's hand contact fell in three protocols and rose in the slower moving case. All four inserted-hand-contact intervals cross zero. Exposure was above 98.5% in each condition. Plots or video examples of avoidance should retain this trade-off.
 
 ### E4 first planner seed versus V7r
 
