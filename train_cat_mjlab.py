@@ -418,6 +418,13 @@ def parser():
         target.add_argument("--body-collision-bank", type=Path, required=True)
         target.add_argument("--body-collision-resets", type=Path, required=True)
         target.add_argument("--run-dir", type=Path, required=True)
+        target.add_argument("--sonic-residual", choices=("whole", "arms"),
+                            help="Residual policy on frozen GEAR-SONIC (cat_mjlab/sonic_residual.py); needs --from-scratch")
+        target.add_argument("--sonic-env-from", type=Path, help="Checkpoint whose environment the residual trains in")
+        target.add_argument("--sonic-residual-scale", type=float, default=.3, help="Residual limit in rad")
+        target.add_argument("--sonic-residual-penalty", type=float, default=1., help="Cost per rad^2 of residual")
+        target.add_argument("--sonic-generator-sessions", type=int, default=4)
+        target.add_argument("--sonic-generator-threads", type=int, default=2)
         target.add_argument("--batch-size", type=int)
         target.add_argument("--num-minibatches", type=int,
                             help="Override learner minibatch count; default inherited from checkpoint")

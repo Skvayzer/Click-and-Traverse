@@ -31,7 +31,7 @@ SONIC = Path("/home/konstantinsmirnov/robotics/sonic/hf_gear_sonic")
 SAMPLE = Path("/home/konstantinsmirnov/robotics/sonic/hf_sample/walk_A001.npz")
 
 
-def build(checkpoint, speed, *, plan):
+def build(checkpoint, speed, *, plan, mix=None):
     from cat_mjlab.runner import create_task
     from cat_mjlab.sim_cpu import CPUSimulation
     from eval_per_scene import benchmark_start
@@ -42,7 +42,10 @@ def build(checkpoint, speed, *, plan):
         env.pop(key, None)
     env["push_config"]["enable"] = False
     env["dm_rand_config"]["enable_pd"] = False
-    if plan:
+    if mix is not None:
+        env["tracker"]["mix"] = [[mix, 1.]]
+        env["tracker"]["planner"]["path"] = str(PLANNER)
+    elif plan:
         env["tracker"]["mix"] = [["plan", 1.]]
         env["tracker"]["planner"]["path"] = str(PLANNER)
     env["goal_seed"]["cache"] = str(BANK) + "_goal"
@@ -244,9 +247,56 @@ def plan(a, ours=False):
     return result
 
 
+GENERATOR = SONIC / "planner_sonic.onnx"
+
+
+def loco(a):
+    """G1: SONIC driven by its own released locomotion generator along our field guidance route (flat scene)."""
+    from cat_mjlab.sonic_locomotion import SonicGenerator, route_command
+
+    steps = int(round(a.seconds / .02))
+    task, scene, start = build(COMBO, a.speed, plan=False, mix="field")
+    task.reset(scene_ids=scene, **start)
+    if a.no_noise:
+        task.info["rfi"].zero_()
+    speed = None if a.operator_command else a.speed
+    gen = SonicGenerator(task, GENERATOR, lambda ids: route_command(task, speed=speed), sessions=1, threads=4)
+    tracker = sonic(task, reference=gen.reference)
+    feet = [task.model.body(f"{side}_ankle_roll_link").id for side in ("left", "right")]
+    t = task.tracker
+    first = task.data.qpos[0, :2].clone()
+    errors, foot_z, speeds, gen_err = [], [], [], []
+    fall_step = None
+    for step in range(steps):
+        action, target = tracker()
+        out = task.step(action, position_targets=target)
+        q = task.data.qpos[0]
+        if fell(task) or bool(out["done"][0]):
+            fall_step = step + 1
+            break
+        _, dist = t.project(task.all_ids, q[None, :2])
+        errors.append(float(dist[0]))
+        gen_err.append(float(torch.linalg.vector_norm(q[:2] - tracker.ref_pose[0, :2])))
+        foot_z.append(task.data.xpos[0, feet, 2].clone())
+        speeds.append(float(torch.linalg.vector_norm(task.info["command"][0, 1:3])))
+    z = torch.stack(foot_z); base = z.quantile(.05, dim=0)
+    settled = errors[100:] if len(errors) > 150 else errors
+    result = dict(gate="SONIC generator along guidance route, flat", speed=a.speed, seconds=len(errors) * .02,
+                  fell_at_step=fall_step, net_travel_m=float(torch.linalg.vector_norm(task.data.qpos[0, :2] - first)),
+                  mean_speed_m_s=float(torch.linalg.vector_norm(task.data.qpos[0, :2] - first)) / max(len(errors) * .02, 1e-6),
+                  route_err_median_m=float(np.median(settled)), route_err_p90_m=float(np.quantile(settled, .9)),
+                  route_err_max_m=float(np.max(errors)), generator_ref_err_median_m=float(np.median(gen_err)),
+                  foot_lift_p95_m=(z.quantile(.95, dim=0) - base).tolist(), foot_lift_max_m=(z.max(0).values - base).tolist(),
+                  commanded_speed_median=float(np.median(speeds)), generator_calls=gen.calls,
+                  operator_command=bool(a.operator_command), torque_noise=not a.no_noise)
+    result["pass"] = bool(fall_step is None and result["route_err_median_m"] <= .10)
+    return result
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__)
-    p.add_argument("gate", choices=("replay", "plan", "sample", "plan_ours"))
+    p.add_argument("gate", choices=("replay", "plan", "sample", "plan_ours", "loco"))
+    p.add_argument("--operator-command", action="store_true", help="loco: speed from the operator command, not --speed")
     p.add_argument("--variant", choices=("default", "v1_1"), default="default")
     p.add_argument("--ankle-gain", type=float, default=1.)
     p.add_argument("--no-noise", action="store_true", help="zero the harness's random torque injection")
@@ -258,7 +308,7 @@ def main():
     a = p.parse_args()
     torch.set_num_threads(2)
     OPTIONS.update(variant=a.variant, ankle_gain=a.ankle_gain, torque_limits=a.torque_limits)
-    result = dict(replay=replay, plan=plan, sample=sample, plan_ours=lambda a: plan(a, ours=True))[a.gate](a)
+    result = dict(replay=replay, plan=plan, sample=sample, plan_ours=lambda a: plan(a, ours=True), loco=loco)[a.gate](a)
     result.update(variant=a.variant, ankle_gain=a.ankle_gain, torque_limits=a.torque_limits)
     text = json.dumps(result, indent=1)
     print("SONIC_GATE " + json.dumps(result), flush=True)

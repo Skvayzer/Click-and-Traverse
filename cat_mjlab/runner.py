@@ -1350,12 +1350,25 @@ def run(args):
         config = learner_config_from_archive(metadata, algorithm=args.algorithm)
         source = metadata.get("contract", {})
         config_source = environment_config_from_archive(metadata)
+    sonic_mode = getattr(args, "sonic_residual", None)
+    if sonic_mode:
+        # SONIC + residual reflex: environment from a COMBO_FIX checkpoint (field-route references, nominal physics,
+        # gait shaping removed); residual policy from scratch (cat_mjlab/sonic_residual.py).
+        from .sonic_residual import residual_environment
+        if not from_scratch or args.sonic_env_from is None:
+            raise ValueError("--sonic-residual trains from scratch (--from-scratch) in --sonic-env-from's environment")
+        contract_env = torch.load(args.sonic_env_from, map_location="cpu", weights_only=True, mmap=True)["contract"][
+            "environment_config"]
+        config_source, removed_terms = residual_environment(contract_env, args.tracker_planner)
+        print("SONIC residual: reward terms removed " + json.dumps(removed_terms), flush=True)
     from .observation_contract import ACTOR_SIZE, CRITIC_SIZE, actor_size, critic_size
     tracker = bool(tracker_spec(args) or (config_source or {}).get('tracker'))
     sdf_rate = bool(getattr(args, 'sdf_rate_obs', None) if getattr(args, 'sdf_rate_obs', None) is not None
                     else (config_source or {}).get('sdf_rate_obs', False))
     cadence = bool(getattr(args, 'cadence', None) or (config_source or {}).get('cadence'))
     sizes = (actor_size(sdf_rate, tracker, cadence), critic_size(tracker, cadence))
+    if sonic_mode:
+        sizes = (sizes[0] + 29, sizes[1] + 29)          # + SONIC's current raw action
     if (config.actor_obs, config.critic_obs) != sizes:
         config = replace(config, actor_obs=sizes[0], critic_obs=sizes[1])
     if getattr(args, 'lipschitz', None) is not None:
@@ -1412,6 +1425,15 @@ def run(args):
         if getattr(args, "init_action_std_arms", None) is not None:
             migration["initial_action_std_arms"] = args.init_action_std_arms
     task, sim, environment_config = create_task(args, environment_config=config_source)
+    if sonic_mode:
+        from .sonic_residual import SonicResidualTask, zero_residual_mean
+        task = SonicResidualTask(task, mode=sonic_mode, scale=args.sonic_residual_scale,
+                                 penalty=args.sonic_residual_penalty, sessions=args.sonic_generator_sessions,
+                                 threads=args.sonic_generator_threads, provider="cuda" if "cuda" in str(args.device) else "cpu")
+        if not args.resume:
+            zero_residual_mean(learner)
+        migration["sonic_residual"] = dict(mode=sonic_mode, scale=args.sonic_residual_scale,
+                                           penalty=args.sonic_residual_penalty, env_from=str(args.sonic_env_from))
     from .energy import print_motor_weights
     print_motor_weights()
     _configure_reactive(task, args)

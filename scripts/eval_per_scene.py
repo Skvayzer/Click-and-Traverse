@@ -67,6 +67,12 @@ def main():
     p.add_argument("--brace-config", type=Path, help="published BRACE model-sidecar YAML")
     p.add_argument("--brace-robot", type=Path, help="published BRACE G1 MJCF for reference kinematics")
     p.add_argument("--brace-provider", choices=("cuda", "cpu"), default="cuda")
+    p.add_argument("--sonic", action="store_true", help="CHECKPOINT is 'zero' (plain SONIC driven by its generator along "
+                   "the field route) or a SONIC residual policy (cat_mjlab/sonic_residual.py); needs --env-from, "
+                   "--tracker-mix field=1 and --nominal")
+    p.add_argument("--sonic-residual-mode", choices=("whole", "arms"), default="whole")
+    p.add_argument("--sonic-residual-scale", type=float, default=.3)
+    p.add_argument("--sonic-generator-sessions", type=int, default=8)
     p.add_argument("--stochastic", action="store_true")
     p.add_argument("--max-steps", type=int, default=40000)
     p.add_argument("--seed", type=int, default=1)
@@ -114,8 +120,11 @@ def main():
     from cat_mjlab.runner import create_task
     dev = "cuda:0"
     archive = str(args.checkpoint).endswith(".npz")
-    brace = str(args.checkpoint).endswith(".onnx")
-    if brace and not (args.env_from and args.brace_config and args.brace_robot and args.tracker_mix == "plan=1"
+    sonic = bool(args.sonic)
+    if sonic and not (args.env_from and args.tracker_mix == "field=1" and args.nominal and not args.stochastic):
+        p.error("SONIC requires --env-from, --tracker-mix field=1 and --nominal")
+    brace = str(args.checkpoint).endswith(".onnx") or sonic
+    if brace and not sonic and not (args.env_from and args.brace_config and args.brace_robot and args.tracker_mix == "plan=1"
                       and args.nominal and not args.stochastic):
         p.error("BRACE requires --env-from, its robot and config, --tracker-mix plan=1 and --nominal")
     if brace and (blind or args.refusal_fix or args.plan_only):
@@ -329,6 +338,11 @@ def main():
         load_array_archive(learner, args.checkpoint, restore_optimizer=False)
         if task.observation_size != learner.model.config.actor_obs:
             raise ValueError(f"task gives {task.observation_size} actor inputs, the archive expects {learner.model.config.actor_obs}")
+    elif sonic:
+        from cat_mjlab.sonic_residual import SonicController
+        residual = None if args.checkpoint == "zero" else load_policy(args.checkpoint, device=dev, policy_id=0)[0]
+        external = SonicController(task, residual=residual, mode=args.sonic_residual_mode, scale=args.sonic_residual_scale,
+                                   sessions=args.sonic_generator_sessions)
     elif brace:
         from cat_mjlab.brace_tracker import BraceTracker
         external = BraceTracker(task, args.checkpoint, args.brace_config, args.brace_robot,
@@ -527,7 +541,8 @@ def main():
                                        target=S * args.episodes, seconds=round(time.time() - start), summary=summary, per_scene=result,
                                        **({"blind_variant": args.blind_variant, "blind_guide": str(args.blind_guide)} if blind else {}),
                                        **({"blind_initial_state_sha256": start_hash} if args.blind_replay_starts else {}),
-                                       **({"external_tracker": "BRACE", "brace_provider": args.brace_provider} if brace else {}),
+                                       **({"external_tracker": "SONIC" if sonic else "BRACE", "brace_provider": args.brace_provider} if brace else {}),
+                                       **({"sonic_residual": args.checkpoint, "sonic_residual_mode": args.sonic_residual_mode} if sonic else {}),
                                        **({"planning_benchmark": True, "plan_only": args.plan_only,
                                            "refusal_fix": args.refusal_fix, "initial_state_sha256": start_hash}
                                           if args.planning_benchmark else {})),
