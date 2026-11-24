@@ -722,3 +722,7 @@ Cluster smoke 320663 completed up to its 500-step budget on ws-l2-012 with the C
 ### E2 launched (Claude, 2026-11-24 12:00 +04)
 
 Gate met: E0 three-seed audit shows the stall balance (goal progress collapses, tracking/posture credit persists), and no E1 variant raised clean traversal without raising contact at both speeds (combined: contact +0.26 pp at 0.15, +2.91 pp at 0.30). Submitted array **320785** (seeds 0–2, `%2`), partition ws-ia,gpu, 1 GPU / 12 CPUs / 54000 MB / 8 h, code f31f3b9 staged at `~/cat_worktrees/energy_overnight_e2_f31f3b9`, script `hpc/overnight_refusal_train.sbatch` (150 updates warm-started from each COMBO_FIX seed, `--refusal-training`, then 384-scene eval at 0.15/0.30 m/s with stall audit). Prediction (pre-registered in E2 protocol): ≥2 pp mean clean gain and ≥2 pp refusal drop with no mean contact increase at either speed. Outputs `overnight_E2_seed{0,1,2}_320785`.
+
+### E2 relaunch (Claude, 2026-11-24 22:12 +04)
+
+Array 320785 failed at startup on all three seeds (FileNotFoundError: `outputs/distill_v1_prep/eval_student_v1_cat.json` missing in the staged clone `energy_overnight_e2_f31f3b9`; the clone's `outputs/distill_v1_prep` had only 3 of 12 files). Copied the missing prep files from `energy_price_3a6f7db/outputs/distill_v1_prep`, linked `narrow_feasibility_sidegap_v2.json`, moved the failed run dirs to `failed_E2_seed{0,1,2}_320785_missingfile`, and resubmitted unchanged as **322679** (ws-ia,gpu; seed 0 started on ws-l4-004 at 22:11).
