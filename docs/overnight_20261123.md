@@ -652,3 +652,18 @@ The E5 reactive job 319437 stopped at its exact guide-match check before issuing
 | 320669 → 320670 | ws-ia, 1 GPU, 12 CPUs, 54000 MB | 2–4 h / 7 h each | After serial array 319436 | `overnight_E5_price_reference_seed0_320669`, `overnight_E5_no_price_seed0_320670` |
 
 The E5 price-reference and price-free cells replace only the two pending tasks 319438 and 319439. They use the frozen COMBO1b and COMBO_NOPRICE checkpoints and all four original obstacle schedules. The replacement state replay uses the same guide tested on the original bands. The schedule preserves the two ws-ia dependency chains.
+
+The dep-1 E5 reactive smoke reached the prescribed initial-state hash for all 768 worlds and ran the planned 30 control steps. The evaluator correctly rejected the short smoke as an incomplete benchmark at 8/768 completed episodes and saved no aggregate scores. The production jobs request 21,000 steps and retain the full-completion guard.
+
+#### E1 combined variant, all three seeds
+
+The combined recovery raised mean clean traversal at both speeds and raised mean contact at both. Its refusal reduction at 0.30 m/s was 4.04 pp [0.92, 7.16 pp reduction]. The faster command also had a 2.91 pp increase in contact [−0.10, +5.91]. The combined variant misses the prespecified gate. The standalone fallback and margin results determine whether E2 launches.
+
+| Case | Speed / family | clean | contact | refused | hands |
+| --- | --- | ---: | ---: | ---: | ---: |
+| COMBO_FIX | 0.15 | 61.07 ± 1.45 | 31.16 ± 0.99 | 7.73 ± 2.08 | 2.60 ± 0.00 |
+| both | 0.15 | 62.02 ± 1.96 | 31.42 ± 3.44 | 6.16 ± 1.70 | 3.12 ± 0.26 |
+| both − COMBO_FIX | 0.15 | +0.95 ± 2.16 [-4.42, +6.33] | +0.26 ± 2.53 [-6.04, +6.56] | -1.56 ± 1.03 [-4.13, +1.00] | +0.52 ± 0.26 [-0.13, +1.17] |
+| COMBO_FIX | 0.3 | 61.85 ± 1.58 | 28.12 ± 3.07 | 9.81 ± 2.26 | 2.86 ± 0.52 |
+| both | 0.3 | 63.06 ± 0.72 | 31.03 ± 1.86 | 5.77 ± 1.17 | 3.17 ± 0.15 |
+| both − COMBO_FIX | 0.3 | +1.22 ± 1.17 [-1.68, +4.11] | +2.91 ± 1.21 [-0.10, +5.91] | -4.04 ± 1.26 [-7.16, -0.92] | +0.30 ± 0.54 [-1.04, +1.65] |
