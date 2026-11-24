@@ -96,6 +96,14 @@ def main():
     guide_mode.add_argument("--blind-guide", type=Path, help="precomputed obstacle schedules shared by all policy checkpoints")
     p.add_argument("--blind-record", type=Path, help="save short traces of both predefined guide episodes")
     p.add_argument("--blind-replay-starts", action="store_true", help="replay guide starts for a checkpoint with a different reset")
+    p.add_argument("--plan-select", choices=("clear", "value", "value_safe"),
+                   help="Planner candidate choice: clearest (training rule), highest tracker critic value, or highest "
+                        "value among candidates with --plan-safe-m body clearance")
+    p.add_argument("--plan-safe-m", type=float, default=.05)
+    p.add_argument("--plan-samples", type=int, help="Planner candidates per replan (training: 4)")
+    p.add_argument("--plan-arbitrate", type=float, metavar="DELTA",
+                   help="Mode arbitration: act without the plan (same network, no reference) for 0.6 s when the chosen "
+                        "plan's critic value is below the no-reference value + DELTA")
     p.add_argument("--out", type=Path)
     p.add_argument("--out-dir", type=Path)
     args = p.parse_args()
@@ -159,6 +167,16 @@ def main():
             env["tracker"]["fallback"] = dict(stall_s=2., until_progress=True, progress_m=.05)
         if args.refusal_fix in ("margin", "both"):
             env["tracker"]["planner"]["clearance_margins"] = [.05, .03]
+    if args.plan_select or args.plan_samples or args.plan_arbitrate is not None:
+        if not env.get("tracker", {}).get("planner") or args.tracker_mix != "plan=1":
+            p.error("Plan selection options require an online planner and --tracker-mix plan=1")
+        pc = env["tracker"]["planner"]
+        if args.plan_select:
+            pc["select"] = args.plan_select; pc["safe_m"] = float(args.plan_safe_m)
+        if args.plan_samples:
+            pc["samples"] = int(args.plan_samples)
+        if args.plan_arbitrate is not None:
+            pc["arbitrate"] = float(args.plan_arbitrate)
     if "teleop" in env:
         env["teleop"].update(fraction=0., cat_fraction=0., cat_scenes=False)
     wanted = None
@@ -335,6 +353,8 @@ def main():
                                 provider=args.brace_provider, seed=args.seed)
     else:
         learner, _ = load_policy(args.checkpoint, device=dev, policy_id=0)
+        if (args.plan_select not in (None, "clear")) or args.plan_arbitrate is not None:
+            task.value_fn = lambda o: learner.model.value(o, torch.zeros(o.shape[:-1], dtype=torch.long, device=o.device))
     cols = ("episodes", "clean", "contact", "refused", "fall", "hands", "length", "energy_j", "path_m", "cot", "cot_episodes")
     # Near obstacles (any body point within 15 cm): actual vs commanded pelvis speed, both feet off the ground.
     near_steps = torch.zeros(NS * K, dtype=torch.float64, device=dev); near_v = torch.zeros_like(near_steps)
@@ -513,6 +533,11 @@ def main():
         summary["power_w"] = round(float(stats[jid, 7].sum() / (stats[jid, 6].sum() * task.dt).clamp_min(1e-9)), 2)
         summary["cot"] = round(float(stats[jid, 9].sum() / stats[jid, 10].sum().clamp_min(1)), 4)
         summary["robot_mass_kg"] = round(mass, 2)
+        if getattr(task, "value_diag", None) and task.value_diag["replans"]:
+            vd = task.value_diag; r_ = vd["replans"]           # pooled over all speeds of this process
+            summary["plan_value"] = dict(select=args.plan_select, samples=args.plan_samples, arbitrate=args.plan_arbitrate,
+                                         replans=int(r_), switched=round(vd["switched"] / r_, 4), rejected=round(vd["rejected"] / r_, 4),
+                                         mean_spread=round(vd["spread"] / r_, 4), mean_gain_over_none=round(vd["gain"] / r_, 4))
         n_ = near_steps[jid].sum().clamp_min(1); c_sum = near_cmd[jid].sum().clamp_min(1e-9)
         summary["near_obstacle"] = dict(steps=int(near_steps[jid].sum()), speed_ratio=round(float(near_v[jid].sum() / c_sum), 3),
                                         mean_speed=round(float(near_v[jid].sum() / n_), 3), flight_fraction=round(float(near_flight[jid].sum() / n_), 4),

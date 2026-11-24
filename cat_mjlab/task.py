@@ -134,7 +134,11 @@ class CATTask:
                 self.online_planner=OnlinePlanner(pc['path'],mujoco.MjModel.from_xml_string(assemble_training_xml()),self.device,
                     samples=pc.get('samples',4),steps=pc.get('steps',6),guidance=pc.get('guidance',2.),horizon=pc.get('horizon',2.),
                     interval=pc.get('interval',(.3,1.)),clear_cap=pc.get('clear_cap',.10),side_penalty=pc.get('side_penalty',.02),
-                    switch_penalty=pc.get('switch_penalty',.1),seed=seed+17, clearance_margins=pc.get('clearance_margins'))
+                    switch_penalty=pc.get('switch_penalty',.1),seed=seed+17, clearance_margins=pc.get('clearance_margins'),
+                    select=pc.get('select','clear'),safe_m=pc.get('safe_m',.05),arbitrate=pc.get('arbitrate'))
+                # value_fn(privileged_state) -> V: set by an evaluation script for value-guided selection/arbitration
+                self.value_fn=None;self.value_diag=dict(replans=0.,switched=0.,rejected=0.,spread=0.,gain=0.)
+                self._critic_ref=self.contract['critic_features'].index('critic.ref.valid')
                 self.plan_clear=torch.zeros(self.num_envs,device=self.device);self.plan_side=torch.zeros_like(self.plan_clear)
                 self.plan_fresh=torch.zeros_like(self.plan_clear);self.plan_cont=torch.zeros_like(self.plan_clear)
         # Home pose for the upper-body posture cost only (observations and the action
@@ -826,7 +830,29 @@ class CATTask:
             d=torch.where(routed[:,None],route_direction(xy,meta['route'],meta['route_count']),d)
         return d
 
-    def _replan(self,ids):
+    @torch.no_grad()
+    def _rank_plans(self,ids,xy,yaw,z,upper):
+        """Tracker critic value of each candidate plan [m, K] and of acting with no reference [m] for env ids: the last
+        privileged observation with its reference block rebuilt from the candidate (true root pose, as the critic sees it)."""
+        t=self.tracker;m,k=xy.shape[:2]
+        names=('plan_xy','plan_yaw','plan_z','plan_upper','plan_t','has_plan','mask_heading','mask_height','mask_upper')
+        saved={n:getattr(t,n)[ids].clone() for n in names}
+        base=self.obs['privileged_state'][ids]
+        a=self._critic_ref;b=a+41
+        root_xy=self.data.qpos[ids,:2];root_yaw=self._root_yaw(ids);navi=self.info['navi'][ids]
+        obs=[]
+        try:
+            for j in range(k):
+                t.plan_xy[ids],t.plan_yaw[ids],t.plan_z[ids],t.plan_upper[ids]=xy[:,j],yaw[:,j],z[:,j],upper[:,j]
+                t.plan_t[ids]=0.;t.has_plan[ids]=True;t.mask_heading[ids]=1.;t.mask_height[ids]=1.;t.mask_upper[ids]=1.
+                o=base.clone();o[:,a:b]=t.features(ids,root_xy,root_yaw,navi);obs.append(o)
+        finally:
+            for n,v in saved.items():getattr(t,n)[ids]=v
+        none=base.clone();none[:,a:b]=0.
+        v=self.value_fn(torch.cat(obs+[none],0)).float()
+        return v[:m*k].reshape(k,m).T,v[m*k:]
+
+    def _replan(self,ids,fresh_obs=True):
         """New planner chunks for the plan-source worlds among ids (cat_mjlab/planner/online.py): from the measured state,
         or with tracker continuity (COMBO4) from the executing plan's own state at the current plan time, toward a goal
         ahead of the plan's route progress, while the robot is within the re-anchor distance of the plan."""
@@ -846,8 +872,14 @@ class CATTask:
         prev_ok=t.has_plan[ids]
         ahead=[t.plan_at(ids,t.plan_t[ids]+.1*k) for k in range(1,11)]
         prev=torch.stack([a[0] for a in ahead],1);prev_yaw=torch.stack([a[1] for a in ahead],1)
+        rank=self._rank_plans if (fresh_obs and getattr(self,'value_fn',None) is not None) else None
         xy,yaw,z,upper,interval,stats=op.plan(qpos,qvel,self.scene_ids[ids],self.bank,goal_xy,goal_yaw,
-                                              t.route_speed[ids],t.still[ids],prev_xy=prev,prev_yaw=prev_yaw,prev_ok=prev_ok)
+                                              t.route_speed[ids],t.still[ids],prev_xy=prev,prev_yaw=prev_yaw,prev_ok=prev_ok,
+                                              rank=rank,rows=ids)
+        if 'value_chosen' in stats:
+            vd=self.value_diag;vd['replans']+=len(ids);vd['switched']+=float(stats['value_switched'].sum())
+            vd['spread']+=float(stats['value_spread'].sum());vd['gain']+=float((stats['value_chosen']-stats['value_none']).sum())
+            if 'margin_accepted' in stats:vd['rejected']+=float((~stats['margin_accepted']).sum())
         t.set_plan(ids,xy,yaw,z,upper,interval,roll=stats.get('roll'),pitch=stats.get('pitch'),legs=stats.get('legs'))
         if 'margin_accepted' in stats:
             rejected = ids[~stats['margin_accepted']]
@@ -1393,7 +1425,7 @@ class CATTask:
             self.tracker.reset(ids,self.data.qpos[ids,:2],self._root_yaw(ids),sample_dir=self._track_dir,op_speed=op,
                                room_scene=~self.bank.is_cat[self.scene_ids[ids]],
                                hold=reactive_active if self.reactive_objects is not None else None)
-            self._replan(ids)
+            self._replan(ids,fresh_obs=False)
         self._observe(ids,self.sim.contact_flags(self.contact_pairs)[ids,:2])
         return self.obs
 

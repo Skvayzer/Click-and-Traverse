@@ -46,7 +46,7 @@ def heading_offsets(samples):
 class OnlinePlanner:
     def __init__(self, path, mj_model, device, *, samples=4, steps=6, guidance=2.0, horizon=2.0, interval=(0.3, 1.0),
                  clear_cap=0.10, side_penalty=0.02, switch_penalty=0.1, bf16=True, seed=0, block=256, grid_chunk=64,
-                 score_frames=4000, clearance_margins=None):
+                 score_frames=4000, clearance_margins=None, select='clear', safe_m=.05, arbitrate=None):
         self.device = torch.device(device)
         ck = torch.load(path, map_location='cpu', weights_only=True)
         self.model = FlowPlanner(**ck['config']).to(self.device).eval()
@@ -63,6 +63,14 @@ class OnlinePlanner:
         self.bf16 = bool(bf16) and self.device.type == 'cuda'
         self.block, self.grid_chunk, self.score_frames = int(block), int(grid_chunk), int(score_frames)
         self.clearance_margins = clearance_margins
+        # Value-guided selection (eval-only): 'value' takes the candidate with the highest tracker critic value
+        # V(s, plan_k); 'value_safe' does so among the candidates with at least safe_m body clearance (or, if none
+        # has, within 1 cm of the clearest). arbitrate=delta drops the plan (reactive mode of the same network) when
+        # max_k V(s, plan_k) < V(s, no reference) + delta. Both need a `rank` callback from the task.
+        if select not in ('clear', 'value', 'value_safe'):
+            raise ValueError(f'unknown plan selection {select!r}')
+        self.select, self.safe_m = str(select), float(safe_m)
+        self.arbitrate = None if arbitrate is None else float(arbitrate)
         self.capture, self.last, self._parts = False, None, []     # capture=True keeps the chunks of the last call (recordings)
         self.offsets = torch.tensor(heading_offsets(self.samples), device=self.device)
         self.generator = torch.Generator(device=self.device).manual_seed(int(seed))
@@ -91,12 +99,15 @@ class OnlinePlanner:
         return self.norm.denorm('chunk', x.float()).reshape(m, k, H, FRAME_DIM)
 
     @torch.no_grad()
-    def plan(self, qpos, qvel, scene_ids, bank, goal_xy, goal_yaw, route_speed, still, prev_xy=None, prev_yaw=None, prev_ok=None):
-        """plan_block over blocks of at most `block` worlds (bounded memory); same arguments and results."""
+    def plan(self, qpos, qvel, scene_ids, bank, goal_xy, goal_yaw, route_speed, still, prev_xy=None, prev_yaw=None, prev_ok=None,
+             rank=None, rows=None):
+        """plan_block over blocks of at most `block` worlds (bounded memory); same arguments and results.
+        rank(rows, xy, yaw, z, upper) -> (value [m, K], value_none [m]) scores world-frame candidates (rows: env ids)."""
         m = len(qpos)
         self._parts = []
         if m <= self.block:
-            out = self.plan_block(qpos, qvel, scene_ids, bank, goal_xy, goal_yaw, route_speed, still, prev_xy, prev_yaw, prev_ok)
+            out = self.plan_block(qpos, qvel, scene_ids, bank, goal_xy, goal_yaw, route_speed, still, prev_xy, prev_yaw, prev_ok,
+                                  rank=rank, rows=rows)
             self._keep()
             return out
         parts = []
@@ -104,7 +115,7 @@ class OnlinePlanner:
             sl = slice(a, a + self.block)
             cut = lambda x: None if x is None else x[sl]
             parts.append(self.plan_block(qpos[sl], qvel[sl], scene_ids[sl], bank, goal_xy[sl], goal_yaw[sl], route_speed[sl],
-                                         still[sl], cut(prev_xy), cut(prev_yaw), cut(prev_ok)))
+                                         still[sl], cut(prev_xy), cut(prev_yaw), cut(prev_ok), rank=rank, rows=cut(rows)))
         xy, yaw, z, upper, interval = (torch.cat([p[i] for p in parts]) for i in range(5))
         stats = {k: torch.cat([p[5][k] for p in parts]) for k in parts[0][5]}
         self._keep()
@@ -120,7 +131,7 @@ class OnlinePlanner:
 
     @torch.no_grad()
     def plan_block(self, qpos, qvel, scene_ids, bank, goal_xy, goal_yaw, route_speed, still, prev_xy=None, prev_yaw=None,
-                   prev_ok=None):
+                   prev_ok=None, rank=None, rows=None):
         """Chosen chunks for m worlds. goal_xy [m, 2] / goal_yaw [m]: the route point `horizon` s ahead (world);
         still [m] bool; prev_xy [m, 10, 2] / prev_yaw [m, 10]: the replaced chunk 0.1-1.0 s ahead (world), used where
         prev_ok [m].
@@ -158,8 +169,32 @@ class OnlinePlanner:
             eligible = torch.where(strong.any(-1, keepdim=True), strong, sc['min_clear'] >= low)
             accepted = eligible.any(-1)
             score = torch.where(accepted[:, None] & ~eligible, -torch.inf, score)
+        value_stats = {}
+        if rank is not None and (self.select != 'clear' or self.arbitrate is not None):
+            # every candidate in the world frame, start pose prepended, as the tracker would store it
+            cx = origin[:, None, None] + torch.stack((c[:, None, None] * chunks[..., 0] - s[:, None, None] * chunks[..., 1],
+                                                      s[:, None, None] * chunks[..., 0] + c[:, None, None] * chunks[..., 1]), -1)
+            cx = torch.cat((origin[:, None, None].expand(m, k, 1, 2), cx), 2)
+            cyaw = torch.cat((yaw0[:, None, None].expand(m, k, 1), yaw0[:, None, None] + chunks[..., 3]), 2)
+            cz = torch.cat((qpos[:, None, None, 2].expand(m, k, 1), chunks[..., 2]), 2)
+            cup = torch.cat((qpos[:, None, None, 19:36].expand(m, k, 1, 17), chunks[..., 18:35]), 2)
+            value, value_none = rank(rows, cx, cyaw, cz, cup)
+            value_stats = dict(value=value, value_none=value_none)
+            if self.select != 'clear':
+                vscore = value.clone()
+                if self.select == 'value_safe':
+                    top = sc['min_clear'].amax(-1, keepdim=True)
+                    safe = sc['min_clear'] >= torch.minimum(top - .01, torch.full_like(top, self.safe_m))
+                    vscore = torch.where(safe, vscore, -torch.inf)
+                if accepted is not None:          # the clearance filter still applies
+                    vscore = torch.where(torch.isfinite(score), vscore, -torch.inf)
+                score = torch.where(still[:, None], score, vscore)  # stand-still worlds keep the clearance rule
         best = score.argmax(-1)
         rows = torch.arange(m, device=self.device)
+        if value_stats and self.arbitrate is not None:
+            keep = value_stats['value'][rows, best] >= value_stats['value_none'] + self.arbitrate
+            keep = keep | still
+            accepted = keep if accepted is None else (accepted & keep)
         pick = chunks[rows, best]                                                              # [m, H, 35]
         if self.capture:
             # recordings: the chosen chunk plus every candidate with its clearance, score and goal-heading offset
@@ -180,4 +215,9 @@ class OnlinePlanner:
                      any_clear=(sc['min_clear'].amax(-1) >= -.01).float(), roll=roll, pitch=pitch, legs=legs)
         if accepted is not None:
             stats['margin_accepted'] = accepted
+        if value_stats:
+            stats['value_chosen'] = value_stats['value'][rows, best]
+            stats['value_spread'] = value_stats['value'].amax(-1) - value_stats['value'].amin(-1)
+            stats['value_none'] = value_stats['value_none']
+            stats['value_switched'] = (best != sc['min_clear'].clamp(max=self.clear_cap).argmax(-1)).float()
         return xy, yaw, z, upper, interval, stats
