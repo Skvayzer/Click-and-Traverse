@@ -256,3 +256,18 @@ Same validated initial-state hash and 144 episodes per speed. Paired 95% interva
 | V7r | 0.5 / u-trap | 83.33 | 12.50 | 4.17 | 4.17 | 9.56 | 4.48 |
 | COMBO_FIX | 0.5 / u-trap | 91.67 | 6.25 | 2.08 | 2.08 | 11.53 | 7.87 |
 | COMBO_FIX − V7r | 0.5 / u-trap | +8.33 [-8.33, +25.00] | -6.25 [-18.80, +6.25] | -2.08 [-8.33, +4.17] | -2.08 [-8.33, +4.17] | — | — |
+
+### E1 seed-0 clearance filter pilot
+
+The clearance filter reduced refusal by 2.86 pp at both speeds. At 0.30 m/s clean traversal was flat and contact rose 2.99 pp. At 0.15 m/s clean gained 1.56 pp with a scene interval spanning zero. Neither run provides a basis for choosing the filter alone under the joint clean/contact criterion.
+
+| Case | Speed / family | clean | contact | refused | hands |
+| --- | --- | ---: | ---: | ---: | ---: |
+| COMBO_FIX | 0.15 | 59.77 | 30.08 | 10.03 | 2.60 |
+| Clearance filter | 0.15 | 61.33 | 30.99 | 7.16 | 3.12 |
+| Clearance filter − COMBO_FIX | 0.15 | +1.56 [-0.91, +4.04] | +0.91 [-2.47, +4.30] | -2.86 [-5.34, -0.39] | +0.52 [-1.04, +1.95] |
+| COMBO_FIX | 0.3 | 61.59 | 25.52 | 12.37 | 2.34 |
+| Clearance filter | 0.3 | 61.46 | 28.52 | 9.51 | 3.26 |
+| Clearance filter − COMBO_FIX | 0.3 | -0.13 [-2.86, +2.60] | +2.99 [+0.00, +5.99] | -2.86 [-5.47, -0.39] | +0.91 [-0.52, +2.34] |
+
+The seed-0 plan-blind videos are rendering from exact paired rollout traces on dep-1's software EGL backend. This frees the single GPU for the active audit. The first render exposed a temporary mesh lifetime bug. Commit `aff003b` compiles the model before releasing its mesh assets.
