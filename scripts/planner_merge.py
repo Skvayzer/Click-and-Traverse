@@ -18,13 +18,15 @@ def main(argv=None):
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--out", type=Path, required=True)
     p.add_argument("sources", type=Path, nargs="+")
+    p.add_argument("--union-splits", action="store_true",
+                   help="allow different scene splits (expert iteration adds a new policy's own scenes); info lists the union")
     args = p.parse_args(argv)
     if len(args.sources) > 9:
         raise ValueError("at most 9 sources")
     if args.out.exists() and any(args.out.iterdir()):
         raise ValueError(f"{args.out} is not empty")
     infos = [json.loads((s / "info.json").read_text()) for s in args.sources]
-    for key in ("bank", "train_scenes", "test_scenes", "grid", "horizon_frames", "frame_stride_steps"):
+    for key in ("bank", "grid", "horizon_frames", "frame_stride_steps") + (() if args.union_splits else ("train_scenes", "test_scenes")):
         if any(info[key] != infos[0][key] for info in infos[1:]):
             raise ValueError(f"sources differ in {key}: one dataset needs one bank and one scene split")
     ids = [info["source_id"] for info in infos]
@@ -46,6 +48,9 @@ def main(argv=None):
                   sources=[dict(path=str(s.resolve()), checkpoint=info["checkpoint"], source_id=info["source_id"],
                                 examples=info["examples"]) for s, info in zip(args.sources, infos)],
                   examples={split: sum(info["examples"].get(split, 0) for info in infos) for split in ("train", "test")})
+    if args.union_splits:
+        for key in ("train_scenes", "test_scenes"):
+            merged[key] = sorted({x for info in infos for x in info[key]})
     (args.out / "info.json").write_text(json.dumps(merged, indent=1) + "\n")
     print("MERGE DONE", json.dumps(dict(out=str(args.out), files=linked, examples=merged["examples"], source_ids=ids)))
 

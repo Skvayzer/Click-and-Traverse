@@ -62,6 +62,7 @@ def main(argv=None):
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--drop-stopped", type=float, metavar="SPEED",
                    help="drop windows slower than SPEED m/s in CAT courses, passages and table edges (planner v2)")
+    p.add_argument("--init", type=Path, help="warm start from this planner.pt (weights and normalizer kept)")
     args = p.parse_args(argv)
     import torch
     import mujoco
@@ -85,6 +86,12 @@ def main(argv=None):
     norm = Normalizer(train["state"], train["goal"], train["chunk"]).to(device)
     cpu = {k: torch.as_tensor(v) for k, v in train.items()}       # grids stay uint8 in host memory
     model = FlowPlanner(args.width, args.layers).to(device)
+    if args.init:
+        ck = torch.load(args.init, map_location="cpu", weights_only=True)
+        if ck["config"] != dict(width=args.width, layers=args.layers):
+            raise ValueError(f"--init has config {ck['config']}")
+        model.load_state_dict(ck["model"]); norm.load_state_dict(ck["norm"])
+        print(json.dumps(dict(init=str(args.init), init_step=ck.get("step"))), flush=True)
     ema = copy.deepcopy(model).eval()
     for q in ema.parameters():
         q.requires_grad_(False)
