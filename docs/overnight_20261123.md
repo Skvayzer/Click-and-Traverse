@@ -397,3 +397,48 @@ The combined fallback and clearance filter increased clean traversal by 3.26 pp 
 
 
 The reflex on/off comparison uses separately fine-tuned policies. The clearance band masks an arm's plan-tracking reward during training. During evaluation the actor remains a single network conditioned on plan and field observations. Commit `8f7a36d` clarifies the orange label on the three replays. The same selected clips were re-encoded and verified again.
+
+### E5 frozen field-input pilot on E4
+
+The plan-only masked actor completed all episodes with contact, yielding zero clean traversal at each command speed for seed 0. Restoring the field observations to the same frozen reflex-off weights yielded clean rates of 59.03%, 59.72% and 52.78% at 0.15, 0.30 and 0.50 m/s. The controlled intervention measures dependence on the field inputs of this trained actor. Masking them changes its observation distribution, so a trained standalone tracker remains a separate baseline. The first public BRACE GPU smoke is now running locally.
+
+| Case | Speed / family | clean | contact | refused | hands | time to clean goal (s) | episode min palm (cm) |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| Plan-only actor | 0.15 | 0.00 | 100.00 | 0.00 | 45.14 | — | -0.24 |
+| Plan and field | 0.15 | 59.03 | 40.28 | 0.69 | 24.31 | 28.57 | 3.30 |
+| Plan and field − Plan-only actor | 0.15 | +59.03 [+47.92, +69.44] | -59.72 [-70.14, -48.61] | +0.69 [+0.00, +2.08] | -20.83 [-34.72, -6.94] | — | — |
+| Plan-only actor | 0.15 / early-turn | 0.00 | 100.00 | 0.00 | 35.42 | — | 0.18 |
+| Plan and field | 0.15 / early-turn | 6.25 | 93.75 | 0.00 | 72.92 | 17.89 | 0.02 |
+| Plan and field − Plan-only actor | 0.15 / early-turn | +6.25 [+0.00, +12.55] | -6.25 [-12.55, +0.00] | +0.00 [+0.00, +0.00] | +37.50 [+18.75, +54.17] | — | — |
+| Plan-only actor | 0.15 / table-gap | 0.00 | 100.00 | 0.00 | 20.83 | — | -0.74 |
+| Plan and field | 0.15 / table-gap | 70.83 | 27.08 | 2.08 | 0.00 | 43.51 | 2.27 |
+| Plan and field − Plan-only actor | 0.15 / table-gap | +70.83 [+54.17, +85.42] | -72.92 [-87.50, -56.25] | +2.08 [+0.00, +6.25] | -20.83 [-35.42, -8.33] | — | — |
+| Plan-only actor | 0.15 / u-trap | 0.00 | 100.00 | 0.00 | 79.17 | — | -0.15 |
+| Plan and field | 0.15 / u-trap | 100.00 | 0.00 | 0.00 | 0.00 | 18.66 | 7.62 |
+| Plan and field − Plan-only actor | 0.15 / u-trap | +100.00 [+100.00, +100.00] | -100.00 [-100.00, -100.00] | +0.00 [+0.00, +0.00] | -79.17 [-89.58, -66.67] | — | — |
+| Plan-only actor | 0.3 | 0.00 | 100.00 | 0.00 | 41.67 | — | -0.25 |
+| Plan and field | 0.3 | 59.72 | 40.28 | 0.00 | 22.92 | 18.47 | 3.51 |
+| Plan and field − Plan-only actor | 0.3 | +59.72 [+49.31, +70.14] | -59.72 [-70.14, -49.31] | +0.00 [+0.00, +0.00] | -18.75 [-30.56, -6.94] | — | — |
+| Plan-only actor | 0.3 / early-turn | 0.00 | 100.00 | 0.00 | 41.67 | — | -0.12 |
+| Plan and field | 0.3 / early-turn | 8.33 | 91.67 | 0.00 | 66.67 | 10.89 | 0.37 |
+| Plan and field − Plan-only actor | 0.3 / early-turn | +8.33 [+0.00, +18.75] | -8.33 [-18.75, +0.00] | +0.00 [+0.00, +0.00] | +25.00 [+8.33, +41.67] | — | — |
+| Plan-only actor | 0.3 / table-gap | 0.00 | 100.00 | 0.00 | 18.75 | — | -0.75 |
+| Plan and field | 0.3 / table-gap | 70.83 | 29.17 | 0.00 | 2.08 | 26.90 | 2.14 |
+| Plan and field − Plan-only actor | 0.3 / table-gap | +70.83 [+56.25, +83.33] | -70.83 [-83.33, -56.25] | +0.00 [+0.00, +0.00] | -16.67 [-27.08, -6.25] | — | — |
+| Plan-only actor | 0.3 / u-trap | 0.00 | 100.00 | 0.00 | 64.58 | — | 0.12 |
+| Plan and field | 0.3 / u-trap | 100.00 | 0.00 | 0.00 | 0.00 | 13.12 | 8.03 |
+| Plan and field − Plan-only actor | 0.3 / u-trap | +100.00 [+100.00, +100.00] | -100.00 [-100.00, -100.00] | +0.00 [+0.00, +0.00] | -64.58 [-77.08, -50.00] | — | — |
+| Plan-only actor | 0.5 | 0.00 | 100.00 | 0.00 | 56.25 | — | 0.02 |
+| Plan and field | 0.5 | 52.78 | 45.83 | 1.39 | 22.22 | 14.38 | 3.50 |
+| Plan and field − Plan-only actor | 0.5 | +52.78 [+42.36, +63.19] | -54.17 [-64.58, -44.44] | +1.39 [+0.00, +3.47] | -34.03 [-43.75, -23.61] | — | — |
+| Plan-only actor | 0.5 / early-turn | 0.00 | 100.00 | 0.00 | 79.17 | — | -0.02 |
+| Plan and field | 0.5 / early-turn | 4.17 | 95.83 | 0.00 | 66.67 | 11.57 | 0.49 |
+| Plan and field − Plan-only actor | 0.5 / early-turn | +4.17 [+0.00, +10.42] | -4.17 [-10.42, +0.00] | +0.00 [+0.00, +0.00] | -12.50 [-29.17, +4.17] | — | — |
+| Plan-only actor | 0.5 / table-gap | 0.00 | 100.00 | 0.00 | 25.00 | — | -0.72 |
+| Plan and field | 0.5 / table-gap | 60.42 | 35.42 | 4.17 | 0.00 | 18.20 | 2.40 |
+| Plan and field − Plan-only actor | 0.5 / table-gap | +60.42 [+45.83, +75.00] | -64.58 [-77.08, -52.08] | +4.17 [+0.00, +10.42] | -25.00 [-39.58, -12.50] | — | — |
+| Plan-only actor | 0.5 / u-trap | 0.00 | 100.00 | 0.00 | 64.58 | — | 0.79 |
+| Plan and field | 0.5 / u-trap | 93.75 | 6.25 | 0.00 | 0.00 | 12.04 | 7.60 |
+| Plan and field − Plan-only actor | 0.5 / u-trap | +93.75 [+85.42, +100.00] | -93.75 [-100.00, -85.42] | +0.00 [+0.00, +0.00] | -64.58 [-75.00, -54.17] | — | — |
+
+At 07:39 the last audit, `319388_2`, moved from gpu to an idle ws-ia slot and started on `ws-l2-014`. It retains the 1 GPU, 8 CPU, 30,000 MB, 3 h request and the same output path. We caught an absolute manifest path before pending build 319412 started. The body collision builder now loads the project's existing relocation mapping before opening the pinned source. Recipe commit `29666df` replaces the pending build as `320478` on ws-ia with 1 GPU, 8 CPUs, 38,000 MB and a 90 min limit. It waits for 319388_2. Source and output path are unchanged. The six remaining planner ablation tasks, the two price runs and the BRACE E4 job were verified against the new dependency before our old build was canceled. Expected bank time remains 10–25 min after admission.
