@@ -20,6 +20,21 @@ from scipy.stats import t as student
 RATES = ("clean", "contact", "refused", "hands")
 
 
+GROUPS = {"side gaps": ("sidegap",), "cabinets": ("contrast",), "furniture": ("random-furniture",),
+          "clutter": ("random-generic",), "CAT courses": ("D8", "procedural", "published")}
+FAMILIES = ("u-trap", "early-turn", "table-gap")
+
+
+def group_of(scene):
+    for g, prefixes in GROUPS.items():
+        if scene.startswith(prefixes):
+            return g
+    for f in FAMILIES:
+        if f in scene:
+            return f
+    return "other"
+
+
 def load(run, speed):
     path = Path(run) / f"speed_{speed:g}.json"
     d = json.loads(path.read_text())
@@ -101,11 +116,29 @@ def oracle(a_runs, b_runs, speeds):
     return out
 
 
+def by_group(a_runs, b_runs, speeds):
+    n = max(len(a_runs), len(b_runs))
+    a_runs = a_runs * n if len(a_runs) == 1 else a_runs
+    b_runs = b_runs * n if len(b_runs) == 1 else b_runs
+    out = []
+    for sp in speeds:
+        xa, wa, scenes = matrix(a_runs, sp)
+        xb, _, _ = matrix(b_runs, sp, scenes)
+        groups = np.array([group_of(x) for x in scenes])
+        for g in sorted(set(groups)):
+            m = groups == g
+            ra, rb = rate(xa[:, m], wa[:, m]).mean(0), rate(xb[:, m], wa[:, m]).mean(0)
+            lo, hi = boot(xb[:, m] - xa[:, m], wa[:, m], n=4000)
+            out.append(dict(speed=sp, group=g, scenes=int(m.sum()), a=ra.tolist(), b=rb.tolist(), lo=lo.tolist(), hi=hi.tolist()))
+    return out
+
+
 def main():
     p = argparse.ArgumentParser(description=__doc__, formatter_class=argparse.RawDescriptionHelpFormatter)
     p.add_argument("--speeds", type=float, nargs="+", default=[.15, .3])
     p.add_argument("--pair", nargs=3, action="append", default=[], metavar=("NAME", "A", "B"))
     p.add_argument("--oracle", nargs=3, action="append", default=[], metavar=("NAME", "A", "B"))
+    p.add_argument("--groups", action="store_true", help="also break every --pair down by scene group")
     p.add_argument("--json", type=Path)
     args = p.parse_args()
     report = {}
@@ -117,6 +150,11 @@ def main():
             print(f"| A | {r['speed']:g} | " + " | ".join(r["a"][k] for k in RATES) + " |")
             print(f"| B | {r['speed']:g} | " + " | ".join(r["b"][k] for k in RATES) + " |")
             print(f"| B − A | {r['speed']:g} | " + " | ".join(r["delta"][k] for k in RATES) + " |")
+        if args.groups:
+            print(f"\n| {name} by group | speed | scenes | clean A→B [Δ CI] | contact A→B [Δ CI] | refused A→B [Δ CI] |\n| --- | --- | ---: | --- | --- | --- |")
+            for r in by_group(a.split(","), b.split(","), args.speeds):
+                cell = lambda i: f"{r['a'][i]:.1f}→{r['b'][i]:.1f} [{r['lo'][i]:+.1f}, {r['hi'][i]:+.1f}]"
+                print(f"| {r['group']} | {r['speed']:g} | {r['scenes']} | {cell(0)} | {cell(1)} | {cell(2)} |")
     for name, a, b in args.oracle:
         rows = oracle(a.split(","), b.split(","), args.speeds)
         report["oracle:" + name] = rows
