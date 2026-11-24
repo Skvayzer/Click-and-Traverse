@@ -225,6 +225,21 @@ def a2():
 
 
 # ------------------------------------------------------------------------------------------------ standing / energy
+def a3_384():
+    """Earlier plan-input ablation on the 384 scenes: the same COMBO1b u500 network with its plan input on and off (1 seed)."""
+    base = CL / "speed_sweep"
+    out = {}
+    for sp in ("0.15", "0.3"):
+        f_on, f_off = base / "COMBO1b_u500_plan" / f"speed_{sp}.json", base / "COMBO1b_u500_none" / f"speed_{sp}.json"
+        if not exists(f_on, f_off):
+            continue
+        on, off = S.load(f_on), S.load(f_off)
+        sc = S.common_scenes([on], [off])
+        cells = {n: {k: list(S.ci_mean(S.matrix([d], k, sc))) for k in RATES} for n, d in (("Plan input on", on), ("Plan input off", off))}
+        out[sp] = dict(n_scenes=len(sc), cells=cells, delta={k: S.ci_delta(S.matrix([on], k, sc), S.matrix([off], k, sc)) for k in RATES})
+    return out
+
+
 def standing_row(path):
     d = json.loads(Path(path).read_text())
     d = d[0] if isinstance(d, list) else d
@@ -270,7 +285,7 @@ def main():
     a = p.parse_args()
     res = dict(narrow=build_benchmark(narrow_paths, ("0.15", "0.3"), groups=True),
                e4=build_benchmark(e4_paths, ("0.15", "0.3", "0.5"), family_of=True),
-               a1=a1(), a2=a2(), standing=standing())
+               a1=a1(), a2=a2(), a3_384=a3_384(), standing=standing())
     a.out.parent.mkdir(parents=True, exist_ok=True)
     a.out.write_text(json.dumps(res, indent=1))
     print("wrote", a.out, {k: (list(v) if isinstance(v, dict) else v) for k, v in res.items() if k != "standing"})
