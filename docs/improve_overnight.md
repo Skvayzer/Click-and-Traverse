@@ -122,6 +122,27 @@ fall, but as with the E1 recovery rules they turn mostly into CAT-course contact
 passes; side gaps gain +10 pp clean at 0.15 [+1.2, +20.0]. By the seed-0 pilot rule, E2 seeds 1–2, E4 and plan-blind runs
 are not spent. Checkpoint: `/l/users/konstantin.smirnov/runs/stationary_hands_20261113_overnight_E2_seed0_322679/run/resume.pt`.
 
+### Same-code control, I1 and I2 on seed 0 (batch B, finished 03:53)
+
+The same-code control (default rule, `0772f2b`, `--subset-fields`, dep-1) reproduces the cluster evaluation 315810 within
+noise: clean +0.13 [−2.47, +2.73] and −0.26 [−2.86, +2.21] pp, contact +0.65 and +1.69 pp. All deltas below are against this
+control; scene-bootstrap 95% intervals, pp.
+
+| Variant (seed 0) | clean 0.15 | contact 0.15 | clean 0.30 | contact 0.30 | gate |
+| --- | --- | --- | --- | --- | --- |
+| I1 value_safe, K=4 | +3.12 [+0.65, +5.60] | −2.99 [−5.73, −0.26] | −1.17 [−3.78, +1.43] | +1.69 [−0.91, +4.43] | fail (mean +0.98) |
+| I2 clearest, K=8 | −1.30 [−3.52, +0.91] | +0.26 [−2.47, +2.99] | −1.56 [−4.17, +1.04] | +0.26 [−2.60, +2.99] | fail |
+| I2 value_safe, K=8 | +2.47 [+0.26, +4.69] | −2.60 [−5.21, 0.00] | −0.13 [−2.47, +2.21] | +1.04 [−1.30, +3.39] | fail (mean +1.17) |
+| I4 no reference | +4.95 [+2.86, +7.16] | −3.91 [−7.16, −0.65] | +2.47 [0.00, +4.95] | +2.21 [−0.91, +5.47] | fail (contact at 0.30) |
+
+Control absolute rates: 59.90 / 30.73 / 8.98 (clean / contact / refused) at 0.15 and 61.33 / 27.21 / 11.07 at 0.30.
+Value selection switches away from the clearest candidate in 45% of replans; the candidate value spread has median 0.22
+(critic units); V(chosen plan) − V(no reference) has median −0.79 and 10th percentile −3.72 (the I3 threshold). The
+value_safe gain at 0.15 comes from cabinets (80.3 → 86.6% clean [+2.5, +10.0], contact 16.2 → 9.7%); nothing changes in CAT
+courses. I2's prediction (K=8 clearest changes clean by < 1 pp) is borderline (−1.3/−1.6 pp, intervals include 0); its
+second prediction (K=8 value_safe beats K=4 value_safe by ≥ 1 pp) is not met. Pattern across all eval-only variants: gains
+appear at 0.15 m/s and vanish at 0.30, where plan-mode stops (refusals) are what keeps contact down.
+
 ## Run ledger
 
 | Id | Variant | Seed | Where | Output |
@@ -131,3 +152,6 @@ are not spent. Checkpoint: `/l/users/konstantin.smirnov/runs/stationary_hands_20
 | E2 | seeds 1–2: 322679_1/2 and 322686 stopped at the foreign-GPU-memory check on gpu nodes; 322708 with the check relaxed then ran out of GPU memory (other users' processes held 25–26 GB of the same GPU), so the check was right: gpu-partition GPUs are shared. Seeds 1–2 now wait for the seed-0 pilot (decision: run them on ws-ia/dep-1 only if seed 0 gains ≥ 1 pp clean without more contact) | 1–2 | — | — |
 | I5 | expert iteration collect + fine-tune + seed-0 eval (384 and E4) | 0 | 322717 ran 38 min (one 50k-window round) and was cancelled by mistake when I resubmitted with eval stages; 322842 (`cd6d68b`) restarted it from scratch on ws-l3-021 at ~00:05 | `runs/wbp/planner_ei1`, `runs/improve_ei1{,_E4}_seed0_322842` |
 | B | batch A hit CUDA OOM (full field bank ~7–13 GB per process); rerun as batch B with `--subset-fields` (`0772f2b`), 6 in parallel from 23:24; pure `value` K=4 stopped at step ~1000 to speed the rest (not pre-registered) | 0 | dep-1 | `improve_<tag>_seed0_0772f2b` |
+| C | none seeds 1–2, ei1 seed 0, arbitration (δ = −3.72 on value_safe; δ = 0 on clearest), E4 control / none / ei1 seed 0 | 0–2 | dep-1, 8 parallel from 03:53 | `improve_<tag>_0772f2b` |
+| I5 | 322842's eval stage failed to load the planner (`PosixPath` in saved args; fixed in 7e34461 and the checkpoint re-saved); seed-0 eval moved to batch C; seeds 1–2 queued as 323469 (cancel if seed 0 fails) | 1–2 | ws-ia | `improve_ei1_seed{1,2}_323469` |
+| E2 | seed 0 done (see results); seeds 1–2 not run (pilot rule) | 0 | — | — |
