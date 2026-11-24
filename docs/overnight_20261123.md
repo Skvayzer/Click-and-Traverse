@@ -448,3 +448,110 @@ At 07:39 the last audit, `319388_2`, moved from gpu to an idle ws-ia slot and st
 The original public BRACE checkpoint passed its dep-1 CUDA inference smoke from 07:42 to 07:45 Dubai. The three selected worlds ran up to 500 control steps, with finite outputs and no numerical transition. One episode reached its ordinary terminal state before the smoke cutoff. The full 72-layout E4 BRACE job started on dep-1 at 07:47 under the single-GPU lock, commit `ac58626`. Its output is `~/robotics/cat-energy-local-runs/overnight_E6_BRACE_E4_local_ac58626`. It uses the same three speeds and prescribed starts. Only our pending duplicate 319457 was canceled.
 
 Cluster jobs 319455 and 319456 retain their IDs, 1 GPU, 8 CPUs and 40,000 MB and now use ws-ia. The cluster smoke starts after the remapping-corrected bank build 320478, then gates the original 384-scene BRACE evaluation. The cluster smoke remains a distinct check of the isolated Slurm environment.
+
+### E0 complete three-seed temporal audit
+
+All 2,304 audited episodes finished at the planned budgets. The tables include the first observed two-second stall from eventually refused episodes with active moving plans. A preceding full second was available for 63 of 69 qualifying episodes at 0.15 m/s and 87 of 92 at 0.30 m/s. Reward values are per-control-step contributions after weighting, averaged within each qualifying seed, with sample s.d. when at least two seeds contributed. Some very sparse rows have data from one seed only.
+
+| Speed (m/s) | Window | Episodes | Stall | Goal progress | Position tracking | Upright | Stand tall | Global power | Hand clearance |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 0.15 | Before | 63 | −0.43 ± 0.06 | 3.02 ± 0.13 | 2.58 ± 0.20 | 2.53 ± 0.18 | 2.72 ± 0.18 | −0.74 ± 0.08 | −0.03 ± 0.00 |
+| 0.15 | During | 69 | −1.47 ± 0.07 | 1.43 ± 0.08 | 2.46 ± 0.24 | 2.11 ± 0.23 | 2.34 ± 0.26 | −0.69 ± 0.07 | −0.04 ± 0.01 |
+| 0.30 | Before | 87 | −0.16 ± 0.15 | 2.74 ± 0.31 | 2.15 ± 0.26 | 2.57 ± 0.05 | 2.81 ± 0.07 | −0.85 ± 0.15 | −0.03 ± 0.01 |
+| 0.30 | During | 92 | −2.13 ± 0.23 | 0.70 ± 0.05 | 1.78 ± 0.09 | 2.32 ± 0.18 | 2.60 ± 0.13 | −0.75 ± 0.07 | −0.02 ± 0.01 |
+
+Goal-progress credit falls at the first stall in side gaps, cabinets and CAT courses. Posture and tracking retain most of their value in these three groups. Field guidance stays near 2.1–2.4 and clearance terms stay small. CAT courses and side gaps account for 133 of 161 qualifying stalls. Furniture and clutter have at most three audit windows per row. These observations meet E2's diagnostic condition for testing the reward balance. They condition on future refusal, so they cannot identify what caused a stall or determine how a new reward changes behavior. The remaining E1 seed comparisons still gate E2.
+
+| Speed | Scene group | Window | Episodes across seeds | Stall | Tracking | Clearance | Field | Posture and motion | Energy | Goal progress |
+| --- | --- | --- | ---: | ---: | ---: | ---: | ---: | ---: | ---: | ---: |
+| 0.15 | Side gaps | before | 19 | -0.17 ± 0.30 | 3.64 ± 0.99 | -0.11 ± 0.04 | 2.10 ± 0.06 | 5.63 ± 0.46 | -0.73 ± 0.09 | 3.11 ± 0.33 |
+| 0.15 | Side gaps | during | 19 | -1.23 ± 0.55 | 4.02 ± 0.64 | -0.10 ± 0.04 | 2.14 ± 0.03 | 4.76 ± 0.54 | -0.65 ± 0.08 | 1.56 ± 0.23 |
+| 0.15 | Cabinets | before | 10 | 0.00 ± 0.00 | 5.76 ± 0.36 | -0.01 ± 0.00 | 2.21 ± 0.08 | 6.03 ± 0.12 | -0.66 ± 0.03 | 3.33 ± 0.55 |
+| 0.15 | Cabinets | during | 10 | -1.38 ± 0.25 | 5.28 ± 0.00 | -0.04 ± 0.01 | 2.37 ± 0.00 | 6.04 ± 0.11 | -0.66 ± 0.03 | 1.38 ± 0.00 |
+| 0.15 | Furniture | before | 0 | — | — | — | — | — | — | — |
+| 0.15 | Furniture | during | 0 | — | — | — | — | — | — | — |
+| 0.15 | Clutter | before | 1 | 0.00 | 2.97 | -0.00 | 2.29 | 5.67 | -0.54 | 0.00 |
+| 0.15 | Clutter | during | 1 | 0.00 | 1.79 | -0.00 | 2.27 | 5.83 | -0.45 | 0.00 |
+| 0.15 | CAT courses | before | 33 | -0.74 ± 0.15 | 4.26 ± 0.74 | -0.02 ± 0.01 | 2.15 ± 0.05 | 5.50 ± 0.59 | -0.76 ± 0.09 | 2.96 ± 0.23 |
+| 0.15 | CAT courses | during | 39 | -1.66 ± 0.20 | 3.82 ± 0.38 | -0.06 ± 0.02 | 2.15 ± 0.02 | 4.49 ± 0.84 | -0.73 ± 0.09 | 1.41 ± 0.10 |
+| 0.3 | Side gaps | before | 23 | -0.07 ± 0.12 | 4.33 ± 0.37 | -0.11 ± 0.02 | 2.38 ± 0.06 | 5.95 ± 0.18 | -0.80 ± 0.18 | 2.68 ± 0.33 |
+| 0.3 | Side gaps | during | 23 | -2.21 ± 0.40 | 3.29 ± 0.32 | -0.07 ± 0.04 | 2.21 ± 0.03 | 5.50 ± 0.40 | -0.66 ± 0.09 | 0.73 ± 0.06 |
+| 0.3 | Cabinets | before | 13 | 0.00 ± 0.00 | 4.49 ± 1.30 | -0.02 ± 0.00 | 1.99 ± 0.07 | 5.51 ± 0.45 | -1.07 ± 0.55 | 4.00 ± 0.40 |
+| 0.3 | Cabinets | during | 13 | -1.68 ± 0.72 | 3.78 ± 0.22 | -0.06 ± 0.01 | 2.24 ± 0.09 | 5.83 ± 0.39 | -0.83 ± 0.33 | 0.67 ± 0.08 |
+| 0.3 | Furniture | before | 1 | 0.00 | 1.55 | -0.00 | 2.28 | 5.83 | -0.61 | 0.00 |
+| 0.3 | Furniture | during | 1 | 0.00 | 3.02 | -0.00 | 2.34 | 5.86 | -0.81 | 0.00 |
+| 0.3 | Clutter | before | 3 | 0.00 ± 0.00 | 2.72 ± 0.97 | -0.00 ± 0.00 | 2.36 ± 0.02 | 5.85 ± 0.13 | -0.77 ± 0.18 | 0.00 ± 0.00 |
+| 0.3 | Clutter | during | 3 | 0.00 ± 0.00 | 3.39 ± 0.03 | -0.00 ± 0.00 | 2.27 ± 0.05 | 5.85 ± 0.02 | -0.63 ± 0.18 | 0.00 ± 0.00 |
+| 0.3 | CAT courses | before | 47 | -0.25 ± 0.18 | 3.54 ± 0.06 | -0.04 ± 0.02 | 2.27 ± 0.05 | 5.54 ± 0.22 | -0.85 ± 0.07 | 2.71 ± 0.08 |
+| 0.3 | CAT courses | during | 52 | -2.32 ± 0.22 | 3.12 ± 0.15 | -0.04 ± 0.01 | 2.13 ± 0.06 | 4.98 ± 0.25 | -0.78 ± 0.02 | 0.75 ± 0.02 |
+
+### E1 combined variant relocation
+
+After E6 finished on dep-1, seeds 1 and 2 of the combined E1 variant moved to the same single-GPU lock there. Only our pending tasks 319389_7 and 319389_8 were canceled. The warm-trained checkpoints, commit 1bc21af, 768 episodes per speed and evaluator protocol are unchanged. Outputs are in `~/robotics/cat-energy-local-runs/overnight_E1_both_seed{1,2}_local_1bc21af`. The four remaining fallback and margin tasks stay on gpu. Each local evaluation expects 60–100 min after admission.
+
+### E6 BRACE held-out results
+
+Public BRACE with the common planner completed 144 matched episodes per speed on E4. The initial-state arrays hash matched the existing E4 controls. A CPU flat-walk check under the supplied planner and 0.30 m/s command moved forward 0.81 m in 400 steps and had 0.28 m median position tracking error. This documents basic motion and the reference-tracking error in the transferred simulator. Obstacle-scene results apply to this tracker, the common CAT planner and the CAT physics. BRACE contributes one published checkpoint. The paired 95% intervals resample scenes and COMBO_FIX uses seed 0.
+
+| Case | Speed / family | clean | contact | refused | hands | time to clean goal (s) | episode min palm (cm) |
+| --- | --- | ---: | ---: | ---: | ---: | ---: | ---: |
+| BRACE with common planner | 0.15 | 0.00 | 98.61 | 1.39 | 45.14 | — | -0.20 |
+| COMBO_FIX | 0.15 | 54.86 | 43.06 | 2.08 | 27.08 | 30.91 | 3.58 |
+| COMBO_FIX − BRACE with common planner | 0.15 | +54.86 [+44.44, +65.28] | -55.56 [-65.30, -45.14] | +0.69 [-2.78, +4.86] | -18.06 [-29.17, -6.25] | — | — |
+| V7r | 0.15 | 58.33 | 41.67 | 0.00 | 20.14 | 20.53 | 3.09 |
+| V7r − BRACE with common planner | 0.15 | +58.33 [+48.61, +68.06] | -56.94 [-66.67, -46.53] | -1.39 [-3.47, +0.00] | -25.00 [-34.72, -14.58] | — | — |
+| BRACE with common planner | 0.15 / early-turn | 0.00 | 100.00 | 0.00 | 62.50 | — | -0.32 |
+| COMBO_FIX | 0.15 / early-turn | 10.42 | 89.58 | 0.00 | 79.17 | 18.29 | -0.02 |
+| COMBO_FIX − BRACE with common planner | 0.15 / early-turn | +10.42 [+0.00, +22.92] | -10.42 [-22.92, +0.00] | +0.00 [+0.00, +0.00] | +16.67 [-2.08, +35.42] | — | — |
+| V7r | 0.15 / early-turn | 10.42 | 89.58 | 0.00 | 54.17 | 11.10 | 0.47 |
+| V7r − BRACE with common planner | 0.15 / early-turn | +10.42 [+2.08, +20.83] | -10.42 [-20.83, -2.08] | +0.00 [+0.00, +0.00] | -8.33 [-27.08, +12.50] | — | — |
+| BRACE with common planner | 0.15 / table-gap | 0.00 | 95.83 | 4.17 | 8.33 | — | -0.87 |
+| COMBO_FIX | 0.15 / table-gap | 58.33 | 35.42 | 6.25 | 2.08 | 52.71 | 3.06 |
+| COMBO_FIX − BRACE with common planner | 0.15 / table-gap | +58.33 [+41.67, +72.92] | -60.42 [-72.97, -45.83] | +2.08 [-8.33, +12.50] | -6.25 [-14.58, +2.08] | — | — |
+| V7r | 0.15 / table-gap | 72.92 | 27.08 | 0.00 | 0.00 | 28.73 | 4.42 |
+| V7r − BRACE with common planner | 0.15 / table-gap | +72.92 [+58.33, +85.42] | -68.75 [-83.33, -54.17] | -4.17 [-10.42, +0.00] | -8.33 [-16.67, -2.08] | — | — |
+| BRACE with common planner | 0.15 / u-trap | 0.00 | 100.00 | 0.00 | 64.58 | — | 0.59 |
+| COMBO_FIX | 0.15 / u-trap | 95.83 | 4.17 | 0.00 | 0.00 | 19.01 | 7.70 |
+| COMBO_FIX − BRACE with common planner | 0.15 / u-trap | +95.83 [+89.58, +100.00] | -95.83 [-100.00, -89.58] | +0.00 [+0.00, +0.00] | -64.58 [-77.08, -50.00] | — | — |
+| V7r | 0.15 / u-trap | 91.67 | 8.33 | 0.00 | 6.25 | 15.08 | 4.38 |
+| V7r − BRACE with common planner | 0.15 / u-trap | +91.67 [+83.33, +97.92] | -91.67 [-97.92, -83.33] | +0.00 [+0.00, +0.00] | -58.33 [-72.92, -43.75] | — | — |
+| BRACE with common planner | 0.3 | 0.00 | 99.31 | 0.00 | 45.83 | — | 0.07 |
+| COMBO_FIX | 0.3 | 52.08 | 44.44 | 3.47 | 20.14 | 21.14 | 4.04 |
+| COMBO_FIX − BRACE with common planner | 0.3 | +52.08 [+41.67, +62.50] | -54.86 [-65.28, -44.44] | +3.47 [+0.69, +6.94] | -25.69 [-36.11, -15.28] | — | — |
+| V7r | 0.3 | 56.25 | 43.75 | 0.00 | 23.61 | 15.82 | 3.04 |
+| V7r − BRACE with common planner | 0.3 | +56.25 [+45.83, +66.67] | -55.56 [-65.97, -45.14] | +0.00 [+0.00, +0.00] | -22.22 [-34.03, -11.11] | — | — |
+| BRACE with common planner | 0.3 / early-turn | 0.00 | 97.92 | 0.00 | 62.50 | — | 0.66 |
+| COMBO_FIX | 0.3 / early-turn | 2.08 | 97.92 | 0.00 | 60.42 | 9.92 | 0.01 |
+| COMBO_FIX − BRACE with common planner | 0.3 / early-turn | +2.08 [+0.00, +6.25] | +0.00 [-6.25, +6.25] | +0.00 [+0.00, +0.00] | -2.08 [-20.83, +18.75] | — | — |
+| V7r | 0.3 / early-turn | 2.08 | 97.92 | 0.00 | 70.83 | 9.78 | 0.22 |
+| V7r − BRACE with common planner | 0.3 / early-turn | +2.08 [+0.00, +6.25] | +0.00 [-6.25, +6.25] | +0.00 [+0.00, +0.00] | +8.33 [-14.58, +31.25] | — | — |
+| BRACE with common planner | 0.3 / table-gap | 0.00 | 100.00 | 0.00 | 12.50 | — | -0.21 |
+| COMBO_FIX | 0.3 / table-gap | 54.17 | 35.42 | 10.42 | 0.00 | 36.87 | 3.78 |
+| COMBO_FIX − BRACE with common planner | 0.3 / table-gap | +54.17 [+37.50, +68.75] | -64.58 [-77.08, -50.00] | +10.42 [+2.08, +20.83] | -12.50 [-22.92, -4.17] | — | — |
+| V7r | 0.3 / table-gap | 66.67 | 33.33 | 0.00 | 0.00 | 22.41 | 4.27 |
+| V7r − BRACE with common planner | 0.3 / table-gap | +66.67 [+54.17, +79.17] | -66.67 [-79.17, -54.17] | +0.00 [+0.00, +0.00] | -12.50 [-22.92, -4.17] | — | — |
+| BRACE with common planner | 0.3 / u-trap | 0.00 | 100.00 | 0.00 | 62.50 | — | -0.24 |
+| COMBO_FIX | 0.3 / u-trap | 100.00 | 0.00 | 0.00 | 0.00 | 12.85 | 8.34 |
+| COMBO_FIX − BRACE with common planner | 0.3 / u-trap | +100.00 [+100.00, +100.00] | -100.00 [-100.00, -100.00] | +0.00 [+0.00, +0.00] | -62.50 [-77.08, -47.92] | — | — |
+| V7r | 0.3 / u-trap | 100.00 | 0.00 | 0.00 | 0.00 | 11.56 | 4.64 |
+| V7r − BRACE with common planner | 0.3 / u-trap | +100.00 [+100.00, +100.00] | -100.00 [-100.00, -100.00] | +0.00 [+0.00, +0.00] | -62.50 [-77.08, -47.92] | — | — |
+| BRACE with common planner | 0.5 | 0.00 | 100.00 | 0.00 | 45.83 | — | 0.58 |
+| COMBO_FIX | 0.5 | 46.53 | 45.83 | 7.64 | 18.06 | 15.56 | 3.76 |
+| COMBO_FIX − BRACE with common planner | 0.5 | +46.53 [+36.11, +56.94] | -54.17 [-64.58, -43.75] | +7.64 [+3.47, +11.81] | -27.78 [-39.58, -16.67] | — | — |
+| V7r | 0.5 | 52.08 | 46.53 | 1.39 | 26.39 | 12.88 | 2.91 |
+| V7r − BRACE with common planner | 0.5 | +52.08 [+41.67, +62.50] | -53.47 [-63.89, -43.06] | +1.39 [+0.00, +3.47] | -19.44 [-30.56, -8.33] | — | — |
+| BRACE with common planner | 0.5 / early-turn | 0.00 | 100.00 | 0.00 | 64.58 | — | 0.14 |
+| COMBO_FIX | 0.5 / early-turn | 4.17 | 95.83 | 0.00 | 52.08 | 9.88 | 0.22 |
+| COMBO_FIX − BRACE with common planner | 0.5 / early-turn | +4.17 [+0.00, +12.50] | -4.17 [-12.50, +0.00] | +0.00 [+0.00, +0.00] | -12.50 [-35.42, +12.50] | — | — |
+| V7r | 0.5 / early-turn | 6.25 | 93.75 | 0.00 | 72.92 | 7.19 | 0.28 |
+| V7r − BRACE with common planner | 0.5 / early-turn | +6.25 [+0.00, +16.67] | -6.25 [-16.67, +0.00] | +0.00 [+0.00, +0.00] | +8.33 [-12.50, +27.08] | — | — |
+| BRACE with common planner | 0.5 / table-gap | 0.00 | 100.00 | 0.00 | 4.17 | — | 1.02 |
+| COMBO_FIX | 0.5 / table-gap | 43.75 | 35.42 | 20.83 | 0.00 | 24.55 | 3.18 |
+| COMBO_FIX − BRACE with common planner | 0.5 / table-gap | +43.75 [+27.08, +62.50] | -64.58 [-77.08, -50.00] | +20.83 [+10.42, +31.25] | -4.17 [-10.42, +0.00] | — | — |
+| V7r | 0.5 / table-gap | 66.67 | 33.33 | 0.00 | 2.08 | 17.57 | 3.96 |
+| V7r − BRACE with common planner | 0.5 / table-gap | +66.67 [+52.08, +79.17] | -66.67 [-79.17, -52.08] | +0.00 [+0.00, +0.00] | -2.08 [-8.33, +4.17] | — | — |
+| BRACE with common planner | 0.5 / u-trap | 0.00 | 100.00 | 0.00 | 68.75 | — | 0.56 |
+| COMBO_FIX | 0.5 / u-trap | 91.67 | 6.25 | 2.08 | 2.08 | 11.53 | 7.87 |
+| COMBO_FIX − BRACE with common planner | 0.5 / u-trap | +91.67 [+83.33, +97.92] | -93.75 [-100.00, -85.42] | +2.08 [+0.00, +6.25] | -66.67 [-79.17, -52.08] | — | — |
+| V7r | 0.5 / u-trap | 83.33 | 12.50 | 4.17 | 4.17 | 9.56 | 4.48 |
+| V7r − BRACE with common planner | 0.5 / u-trap | +83.33 [+70.83, +93.75] | -87.50 [-95.83, -77.08] | +4.17 [+0.00, +10.42] | -64.58 [-79.17, -50.00] | — | — |
