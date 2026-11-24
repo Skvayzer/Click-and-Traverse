@@ -355,3 +355,15 @@ Original 384 scenes, 768 episodes per seed per speed. Rows are mean ± sample s.
 | COMBO_NOREFLEX | 0.3 | 63.63 ± 0.74 | 27.13 ± 0.92 | 9.11 ± 0.39 | 3.34 ± 0.66 |
 | COMBO_FIX | 0.3 | 61.85 ± 1.58 | 28.12 ± 3.07 | 9.81 ± 2.26 | 2.86 ± 0.52 |
 | COMBO_FIX − COMBO_NOREFLEX | 0.3 | -1.78 ± 2.10 [-7.01, +3.45] | +1.00 ± 3.94 [-8.79, +10.79] | +0.69 ± 2.57 [-5.69, +7.08] | -0.48 ± 0.66 [-2.11, +1.15] |
+
+### E3 paired videos
+
+Three original seed-0 episode pairs are in the project `energy-videos/` artifacts folder. They use synchronized recorded poses, the same camera and the authored inserted box in both panels. Blue shows the plan and orange shows a released arm. Software EGL kept the local GPU available for evaluation. All clips passed checks for 1280×720 H.264 yuv420p, stereo 48 kHz silent AAC and faststart atom order.
+
+| File | Scenario | Clip duration | Inserted hand contact |
+| --- | --- | ---: | --- |
+| `plan-blind-static-015.mp4` | Static at 0.15 m/s, angled 0.51 m side gap, row 370 | 15.00 s | Neither controller |
+| `plan-blind-moving-015.mp4` | Moving at 0.15 m/s, angled 0.51 m side gap, row 370 | 13.80 s | Neither controller |
+| `plan-blind-moving-030.mp4` | Moving at 0.30 m/s, cabinet passage, row 62 | 11.72 s | Reflex off only |
+
+The selected traces show 20, 3 and 17 control transitions with an active arm reflex, respectively. Selection favored visible reflex activity. The third clip shows a paired example of avoiding the inserted-object hand contact.

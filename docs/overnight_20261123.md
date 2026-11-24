@@ -271,3 +271,15 @@ The clearance filter reduced refusal by 2.86 pp at both speeds. At 0.30 m/s clea
 | Clearance filter − COMBO_FIX | 0.3 | -0.13 [-2.86, +2.60] | +2.99 [+0.00, +5.99] | -2.86 [-5.47, -0.39] | +0.91 [-0.52, +2.34] |
 
 The seed-0 plan-blind videos are rendering from exact paired rollout traces on dep-1's software EGL backend. This frees the single GPU for the active audit. The first render exposed a temporary mesh lifetime bug. Commit `aff003b` compiles the model before releasing its mesh assets.
+
+### E3 paired videos
+
+Three original seed-0 episode pairs are in the project `energy-videos/` artifacts folder. They use synchronized recorded poses, the same camera and the authored inserted box in both panels. Blue shows the plan and orange shows a released arm. Software EGL kept the local GPU available for evaluation. All clips passed checks for 1280×720 H.264 yuv420p, stereo 48 kHz silent AAC and faststart atom order.
+
+| File | Scenario | Clip duration | Inserted hand contact |
+| --- | --- | ---: | --- |
+| `plan-blind-static-015.mp4` | Static at 0.15 m/s, angled 0.51 m side gap, row 370 | 15.00 s | Neither controller |
+| `plan-blind-moving-015.mp4` | Moving at 0.15 m/s, angled 0.51 m side gap, row 370 | 13.80 s | Neither controller |
+| `plan-blind-moving-030.mp4` | Moving at 0.30 m/s, cabinet passage, row 62 | 11.72 s | Reflex off only |
+
+The selected traces show 20, 3 and 17 control transitions with an active arm reflex, respectively. Selection favored visible reflex activity. The third clip shows a paired example of avoiding the inserted-object hand contact.
