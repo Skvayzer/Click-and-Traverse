@@ -273,7 +273,10 @@ def fig_a3(R, out):
             xs = [p[0] for p in pts]; v = [p[1] for p in pts]
             ax.errorbar(xs, [a[0] for a in v], yerr=[[a[0] - a[1] for a in v], [a[2] - a[0] for a in v]], marker=mk, color=c, ms=4, lw=1, capsize=1.5, label=n)
         ax.set_xticks([float(s) for s in spd]); ax.set_xlabel("operator speed (m/s)"); ax.set_ylabel(ylabel); ax.grid(color=GRID, lw=.4)
-    axes[0].legend(frameon=False, fontsize=6.2, loc="lower left")
+    n_on = e4[spd[0]]["policies"]["Planner–reflex"]["seeds"]; n_off = e4[spd[0]]["policies"]["Planner–reflex, plan off"]["seeds"]
+    handles, labels = axes[0].get_legend_handles_labels()
+    labels = [f"{l} ({n_on if l == 'Planner–reflex' else n_off if 'plan off' in l else 1} seed{'s' if (n_on if l == 'Planner–reflex' else n_off if 'plan off' in l else 1) > 1 else ''})" for l in labels]
+    fig.legend(handles, labels, loc="lower center", ncol=3, frameon=False, bbox_to_anchor=(.5, -.1))
     for a, l in zip(axes, "abc"):
         panel(a, l)
     save(fig, out, "fig7_plan_input_speed_sweep")
