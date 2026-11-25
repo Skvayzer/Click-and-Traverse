@@ -225,3 +225,29 @@ uses); *secondary* — purely distance-indexed (leash 0). The gate is evaluated 
 Pilot episodes (9, not part of the results): leash 0.3 → table gaps 1 clean / 1 contact / 1 refused vs 3 refused.
 * 13:58 S3 GPU smoke 324990 (gpu partition, 3 updates, 4096 worlds, F144 plans as a stand-in bank; code d7787cf at ~/cat_worktrees/fullpath_d7787cf)
 * 14:04 S3 GPU smoke 325002 passed: 3 updates, 124 plans in 70 scenes loaded, track_feet active, peak 29.4 GB at 4096 worlds (first attempt 324990 failed on a missing untracked outputs/ file; clones now copy outputs/).
+
+## S2 results (15:20, primary feed = leash 0.3 m; COMBO_FIX seed 0, CPU protocol, 672 paired episodes)
+
+Oracle plans: 169 of 336 starts (117 searched, 52 recorded same-start traversals of COMBO_FIX plan-on/plan-off; margins
+2–8 cm, exact geometry verified end to end); the other 167 starts (mostly dense D8/procedural clutter courses) run reactive.
+Sanity: on those 167 the oracle arm equals plan-off episode for episode (same network, same start, no reference).
+
+| | oracle-guided | plan-off | plan-on | oracle − plan-off (pp, 95% scene CI) |
+| --- | --- | --- | --- | --- |
+| F144 + TG24 clean / contact / refused | 28.0 / 57.7 / 12.9 | 35.3 / 57.1 / 6.2 | 32.4 / 52.5 / 14.6 | clean −7.3 [−11.5, −3.1], refused +6.7 [+4.0, +9.5] |
+| F144 | 25.2 / 62.5 / 10.8 | 28.3 / 62.8 / 7.3 | 27.3 / 55.9 / 16.3 | clean −3.1 [−7.1, +0.9] |
+| side gaps | 38.8 / 50.0 / 11.2 | 43.1 / 53.1 / 3.8 | 42.5 / 38.1 / 19.4 | clean −4.4 [−14.4, +5.6] |
+| courses | 20.0 / 67.3 / 10.6 | 22.6 / 66.6 / 8.7 | 21.4 / 62.7 / 15.1 | clean −2.6 [−6.7, +1.4] |
+| table gaps | 44.8 / 29.2 / 26.0 | 77.1 / 22.9 / 0.0 | 63.5 / 32.3 / 4.2 | clean −32.3 [−44.8, −19.8], refused +26.0 |
+
+By plan source (clean %, oracle / plan-off / plan-on): searched plans — courses 46 / 61 / 53 (110 eps), side gaps 50 / 57 / 59
+(94), table gaps 27 / 63 / 50 (30); recorded same-start traversals — courses 74 / 59 / 79 (34), side gaps 100 / 100 / 90 (10),
+table gaps 58 / 92 / 77 (60).
+**Gate (oracle clean ≥ plan-off + 5 pp): FAILS** (−7.3 pp, CI below 0). The falsifier "verified full plans but no gain"
+is met: fed through the current 41-input interface (pelvis waypoints ≤ 1 s, heading, height, arms at 0.3 s), a verified
+whole-traversal plan does not help the current network; it adds refusals (table gaps +26 pp: the robot stops where the plan
+turns sideways or crouches under the table) and, on searched plans, also loses clean traversals. Only replaying the
+network's own earlier success helps on courses (+15 pp, 34 episodes). Reading: the limit is not the planning horizon but
+what the tracker can follow — consistent with S1 (path-relative errors of 12 cm pelvis / 34 cm hands and leg contacts that
+the 41 inputs cannot address). The secondary (purely distance-indexed) feed is still running and is reported when done.
+Videos (S2 primary feed vs matched plan-off, 0.15 m/s): `files/humanoid-protection/fullpath/videos/`.
