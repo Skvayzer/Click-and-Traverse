@@ -17,7 +17,7 @@ used=$(nvidia-smi --id=${CUDA_VISIBLE_DEVICES%%,*} --query-gpu=memory.used --for
 echo "== $(hostname) GPU ${CUDA_VISIBLE_DEVICES}: ${used} MiB in use"
 case "$SET" in
   384) S=$FP/eval384; B=(--bank data/furniture/tablegap_v1 --scenes @$FP/scenes384.txt --goal-seed-cache data/furniture/tablegap_v1_goal_column --num-envs 1536 --max-steps 21000) ;;
-  E4) S=$FP/evalE4; B=(--bank $FP/planning_v1 --scenes @$FP/planning_v1_packed/scene_ids.txt --goal-seed-cache $FP/planning_v1_goal --planning-benchmark --num-envs 288 --max-steps 14500) ;;
+  E4) E4=$HOME/cat_worktrees/energy_overnight_38b62ce/inputs/planning_v1; S=$FP/evalE4; B=(--bank $E4 --scenes @${E4}_packed/scene_ids.txt --goal-seed-cache ${E4}_goal --planning-benchmark --num-envs 288 --max-steps 14500) ;;
 esac
 case "$MODE" in
   fullpath) M=(--tracker-mix plan=1 --fullpath-plans $S) ;;
