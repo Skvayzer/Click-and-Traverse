@@ -155,3 +155,6 @@ appear at 0.15 m/s and vanish at 0.30, where plan-mode stops (refusals) are what
 | C | none seeds 1–2, ei1 seed 0, arbitration (δ = −3.72 on value_safe; δ = 0 on clearest), E4 control / none / ei1 seed 0 | 0–2 | dep-1, 8 parallel from 03:53 | `improve_<tag>_0772f2b` |
 | I5 | 322842's eval stage failed to load the planner (`PosixPath` in saved args; fixed in 7e34461 and the checkpoint re-saved); seed-0 eval moved to batch C; seeds 1–2 queued as 323469 (cancel if seed 0 fails) | 1–2 | ws-ia | `improve_ei1_seed{1,2}_323469` |
 | E2 | seed 0 done (see results); seeds 1–2 not run (pilot rule) | 0 | — | — |
+| C/E4 | the three E4 runs in batch C ran out of GPU memory at start (E4 field bank ~6.4 GB per process); moved to batch D with `--subset-fields` | 0 | — | `failed_oom_improve_E4_*` |
+| D | E4: control seeds 0–2, no reference seeds 0–2, ei1 seed 0 (`--subset-fields`) | 0–2 | dep-1, queued 03:58 behind batch C | `improve_E4_<tag>_0772f2b` |
+| V | videos: 10 obstacle types × {no reference, planner–reflex}, seed-0 COMBO_FIX, 0.15 m/s, CPU MuJoCo recordings (`record_plan_reflex.py --device cpu`, contact checked once per control step), software-EGL renders, 720p H.264 yuv420p faststart with a silent AAC track | 0 | dep-1 CPU | `files/humanoid-protection/improve-videos/` |

@@ -17,7 +17,7 @@ flock -x /tmp/cat-energy-dep1-gpu.lock bash -c '
     [[ -z "$tag" ]] && continue
     if [[ "$tag" == E4:* ]]; then
       tag=E4_${tag#E4:}; O=$R/improve_${tag}_$SHA; mkdir -p "$O"
-      $P -u scripts/eval_per_scene.py "$ckpt" --bank $E4B --scenes @${E4B}_packed/scene_ids.txt --goal-seed-cache ${E4B}_goal \
+      $P -u scripts/eval_per_scene.py "$ckpt" --subset-fields --bank $E4B --scenes @${E4B}_packed/scene_ids.txt --goal-seed-cache ${E4B}_goal \
         --planner-checkpoint $G/planner.pt --planning-benchmark --episodes 2 --num-envs 432 --nominal --max-steps 14500 \
         --operator-speeds .15 .3 .5 $extra --out-dir "$O" > "$O/evaluation.log" 2>&1 &
     else
