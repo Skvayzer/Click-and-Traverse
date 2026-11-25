@@ -1,0 +1,121 @@
+# Full-path planning for the planner–reflex system (log, opened 2026-11-25 09:40 +04)
+
+Branch `feature/fullpath-plan` (from `feature/energy-price` 16ad2fe, with `feature/eval-overnight` c9d981d merged for
+`--subset-fields`, value selection and `cat_mjlab/diagnose.py`). Worktree `~/robotics/cat-energy-fullpath`.
+Durable copy: `~/.local/share/openresearch/files/humanoid-protection/fullpath/fullpath_plan.md` (copied after each result).
+
+Diagnosis to test (user, 2026-11-25): a 2 s chunk (0.3–0.6 m at 0.15–0.3 m/s) is too short to plan over an obstacle; the plan
+must cover the whole traversal; legs must be followed at hurdles; being close to an obstacle is fine while following a verified
+plan and dangerous only when deviating from it.
+
+Stages: S1 diagnostics (evaluation only) → S2 oracle full-path upper bound (gate) → S3 tracker v2 fine-tune → S4 learned
+full-path planner. Every experiment is pre-registered here before it runs.
+
+## Compute situation at 09:40
+
+dep-1 GPU: held under `/tmp/cat-energy-dep1-gpu.lock` by another session's SONIC training (440/1400 updates, ≈2 h left), with
+two more batches (improve D2, eval failure diagnosis) waiting on the lock. Cluster: the per-user limits are full (ws-ia 2 jobs,
+gpu 1 GPU, all held by other sessions' jobs, five arrays pending). S1 and S2 therefore run on **CPU MuJoCo** (one world per
+process, `cat_mjlab/sim_cpu.py`, ≈25 control steps/s with the planner on the CPU, 2.2 GB RSS per process), 18 processes in
+parallel with a free-RAM guard. CPU and Warp physics differ in floating point and the CPU task checks body collisions once
+per control step instead of every substep, so every comparison below is made **inside the CPU protocol** (same simulator for
+all arms), and the CPU plan-on rates are checked against the GPU benchmark of the same checkpoint (sanity check, not a gate).
+
+## Benchmarks (fixed for S1–S2)
+
+* **F144** – the 144 scenes of the 384-scene list in the families the brief names: 40 side gaps (`sidegap*`) and 104 CAT
+  courses (`D8*`, `procedural-*`, `published-*`: hurdles, beams/crouch bars, side hurdles, multi-hurdles), bank `tablegap_v1`,
+  goal-column cache, nominal, deterministic, 2 episodes per scene (trial seeds 1 and 2 of the task's own reset), speeds 0.15 and
+  0.30 m/s → 576 episodes per policy.
+* **TG24** – the 24 held-out table-gap layouts of the E4 planning benchmark (`/tmp/cat-overnight/planning_v1`), both certified
+  starts, 0.15 and 0.30 m/s → 96 episodes per policy.
+* Outcomes as in `eval_per_scene.py`: clean (goal, no contact), contact (any body–obstacle contact of the 35-part proxy),
+  refused (timeout without goal/contact/fall), fall.
+
+## S1 – diagnostics of planner–reflex seed 0, plan on (pre-registered 09:40, before any S1 number)
+
+Policy: COMBO_FIX seed 0 (`COMBO_FIX_315808_u150.pt`), `--mix plan=1`, planner v1 as trained (4 candidates, clearest rule,
+continuity). Recorder: `scripts/fullpath_rollout.py` (one episode per process) stores per control step the robot qpos,
+plan clock, plan validity and reflex release, and per replan the chosen 21-frame whole-body chunk and all candidates
+(world qpos), and the first contact (step, regions, obstacle box). Analysis: `scripts/fullpath_audit.py`.
+
+Measures:
+* **(a) Lookahead.** At the first contact (contact episodes) and at the stall onset (refused episodes: the last step at which
+  the best route progress improved by ≥ 5 cm), along the start→goal direction: `need` = distance from the pelvis to the far
+  end of the obstacle (the contacted box; for stalls the box with the smallest exact body separation), `reach` = distance from
+  the pelvis to the last frame of the executing plan. Reported: median need, median reach, share of events with
+  reach < need ("the plan ends before the obstacle does").
+* **(b) Plan audit under exact geometry.** Every chosen chunk and every candidate is checked with the exact episode-ending
+  geometry (35 proxy primitives — boxes, capsules, spheres — against the scene's collision boxes, `cat_mjlab/collision.py`
+  separations over all boxes of the scene) at all 21 frames, and over the executed part (frames up to the next replan).
+  Reported: share of chosen chunks that collide (min separation < 0), share whose executed part collides, distribution of
+  the min margin (p5/p50), share of replans where all 4 candidates collide, and the sphere-cover score vs exact agreement.
+* **(c) Tracking error vs plan.** At every step with an active plan: pelvis (xy and z), hands (left/right `*_wrist_yaw_link`
+  bodies… the hand bodies used by the collision proxy), feet (ankle-roll links) world positions of the robot vs the plan pose
+  at the current plan time (FK of the interpolated plan frame). Reported p50/p95, all steps and steps within 15 cm of an
+  obstacle.
+* **(d) Failure split.** For each contact episode, at the first contact, with the plan pose at that plan time:
+  *bad plan* = the executing plan's exact separation over ±0.2 s around the contact plan time is < 0 (the plan itself goes
+  through the obstacle), or every candidate of the last replan collides; *bad tracking* = plan separation ≥ 0 and the pelvis
+  or hand error exceeds its p95 from (c) (measured on clean episodes); *conflict / untracked deviation* = safe plan, tracked
+  errors ≤ p95, contact anyway (reported with the contacting region and whether the reflex was releasing an arm);
+  *no plan* = no valid plan at contact. Refusals are split into *plan stops* (executing plan advances < 5 cm over its next
+  1 s), *robot stops on a moving plan*, and *no plan*, each with (a).
+
+Predictions (the user's diagnosis): (a) reach < need in ≥ 60% of contact/stall events on courses and side gaps;
+(b) ≥ 20% of executed chunks before a contact collide under exact geometry, and ≥ 10% of replans near obstacles have no
+collision-free candidate; (d) among course (hurdle/beam) contacts, the largest share is legs/feet contacts on a safe plan
+(untracked deviation). Falsifiers: reach ≥ need in most events (the horizon is not the limit), or bad tracking of tracked
+channels dominates (the plan is fine and the tracker misses it), or bad plans are < 10% of failures.
+S1 has no gate; it decides how S2 is built (margin = p95 tracking error from (c)).
+
+Additional S1 rollouts on the same benchmarks (needed as S2 baselines and posture library, recorded with the same tool):
+the same network with `--mix none=1` (plan-off), and the reactive E2 u300 policy (`stationary_hands_E2_u300.pt`, 43% of
+courses clean in mid-November) whose clean traversals seed the posture library.
+
+## Run log
+
+(entries appended below)
+
+### 09:20–09:45 setup notes
+* The recorder also logs the first terminating obstacle cause: besides the 35-primitive proxy contact, an episode is a
+  contact when one of the 13 policy body points reads the scene field below −4 cm, an elbow probe does, or a routed world
+  leaves its corridor (`task._termination`). Such events take the terminating pose and the nearest box. The first batch
+  (09:10, 36 episodes) lacked this and was discarded and restarted at 09:20 (`/tmp/cat-fullpath/batch_s1.log`).
+* Added to (c), descriptive and not pre-registered: a **path-relative** tracking error (error to the plan frame nearest the
+  robot's pelvis, i.e. without along-track lag), because with plan continuity the time-indexed error mostly measures how far
+  the plan has run ahead of a stalled robot. S2's distance-indexed feed is judged by this one.
+* Smoke values (17 episodes, not results): time-indexed pelvis error p50 ≈ 15 cm, hands ≈ 35 cm; path-relative pelvis ≈ 8 cm,
+  hands ≈ 35 cm. The arms of the current tracker do not follow the plan's arm targets closely.
+
+## S2 – oracle full-path upper bound (pre-registered 09:45, before any S1 or S2 result)
+
+Planner (`cat_mjlab/fullpath.py`): weighted A* (ε = 4; ε = 2 was too slow in a pilot on six scenes, 10:10) over a motion graph of 0.4 s whole-body clips (21 frames, 50 Hz) cut
+every 0.1 s from the **clean** S1 traversals of COMBO_FIX seed 0 plan-on, plan-off and E2 u300 on F144 + TG24 (posture
+library; clips are stored in their start pelvis frame and labelled sideways / crouch / high step / hands raised / hands
+tucked). From each episode's actual start state, successors are the 32 clips nearest in a continuity feature (leg and
+arm joints, pelvis height/roll/pitch, local velocity), placed at the current pelvis frame and accepted only if the exact
+separation (35 proxy primitives vs every collision box of the scene) is ≥ margin at every other frame and at the end. The
+plan is the full start→goal whole-body trajectory (pelvis SE(2) path, posture schedule, and the clips' own foot placements
+and swing apexes), re-checked end-to-end at every frame. Margins tried in order 8, 6, 4, 2 cm (150 s search budget each);
+the first success is used. The pre-registered rule "margin ≥ p95 tracking error" cannot hold if (c) gives p95 errors of
+tens of cm; the achieved margins and the oracle-feed tracking errors are reported side by side.
+Deviation from the brief, stated up front: no foot IK — the clips carry the policies' own foot trajectories and the current
+network receives no leg targets anyway; leg references are S3's job.
+
+Feed (`OracleFeeder`): every 0.1 s, the oracle time whose (0.5 s-smoothed) pelvis is nearest the robot, searched forward
+from the last match, gives a 21-frame chunk re-timed to the operator speed; it enters through the tracker's plan source
+(pelvis waypoints 0.1–1 s, heading, height, upper-body targets at 0.3 s): the current COMBO_FIX network unchanged. If no
+margin gives a plan the episode runs without a reference (reactive mode of the same network) and counts in the oracle arm.
+
+Arms (CPU protocol, seed 0, F144 + TG24, 0.15 and 0.30 m/s, two trials): oracle-guided vs plan-off and plan-on from S1,
+paired by scene × speed × trial.
+Metrics: clean, contact, refused; per family (side gaps, courses split hurdle / beam / both, table gaps); oracle success
+rate and achieved margin; path-relative tracking error under the oracle feed.
+**Gate (as the brief):** longer-horizon planning is validated if oracle-guided clean ≥ plan-off clean + 5 pp pooled over
+F144 + TG24, with the paired scene-cluster bootstrap 95% CI of the difference above 0; reported per family. Seeds 1–2 of
+COMBO_FIX are run on the same protocol if seed 0 passes or misses the bar by < 2 pp.
+Prediction (user's diagnosis): the gate passes, mostly through side gaps and table gaps (where the plan-on refusals and
+contacts come from short, colliding chunks); courses gain less because the current network cannot follow leg plans.
+Falsifier: oracle-guided clean < plan-off + 5 pp, or the oracle plans are verified collision-free yet contacts stay at the
+plan-off level (the network cannot exploit a correct full plan through its current 41 inputs).
