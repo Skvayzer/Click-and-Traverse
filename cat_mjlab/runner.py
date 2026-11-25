@@ -1355,11 +1355,19 @@ def run(args):
         # SONIC + residual reflex: environment from a COMBO_FIX checkpoint (field-route references, nominal physics,
         # gait shaping removed); residual policy from scratch (cat_mjlab/sonic_residual.py).
         from .sonic_residual import residual_environment
-        if not from_scratch or args.sonic_env_from is None:
-            raise ValueError("--sonic-residual trains from scratch (--from-scratch) in --sonic-env-from's environment")
+        if args.sonic_env_from is None or not (from_scratch or (sonic_mode == "latent" and native_path is not None)
+                                                or args.resume):
+            raise ValueError("--sonic-residual trains from scratch (latent: or warm-starts with --checkpoint-native) "
+                             "in --sonic-env-from's environment")
         contract_env = torch.load(args.sonic_env_from, map_location="cpu", weights_only=True, mmap=True)["contract"][
             "environment_config"]
-        config_source, removed_terms = residual_environment(contract_env, args.tracker_planner)
+        config_source, removed_terms = residual_environment(contract_env, args.tracker_planner,
+                                                            keep_sgs=bool(getattr(args, "sonic_keep_sgs", False)))
+        if getattr(args, "sonic_height_curriculum", None):
+            advance, window = args.sonic_height_curriculum
+            config_source["height_curriculum"] = dict(advance=float(advance), window=int(window))
+        if getattr(args, "sonic_goal_cache", None):
+            config_source["goal_seed"]["cache"] = str(args.sonic_goal_cache)
         if sonic_mode == "latent":
             # The task's action is SONIC's own action (observation bookkeeping); the adaptor's smoothness is charged
             # by the wrapper on its 66 actions instead.
@@ -1438,9 +1446,10 @@ def run(args):
         from .sonic_latent import LatentAdaptorTask
         from .sonic_residual import zero_residual_mean
         soft = int(args.max_updates * unroll * args.sonic_soft_fraction) if not args.resume else 0
-        task = LatentAdaptorTask(task, latent_scale=args.sonic_latent_scale, soft_steps=soft,
-                                 contact_cost=args.sonic_contact_cost)
-        if not args.resume:
+        until = getattr(args, "sonic_soft_until_cat_clean", None)
+        task = LatentAdaptorTask(task, latent_scale=args.sonic_latent_scale, soft_steps=0 if until else soft,
+                                 contact_cost=args.sonic_contact_cost, soft_until_cat_clean=until)
+        if not args.resume and native_path is None:
             zero_residual_mean(learner)
         migration["sonic_latent"] = dict(latent_scale=args.sonic_latent_scale, soft_steps=soft,
                                          contact_cost=args.sonic_contact_cost, env_from=str(args.sonic_env_from))

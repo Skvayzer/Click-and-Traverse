@@ -150,10 +150,11 @@ class LatentAdaptorTask:
     """Training wrapper (attribute delegation to the CATTask). step(action [n, 66])."""
 
     _own = {"_task", "gait", "sonic", "latent_scale", "obs", "observation_size", "privileged_observation_size",
-            "_mod", "_last_action", "_steps", "soft_steps", "contact_cost", "rate_weight", "timing"}
+            "_mod", "_last_action", "_steps", "soft_steps", "contact_cost", "rate_weight", "timing", "soft_until",
+            "cat_clean", "cat_episodes", "soft"}
 
     def __init__(self, task, *, latent_scale=.3, soft_steps=0, contact_cost=2., rate_weight=.02, library=LIBRARY,
-                 sonic_dir=SONIC_DIR):
+                 sonic_dir=SONIC_DIR, soft_until_cat_clean=None):
         from .sonic_tracker import SonicTracker
 
         if task.tracker is None:
@@ -168,7 +169,12 @@ class LatentAdaptorTask:
         self.privileged_observation_size = task.privileged_observation_size + EXTRA_OBS
         self._last_action = torch.zeros(task.num_envs, ACTIONS, device=task.device)
         self._steps, self.soft_steps, self.contact_cost, self.rate_weight = 0, int(soft_steps), float(contact_cost), float(rate_weight)
-        if self.soft_steps > 0:
+        # Adaptive schedule: contacts stay soft until the running clean rate on CAT courses (EMA over CAT episode
+        # ends, at least 500 of them) exceeds soft_until_cat_clean.
+        self.soft_until = soft_until_cat_clean
+        self.cat_clean, self.cat_episodes = 0., 0
+        self.soft = self.soft_steps > 0 or self.soft_until is not None
+        if self.soft:
             task.config["contact_penalty"] = self.contact_cost
             task.config["contact_soft_hands"] = True
         self.timing = dict(steps=0)
@@ -219,10 +225,25 @@ class LatentAdaptorTask:
         out["metrics"]["sonic/speed_mod"] = action[:, 64]
         out["metrics"]["sonic/turn_mod"] = action[:, 65]
         self._steps += 1
-        if self.soft_steps and self._steps == self.soft_steps:
+        m = out["metrics"]
+        if self.soft_until is not None and self.soft and bool(done.any()):
+            cat = done & task.bank.is_cat[m["scene_ids"]]
+            if bool(cat.any()):
+                zero = torch.zeros_like(done)
+                clean = (m.get("episode/goal_reached", zero).bool() & ~m.get("episode/obstacle", zero).bool())[cat]
+                k = int(cat.sum())
+                self.cat_episodes += k
+                alpha = min(1., k / 1000.)
+                self.cat_clean = (1 - alpha) * self.cat_clean + alpha * float(clean.float().mean())
+            out["metrics"]["sonic/cat_clean_ema"] = torch.full_like(rate, self.cat_clean)
+        end_soft = (self.soft_steps and self._steps == self.soft_steps) or (
+            self.soft_until is not None and self.soft and self.cat_episodes >= 500 and self.cat_clean > self.soft_until)
+        if self.soft and end_soft:
+            self.soft = False
             task.config["contact_penalty"] = None
             task.config["contact_soft_hands"] = False
-            print(f"SONIC latent adaptor: contacts terminal from control step {self._steps}", flush=True)
+            print(f"SONIC latent adaptor: contacts terminal from control step {self._steps} "
+                  f"(CAT clean EMA {self.cat_clean:.3f} over {self.cat_episodes} CAT episodes)", flush=True)
         out["obs"] = self._observe()
         return out
 

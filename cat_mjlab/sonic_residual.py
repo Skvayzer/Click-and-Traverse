@@ -29,12 +29,16 @@ KEEP = {"feetdf", "feetgf", "handsdf", "handsgf", "headdf", "headgf", "kneesdf",
         "overspeed", "upright", "joint_limits", "action_rate", "smoothness_action"}
 
 
-def residual_environment(contract_env, planner_path):
+def residual_environment(contract_env, planner_path, keep_sgs=False):
     """COMBO_FIX environment for residual training: field-route references only, nominal physics (SONIC saw no
     latency/pose-noise robustness), gait/posture/energy shaping removed (SONIC supplies the style)."""
     env = copy.deepcopy(contract_env)
-    for key in ("robustness", "refusal_training", "sgs"):
+    for key in ("robustness", "refusal_training") + (() if keep_sgs else ("sgs",)):
         env.pop(key, None)
+    if keep_sgs and env.get("sgs"):
+        # The prior files are earlier policies' per-scene results (repository-relative outputs); the sampler adapts
+        # from its own outcomes without them.
+        env["sgs"]["prior_files"] = []
     env["tracker"]["mix"] = [["field", 1.]]
     env["tracker"]["planner"]["path"] = str(planner_path)
     scales = env["reward_config"]["scales"]

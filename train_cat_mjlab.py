@@ -422,6 +422,12 @@ def parser():
         target.add_argument("--sonic-soft-fraction", type=float, default=1 / 3,
                             help="latent mode: share of the requested updates with soft (non-terminal) contacts")
         target.add_argument("--sonic-contact-cost", type=float, default=2., help="latent mode: soft contact cost per step")
+        target.add_argument("--sonic-soft-until-cat-clean", type=float,
+                            help="latent mode: keep contacts soft until the running CAT-course clean rate exceeds this")
+        target.add_argument("--sonic-keep-sgs", action="store_true", help="keep the success-guided scene sampler (target 2/3)")
+        target.add_argument("--sonic-height-curriculum", type=float, nargs=2, metavar=("ADVANCE", "WINDOW"),
+                            help="beam/bar height curriculum (needs a tablegap_bb bank)")
+        target.add_argument("--sonic-goal-cache", type=Path, help="goal-column cache matching the training bank")
         target.add_argument("--sonic-residual", choices=("whole", "arms", "latent"),
                             help="Residual policy on frozen GEAR-SONIC (cat_mjlab/sonic_residual.py); needs --from-scratch")
         target.add_argument("--sonic-env-from", type=Path, help="Checkpoint whose environment the residual trains in")
