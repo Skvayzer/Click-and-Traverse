@@ -251,3 +251,12 @@ network's own earlier success helps on courses (+15 pp, 34 episodes). Reading: t
 what the tracker can follow — consistent with S1 (path-relative errors of 12 cm pelvis / 34 cm hands and leg contacts that
 the 41 inputs cannot address). The secondary (purely distance-indexed) feed is still running and is reported when done.
 Videos (S2 primary feed vs matched plan-off, 0.15 m/s): `files/humanoid-protection/fullpath/videos/`.
+
+### S3 launch (16:25)
+* Training bank v1 (deviation from the pre-registration, to use the two GPU slots free at 16:20): the plans found when 525 of
+  the 652 training starts had been searched — **195 verified plans** (procedural courses 62/259 searched, side gaps 38/94,
+  table-edge passages 39/96, cabinets 56/76); `/l/users/konstantin.smirnov/fullpath/s3_bank_v1`, spec `s3_spec_v1.json`
+  (share 0.5, tol 3 cm, floor 2 cm, reflex floor 2 cm, foot σ 6 cm, weight 2). The rest of the search continues; a v2 bank
+  is used only for seed 2 if it is noticeably larger (stated if so).
+* Jobs: seed 0 325267 (gpu), seed 1 325268 (ws-ia), 150 updates, 12,288 worlds, 8 h wall limit (QOS); seed 2 when a slot frees.
+* Eval path verified on GPU (325200: E4 with start replay and 45 table-gap plans, smoke checkpoint, 288/288 episodes).
