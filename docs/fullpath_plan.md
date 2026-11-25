@@ -178,3 +178,34 @@ near the grid's x edge — but the episode's own goal check bounds only y in the
 (2) ~1 s per expansion in dense scenes. Fix: lateral-only bounds (pelvis 15 cm inside) for plane-goal scenes, xy only for the
 table-gap layouts; collision check in two stages (4 frames, then every 2nd frame of the survivors). The 67 plans already
 found are kept (found under the stricter bound); the 141 failures and the unfinished starts are searched again.
+
+## S3 – tracker v2 (pre-registered 12:05, before S2's oracle-guided rollouts; training is launched only after the S2 gate)
+
+Code (`cat_mjlab/fullpath_tracker.py`, hooks in `cat_mjlab/task.py`, `--tracker-fullpath JSON` in `train_cat_mjlab.py`,
+`--start-replay/--fullpath-plans` in `scripts/eval_per_scene.py`). Opt-in: configs without `tracker.fullpath` are unchanged.
+* **Plans.** A bank of S2 oracle plans (search + recorded alternatives) for 652 training scenes that are **not** in the 384
+  evaluation list (320 procedural courses, 160 side gaps, 96 table-edge passages, 76 cabinets; one task-reset start each,
+  `scripts/fullpath_starts.py`). At a reset, a share of 0.5 of the worlds becomes full-path worlds: a random plan, its scene
+  and its start pose. Moving plan-source worlds without a full plan act without a reference (reactive), as the brief asks.
+* **Feed.** Every step the robot's match on its plan (nearest smoothed pelvis, searched forward) and a reference clock that
+  advances at the operator speed but at most 0.3 m of plan arc length ahead of the match (a purely distance-indexed
+  reference pays full pelvis tracking to a robot that stands still: CPU smoke 11:45); the tracker's existing 41-input block
+  is filled from the clock every 0.1 s.
+* **New inputs (46, appended, zero-widened warm start):** the path at 0.25/0.5/1/1.5/2/3 m of arc length ahead of the match
+  (dx, dy, dz, sin/cos Δyaw), posture-mode code (sideways, crouch, high step, hands raised, hands tucked) + distance to the
+  next high step / crouch, and leg references near hurdles (each foot's planned position 0.3 s ahead relative to the pelvis,
+  the planned swing apex of the next second, leg mask = a high step within 1 m).
+* **Rewards.** `track_feet` = exp(−mean_feet |p_foot − p̂_foot|² / 0.06²) under the leg mask, weight 2 (track_pos is 4);
+  plan-relative clearance: on a world following a full plan, every field/clearance cost sees a body point only when its
+  clearance is below min(planned clearance − 3 cm, 2 cm), elbows below 2 cm; deviation reflex: an arm is released when its
+  hand is closer than planned by more than 3 cm or closer than 2 cm (hard floor); the band rule stays elsewhere. "Obstacles
+  absent from the plan map" do not occur in the static training scenes and are not modelled. All other rewards as COMBO_FIX.
+* **Training.** Warm start from COMBO_FIX seeds 0, 1, 2 (u150), fresh optimizer, 150 updates at 12,288 worlds (the E2
+  fine-tune budget), cluster (ws-ia/gpu, 1 GPU, ≤ 12 CPUs, ≤ 54 GB) or dep-1 under the GPU lock.
+* **Evaluation (GPU, identical starts for every arm via `--start-replay`):** the 384 scenes and the 72 held-out layouts,
+  2 episodes, 0.15 and 0.30 m/s; arms: tracker v2 with oracle plans, plan-off (COMBO_FIX none=1), plan-on (COMBO_FIX
+  planner v1), reactive V7r; 3 seeds where the arm has seeds; paired scene-bootstrap 95% CIs.
+* **Success criterion:** tracker v2 clean ≥ plan-off + 5 pp on F144 + TG24 (CI lower bound > 0) **and** contact not higher
+  than plan-off on the 384 scenes; seed-level sign agreement in all 3 seeds. Prediction: hurdles/beams gain most (leg
+  references), side gaps and table gaps gain through the plan-relative costs. Falsifier: no family gains ≥ 5 pp, or the
+  gain comes only from scenes whose plan is a recorded traversal (reported separately).

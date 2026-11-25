@@ -113,6 +113,10 @@ def main():
                         "never sampled): several evaluations then share one GPU")
     p.add_argument("--diagnose", type=Path, help="write per-episode failure diagnostics (first contact region/obstacle, progress, "
                    "velocity, heading, stall, clearance, crouch and foot lift near obstacles) to this JSON file")
+    p.add_argument("--start-replay", type=Path, help="DIR of <scene>_<k>.npz (qpos[0]): episode k of every scene starts there "
+                   "(zero velocity); the same starts for every policy (docs/fullpath_plan.md, S3)")
+    p.add_argument("--fullpath-plans", type=Path, help="DIR of full-path oracle plans <scene>_<k>.npz: tracker v2 worlds follow the "
+                   "plan of their scene and episode index (needs --start-replay with the same DIR and a full-path checkpoint)")
     p.add_argument("--out", type=Path)
     p.add_argument("--out-dir", type=Path)
     args = p.parse_args()
@@ -206,6 +210,12 @@ def main():
         if args.tracker_mix != "plan=1" or args.refusal_fix:
             p.error("Plan-only needs --tracker-mix plan=1 without a recovery variant")
         env["eval_hide_actor_fields"] = True
+    if args.fullpath_plans:
+        if not env.get("tracker", {}).get("fullpath") or args.start_replay is None:
+            p.error("--fullpath-plans needs a full-path (tracker v2) checkpoint and --start-replay")
+        env["tracker"]["fullpath"] = dict(env["tracker"]["fullpath"], plans=[str(args.fullpath_plans / "*_[0-9].npz")], share=1.)
+    elif env.get("tracker", {}).get("fullpath"):
+        env["tracker"]["fullpath"] = dict(env["tracker"]["fullpath"], share=0.)     # no plans given: plan worlds act reactive
     if args.planner_checkpoint:
         if not env.get("tracker", {}).get("planner"):
             p.error("A relocated planner needs an online-planner tracker")
@@ -250,6 +260,8 @@ def main():
         task.raised_reset_fraction = 0.
         task.generator.manual_seed(args.seed)
     S = len(ids); NS = len(scenes); K = len(speeds)
+    if args.start_replay and args.num_envs != S * K * args.episodes:
+        p.error("--start-replay needs one simulator world per matched episode (num-envs = scenes x speeds x episodes)")
     if args.planning_benchmark and args.num_envs != S * K * args.episodes:
         p.error("The planning benchmark needs one simulator world per matched episode")
     if blind and args.num_envs != S * args.episodes:
@@ -275,6 +287,25 @@ def main():
                 name: torch.as_tensor(schedule[key], dtype=task.data.qpos.dtype, device=dev)
                 for name, key in (("initial_pose", "pose"), ("initial_velocity", "velocity"))
             }
+    replay_pose = replay_plan = None
+    if args.start_replay:
+        # starts [NS, E, 36] for every selected scene and episode index; plan ids [NS, E] (-1: none)
+        replay_pose = torch.zeros((NS, args.episodes, 36), device=dev); have = torch.zeros((NS, args.episodes), dtype=torch.bool, device=dev)
+        for i in ids:
+            for k_ in range(args.episodes):
+                f_ = args.start_replay / f"{scenes[i]['scene_id']}_{k_}.npz"
+                if f_.exists():
+                    replay_pose[i, k_] = torch.as_tensor(np.load(f_)["qpos"][0], device=dev); have[i, k_] = True
+        if not bool(have[ids].all()):
+            p.error(f"--start-replay misses {int((~have[ids]).sum())} starts")
+        if args.fullpath_plans:
+            replay_plan = torch.full((NS, args.episodes), -1, dtype=torch.long, device=dev)
+            name_ix = {s_["scene_id"]: i for i, s_ in enumerate(scenes)}
+            for j_, m_ in enumerate(task.fullpath_bank.metas):
+                if m_["scene"] in name_ix and int(m_["trial"]) < args.episodes:
+                    replay_plan[name_ix[m_["scene"]], int(m_["trial"])] = j_
+            task.fullpath_eval_plan = torch.full((task.num_envs,), -1, dtype=torch.long, device=dev)
+            print(json.dumps(dict(fullpath_plans=int((replay_plan[ids] >= 0).sum()), episodes_per_speed=S * args.episodes)), flush=True)
     cursor = [0]
     env_scene = torch.full((task.num_envs,), -1, dtype=torch.long, device=dev)      # -1: no job (ignored)
     original_reset = task.reset
@@ -283,7 +314,7 @@ def main():
         env_ids = task.all_ids if env_ids is None else env_ids.long()
         n = len(env_ids)
         take = min(n, len(jobs) - cursor[0])
-        trial = torch.zeros(n, dtype=torch.long, device=dev) if args.planning_benchmark else None
+        trial = torch.zeros(n, dtype=torch.long, device=dev) if (args.planning_benchmark or replay_pose is not None) else None
         chosen = torch.full((n,), -1, dtype=torch.long, device=dev)
         if take > 0:
             batch = slice(cursor[0], cursor[0] + take)
@@ -300,7 +331,13 @@ def main():
         filler = torch.tensor(ids, device=dev)[torch.randint(S, (n,), device=dev)]
         try:
             selected = torch.where(chosen >= 0, chosen % NS, filler)
-            start = benchmark_start(task, selected, trial, args.episodes) if trial is not None else {}
+            if replay_pose is not None:
+                pose_ = replay_pose[selected, trial.clamp_max(args.episodes - 1)]
+                start = dict(initial_pose=pose_, initial_velocity=torch.zeros((n, 35), device=dev))
+                if replay_plan is not None:
+                    task.fullpath_eval_plan[env_ids] = torch.where(chosen >= 0, replay_plan[selected, trial.clamp_max(args.episodes - 1)], -1)
+            else:
+                start = benchmark_start(task, selected, trial, args.episodes) if trial is not None else {}
             if guide_starts is not None and take:
                 if take != task.num_envs or not torch.equal(env_ids, task.all_ids):
                     raise RuntimeError("Blind initial states must be replayed together in guide order")
