@@ -84,6 +84,18 @@ K=4 and of the default clearest rule; (2) seeds 1–2 for the passing variant wi
 variant passes the pilot gate); (3) E4 held-out seed-0 runs for the same-code control and that variant; (4) if the expert-
 iteration planner is ready, the seed-1 and seed-2 trackers with it (seed 0 runs on the cluster in 322842).
 
+## I6 — stall-triggered planning: plan off by default (pre-registered 05:20, after the I4 seed-0 result and the eval agent's A3 report that plan-off beats plan-on on E4)
+
+Hypothesis: the planner–reflex network is best without a reference in most scenes (I4, A3), but a plan is still needed where
+reactive following stalls (U-trap dead ends, route commitment). Rule (`9f497ab`, `--tracker-stall-plan 2 4`): plan worlds act
+without a reference; after 2 s without 5 cm of route progress a fresh plan is engaged for 4 s, then released (re-engaged on the
+next stall). CPU smoke on published-side-hurdle-crouch1: the plan engages after the first stall (3.4 s) and toggles every
+~4 s while the robot stays stuck.
+Prediction: on the 384 scenes it keeps ≥ 80% of the no-reference clean gain over plan-on at 0.15 and lowers contact versus the
+no-reference mode at 0.30 (plan-mode stops in CAT/side gaps); on E4 it keeps the U-trap rate of plan-on and the table-gap rate
+of plan-off. Falsifier: clean below the no-reference mode by > 1 pp at both speeds, or E4 U-trap clean below plan-on by > 5 pp.
+Runs: seed 0 (384 + E4) in batch D2 on dep-1; seeds 1–2 on the 384 scenes as cluster 324542 (after 323469); E4 seeds 1–2 in D2.
+
 ## Results
 
 ### I4 seed 0 — the planner–reflex network without any reference (02:45)
@@ -158,3 +170,5 @@ appear at 0.15 m/s and vanish at 0.30, where plan-mode stops (refusals) are what
 | C/E4 | the three E4 runs in batch C ran out of GPU memory at start (E4 field bank ~6.4 GB per process); moved to batch D with `--subset-fields` | 0 | — | `failed_oom_improve_E4_*` |
 | D | E4: control seeds 0–2, no reference seeds 0–2, ei1 seed 0 (`--subset-fields`) | 0–2 | dep-1, queued 03:58 behind batch C | `improve_E4_<tag>_0772f2b` |
 | V | videos: 10 obstacle types × {no reference, planner–reflex}, seed-0 COMBO_FIX, 0.15 m/s, CPU MuJoCo recordings (`record_plan_reflex.py --device cpu`, contact checked once per control step), software-EGL renders, 720p H.264 yuv420p faststart with a silent AAC track | 0 | dep-1 CPU | `files/humanoid-protection/improve-videos/` |
+| D2 | replaces the waiting batch D (stopped before it started): code `9f497ab`; I6 seed 0 on the 384 scenes; E4 control / no reference / I6 for seeds 0–2, ei1 seed 0 | 0–2 | dep-1, queued 05:22 | `improve_<tag>_9f497ab` |
+| I6 | stall-triggered planning, 384 scenes | 1–2 | 324542 ws-ia (after 323469) | `improve_stallplan_seed{1,2}_324542` |
