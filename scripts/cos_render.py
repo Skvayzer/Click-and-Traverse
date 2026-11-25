@@ -21,7 +21,7 @@ sys.path.insert(0, str(ROOT))
 
 COL = dict(main=(0.95, 0.55, 0.15, 0.92), support=(0.55, 0.38, 0.22, 0.92), distractor=(0.45, 0.55, 0.7, 0.45),
            wall=(0.85, 0.85, 0.82, 0.18))
-NAMES = dict(arms_in="arms in (sideways event)", duck="duck under", crawl="crawl", high_step="high step", sideways="turn sideways", arms_tucked="arms tucked",
+NAMES = dict(multi="several events", arms_in="arms in (sideways event)", duck="duck under", crawl="crawl", high_step="high step", sideways="turn sideways", arms_tucked="arms tucked",
              arms_raised="arms raised", detour="detour")
 
 
@@ -65,7 +65,7 @@ def m_clear(scene, M):
 def camera_for(scene):
     fam = scene["family"]
     # side view perpendicular to the path for vertical families, oblique high view for lateral ones
-    if fam in ("sideways", "arms_tucked", "detour", "arms_raised"):
+    if fam in ("sideways", "arms_in", "arms_tucked", "detour", "arms_raised", "multi"):
         return dict(distance=4.2, elevation=-38., az_offset=-60.)
     return dict(distance=3.8, elevation=-16., az_offset=-55.)
 
@@ -127,9 +127,15 @@ def sheet(a):
     from PIL import Image
     from cat_mjlab.cos.render import add_ghost, fonts, label
     S = load(a.synth)
-    S = [s for s in S if s["verify"]["ok"]]
-    rng = random.Random(a.seed)
-    pick = rng.sample(S, min(a.n, len(S)))
+    ok = lambda s: s["verify"]["ok"] if "verify" in s else s["verified"]
+    if a.ids:
+        want = [l.strip() for l in open(a.ids) if l.strip()]
+        by = {s["scene"]: s for s in S}
+        pick = [by[i] for i in want if i in by]
+    else:
+        S = [s for s in S if ok(s)]
+        rng = random.Random(a.seed)
+        pick = rng.sample(S, min(a.n, len(S)))
     W, H = 400, 300
     font, _ = fonts(12)
     tiles = []
@@ -138,7 +144,8 @@ def sheet(a):
         data, ghost = mujoco.MjData(model), mujoco.MjData(model)
         opt = mujoco.MjvOption(); opt.geomgroup[3:] = 0
         pert = mujoco.MjvPerturb()
-        fa, fb = s["event_frames"]; t = (fa + fb) // 2
+        ef = s["event_frames"]
+        fa, fb = ef[0] if isinstance(ef[0], list) else ef; t = (fa + fb) // 2
         cam = mujoco.MjvCamera(); c = camera_for(s)
         cam.distance, cam.elevation, cam.azimuth = c["distance"] - 0.6, c["elevation"], c["az_offset"]
         cam.lookat[:] = [M[t, 0], M[t, 1], 0.6]
@@ -147,7 +154,13 @@ def sheet(a):
             r.update_scene(data, camera=cam, scene_option=opt)
             add_ghost(r.scene, model, ghost, mujoco, opt, pert, D[t], (1.0, 0.2, 0.1, 0.35))
             img = r.render().copy()
-        tiles.append(label(img, [f"{NAMES[s['family']]} -> {s.get('kind')}", f"{s['source']} {s['clip_id'][:30]}"], font, xy=(6, 4)))
+        kind = s.get("kind") or "+".join(s.get("kinds", []))
+        extra = ""
+        if "quality" in s:
+            extra = f"pen {100 * s['quality']['d_pen']:.0f}cm clr {100 * s['quality']['m_clear']:.0f}cm" + \
+                    ("" if s.get("tracked") is None else (" G1 ok" if s["tracked"] else " G1 fail"))
+        tiles.append(label(img, [f"{NAMES.get(s['family'], s['family'])} -> {kind}"[:52],
+                                 f"{s['source']} {s.get('clip_id', s.get('clip', ''))[-30:]}", extra], font, xy=(6, 4)))
     cols = 6
     while len(tiles) % cols:
         tiles.append(np.zeros_like(tiles[0]))
@@ -162,7 +175,7 @@ def main():
     p.add_argument("mode", choices=("video", "sheet"))
     p.add_argument("--synth", required=True); p.add_argument("--out", required=True)
     p.add_argument("--scene"); p.add_argument("--name"); p.add_argument("--n", type=int, default=24)
-    p.add_argument("--seed", type=int, default=0)
+    p.add_argument("--seed", type=int, default=0); p.add_argument("--ids", help="file of scene ids to show, in order")
     a = p.parse_args()
     (video if a.mode == "video" else sheet)(a)
 
