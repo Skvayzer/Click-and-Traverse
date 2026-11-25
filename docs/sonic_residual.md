@@ -273,9 +273,15 @@ the other baselines. The 72-layout evaluation finished; the 384-scene one is sti
 | Adaptor u600 | E4, 72 layouts | 0.30 | 3.47 | 96.53 | 46.53 |
 | Adaptor u600 | E4, 72 layouts | 0.50 | 2.78 | 97.22 | 61.81 |
 
-The zero-adaptor numbers reproduce plain SONIC driven by the ONNX generator (G2: 12.9% on 384 scenes, 0% on E4). The
-u600 adaptor adds a few clean E4 arrivals but raises hand contact. The 384-scene evaluation of u600 (323466) is still
-running.
+| Adaptor u600 (323466) | 384 scenes | 0.15 | **41.67** | 57.94 | 17.71 |
+| Adaptor u600 | 384 scenes | 0.30 | **43.62** | 55.73 | 15.36 |
+
+The zero-adaptor numbers reproduce plain SONIC driven by the ONNX generator (G2: 12.9% on 384 scenes, 0% on E4).
+- **384 scenes:** u600 lifts clean traversal from about 13% to 42–44% (+29–31 pp) and lowers hand contact by 2–7 pp. It
+  still trails planner–reflex (61–62% clean, 2.6–2.9% hands in the three-seed round 4).
+- **E4, 72 layouts:** u600 reaches only 3% clean, with more hand contact than the zero adaptor. Planner–reflex gets
+  47–55% clean there.
+- **Caveat:** u600 is 1 training seed, and the 95% intervals are not yet computed.
 
 **Gate 5 (u600): done.** Videos are in `sonic-videos/obstacles/`:
 - `<scene>__sonic-latent.mp4` (u600) and `<scene>__plain-sonic-gait.mp4` (zero adaptor on the batched gait). The gait
