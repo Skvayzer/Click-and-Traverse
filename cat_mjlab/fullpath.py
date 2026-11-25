@@ -266,9 +266,15 @@ def plan_scene(lib, geometry, boxes, start_qpos, goal_xy, route_dir, *, margin=.
 
 
 class OracleFeeder:
-    """Distance-indexed feed of an oracle trajectory into the tracker's plan source for world 0 (CPU rollouts)."""
+    """Distance-indexed feed of an oracle trajectory into the tracker's plan source for world 0 (CPU rollouts).
 
-    def __init__(self, data, task, *, lead=0.0, interval=0.1, search_back=.5, search_ahead=2.0):
+    The trajectory is indexed by progress u = arc length of its 0.5 s-smoothed pelvis path + 0.15 m per radian of heading
+    change (a turn in place still makes progress), so dwell and hesitation in the oracle's own timing do not matter. Every
+    `interval` s the robot's progress u* is its nearest smoothed-path point (searched in [u - 0.3 m, u + 1.0 m] of the last
+    match, never more than 5 cm backwards), and the chunk's 21 frames are the oracle poses at u* + v_op (lead + 0.1 k).
+    """
+
+    def __init__(self, data, task, *, lead=0.0, interval=0.1, back_m=.3, ahead_m=1.0, turn_m=.15, leash=None):
         self.q = np.asarray(data["qpos"], dtype=np.float64)
         self.task, self.lead, self.interval = task, float(lead), float(interval)
         n = len(self.q)
@@ -276,15 +282,18 @@ class OracleFeeder:
         pad = np.concatenate([np.repeat(self.q[:1, :2], k, 0), self.q[:, :2], np.repeat(self.q[-1:, :2], k, 0)])
         kernel = np.ones(2 * k + 1) / (2 * k + 1)
         self.smooth = np.stack([np.convolve(pad[:, c], kernel, mode="valid") for c in range(2)], -1)   # [n, 2]
-        self.n, self.idx = n, 0.
-        step = np.linalg.norm(np.diff(self.smooth, axis=0), axis=-1)
-        self.v_plan = float(step.sum() / max((n - 1) * DT, DT))           # mean oracle path speed (m/s)
-        self.back, self.ahead = int(search_back / DT), int(search_ahead / DT)
         self.yaw = np.unwrap(yaw_of(self.q))
+        step = np.linalg.norm(np.diff(self.smooth, axis=0), axis=-1) + turn_m * np.abs(np.diff(self.yaw))
+        self.u = np.concatenate(([0.], np.cumsum(step)))                    # progress per frame, non-decreasing
+        self.n, self.match_u, self.clock_u = n, 0., 0.
+        self.back, self.ahead = float(back_m), float(ahead_m)
+        # leash (m): the reference clock advances at the operator speed but at most `leash` m ahead of the robot's match
+        # (the plan clocks the network was trained with keep running); None: purely distance-indexed (clock = match)
+        self.leash = None if leash is None else float(leash)
 
-    def frames(self, i0, rate):
-        """21 frames (0.1 s apart in robot time) from oracle index i0, oracle time advancing `rate` x real time."""
-        t = (i0 + (self.lead + .1 * np.arange(21)) * rate / DT).clip(0, self.n - 1)
+    def at(self, u):
+        """Oracle poses at progress values u [m] (frame interpolation, quaternion nlerp) and their unwrapped yaw."""
+        t = np.interp(np.clip(u, 0., self.u[-1]), self.u, np.arange(self.n, dtype=np.float64))
         a = np.floor(t).astype(int).clip(0, self.n - 2); w = (t - a)[:, None]
         qa, qb = self.q[a], self.q[a + 1].copy()
         qb[:, 3:7] = np.where((qa[:, 3:7] * qb[:, 3:7]).sum(-1, keepdims=True) < 0, -qb[:, 3:7], qb[:, 3:7])
@@ -298,12 +307,16 @@ class OracleFeeder:
         if len(ids) == 0 or not bool(t.is_plan[0]):
             return
         robot = self.task.data.qpos[0, :2].cpu().numpy().astype(np.float64)
-        lo, hi = max(0, int(self.idx) - self.back), min(self.n, int(self.idx) + self.ahead)
-        j = lo + int(np.linalg.norm(self.smooth[lo:hi] - robot, axis=-1).argmin())
-        self.idx = max(float(j), self.idx - 10)
+        win = np.nonzero((self.u >= self.match_u - self.back) & (self.u <= self.match_u + self.ahead))[0]
+        if len(win):
+            j = win[int(np.linalg.norm(self.smooth[win] - robot, axis=-1).argmin())]
+            self.match_u = max(float(self.u[j]), self.match_u)          # progress never goes back
         speed = float(t.route_speed[0])
-        rate = min(1.5, max(.2, speed / max(self.v_plan, 1e-3)))
-        q, yaw = self.frames(self.idx, rate)
+        if self.leash is None:
+            self.clock_u = self.match_u
+        else:
+            self.clock_u = min(max(self.clock_u + speed * self.interval, self.match_u), self.match_u + self.leash)
+        q, yaw = self.at(self.clock_u + speed * (self.lead + .1 * np.arange(21)))
         dev = t.device
         f = lambda x: torch.as_tensor(np.asarray(x), dtype=torch.float32, device=dev)[None]
         roll, pitch = roll_pitch(q)

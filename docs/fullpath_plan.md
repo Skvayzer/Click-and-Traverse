@@ -164,7 +164,7 @@ pre-registered 8→2 cm margin schedule and reports the oracle-feed tracking err
 ### S2 amendment (11:20, after the first 55 oracle searches, before any oracle-guided rollout)
 The motion-graph search finds plans for only 8 of the first 55 starts (dense D8 clutter courses; all margins exhausted in
 most). Since starts are identical across speeds and policies for a scene and trial (checked on 60 pairs), every clean S1
-traversal from the same start is itself a whole-traversal, collision-free whole-body path. The oracle's candidate set is
+traversal from the same start (pelvis within 1 cm; E2 u300 resets differently and mostly does not qualify) is itself a whole-traversal, collision-free whole-body path. The oracle's candidate set is
 therefore the searched plan **plus** the recorded clean traversals of the three S1 policies from the same start (any
 speed), each re-verified with the exact geometry; the one with the largest verified margin is used if that margin is
 ≥ 2 cm (searched plan preferred on ties). The source of every plan (searched / recorded, and which policy) is reported, and
@@ -209,3 +209,17 @@ Code (`cat_mjlab/fullpath_tracker.py`, hooks in `cat_mjlab/task.py`, `--tracker-
   than plan-off on the 384 scenes; seed-level sign agreement in all 3 seeds. Prediction: hurdles/beams gain most (leg
   references), side gaps and table gaps gain through the plan-relative costs. Falsifier: no family gains ≥ 5 pp, or the
   gain comes only from scenes whose plan is a recorded traversal (reported separately).
+
+### S2 feed correction (13:45, before any complete oracle-guided result)
+The first oracle-guided batch (12:58–13:35, 410 of 672 episodes) was **discarded**: its feed indexed the oracle by the oracle's
+own time from the matched point, so where the oracle trajectory dwells (recorded traversals hesitate for seconds before a
+gap) the 0.1–1 s waypoints collapsed onto the robot and the nearest-point match got trapped in the dwell loop — table gaps
+then refused 27 pp more than plan-off with the robot never leaving the first 1–2 m. That feed was not distance-indexed as
+pre-registered. Fixed feed (`OracleFeeder`): the oracle is indexed by progress u = smoothed pelvis arc length + 0.15 m per rad
+of heading change; the robot's match is monotone in u; chunk frames are at u + v_op·(0.1 k).
+A pilot of 3 table-gap episodes showed a second effect: with the reference exactly at the robot's progress, the current
+network stops in front of the gap where the reference turns sideways, at no tracking cost (it was trained with commit=True
+plan clocks that keep running). S2 therefore runs **two feeds on the same 672 paired episodes**: *primary* — a reference
+clock advancing at the operator speed, at most 0.3 m (leash) ahead of the robot's match (`--oracle-leash 0.3`; the feed S3
+uses); *secondary* — purely distance-indexed (leash 0). The gate is evaluated on the primary feed; both are reported.
+Pilot episodes (9, not part of the results): leash 0.3 → table gaps 1 clean / 1 contact / 1 refused vs 3 refused.

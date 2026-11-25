@@ -1202,6 +1202,13 @@ def create_task(args, *, environment_config=None, sim_class=None):
         hand_contrast_heading_weight=getattr(args, 'hand_contrast_heading_weight', None),
         hand_contrast_approach_distance=getattr(args, 'hand_contrast_approach_distance', None),
         hand_raised_reset_fraction=getattr(args, 'hand_raised_reset_fraction', None) or 0.)
+    if getattr(args, 'tracker_fullpath', None):
+        # tracker v2 (S3): wholebody_config rebuilds the tracker block from the flags, so the full-path spec goes in here
+        spec = json.loads(Path(args.tracker_fullpath).read_text())
+        if not config.get('tracker'):
+            raise ValueError('--tracker-fullpath needs the tracker (--tracker flags or a tracker checkpoint config)')
+        config['tracker']['fullpath'] = spec
+        config.setdefault('reward_config', {}).setdefault('scales', {})['track_feet'] = float(spec.get('foot_weight', 2.))
     if config.get('disable_hand_contrast',False) and (getattr(args,'hand_speed_curriculum',False) or getattr(args,'hand_tolerance_curriculum',False)):
         raise ValueError('Box-based speed/tolerance curricula cannot be used with clearance primary')
     from .upper_control import configure as configure_upper
@@ -1359,7 +1366,7 @@ def run(args):
         config_source = _copy.deepcopy(config_source)
         config_source['tracker']['fullpath'] = spec
         config_source.setdefault('reward_config', {}).setdefault('scales', {})['track_feet'] = float(spec.get('foot_weight', 2.))
-    fullpath = bool(((config_source or {}).get('tracker') or {}).get('fullpath'))
+    fullpath = bool(getattr(args, 'tracker_fullpath', None)) or bool(((config_source or {}).get('tracker') or {}).get('fullpath'))
     tracker = bool(tracker_spec(args) or (config_source or {}).get('tracker'))
     sdf_rate = bool(getattr(args, 'sdf_rate_obs', None) if getattr(args, 'sdf_rate_obs', None) is not None
                     else (config_source or {}).get('sdf_rate_obs', False))

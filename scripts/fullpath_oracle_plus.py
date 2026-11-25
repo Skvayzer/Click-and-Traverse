@@ -32,12 +32,19 @@ def main():
     for f in sorted(a.oracle.glob("*_[01].npz")):
         scene, trial = f.stem.rsplit("_", 1)
         o = np.load(f); meta = json.loads(str(o["meta"]))
+        if (a.out / f.name).exists():
+            prev = np.load(a.out / f.name)
+            if np.abs(prev["qpos"][0, :2] - o["qpos"][0, :2]).max() <= .01:
+                rows.append(json.loads(str(prev["meta"])))
+                continue                     # done, and it starts where the episode starts
         best = dict(source="search", margin=meta["min_sep"] if meta["ok"] else -1., qpos=o["qpos"]) if meta["ok"] else None
         boxes = None
         for rec in sorted(a.runs.glob(f"*/{scene}_*_{trial}.npz")):
             d = np.load(rec); m = json.loads(str(d["meta"]))
             if m["outcome"]["result"] != "clean" or m["scene"] != scene:
                 continue
+            if np.abs(d["qpos"][0, :2] - o["qpos"][0, :2]).max() > .01:
+                continue                     # another policy's reset (E2 u300 resets differently): not the same start
             boxes = {k: d[k] for k in ("box_center", "box_rot", "box_half")}
             q = d["qpos"][:-1]
             sep = float(g.min_separation(q, boxes).min())

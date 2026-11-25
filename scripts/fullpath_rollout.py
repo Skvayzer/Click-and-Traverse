@@ -53,6 +53,8 @@ def main():
     p.add_argument("--env-from", help="task config from this checkpoint (tracker-free policies keep their own by default)")
     p.add_argument("--oracle", type=Path, help="S2 full-path plan (npz from scripts/fullpath_oracle.py)")
     p.add_argument("--oracle-lead", type=float, default=0.0, help="oracle: waypoint clock offset (s) ahead of the robot")
+    p.add_argument("--oracle-leash", type=float, help="oracle: reference clock runs at the operator speed, at most this many m "
+                                                      "ahead of the robot's match (default: purely distance-indexed)")
     p.add_argument("--oracle-library", type=Path, help="S2: plan the oracle at the episode start with this clip library")
     p.add_argument("--oracle-margins", default="0.08,0.06,0.04,0.02", help="margins tried in order (m)")
     p.add_argument("--oracle-budget", type=float, default=150., help="search seconds per margin")
@@ -202,7 +204,7 @@ def main():
                                                    np.asarray(r["modes"]).mean(0).round(3).tolist())) if len(r["modes"]) else None)
             oracle_plan = dict(qpos=r["qpos"]) if r["ok"] else None
         if oracle_plan is not None:
-            oracle[0] = OracleFeeder(oracle_plan, task, lead=args.oracle_lead)
+            oracle[0] = OracleFeeder(oracle_plan, task, lead=args.oracle_lead, leash=args.oracle_leash)
             task.tracker.has_plan[0] = False; task.tracker.replan_in[0] = 0.
             task._replan(task.tracker.due())
         else:                                        # no verified plan: the same network without a reference
@@ -238,7 +240,7 @@ def main():
             break
     if outcome is None:
         outcome = dict(result="refused", hand_contact=False, steps=T, length=T, capped=True)
-    meta = dict(checkpoint=str(args.checkpoint), scene=args.scene, mix=args.mix, oracle=oracle_meta,
+    meta = dict(checkpoint=str(args.checkpoint), scene=args.scene, mix=args.mix, oracle=oracle_meta, oracle_leash=args.oracle_leash,
                 speed=args.speed, trial=args.trial, band_m=band, outcome=outcome, dt=float(task.dt), bank=str(args.bank),
                 start=list(map(float, meta_scene["start"])), goal=list(map(float, meta_scene["goal"])),
                 planning_benchmark=bool(args.planning_benchmark), first_contact_step=int(first["step"]),
