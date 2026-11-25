@@ -49,6 +49,8 @@ def narrow_paths(speed):
     out["BRACE + planner"] = [brace]
     for p in glob.glob(str(CL / "sonic_G2_384_*" / sp)):
         out["SONIC (plain)"] = [Path(p)]
+    for p in glob.glob(str(CL / "sonic_latent_eval_u600_384_*" / sp)):
+        out["SONIC + adaptor"] = [Path(p)]
     return {k: v for k, v in out.items() if exists(*v)}
 
 
@@ -71,6 +73,8 @@ def e4_paths(speed):
         out["Planner–reflex, plan off"] = [Path(p) for p in off]
     for p in glob.glob(str(CL / "sonic_G2_E4_*" / sp)):
         out["SONIC (plain)"] = [Path(p)]
+    for p in glob.glob(str(CL / "sonic_latent_eval_u600_E4_*" / sp)):
+        out["SONIC + adaptor"] = [Path(p)]
     return {k: v for k, v in out.items() if exists(*v)}
 
 

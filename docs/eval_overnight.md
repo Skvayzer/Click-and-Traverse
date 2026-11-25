@@ -84,3 +84,13 @@ Runs: planner–reflex seeds 0 (local), 1, 2 (cluster 322712); reflex-off seed 1
 ### A1 interim (04:20): walking at 0.3 m/s
 Planner–reflex seeds 1, 2 (cluster; seed 0 local pending) and reflex-off seed 1. Seed-1 matched pair (on minus off): object hand contact **+4.56 pp [+1.04, +8.20]**, any contact with the object +2.08 [−2.21, +6.25], any hand contact +4.04 [+0.39, +7.81], clean −1.43 [−5.21, +2.34], refused −0.52 [−2.08, +0.91]. Hand hits at the 1.2 m/s tier: 107/445 (24.0%) with the reflex vs 84/440 (19.1%) without. Pre-registered H1a fails at both speeds (at 0.3 m/s the sign is opposite to the prediction). Caveat: one reflex-off seed so far, and the two policies are separately fine-tuned networks (the contrast is not a switch on one network).
 Note: the object travels 2.4 cm per control step at 1.2 m/s, so the 5 cm hand band is entered about two control steps before contact; a reflex that acts through a reward-gated arm cannot respond in that time. This explanation is a hypothesis; the per-flight reflex activation counter (`reflex_released_during_flight`, added after these runs started) will test it on the local runs.
+
+### A3 interim (04:55): plan input on vs off, seed 0 (job 322716_0 on the cluster; seeds 1–2 resubmitted as 324268 after foreign-GPU OOM)
+Same COMBO_FIX seed-0 network on the 72 held-out layouts, 144 episodes per speed. Plan on (E4 local run) minus plan off (`--tracker-mix none=1`), scene-bootstrap 95% CI:
+| Speed | Clean | Any contact | Hand contact | Refused | U-trap + early-turn clean |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| 0.15 | −5.56 [−12.50, +0.69] | +4.17 [−2.08, +10.42] | +4.17 [−1.39, +10.42] | +1.39 [−1.39, +4.86] | +3.12 [−4.17, +10.42] |
+| 0.30 | −9.72 [−16.67, −2.78] | +6.25 [0.00, +12.50] | −5.56 [−11.11, 0.00] | +3.47 [+0.69, +7.64] | +3.12 [−1.04, +7.32] |
+| 0.50 | −13.89 [−21.53, −6.25] | +9.03 [+2.08, +15.97] | −2.08 [−9.03, +4.86] | +4.86 [+1.39, +9.03] | −2.08 [−9.38, +5.21] |
+By family (clean, plan on vs off): table gaps 58.3 vs 81.2 (0.15), 54.2 vs 89.6 (0.30), 43.8 vs 81.2 (0.50); U-traps 95.8 vs 87.5, 100 vs 91.7, 91.7 vs 93.8; early-turn 10.4 vs 12.5, 2.1 vs 4.2, 4.2 vs 6.2. Plan-off clean rates (60.4, 61.8, 60.4) are above reactive V7r's (58.3, 56.2, 52.1).
+Pre-registered H3 (plan input raises clean on U+early-turn at 0.5 m/s by ≥ 5 pp, CI lower bound > 0): **fails** (−2.1 pp [−9.4, +5.2]); more strongly, the plan lowers clean traversal at every speed, mainly in table gaps, where plan-following refuses and contacts more. Using the pooled 3 on-seeds against the one off-seed (results.json) gives the same sign. Seeds 1–2 pending; the family pattern is from seed 0 only.
