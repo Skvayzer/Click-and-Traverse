@@ -93,7 +93,7 @@ class ReferenceTracker:
     def __init__(self, num_envs, device, *, mix=(('field', .5), ('random', .3), ('none', .2)), random_speed=(0., .6),
                  stop_share=.15, sideways_share=.3, crouch_share=.25, upper_share=.5, upper_amplitude=.4,
                  upper_rate=1.0, nominal_upper=None, hold_plan=0., commit=False, fallback=None, continuity=None,
-                 generator=None):
+                 generator=None, stall_plan=None):
         self.n, self.device, self.generator = int(num_envs), device, generator
         names = [m[0] for m in mix]
         if not set(names) <= set(SOURCES):
@@ -109,6 +109,11 @@ class ReferenceTracker:
         self.commit = bool(commit)
         self.fallback = dict(fallback) if fallback else None
         self.continuity = dict(continuity) if continuity else None
+        # Stall-triggered planning (eval-only): plan worlds act without a reference by default; after stall_s s without
+        # progress_m of route progress the plan is engaged for hold_s s (a fresh chunk), then dropped again.
+        self.stall_plan = dict(stall_plan) if stall_plan else None
+        if self.stall_plan and self.fallback:
+            raise ValueError('stall_plan and fallback are exclusive')
         z = lambda *s, dtype=torch.float32: torch.zeros(s, device=device, dtype=dtype)
         self.path = z(self.n, P, 2)                     # world xy
         self.count = z(self.n, dtype=torch.long)        # valid points in path
@@ -143,6 +148,7 @@ class ReferenceTracker:
         self.prev_s = z(self.n)
         self.progress_mark = z(self.n)
         self.plan_retry = z(self.n)
+        self.plan_on_t = z(self.n)                      # s of engaged plan left (stall_plan rule)
 
     # ------------------------------------------------------------------ helpers
     def _rand(self, *shape, low=0., high=1.):
@@ -150,8 +156,11 @@ class ReferenceTracker:
 
     @property
     def valid(self):
-        return ((self.source != SOURCES.index('none')) & ((self.source != SOURCES.index('plan')) | self.has_plan)
-                & (self.fallback_t <= 0))
+        ok = ((self.source != SOURCES.index('none')) & ((self.source != SOURCES.index('plan')) | self.has_plan)
+              & (self.fallback_t <= 0))
+        if self.stall_plan:
+            ok = ok & (~self.is_plan | self.still | (self.plan_on_t > 0))
+        return ok
 
     @property
     def is_plan(self):
@@ -184,7 +193,10 @@ class ReferenceTracker:
 
     def due(self):
         """Plan worlds that need a new chunk: no chunk yet, or their replan time has come."""
-        return torch.nonzero(self.is_plan & (self.fallback_t <= 0) & (self.plan_retry <= 0) & (~self.has_plan | (self.replan_in <= 0)), as_tuple=False)[:, 0]
+        due = self.is_plan & (self.fallback_t <= 0) & (self.plan_retry <= 0) & (~self.has_plan | (self.replan_in <= 0))
+        if self.stall_plan:
+            due = due & (self.still | (self.plan_on_t > 0))
+        return torch.nonzero(due, as_tuple=False)[:, 0]
 
     def route_goal(self, ids, horizon, from_xy=None):
         """The point horizon s ahead of the robot's progress along the guidance path (or, with from_xy [n, 2], of that
@@ -311,7 +323,7 @@ class ReferenceTracker:
         self.source[ids] = source; self.still[ids] = still
         self.has_plan[ids] = False; self.has_full[ids] = False; self.plan_t[ids] = 0.; self.replan_in[ids] = 0.
         self.stall_t[ids] = 0.; self.fallback_t[ids] = 0.
-        self.progress_mark[ids] = 0.; self.plan_retry[ids] = 0.; self.prev_s[ids] = 0.
+        self.progress_mark[ids] = 0.; self.plan_retry[ids] = 0.; self.prev_s[ids] = 0.; self.plan_on_t[ids] = 0.
         self.route_speed[ids] = torch.where(still, torch.zeros_like(op_speed), op_speed)
         self.path[ids] = root_xy[:, None].expand(-1, P, -1)
         self.count[ids] = 1; self.s[ids] = 0.; self.lost[ids] = False
@@ -385,7 +397,20 @@ class ReferenceTracker:
             plan_lead = torch.where(plan & self.has_plan & (length > .03), along.clamp_min(0.), plan_lead)
         advance = self.s - self.prev_s
         self.plan_retry = (self.plan_retry - dt).clamp_min(0.)
-        if self.fallback and self.fallback.get('until_progress'):
+        if self.stall_plan:
+            sp = self.stall_plan
+            moving = plan & ~self.still & (self.route_speed > .05)
+            active = self.plan_on_t > 0.
+            self.progress_mark = torch.where(moving & ~active, self.progress_mark + advance, 0.)
+            progressed = self.progress_mark >= float(sp.get('progress_m', .05))
+            self.stall_t = torch.where(moving & ~active & ~progressed, self.stall_t + dt, 0.)
+            self.progress_mark = torch.where(progressed, 0., self.progress_mark)
+            start = self.stall_t >= float(sp.get('stall_s', 2.)) - 1e-5
+            ended = active & (self.plan_on_t - dt <= 0.)
+            self.plan_on_t = torch.where(start, float(sp.get('hold_s', 4.)), (self.plan_on_t - dt).clamp_min(0.))
+            self.stall_t = torch.where(start, 0., self.stall_t)
+            self.has_plan &= ~(start | ended)              # a fresh chunk on engagement; none after release
+        elif self.fallback and self.fallback.get('until_progress'):
             was = self.fallback_t > 0.
             moving = plan & ~self.still & (self.route_speed > .05) & (self.has_plan | was)
             self.progress_mark = torch.where(moving, self.progress_mark + advance, 0.)

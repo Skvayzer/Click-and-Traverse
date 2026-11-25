@@ -48,6 +48,7 @@ def main():
     p.add_argument("--plan-safe-m", type=float, default=.05)
     p.add_argument("--plan-samples", type=int)
     p.add_argument("--plan-arbitrate", type=float)
+    p.add_argument("--stall-plan", type=float, nargs=2, metavar=("STALL_S", "HOLD_S"))
     args = p.parse_args()
     scenes = [l.strip() for l in open(args.scenes[0][1:]) if l.strip()] if args.scenes[0].startswith("@") else args.scenes
     from record_mjlab_rollout import load_policy
@@ -83,6 +84,8 @@ def main():
         tracker["mix"] = [[a, float(b)] for a, b in (item.split("=", 1) for item in args.mix.split(","))]
         if args.fallback:
             tracker["fallback"] = dict(stall_s=float(args.fallback[0]), hold_s=float(args.fallback[1]))
+        if args.stall_plan:
+            tracker["stall_plan"] = dict(stall_s=args.stall_plan[0], hold_s=args.stall_plan[1], progress_m=.05)
         pc = tracker.get("planner")
         if pc is not None:
             if args.plan_select:

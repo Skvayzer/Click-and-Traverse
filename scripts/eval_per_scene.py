@@ -82,6 +82,9 @@ def main():
     p.add_argument("--tracker-fallback", type=float, nargs=2, metavar=("STALL_S", "HOLD_S"),
                    help="The monitor's stall rule: a plan world without progress along its route for STALL_S s acts without "
                         "its plan for HOLD_S s, then replans")
+    p.add_argument("--tracker-stall-plan", type=float, nargs=2, metavar=("STALL_S", "HOLD_S"),
+                   help="Stall-triggered planning: plan worlds act without a reference until STALL_S s without 5 cm of "
+                        "route progress, then follow a fresh plan for HOLD_S s")
     p.add_argument("--stall-audit", action="store_true", help="log before/during-stall terms for refused scenes")
     p.add_argument("--refusal-fix", choices=("fallback", "margin", "both"))
     p.add_argument("--planning-benchmark", action="store_true", help="use certified benchmark starts and report traversal metrics")
@@ -170,6 +173,11 @@ def main():
             env["tracker"]["fallback"] = dict(stall_s=2., until_progress=True, progress_m=.05)
         if args.refusal_fix in ("margin", "both"):
             env["tracker"]["planner"]["clearance_margins"] = [.05, .03]
+    if args.tracker_stall_plan:
+        if not env.get("tracker", {}).get("planner") or args.tracker_mix != "plan=1" or args.refusal_fix:
+            p.error("Stall-triggered planning needs an online planner, --tracker-mix plan=1 and no refusal fix")
+        env["tracker"]["stall_plan"] = dict(stall_s=float(args.tracker_stall_plan[0]), hold_s=float(args.tracker_stall_plan[1]),
+                                            progress_m=.05)
     if args.plan_select or args.plan_samples or args.plan_arbitrate is not None:
         if not env.get("tracker", {}).get("planner") or args.tracker_mix != "plan=1":
             p.error("Plan selection options require an online planner and --tracker-mix plan=1")

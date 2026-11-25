@@ -116,7 +116,7 @@ class CATTask:
             tc=config['tracker']
             self.tracker=ReferenceTracker(self.num_envs,self.device,mix=[tuple(m) for m in tc['mix']],nominal_upper=self.nominal[12:],
                                           hold_plan=float(tc.get('hold_plan',0.)),commit=bool(tc.get('commit',False)),fallback=tc.get('fallback'),
-                                          continuity=tc.get('continuity'),
+                                          continuity=tc.get('continuity'),stall_plan=tc.get('stall_plan'),
                                           generator=self.generator)
             self.track_sigma=float(tc.get('sigma',.15));self.track_field=SOURCES.index('field')
             # COMBO4: in plan worlds the command says go whenever the route does, at the route (operator) speed, so a
