@@ -181,6 +181,31 @@ I5 (expert-iteration planner, frozen trackers), seeds 1–2 (cluster 323469) vs 
 b[−1.37, +2.02] / +0.59 b[−1.17, +2.34], contact −0.85 b[−2.73, +1.04] / −0.98 b[−2.93, +0.98] at 0.15 / 0.30 — within noise;
 the predicted ≥ 1.5 pp clean gain is not seen (seed 0 pending).
 
+### I3 arbitration, I5 three seeds, I6 seeds 1–2 (07:50)
+
+Seed 0, 384 scenes, against the same-code plan-on control (scene bootstrap, pp):
+
+| Variant | clean 0.15 | contact 0.15 | clean 0.30 | contact 0.30 | refused 0.15 / 0.30 | replans rejected |
+| --- | --- | --- | --- | --- | --- | --- |
+| I3 value_safe + arbitration δ = −3.72 | +3.78 [+1.69, +5.86] | −2.73 [−5.08, −0.39] | +1.69 [−0.65, +4.17] | −2.21 [−4.69, +0.13] | −0.65 / +0.65 | 6.4% |
+| I3 clearest + arbitration δ = 0 | +2.08 [−0.26, +4.56] | −3.26 [−6.51, 0.00] | +1.95 [−0.52, +4.43] | −2.08 [−5.21, +1.04] | +1.17 / +0.39 | 50.2% |
+
+Absolute (δ = −3.72): 63.67 / 27.99 / 8.33 at 0.15 and 63.02 / 25.00 / 11.72 at 0.30 (clean / contact / refused).
+Both arbitration rules pass the pilot gate (mean clean ≥ +1.5 pp, contact not up at either speed) — the first variants that
+lower contact at both speeds. The pre-registered I3 prediction (refusal −2 pp vs value_safe alone) is not met: arbitration
+lowers contact rather than refusal. Against the no-reference mode, δ = 0 lowers contact at 0.30 by 4.30 pp [−7.16, −1.56]
+(side gaps 57.5 → 43.8%) at −0.52 clean, and costs 6 pp clean in cabinets (more refusals there). δ = −3.72 gains in cabinets
+(80.3 → 87.2% clean) like value_safe and adds contact reductions in CAT courses at 0.30 (62.5 → 58.7%).
+Seeds 1–2 for both rules: cluster 324627 (pending). E4 for all variants × 3 seeds: batch D2 (waiting for the dep-1 lock).
+
+I5, 3 seeds (seed 0 on dep-1): clean +0.48 b[−0.83, +1.78] / +0.87 b[−0.56, +2.26], contact −1.22 b[−2.78, +0.35] /
+−1.26 b[−2.73, +0.22] at 0.15 / 0.30 — consistent small contact reduction, no significant change; prediction not met.
+
+I6 seeds 1–2 (324542): vs plan-on +1.82 b[0.00, +3.65] / +2.86 b[+1.04, +4.62] clean, −0.07 / +1.89 contact; vs the
+no-reference mode +0.26 / +0.52 clean, +0.72 / +1.50 contact, −1.11 / −2.02 refusals. The stall-engaged plan behaves like the
+no-reference mode; it does not recover plan-on's low contact in CAT courses/side gaps. Falsifier not triggered (clean is not
+below no-reference by > 1 pp) but no gain either; seed 0 and E4 pending.
+
 ## Run ledger
 
 | Id | Variant | Seed | Where | Output |
@@ -198,3 +223,4 @@ the predicted ≥ 1.5 pp clean gain is not seen (seed 0 pending).
 | V | videos: 10 obstacle types × {no reference, planner–reflex}, seed-0 COMBO_FIX, 0.15 m/s, CPU MuJoCo recordings (`record_plan_reflex.py --device cpu`, contact checked once per control step), software-EGL renders, 720p H.264 yuv420p faststart with a silent AAC track | 0 | dep-1 CPU | `files/humanoid-protection/improve-videos/` |
 | D2 | replaces the waiting batch D (stopped before it started): code `9f497ab`; I6 seed 0 on the 384 scenes; E4 control / no reference / I6 for seeds 0–2, ei1 seed 0 | 0–2 | dep-1, queued 05:22 | `improve_<tag>_9f497ab` |
 | I6 | stall-triggered planning, 384 scenes | 1–2 | 324542 ws-ia (after 323469) | `improve_stallplan_seed{1,2}_324542` |
+| I3 | arbitration δ = −3.72 (value_safe) and δ = 0 (clearest), 384 scenes, 2 in parallel per GPU | 1–2 | 324627 ws-ia (pending) | `improve_{arbvsafe,arb0}_seed{1,2}_324627` |

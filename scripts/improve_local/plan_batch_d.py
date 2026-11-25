@@ -7,9 +7,11 @@ S = {0: "/tmp/cat-energy-current-videos/inputs/COMBO_FIX_315808_u150.pt",
 EI = Path("/tmp/cat-improve/planner_ei1.pt")
 STALL = "--tracker-mix plan=1 --tracker-stall-plan 2 4"
 lines = [f"stallplan_seed0|{S[0]}|{STALL}"]
-for k in (0, 1, 2):
+ARB = "--tracker-mix plan=1 --plan-select value_safe --plan-arbitrate -3.719"
+ARB0 = "--tracker-mix plan=1 --plan-select clear --plan-arbitrate 0"
+for k in (0, 1, 2):     # arbitration added 07:50 after its seed-0 384-scene result passed the pilot gate
     lines += [f"E4:ctrl_k4_seed{k}|{S[k]}|--tracker-mix plan=1", f"E4:none_seed{k}|{S[k]}|--tracker-mix none=1",
-              f"E4:stallplan_seed{k}|{S[k]}|{STALL}"]
+              f"E4:arbvsafe_seed{k}|{S[k]}|{ARB}", f"E4:arb0_seed{k}|{S[k]}|{ARB0}", f"E4:stallplan_seed{k}|{S[k]}|{STALL}"]
 if EI.exists():
     lines.append(f"E4:ei1_seed0|{S[0]}|--tracker-mix plan=1 --planner-checkpoint {EI}")
 print("\n".join(lines))
