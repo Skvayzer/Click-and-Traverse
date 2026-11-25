@@ -1,6 +1,37 @@
 # Improving the planner–reflex policy (overnight 2026-11-24/25)
 
-Summary: to be written at the end of the night.
+## Summary (draft 08:40 +04; replaced when the pending runs land)
+
+**What improved.** Two eval-only changes to how the frozen COMBO_FIX (planner–reflex) network is driven:
+1. *Same network, no plan reference* (I4, 3 seeds, 384 scenes). vs plan-on at 0.15 m/s: clean +2.69 pp (scene bootstrap
+   [+1.22, +4.25]), contact −1.82 [−4.21, +0.52]; at 0.30: clean +2.39 [+0.78, +3.99] but contact +1.00 [−1.35, +3.34] →
+   counts as an improvement at 0.15 only. vs reactive V7r: clean +4.82 (seed-t [+2.38, +7.26]) and contact −6.51 (seed-t
+   [−12.41, −0.61]) at 0.15; at 0.30 clean +1.26 (n.s.), contact −2.86 (seed-t [−3.51, −2.22]).
+2. *Value-guided candidate choice + value arbitration* (I3, seed 0 so far): the tracker's own critic picks the plan with the
+   highest V(s, plan) among ≥ 5 cm-clear candidates and drops the plan for 0.6 s when V(best plan) < V(no reference) − 3.72.
+   vs plan-on: clean +3.78 [+1.69, +5.86] / +1.69 [−0.65, +4.17], contact −2.73 [−5.08, −0.39] / −2.21 [−4.69, +0.13] at
+   0.15 / 0.30 — the only variant that lowers contact at both speeds. Seeds 1–2 and E4 are queued (324637 / dep-1 D2).
+
+**What failed and why.** E2 refusal pricing (seed 0): +0.8 clean, +1.6 contact — refusals become CAT-course contacts. E1-style
+recovery and the stall-triggered plan (I6) do the same. More candidates (K = 8) change nothing (−1.3/−1.6 clean). Value
+selection alone helps only at 0.15. Expert iteration of the planner on the tracker's own clean windows (I5, 3 seeds):
++0.5/+0.9 clean, −1.2/−1.3 contact, not significant. The common cause: on the 384 scenes the plan helps mainly by making the
+robot stop in front of passages it would hit (CAT courses, side gaps), and hurts by slowing or stalling it in cabinets and
+furnished rooms; only rules that choose per situation (arbitration) keep both.
+
+**Checkpoints.** No new tracker weights are recommended; all gains use the existing COMBO_FIX checkpoints
+(`/l/users/konstantin.smirnov/runs/stationary_hands_20261113_COMBO_FIX/run/resume.pt`, `..._R4_COMBO_FIX_seed{1,2}_318295/run/resume.pt`)
+with `scripts/eval_per_scene.py --tracker-mix none=1` or `--plan-select value_safe --plan-arbitrate -3.719`. Expert-iteration
+planner: `/l/users/konstantin.smirnov/runs/wbp/planner_ei1/train/planner.pt`. E2 seed 0:
+`/l/users/konstantin.smirnov/runs/stationary_hands_20261113_overnight_E2_seed0_322679/run/resume.pt`.
+
+**Recommended paper claims (pending replication).** (a) Training with planner references and the reflex yields a tracker whose
+reference-free mode beats the reactive baseline at 0.15 m/s on clean traversal and contact (3 seeds). (b) The plan's value is
+situational; letting the tracker's critic arbitrate between plan and no-plan lowers contact at both speeds (seed 0; claim only
+if seeds 1–2 agree). Do not claim that the planner, E2 reward shaping, more candidates or planner expert iteration improve
+traversal.
+
+Videos (10 obstacle types × {no reference, planner–reflex, arbitration}): `files/humanoid-protection/improve-videos/`.
 
 Branch `feature/improve-overnight` from `feature/energy-price` 16ad2fe. Worktree `~/robotics/cat-energy-improve`.
 History and baselines: `docs/overnight_20261123.md` (E0–E7). Baselines on the 384 narrow scenes, 2 episodes per scene per
