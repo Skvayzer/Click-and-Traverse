@@ -16,6 +16,7 @@ if [[ "${SHARD:-0/1}" == 0/* ]]; then
   mkdir -p $X
   for s in SFU BMLmovi CMU KIT; do
     [[ -f $X/.$s.done ]] && continue
+    while [[ ! -f $C/amass_raw/$s.tar.bz2 ]]; do sleep 30; done      # rsync renames the file when complete
     echo "extract $s $(date +%T)"; tar -xjf $C/amass_raw/$s.tar.bz2 -C $X && touch $X/.$s.done
   done
 else
