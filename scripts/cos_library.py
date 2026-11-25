@@ -135,7 +135,17 @@ def read_lafan(src):
                    fps=30., pos=a[:, :3], quat=a[:, [6, 3, 4, 5]], dof=a[:, 7:36])
 
 
-READERS = dict(gmr=read_gmr, ember=read_ember, phuma=read_phuma, lafan=read_lafan)
+def read_clips(src):
+    """Any folder of library clips (fps, root_pos, root_quat_wxyz, dof_pos, source, source_member, licence), e.g. the
+    September PHUMA subset (Click-and-Traverse-Mjlab data/motion_library/raw/phuma)."""
+    for f in sorted(Path(src).rglob("*.npz")):
+        z = np.load(f)
+        source = str(z["source"])
+        yield dict(clip_id=f"{source}__{f.stem}", subset=source, member=str(z["source_member"]), licence=str(z["licence"]),
+                   source=source, fps=float(z["fps"]), pos=z["root_pos"], quat=z["root_quat_wxyz"], dof=z["dof_pos"])
+
+
+READERS = dict(clips=read_clips, gmr=read_gmr, ember=read_ember, phuma=read_phuma, lafan=read_lafan)
 
 
 def main():
