@@ -78,7 +78,7 @@ def fig_scatter(R, out, speeds=("0.3",)):
             panel(axes[1], "b")
         handles = [Line2D([], [], marker=STYLE[n][1], color=STYLE[n][0], mfc=STYLE[n][0] if STYLE[n][2] else "white", ls="none", ms=5, mew=1.1, label=n)
                    for n in STYLE if any(n in R[k].get(sp, {}).get("policies", {}) for k in ("narrow", "e4"))]
-        fig.legend(handles=handles, loc="lower center", ncol=4, frameon=False, bbox_to_anchor=(.5, -.12), columnspacing=1.2, handletextpad=.3)
+        fig.legend(handles=handles, loc="lower center", ncol=4, frameon=False, bbox_to_anchor=(.5, -.2), columnspacing=1.2, handletextpad=.3)
         fig.tight_layout(w_pad=2)
         save(fig, out, f"fig1_clean_vs_contact_{sp.replace('.', '')}")
 
