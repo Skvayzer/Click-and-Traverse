@@ -45,6 +45,10 @@ def narrow_paths(speed):
                              R4 / "energy_round4_COMBO_FIX_seed2_318295" / sp]
     out["Reflex off"] = [R3 / "energy_round3_COMBO_NOREFLEX_315811" / sp, R4 / "energy_round4_COMBO_NOREFLEX_seed1_318295" / sp,
                          R4 / "energy_round4_COMBO_NOREFLEX_seed2_318295" / sp]
+    # plan input off on the same COMBO_FIX networks: the improve agent's I4 runs (--tracker-mix none=1, same scenes and protocol)
+    off = [p for p in sorted(glob.glob(str(LOC / "improve_none_seed[012]_0772f2b" / sp)))]
+    if off:
+        out["Planner–reflex, plan off"] = [Path(p) for p in off]
     brace = CL / "overnight_E6_BRACE_384_320664" / sp
     out["BRACE + planner"] = [brace]
     for p in glob.glob(str(CL / "sonic_G2_384_*" / sp)):
