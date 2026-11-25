@@ -158,10 +158,10 @@ CLEAN = dict(run_speed=1.6, travel_m=0.5, crawl_travel_m=0.3, duck_mean_speed=0.
 
 def clean(fam, a, b, F, name, source):
     """True if an event (frames [a, b) of one clip's features F) is a plausible obstacle-avoidance deviation."""
-    if source == "omniretarget" or EXCLUDE.search(name):
+    if source == "omniretarget" or EXCLUDE.search(name.replace("stageii", "").replace("_poses", "")):
         return False
-    m = _re.match(r"(\d+)_\d+__", name)
-    if source == "amass_CMU" and m and int(m.group(1)) in CMU_EXCLUDE:
+    m = _re.search(r"(?:^|[_/])(\d{1,3})_\d{1,3}(?:__|_stageii|_poses)", name)
+    if "CMU" in source and m and int(m.group(1)) in CMU_EXCLUDE:
         return False
     n = len(F["top"]); pad = int(CLEAN["pad_s"] / DT)
     a0, b0 = max(0, a - pad), min(n - 1, b + pad)
