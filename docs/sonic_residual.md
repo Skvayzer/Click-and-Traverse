@@ -249,3 +249,56 @@ seed 0. Snapshots every 50 updates go to `/l/users/konstantin.smirnov/runs/sonic
 the dep-1 lock queue.
 
 Zero-adaptor evaluations (plain SONIC on the batched reference) are queued: 322877 (384 scenes) and 322878 (E4).
+
+**Gate 3 (training, u600): done.** Job 322876, 1.6 h on gpu-04.
+
+| Update | Clean overall | Clutter rooms | CAT courses | Falls | Action σ |
+| ---: | ---: | ---: | ---: | ---: | ---: |
+| 1 | 0% | 0% | — | 0 | 0.30 |
+| 300 | 1.9% | 15% | — | 0 | — |
+| 450 | 4.2% | 24% | — | 0 | — |
+| 600 | 5.8% | 36% | ~1% | 0 | 0.19 |
+
+**Gate 4 (partial).** All evaluations are on the cluster with 2 episodes per scene and the same certified E4 starts as
+the other baselines. The 72-layout evaluation finished; the 384-scene one is still running.
+
+| Controller | Benchmark | Speed (m/s) | Clean % | Contact % | Hands % |
+| --- | --- | ---: | ---: | ---: | ---: |
+| Zero adaptor, gait reference (322877/322878) | 384 scenes | 0.15 | 12.89 | 86.98 | 19.79 |
+| Zero adaptor, gait reference | 384 scenes | 0.30 | 12.63 | 87.11 | 22.27 |
+| Zero adaptor, gait reference | E4, 72 layouts | 0.15 | 0.00 | 100.00 | 40.97 |
+| Zero adaptor, gait reference | E4, 72 layouts | 0.30 | 0.00 | 100.00 | 36.11 |
+| Zero adaptor, gait reference | E4, 72 layouts | 0.50 | 0.00 | 100.00 | 37.50 |
+| Adaptor u600 (323467) | E4, 72 layouts | 0.15 | 2.78 | 97.22 | 58.33 |
+| Adaptor u600 | E4, 72 layouts | 0.30 | 3.47 | 96.53 | 46.53 |
+| Adaptor u600 | E4, 72 layouts | 0.50 | 2.78 | 97.22 | 61.81 |
+
+The zero-adaptor numbers reproduce plain SONIC driven by the ONNX generator (G2: 12.9% on 384 scenes, 0% on E4). The
+u600 adaptor adds a few clean E4 arrivals but raises hand contact. The 384-scene evaluation of u600 (323466) is still
+running.
+
+**Gate 5 (u600): done.** Videos are in `sonic-videos/obstacles/`:
+- `<scene>__sonic-latent.mp4` (u600) and `<scene>__plain-sonic-gait.mp4` (zero adaptor on the batched gait). The gait
+  clips were recorded on CPU MuJoCo and rendered on the cluster.
+- `<scene>__latent-side-by-side.mp4`, a 2×2 grid: plain SONIC on gait | SONIC + latent | planner–reflex | plain SONIC on
+  the ONNX generator.
+
+u600 outcomes on the 10 scenes:
+- **Clean (1 scene):** cabinet passage 0.58 m.
+- **Contact (5):** hurdle, beam, side gap, table gap, mixed CAT course.
+- **30 s timeout (4):** cluttered room and the living, dining and meeting rooms. The robot moves slowly without touching.
+
+Plain SONIC on gait contacts in all 10.
+
+**Continuation (user request, 04:00 +04).**
+- **Run 1 (323791)** resumes 322876 from u600 to u2000 with its exact code (`910307a`) and contract, snapshots every
+  100 updates.
+- **Run 2 (323792)** warm-starts from the u600 snapshot. It resets σ to 0.3 and keeps the latent scale at 0.3, since σ
+  had not collapsed (0.19).
+  - Bank: the beam/bar bank `tablegap_bb_v1`, with the height curriculum (advance 0.5, window 300).
+  - Curricula: the side-gap width curriculum and the success-guided sampler (target 2/3, without the stale prior
+    files).
+  - Contacts stay soft until the CAT-course clean EMA exceeds 10% over at least 500 CAT episodes.
+  - Length: 1400 updates.
+
+Both runs wait on the per-user GPU and memory quota; their memory request was lowered to 40 GB.
