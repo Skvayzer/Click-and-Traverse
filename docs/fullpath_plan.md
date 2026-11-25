@@ -223,3 +223,5 @@ plan clocks that keep running). S2 therefore runs **two feeds on the same 672 pa
 clock advancing at the operator speed, at most 0.3 m (leash) ahead of the robot's match (`--oracle-leash 0.3`; the feed S3
 uses); *secondary* — purely distance-indexed (leash 0). The gate is evaluated on the primary feed; both are reported.
 Pilot episodes (9, not part of the results): leash 0.3 → table gaps 1 clean / 1 contact / 1 refused vs 3 refused.
+* 13:58 S3 GPU smoke 324990 (gpu partition, 3 updates, 4096 worlds, F144 plans as a stand-in bank; code d7787cf at ~/cat_worktrees/fullpath_d7787cf)
+* 14:04 S3 GPU smoke 325002 passed: 3 updates, 124 plans in 70 scenes loaded, track_feet active, peak 29.4 GB at 4096 worlds (first attempt 324990 failed on a missing untracked outputs/ file; clones now copy outputs/).
