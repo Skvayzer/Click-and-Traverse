@@ -70,7 +70,7 @@ def init(a):
     LITE = LiteTask(seed=0)
     HOLD = {}
     TRACKER = make_tracker(LITE, Path(a.sonic) / "model_encoder.onnx", Path(a.sonic) / "model_decoder.onnx",
-                           reference=lambda: HOLD["ref"]())
+                           reference=lambda: HOLD["ref"](), provider=a.backend)
     for s in (TRACKER.encoder, TRACKER.decoder):
         pass
 
@@ -123,6 +123,7 @@ def main():
     ap.add_argument("--workers", type=int, default=12); ap.add_argument("--save-dir")
     ap.add_argument("--post-full", help="directory of full-harness outputs (cos_g1_track.py: <id>.json + <id>.npz)")
     ap.add_argument("--limit", type=int)
+    ap.add_argument("--backend", choices=("cpu", "torch"), default="cpu", help="cpu = ONNX Runtime, torch = torch port")
     a = ap.parse_args()
     if a.post_full:
         with open(a.out, "w") as f:
@@ -144,7 +145,7 @@ def main():
     print(f"{len(W)} windows, {a.workers} workers", flush=True)
     import multiprocessing as mp
     t = time.time(); c = {}
-    with mp.get_context("fork").Pool(a.workers, initializer=init, initargs=(a,)) as pool, open(a.out, "a") as f:
+    with mp.get_context("spawn").Pool(a.workers, initializer=init, initargs=(a,)) as pool, open(a.out, "a") as f:
         for i, m in enumerate(pool.imap_unordered(one, W, chunksize=4)):
             f.write(json.dumps(m) + "\n"); f.flush()
             c[m["end"]] = c.get(m["end"], 0) + 1; c["tracked"] = c.get("tracked", 0) + int(m.get("tracked", False))

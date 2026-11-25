@@ -236,7 +236,7 @@ class SonicTracker:
             providers = [("CUDAExecutionProvider", {"device_id": dev.index or 0,
                                                     "user_compute_stream": str(stream.cuda_stream)})]
         else:
-            opts.intra_op_num_threads = 4
+            opts.intra_op_num_threads = int(__import__('os').environ.get('SONIC_ORT_THREADS', 4))
             opts.inter_op_num_threads = 1
             providers = ["CPUExecutionProvider"]
         self.encoder = ort.InferenceSession(encoder, sess_options=opts, providers=providers)

@@ -13,7 +13,7 @@ set -euo pipefail
 C=/l/users/$USER/cos
 LIB=$C/library/${NAME:?}; OUT=$C/scenes_v1/$NAME
 cd "${CODE:?}"
-export PYTHONPATH=$PWD OMP_NUM_THREADS=1 MKL_NUM_THREADS=1
+export PYTHONPATH=$PWD:$C/third_party/pydeps_ort OMP_NUM_THREADS=1 MKL_NUM_THREADS=1 SONIC_ORT_THREADS=1
 echo "== $NAME $KIND $SRC on $(hostname) at $(date -Is), code $(git rev-parse --short HEAD)"
 [[ -f $LIB/summary.json ]] || python -u scripts/cos_library.py --kind ${KIND:?} --src ${SRC:?} --out $LIB
 [[ -f $LIB/events_summary.json ]] || python -u scripts/cos_process.py events --lib $LIB

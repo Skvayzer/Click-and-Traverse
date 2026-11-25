@@ -93,6 +93,8 @@ class _TaskAdapter:
         setattr(self._lite, k, v)
 
 
-def make_tracker(lite, encoder, decoder, reference):
+def make_tracker(lite, encoder, decoder, reference, provider="cpu"):
+    """provider "cpu" = ONNX Runtime; "torch" = the torch port of the release (cat_mjlab/sonic_torch.py, needs only
+    the onnx package to read the weights) on the CPU."""
     from ..sonic_tracker import SonicTracker
-    return SonicTracker(_TaskAdapter(lite), encoder, decoder, provider="cpu", reference=reference)
+    return SonicTracker(_TaskAdapter(lite), encoder, decoder, provider=provider, reference=reference)
