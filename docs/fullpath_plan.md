@@ -160,3 +160,13 @@ and hurdles from where the robot stands (all 4 samples collide 4 times out of 5 
 colliding chunk is executed; the horizon itself mainly matters for stalls. Tracking of the plan is loose (pelvis 12 cm,
 hands 34 cm median path-relative), so the S2 margin rule "≥ p95 tracking error" (pelvis 43 cm) is infeasible; S2 keeps the
 pre-registered 8→2 cm margin schedule and reports the oracle-feed tracking error.
+
+### S2 amendment (11:20, after the first 55 oracle searches, before any oracle-guided rollout)
+The motion-graph search finds plans for only 8 of the first 55 starts (dense D8 clutter courses; all margins exhausted in
+most). Since starts are identical across speeds and policies for a scene and trial (checked on 60 pairs), every clean S1
+traversal from the same start is itself a whole-traversal, collision-free whole-body path. The oracle's candidate set is
+therefore the searched plan **plus** the recorded clean traversals of the three S1 policies from the same start (any
+speed), each re-verified with the exact geometry; the one with the largest verified margin is used if that margin is
+≥ 2 cm (searched plan preferred on ties). The source of every plan (searched / recorded, and which policy) is reported, and
+the gate is also reported on the searched-only subset. This makes the oracle a hindsight upper bound (it may reuse a
+traversal that succeeded at the other speed or with another policy); episodes without any plan still run reactive.

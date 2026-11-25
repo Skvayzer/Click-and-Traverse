@@ -176,6 +176,10 @@ def main():
         from cat_mjlab.tracking import SOURCES
         if args.oracle:
             oracle_plan = dict(np.load(args.oracle)); oracle_meta = json.loads(str(oracle_plan.get("meta", "{}")))
+            if not oracle_meta.get("ok", True):
+                oracle_plan = None                  # no verified plan for this start: reactive fallback below
+            elif np.abs(oracle_plan["qpos"][0, :2] - task.data.qpos[0, :2].numpy()).max() > .02:
+                raise RuntimeError("oracle plan starts elsewhere than this episode")
         else:
             geo = ExactGeometry("cpu"); lib = ClipLibrary.load(args.oracle_library)
             sb = scene_boxes(checker, sid)
@@ -185,7 +189,9 @@ def main():
             radius = .3 if args.planning_benchmark else None
             tried = []
             for mg in [float(x) for x in args.oracle_margins.split(",")]:
-                r = plan_scene(lib, geo, sb, q0, gxy, u, margin=mg, budget_s=args.oracle_budget, goal_radius=radius)
+                o_ = task.bank.origins[sid].double().numpy(); e_ = o_ + (task.bank.shapes[sid].double().numpy() - 1) * float(task.bank.dxs[sid])
+                r = plan_scene(lib, geo, sb, q0, gxy, u, margin=mg, budget_s=args.oracle_budget, goal_radius=radius,
+                               bounds=(o_[0], e_[0], o_[1], e_[1]))
                 tried.append(dict(margin=mg, ok=r["ok"], seconds=r["seconds"], expansions=r["expansions"], progress=r["progress"]))
                 if r["ok"]:
                     break
