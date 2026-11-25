@@ -164,6 +164,13 @@ def one(w):
     if tz is not None and tz.exists():
         tr = np.load(tz)["tracked"].astype(np.float64)
         tr_c = to_frame(tr, qw[0, :2], yaw)
+        # SONIC sees no global position, so its rollout drifts; re-anchor the root path and heading to the reference
+        # and keep the tracked posture (height, roll, pitch, joints): tracked_clear then measures posture, not drift.
+        from cat_mjlab.cos.default_motion import qmul, qyaw, yaw_of_q
+        n = min(len(tr_c), T)
+        tr_c = tr_c[:n].copy()
+        tr_c[:, :2] = qc[:n, :2]
+        tr_c[:, 3:7] = qmul(qyaw(yaw_of_q(qc[:n, 3:7]) - yaw_of_q(tr_c[:, 3:7])), tr_c[:, 3:7])
     attempts, per_event = [], []
     for e_i, (fam, f0, f1, mag) in enumerate(w["events"]):
         fa, fb = max(0, f0), min(T, f1)
