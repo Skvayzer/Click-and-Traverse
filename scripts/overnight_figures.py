@@ -230,7 +230,7 @@ def fig_a1(R, out):
     for i, (lab, d) in enumerate(rows):
         ax.errorbar(d["mean"], i, xerr=[[d["mean"] - d["lo"]], [d["hi"] - d["mean"]]], fmt="o", color=PLAN, capsize=2, ms=4)
     ax.axvline(0, color=INK, lw=.6); ax.set_yticks(range(len(rows)), [r[0] for r in rows], fontsize=6.2); ax.invert_yaxis()
-    ax.set_xlabel("Δ object hand contact (pp), planner–reflex minus"); panel(ax, "c")
+    ax.set_xlabel("Δ object hand contact (pp)"); panel(ax, "c")
     save(fig, out, "fig5_dynamic_threats_walking")
 
 
