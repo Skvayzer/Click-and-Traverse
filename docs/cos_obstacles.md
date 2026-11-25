@@ -155,3 +155,33 @@ Numbers below are from the second run; the first run gave 1,126/1,134 verified (
 Videos (1280×720 H.264 yuv420p, faststart, poster JPEG): `amass-obstacles/videos/` 01 duck→beam (CMU 127), 02 duck→bar
 (CMU 108), 03 crawl→tunnel (CMU 107), 04 high step→hurdle (CMU 143), 05 sideways→gap (PHUMA), 06 arms tucked→narrow gap
 (PHUMA), 07 arms raised→counter (PHUMA), 08 detour→box (PHUMA). Contact sheet `amass-obstacles/g2/g2_contact_sheet.png`.
+
+**G2 amendment 02:15 (requested by the user, before any use of the scenes).** A "turn sideways" scene keeps its label
+only if the default motion's trunk, head or shoulder links (proxy regions trunk/head + shoulder pitch/roll capsules)
+penetrate the explaining obstacle; otherwise it is relabelled **arms_in** (the gap is narrower than the arm swing only).
+Result on the regenerated scenes (deterministic RNG from here on): 62 sideways kept, 271 relabelled arms_in;
+1,111/1,117 scenes verify (99.5%).
+
+### G1 result (03:00) — PASS for 5 of 7 families; duck and crawl FAIL
+
+Amendment: the full harness (22 GB RAM and ~110 s build per process; ~20 s per window) was too slow for the data scale,
+so G1 ran on `cat_mjlab/cos/lite_harness.py`: the bare training model, the same physics options, SONIC PD gains, the
+actuator torque limits, per-episode torque noise rfi = U(0.5, 1.5)·0.1·limit, no latency, no episode termination.
+**Validation on the 148 windows tracked both ways: the tracked flag agrees on 145 (98%)**; tracked 109 (full) vs 112
+(lite), median joint p90 0.111 vs 0.108 rad, median local-body p90 3.9 vs 4.0 cm. 740 windows take 148 s on 12 processes.
+
+| family (windows) | tracked within bounds | complete | sank | fell |
+|---|---|---|---|---|
+| duck (85) | **14%** | 55% | 23 | 15 |
+| crawl (102) | **0%** | 0% | 101 | 1 |
+| high step (15) | 60% | 87% | 2 | 0 |
+| sideways (245) | 75% | 89% | 19 | 8 |
+| arms raised (368) | 66% | 90% | 32 | 6 |
+| arms tucked (109) | 89% | 97% | 2 | 1 |
+| detour (21) | 90% | 100% | 0 | 0 |
+| all (740) | 62% (458) | | | |
+
+Crawl: the lite harness never terminates on floor contact (knees, hands and forearms may touch the floor), and the robot
+still sinks > 25 cm below the reference within the first second — frozen SONIC does not track crawling; neither do deep
+crouches (duck: 14%). Needed: a crawl/deep-crouch-capable tracker (fine-tuned SONIC or a dedicated tracker trained on
+these clips), not a contact-rule change. Tracked flags go into the data manifest.
