@@ -111,6 +111,8 @@ def main():
     p.add_argument("--subset-fields", action="store_true",
                    help="load scene fields only for the --scenes @file selection (others get a tiny zero grid and are "
                         "never sampled): several evaluations then share one GPU")
+    p.add_argument("--diagnose", type=Path, help="write per-episode failure diagnostics (first contact region/obstacle, progress, "
+                   "velocity, heading, stall, clearance, crouch and foot lift near obstacles) to this JSON file")
     p.add_argument("--out", type=Path)
     p.add_argument("--out-dir", type=Path)
     args = p.parse_args()
@@ -414,9 +416,16 @@ def main():
         seconds_to_goal = torch.full_like(path, -1.)
         min_palm = task.info["sdf"][:, 5:7, 0].amin(-1).clone()
         traversal = torch.zeros((NS * K, 3), dtype=torch.float64, device=dev)
+    diag = None
+    if args.diagnose:
+        from cat_mjlab.diagnose import EpisodeDiagnostics
+        diag = EpisodeDiagnostics(task, [s_["scene_id"] for s_ in scenes], [float(s_["goal"][0]) - float(s_["start"][0]) for s_ in scenes], NS, speeds)
+        diag.wrap_collision()
     start = time.time()
     for t in range(args.max_steps):
         before = env_scene.clone(); root0 = task.data.qpos[:, :2].clone()
+        if diag is not None:
+            diag.observe(before)
         if blind:
             sim.hits.zero_()
             if args.blind_variant == "throw":
@@ -479,6 +488,8 @@ def main():
             hands = m.get("episode/body_collision_hands", zero).bool()
             flags = (done, done & goal & ~obstacle, done & obstacle, done & ~goal & ~obstacle & ~fall, done & fall, done & hands)
             d = torch.nonzero(done).flatten(); sc = before[d]
+            if diag is not None:
+                diag.finish(d, before, m, dict(clean=flags[1], contact=flags[2], refused=flags[3], fall=flags[4], goal=goal))
             for c, f in enumerate(flags):
                 stats[:, c].index_add_(0, sc, f[d].double())
             if blind:
@@ -513,6 +524,9 @@ def main():
             print(f"step {t}: {finished}/{target} episodes, {time.time() - start:.0f}s", flush=True)
         if finished >= target:
             break
+    if diag is not None:
+        args.diagnose.parent.mkdir(parents=True, exist_ok=True)
+        args.diagnose.write_text(json.dumps(dict(checkpoint=str(args.checkpoint), speeds=speeds, records=diag.records)) + "\n")
     if blind:
         sim.capacity_report()
         if trace is not None:
