@@ -128,6 +128,11 @@ def main(argv=None):
     p.add_argument("--seed", type=int, default=0)
     p.add_argument("--source-id", type=int, default=0,
                    help="policy id written to meta[:, 4] when datasets from several policies are mixed (e.g. 0 u150, 1 E2, 2 V7, 3 T2)")
+    p.add_argument("--tracker-mix", help="override the tracker's reference sources, e.g. plan=1 (planner–reflex rollouts only)")
+    p.add_argument("--planner-checkpoint", help="relocate the online planner used by the plan source")
+    p.add_argument("--exclude-scenes", type=Path, help="file of scene ids never collected (evaluation scenes)")
+    p.add_argument("--types-scale", nargs="*", default=[], metavar="TYPE=X",
+                   help="per-type multipliers of the scene counts, e.g. side_gap=2 narrow_passage=2")
     args = p.parse_args(argv)
     if args.out.exists() and any(args.out.iterdir()):
         raise ValueError(f"{args.out} is not empty; refusing to mix datasets")
@@ -137,7 +142,18 @@ def main(argv=None):
     from cat_mjlab.planner.grid import scene_grid, SHAPE, CELL, X0, Y0, Z0, SDF_LO, SDF_HI
     started = time.time()
     manifest = json.loads(Path(args.bank + "_packed/manifest.json").read_text())
-    train, test, buckets = choose_scenes(manifest, DEFAULT_TYPES, args.scene_scale, args.seed)
+    types = dict(DEFAULT_TYPES)
+    for item in args.types_scale:
+        name, x = item.split("=")
+        types[name] = tuple(max(1, round(n * float(x))) for n in types[name])
+    if args.exclude_scenes:
+        banned = {l.strip() for l in args.exclude_scenes.read_text().splitlines() if l.strip()}
+        for sc in manifest["scenes"]:
+            if sc["scene_id"] in banned:
+                sc["sampling_weight"] = 0.
+    train, test, buckets = choose_scenes(manifest, types, args.scene_scale, args.seed)
+    if args.exclude_scenes:
+        assert not banned & {manifest["scenes"][i]["scene_id"] for i in train + test}
     keep = {manifest["scenes"][i]["scene_id"] for i in train + test}
     install_subset_loader(keep)
     from record_mjlab_rollout import load_policy
@@ -149,6 +165,12 @@ def main(argv=None):
     env["dm_rand_config"].update(enable_pd=False, enable_rfi=False)
     for key in ("sgs", "robustness"):
         env.pop(key, None)
+    env.pop("refusal_training", None)
+    if args.tracker_mix:
+        env["tracker"]["mix"] = [[a, float(b)] for a, b in (item.split("=", 1) for item in args.tracker_mix.split(","))]
+        env["tracker"]["hold_plan"] = 0.
+    if args.planner_checkpoint:
+        env["tracker"]["planner"]["path"] = str(Path(args.planner_checkpoint).resolve())
     sim_class = None
     if args.device == "cpu":
         from cat_mjlab.sim_cpu import CPUSimulation as sim_class

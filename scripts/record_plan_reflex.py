@@ -43,12 +43,22 @@ def main():
     p.add_argument("--planner-checkpoint", type=Path, help="local copy of the checkpoint's online planner weights")
     p.add_argument("--fallback", type=float, nargs=2, metavar=("STALL_S", "HOLD_S"),
                    help="the stall rule: no progress along the route for STALL_S s drops the plan for HOLD_S s")
+    p.add_argument("--device", default="cuda:0", help="cuda:0, or cpu (CPU MuJoCo, one scene per run)")
+    p.add_argument("--plan-select", choices=("clear", "value", "value_safe"))
+    p.add_argument("--plan-safe-m", type=float, default=.05)
+    p.add_argument("--plan-samples", type=int)
+    p.add_argument("--plan-arbitrate", type=float)
+    p.add_argument("--stall-plan", type=float, nargs=2, metavar=("STALL_S", "HOLD_S"))
     args = p.parse_args()
     scenes = [l.strip() for l in open(args.scenes[0][1:]) if l.strip()] if args.scenes[0].startswith("@") else args.scenes
     from record_mjlab_rollout import load_policy
     from cat_mjlab.runner import create_task
     from planner_render import world_qpos
-    dev = "cuda:0"
+    dev = args.device
+    if dev == "cpu" and len(scenes) != 1:
+        p.error("the CPU simulation runs one world: pass one scene")
+    from planner_collect import install_subset_loader
+    install_subset_loader(set(scenes))                  # load only the recorded scenes' fields
     torch.manual_seed(args.seed)
     torch.cuda.manual_seed_all(args.seed)
     contract = torch.load(args.checkpoint, map_location="cpu", weights_only=True, mmap=True)["contract"]
@@ -74,6 +84,16 @@ def main():
         tracker["mix"] = [[a, float(b)] for a, b in (item.split("=", 1) for item in args.mix.split(","))]
         if args.fallback:
             tracker["fallback"] = dict(stall_s=float(args.fallback[0]), hold_s=float(args.fallback[1]))
+        if args.stall_plan:
+            tracker["stall_plan"] = dict(stall_s=args.stall_plan[0], hold_s=args.stall_plan[1], progress_m=.05)
+        pc = tracker.get("planner")
+        if pc is not None:
+            if args.plan_select:
+                pc["select"] = args.plan_select; pc["safe_m"] = args.plan_safe_m
+            if args.plan_samples:
+                pc["samples"] = args.plan_samples
+            if args.plan_arbitrate is not None:
+                pc["arbitrate"] = args.plan_arbitrate
     elif args.mix != "none=1" or args.fallback:
         raise ValueError("A tracker-free checkpoint requires --mix none=1 and no fallback")
     B = ROOT / args.bank
@@ -82,7 +102,12 @@ def main():
                          num_envs=len(scenes), compile_task=False, nconmax=contract["nconmax"], njmax=contract["njmax"],
                          reactive_bank=None, reactive_row=None,
                          goal_seed_scene_ids=scenes if args.goal_seed_cache else None)
-    task, sim, _ = create_task(ns, environment_config=env)
+    sim_class = None
+    if dev == "cpu":
+        from cat_mjlab.sim_cpu import CPUSimulation as sim_class
+    task, sim, _ = create_task(ns, environment_config=env, sim_class=sim_class)
+    if dev == "cpu":
+        task.collision_every_substep = False
     names = [s["scene_id"] for s in task.bank.manifest["scenes"]]
     missing = [s for s in scenes if s not in names]
     if missing:
@@ -97,10 +122,10 @@ def main():
         op.capture = True
         original = task._replan
 
-        def replan(ids):
+        def replan(ids, **kw):
             ids_plan = ids[task.tracker.is_plan[ids]] if len(ids) else ids
             op.last = None
-            original(ids)
+            original(ids, **kw)
             if op.last is not None and len(ids_plan):
                 last = op.last
                 for k, w in enumerate(ids_plan.tolist()):
@@ -115,6 +140,8 @@ def main():
         task._replan = replan
     task.reset(None, sids)
     learner, _ = load_policy(args.checkpoint, device=dev, policy_id=0)
+    if (args.plan_select not in (None, "clear")) or args.plan_arbitrate is not None:
+        task.value_fn = lambda o: learner.model.value(o, torch.zeros(o.shape[:-1], dtype=torch.long, device=o.device))
     reflex = getattr(task, "reflex", None)
     band = float(reflex.get("hand_band", .15)) if reflex and args.mix != "none=1" else 0.
     T = args.steps
