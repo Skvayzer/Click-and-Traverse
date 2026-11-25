@@ -1351,11 +1351,20 @@ def run(args):
         source = metadata.get("contract", {})
         config_source = environment_config_from_archive(metadata)
     from .observation_contract import ACTOR_SIZE, CRITIC_SIZE, actor_size, critic_size
+    if getattr(args, 'tracker_fullpath', None):
+        import copy as _copy
+        spec = json.loads(Path(args.tracker_fullpath).read_text())
+        if not (config_source or {}).get('tracker'):
+            raise ValueError('--tracker-fullpath needs a tracker checkpoint to start from')
+        config_source = _copy.deepcopy(config_source)
+        config_source['tracker']['fullpath'] = spec
+        config_source.setdefault('reward_config', {}).setdefault('scales', {})['track_feet'] = float(spec.get('foot_weight', 2.))
+    fullpath = bool(((config_source or {}).get('tracker') or {}).get('fullpath'))
     tracker = bool(tracker_spec(args) or (config_source or {}).get('tracker'))
     sdf_rate = bool(getattr(args, 'sdf_rate_obs', None) if getattr(args, 'sdf_rate_obs', None) is not None
                     else (config_source or {}).get('sdf_rate_obs', False))
     cadence = bool(getattr(args, 'cadence', None) or (config_source or {}).get('cadence'))
-    sizes = (actor_size(sdf_rate, tracker, cadence), critic_size(tracker, cadence))
+    sizes = (actor_size(sdf_rate, tracker, cadence, fullpath), critic_size(tracker, cadence, fullpath))
     if (config.actor_obs, config.critic_obs) != sizes:
         config = replace(config, actor_obs=sizes[0], critic_obs=sizes[1])
     if getattr(args, 'lipschitz', None) is not None:

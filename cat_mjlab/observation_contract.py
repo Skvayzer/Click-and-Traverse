@@ -11,19 +11,22 @@ SDF_RATE_SIZE = 4
 CADENCE_FEATURES = ('gait.stride_frequency_hz',)
 
 
-def actor_size(sdf_rate=False, tracker=False, cadence=False):
+def actor_size(sdf_rate=False, tracker=False, cadence=False, fullpath=False):
     """Actor input width: the baseline contract plus the optional hand/elbow distance-rate features, the tracker's
     reference block (cat_mjlab/tracking.py) and the commanded stride frequency (speed-dependent cadence)."""
     from .tracking import FEATURES
-    return ACTOR_SIZE + (SDF_RATE_SIZE if sdf_rate else 0) + (FEATURES if tracker else 0) + (len(CADENCE_FEATURES) if cadence else 0)
+    from .fullpath_tracker import FEATURES as FP
+    return ACTOR_SIZE + (SDF_RATE_SIZE if sdf_rate else 0) + (FEATURES if tracker else 0) + (len(CADENCE_FEATURES) if cadence else 0) \
+        + (FP if fullpath else 0)
 
 
-def critic_size(tracker=False, cadence=False):
+def critic_size(tracker=False, cadence=False, fullpath=False):
     from .tracking import FEATURES
-    return CRITIC_SIZE + (FEATURES if tracker else 0) + (len(CADENCE_FEATURES) if cadence else 0)
+    from .fullpath_tracker import FEATURES as FP
+    return CRITIC_SIZE + (FEATURES if tracker else 0) + (len(CADENCE_FEATURES) if cadence else 0) + (FP if fullpath else 0)
 
 
-def observation_contract(sdf_rate=False, tracker=False, cadence=False):
+def observation_contract(sdf_rate=False, tracker=False, cadence=False, fullpath=False):
     """The feature contract, with the tracker's reference block and then the stride frequency appended to both
     observations when enabled."""
     contract = mjlab_observation_contract(sdf_rate)
@@ -36,4 +39,9 @@ def observation_contract(sdf_rate=False, tracker=False, cadence=False):
         names = list(CADENCE_FEATURES)
         contract = dict(contract, actor_features=list(contract['actor_features']) + names,
                         critic_features=list(contract['critic_features']) + ['critic.' + n for n in names], cadence_features=names)
+    if fullpath:
+        from .fullpath_tracker import feature_names as fp_names
+        names = fp_names()
+        contract = dict(contract, actor_features=list(contract['actor_features']) + names,
+                        critic_features=list(contract['critic_features']) + ['critic.' + n for n in names], fullpath_features=names)
     return contract

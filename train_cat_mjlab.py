@@ -136,6 +136,9 @@ def parser():
         target.add_argument("--tracker-continuity", type=float, metavar="REANCHOR_M",
                             help="COMBO4: replans continue the executing plan from its own state (the robot re-anchors the "
                                  "plan only when farther than REANCHOR_M from it), so a stalled robot falls behind")
+        target.add_argument("--tracker-fullpath", type=Path, metavar="JSON",
+                            help="tracker v2 (S3, docs/fullpath_plan.md): JSON with plans (glob list), share, tol, floor, "
+                                 "reflex_floor, foot_sigma, foot_weight; adds the full-path reference block (zero-widened)")
         target.add_argument("--tracker-route-go", action="store_true",
                             help="COMBO4: in plan worlds the command says go whenever the route does, at the route speed "
                                  "(a hesitant plan can no longer stop the gait or switch off the stall cost)")

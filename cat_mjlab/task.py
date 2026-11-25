@@ -97,7 +97,7 @@ class CATTask:
         self.stabilization=bool(_get(config,'wholebody_stabilization',False))
         self.sdf_rate=bool(config.get('sdf_rate_obs',False))
         from .observation_contract import observation_contract
-        self.contract=observation_contract(self.sdf_rate,bool(config.get('tracker')),bool(config.get('cadence')))
+        self.contract=observation_contract(self.sdf_rate,bool(config.get('tracker')),bool(config.get('cadence')),bool((config.get('tracker') or {}).get('fullpath')))
         # Speed-dependent cadence (config 'cadence'): the stride frequency follows the commanded speed instead of a fixed
         # 1.3-1.5 Hz per episode (measured: 2.6-3.0 steps/s and 6.5-9 cm steps when told 0.15 m/s), and the policy
         # observes it. Ramped in from the old per-episode frequency over `ramp_steps` control steps.
@@ -141,6 +141,10 @@ class CATTask:
                 self._critic_ref=self.contract['critic_features'].index('critic.ref.valid')
                 self.plan_clear=torch.zeros(self.num_envs,device=self.device);self.plan_side=torch.zeros_like(self.plan_clear)
                 self.plan_fresh=torch.zeros_like(self.plan_clear);self.plan_cont=torch.zeros_like(self.plan_clear)
+            # Tracker v2 (S3, docs/fullpath_plan.md): full start->goal plans from a precomputed oracle bank fed through the
+            # plan source, an extended reference block, foot tracking near hurdles, plan-relative clearance costs and a
+            # deviation-triggered reflex. Plan worlds without a full plan act without a reference.
+            self.fullpath=tc.get('fullpath');self.fullpath_feed=None
         # Home pose for the upper-body posture cost only (observations and the action
         # nominal are untouched, so the warm start is unaffected). The default hangs the
         # hands 3 cm from the thigh capsules; shoulder pitch -0.3 puts them 24 cm in
@@ -163,6 +167,16 @@ class CATTask:
                          *const.KNEE_SITES,*const.SHOULDER_SITES]
         self.site_ids=torch.tensor([self.model.site(n).id for n in self.site_names],device=self.device)
         self.elbow_ids=torch.tensor([self.model.site(n).id for n in ('left_elbow_probe','right_elbow_probe')],device=self.device)
+        if getattr(self,'fullpath',None):
+            import glob as _glob
+            from .fullpath_tracker import FullPathBank,FullPathFeed
+            fp=self.fullpath;files=sorted(f for pat in fp['plans'] for f in _glob.glob(pat))
+            index={sc['scene_id']:i for i,sc in enumerate(self.bank.manifest['scenes'])}
+            self.fullpath_bank=FullPathBank(files,self.model,self.bank,index,self.device,site_names=self.site_names,
+                                            max_len=fp.get('max_len'))
+            self.fullpath_feed=FullPathFeed(self.fullpath_bank,self.num_envs,self.device,lead=float(fp.get('lead',0.)))
+            self.fullpath_share=float(fp.get('share',1.))
+            print(f"full-path plans: {self.fullpath_bank.P} plans in {len(set(self.fullpath_bank.scene.tolist()))} scenes",flush=True)
         self.pelvis_site,self.torso_site=self.model.site('imu_in_pelvis').id,self.model.site('imu_in_torso').id
         self.pelvis_body=self.model.body('pelvis').id
         # Leg capsules for hand self-clearance: thigh hip->knee (MJCF thigh capsule r=.06),
@@ -860,6 +874,18 @@ class CATTask:
         if self.online_planner is None or len(ids)==0:return
         ids=ids[t.is_plan[ids]]
         if len(ids)==0:return
+        feed=getattr(self,'fullpath_feed',None)
+        if feed is not None:
+            fpw=feed.plan[ids]>=0
+            if bool(fpw.any()):
+                fid=ids[fpw]
+                feed.match(fid,self.data.qpos[fid,:2])
+                xy,yaw,z,upper,roll,pitch,legs=feed.chunk(fid,t.route_speed[fid])
+                t.set_plan(fid,xy,yaw,z,upper,torch.full((len(fid),),.1,device=self.device),roll=roll,pitch=pitch,legs=legs)
+                t.has_full[fid]=False
+                self.plan_clear[fid]=.1;self.plan_side[fid]=0.;self.plan_fresh[fid]=1.;self.plan_cont[fid]=0.
+            ids=ids[~fpw]
+            if len(ids)==0:return
         op=self.online_planner;d=self.data
         qpos,qvel=d.qpos[ids,:36],d.qvel[ids,:35]
         cont=t.continuing(ids,qpos[:,:2])
@@ -1112,6 +1138,13 @@ class CATTask:
         if self.cadence:
             hz=(info['phase_dt']/(2*torch.pi*self.dt))[:,None]
             result=dict(result,state=torch.cat((result['state'],hz),-1),privileged_state=torch.cat((result['privileged_state'],hz),-1))
+        if getattr(self,'fullpath',None):
+            feed=self.fullpath_feed;navi_a=info['navi_actor'] if getattr(self,'robust',None) else info['navi']
+            est=info['odom_delay'][:,:3] if 'odom_delay' in info else self.data.qpos[ids,:3]
+            rs=self.tracker.route_speed[ids];valid=self.tracker.valid[ids].float()[:,None]
+            fa=feed.features(ids,est[:,:2],torch.atan2(navi_a[:,1,0],navi_a[:,0,0]),est[:,2],navi_a,rs)*valid
+            ft=feed.features(ids,self.data.qpos[ids,:2],self._root_yaw(ids),self.data.qpos[ids,2],info['navi'],rs)*valid
+            result=dict(result,state=torch.cat((result['state'],fa),-1),privileged_state=torch.cat((result['privileged_state'],ft),-1))
         if result['state'].shape[-1]!=self.observation_size or result['privileged_state'].shape[-1]!=self.privileged_observation_size:
             raise RuntimeError('Observation feature contract changed')
         for k,v in result.items():self.obs[k][ids]=v
@@ -1133,6 +1166,18 @@ class CATTask:
             scene_ids=torch.searchsorted(cdf,self._rand((n,))).clamp_max(self.bank.count-1)
         if self.reactive_objects is not None:
             scene_ids,reactive_active,reactive_qpos=self.reactive_objects.sample(ids,scene_ids)
+        fp_plan=None
+        if getattr(self,'fullpath_feed',None) is not None:
+            # a share of resets become full-path worlds: a random plan of the bank, its scene and its start pose. With
+            # explicit scene_ids (evaluation) a world gets a plan only when the bank has one for its scene (the first
+            # matching plan, or the one named by fullpath_eval_plan[env]).
+            b=self.fullpath_bank
+            if getattr(self,'fullpath_eval_plan',None) is not None:
+                fp_plan=self.fullpath_eval_plan[ids].clone()
+            else:
+                fp_plan=torch.randint(b.P,(n,),device=self.device,generator=self.generator)
+                fp_plan=torch.where(self._rand((n,))<self.fullpath_share,fp_plan,torch.full_like(fp_plan,-1))
+                scene_ids=torch.where(fp_plan>=0,b.scene[fp_plan.clamp_min(0)],scene_ids)
         self.scene_ids[ids]=scene_ids
         qpos=self.init_q.expand(n,-1).clone();qpos[:,:2]+=self._rand((n,2),-1,1);qpos[:,2]=.8
         yaw=self._rand((n,),-np.pi/2,np.pi/2)
@@ -1219,6 +1264,13 @@ class CATTask:
             self.reactive_air[ids]=0
             self.reactive_settle_at[ids]=int((self.reactive_stationary or SHADOW_STATIONARY)['grace_steps'])
             self.reactive_settled[ids]=False;self.reactive_calm[ids]=0
+        if fp_plan is not None and getattr(self,'fullpath_eval_plan',None) is None:
+            fpw=fp_plan>=0
+            if self.reactive_objects is not None:
+                fpw=fpw&~reactive_active;fp_plan=torch.where(fpw,fp_plan,torch.full_like(fp_plan,-1))
+            if bool(fpw.any()):
+                start=self.fullpath_bank.qpos[fp_plan.clamp_min(0),0]
+                qpos=torch.where(fpw[:,None],start,qpos)
         if initial_pose is not None:
             if initial_pose.shape != (n, 36) or initial_velocity is None or initial_velocity.shape != (n, 35):
                 raise ValueError("A prescribed reset needs one pose and velocity per world")
@@ -1429,6 +1481,19 @@ class CATTask:
             self.tracker.reset(ids,self.data.qpos[ids,:2],self._root_yaw(ids),sample_dir=self._track_dir,op_speed=op,
                                room_scene=~self.bank.is_cat[self.scene_ids[ids]],
                                hold=reactive_active if self.reactive_objects is not None else None)
+            if getattr(self,'fullpath_feed',None) is not None:
+                from .tracking import SOURCES as _S
+                t=self.tracker;plan_src=_S.index('plan')
+                fp=fp_plan if fp_plan is not None else torch.full((n,),-1,dtype=torch.long,device=self.device)
+                fp=torch.where(t.still[ids],torch.full_like(fp,-1),fp)
+                self.fullpath_feed.assign(ids,fp)
+                has=fp>=0
+                t.source[ids]=torch.where(has,torch.full_like(t.source[ids],plan_src),t.source[ids])
+                # moving plan worlds without a full plan: no reference (the reactive mode of the same network)
+                drop=(t.source[ids]==plan_src)&~has&~t.still[ids]
+                t.source[ids]=torch.where(drop,torch.full_like(t.source[ids],_S.index('none')),t.source[ids])
+                if bool(has.any()):
+                    t.route_speed[ids]=torch.where(has,self.op_speed[ids] if self.operator_speed else t.route_speed[ids],t.route_speed[ids])
             self._replan(ids,fresh_obs=False)
         self._observe(ids,self.sim.contact_flags(self.contact_pairs)[ids,:2])
         return self.obs
@@ -1569,6 +1634,31 @@ class CATTask:
         return robot_features(d.qpos[:,:36],d.qvel[:,:35],d.site_xpos[:,s],d.xpos[:,b],xmat)
 
     def _rewards(self,action,contacts):
+        if not getattr(self,'fullpath',None):
+            return self._rewards_base(action,contacts)
+        # Plan-relative clearance (S3): on a world following a full plan, the field/clearance costs only see clearance
+        # below min(planned clearance - tol, floor) at each body point; above it the point reads as free (1 m). The
+        # unmasked values stay available to the reflex (self._fp_sdf_true) and to termination (computed before).
+        i=self.info;feed=self.fullpath_feed;fp=self.fullpath
+        planned,_,_=feed.planned(self.all_ids)
+        planned=planned.clone();planned[:,5:7]-=self.hand_radii
+        on=(feed.plan>=0)&self.tracker.valid
+        tol=float(fp.get('tol',.03));floor=float(fp.get('floor',.02))
+        thr=torch.minimum(planned-tol,torch.full_like(planned,floor))
+        sdf_true=i['sdf'];elbow_true=i['elbow_clearance']
+        self._fp_sdf_true=sdf_true;self._fp_planned=planned;self._fp_on=on
+        if bool(on.any()) and fp.get('plan_relative',True):
+            masked=sdf_true.clone();k=min(masked.shape[1],thr.shape[1])
+            free=on[:,None]&(sdf_true[:,:k,0]>=thr[:,:k])
+            masked[:,:k,0]=torch.where(free,torch.ones_like(masked[:,:k,0]),masked[:,:k,0])
+            i['sdf']=masked
+            i['elbow_clearance']=torch.where(on[:,None]&(elbow_true>=floor),torch.ones_like(elbow_true),elbow_true)
+        try:
+            return self._rewards_base(action,contacts)
+        finally:
+            i['sdf']=sdf_true;i['elbow_clearance']=elbow_true
+
+    def _rewards_base(self,action,contacts):
         i=self.info;d=self.data
         from .passage_rewards import blended_sdf_knee
         sdf_knee = (blended_sdf_knee(self.bank.contrast, self.scene_ids, self.contrast)
@@ -1722,14 +1812,30 @@ class CATTask:
             if self.reflex:
                 # The reflex rule: inside the band the field acts, not the reference (i['sdf'] is the clearance at the 13
                 # body points after the hand radii, with thrown objects merged in).
+                sdf_r=getattr(self,'_fp_sdf_true',None) if getattr(self,'fullpath',None) else None
+                sdf_r=i['sdf'] if sdf_r is None else sdf_r
                 hand_band=float(self.reflex.get('hand_band',.15))
                 if hand_band > 0.:
-                    released=i['sdf'][:,5:7,0]<hand_band
-                body=i['sdf'][...,0].amin(-1)
+                    released=sdf_r[:,5:7,0]<hand_band
+                if getattr(self,'fullpath',None):
+                    # S3 reflex: on a full plan an arm is released when its hand is closer than planned by more than tol
+                    # (deviation) or closer than the hard floor; elsewhere the band rule stays
+                    fp=self.fullpath;tol=float(fp.get('tol',.03));floor=float(fp.get('reflex_floor',.02))
+                    hand=sdf_r[:,5:7,0];dev=(hand<self._fp_planned[:,5:7]-tol)|(hand<floor)
+                    released=torch.where(self._fp_on[:,None],dev,released if released is not None else torch.zeros_like(dev))
+                body=sdf_r[...,0].amin(-1)
                 deadband=(float(self.reflex.get('body_band',.35))-body).clamp(0.,float(self.reflex.get('deadband',.20)))
             terms,tel=self.tracker.rewards(d.qpos[:,:2],self._root_yaw(self.all_ids),d.qpos[:,2],d.qpos[:,19:36],self.track_info,
                                            sigma=self.track_sigma,released=released,deadband=deadband)
             rewards.update(terms);telemetry.update(tel)
+            if getattr(self,'fullpath',None):
+                # foot tracking near hurdles (a high step within LEG_WINDOW m of the plan point): both feet sites vs plan
+                _,feet_plan,leg=self.fullpath_feed.planned(self.all_ids)
+                err=(i['positions'][:,3:5]-feet_plan).square().sum(-1).mean(-1)
+                sig=float(self.fullpath.get('foot_sigma',.06))
+                rewards['track_feet']=torch.exp(-err/sig**2)*leg*self._fp_on.float()
+                telemetry.update(fp_worlds=(self.fullpath_feed.plan>=0).float(),fp_leg=leg*self._fp_on.float(),
+                                 fp_foot_err_m=err.sqrt()*leg*self._fp_on.float())
             if self.online_planner is not None:
                 plan=self.tracker.is_plan.float()
                 telemetry.update(plan_clear_m=self.plan_clear*self.plan_fresh,plan_sideways=self.plan_side*self.plan_fresh,

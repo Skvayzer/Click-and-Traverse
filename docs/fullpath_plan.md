@@ -170,3 +170,11 @@ speed), each re-verified with the exact geometry; the one with the largest verif
 ≥ 2 cm (searched plan preferred on ties). The source of every plan (searched / recorded, and which policy) is reported, and
 the gate is also reported on the searched-only subset. This makes the oracle a hindsight upper bound (it may reuse a
 traversal that succeeded at the other speed or with another policy); episodes without any plan still run reactive.
+
+### S2 search fix (11:50, before any oracle-guided rollout)
+The first search pass (11:03–11:42, 179 of 336 starts) failed in every procedural course for two reasons found in the logs:
+(1) the field-grid bound also constrained x with a 22 cm pad, which rejected the start pose itself in scenes whose start lies
+near the grid's x edge — but the episode's own goal check bounds only y in these plane-goal scenes (`task._goal_status`);
+(2) ~1 s per expansion in dense scenes. Fix: lateral-only bounds (pelvis 15 cm inside) for plane-goal scenes, xy only for the
+table-gap layouts; collision check in two stages (4 frames, then every 2nd frame of the survivors). The 67 plans already
+found are kept (found under the stricter bound); the 141 failures and the unfinished starts are searched again.

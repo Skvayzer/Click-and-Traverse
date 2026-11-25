@@ -156,7 +156,7 @@ def clip_modes(clips, geometry):
 
 def plan_scene(lib, geometry, boxes, start_qpos, goal_xy, route_dir, *, margin=.05, k=32, max_feat_dist=1.5, eps=4.0,
                budget_s=120., max_expansions=6000, lateral_w=.5, goal_radius=None, goal_beyond=.15, v_cap=.6,
-               corridor=None, verbose=False):
+               corridor=None, bounds=None, bound_pad=.15, verbose=False):
     """Weighted A* over clip sequences from start_qpos [36] to past the goal along route_dir [2] (or within goal_radius of
     goal_xy). Returns dict(ok, qpos [n, 36] dense 50 Hz, clip ids, modes [n_clips, 5], min_sep, expansions, seconds)."""
     t0 = time.time()
@@ -212,13 +212,29 @@ def plan_scene(lib, geometry, boxes, start_qpos, goal_xy, route_dir, *, margin=.
         q = n["q"]; x0, y0, a0 = q[0], q[1], yaw_of(q)
         placed = place(lib.clips[idx].astype(np.float64), x0, y0, a0)           # [m, 21, 36]
         # z from the clip (absolute floor height); joints from the clip
-        frames = placed[:, 1::2]                                                 # every 2nd frame (0.04 s) + below the end
-        frames = np.concatenate((frames, placed[:, -1:]), 1)
-        sep = geometry.min_separation(frames.reshape(-1, 36), sub(q[:2])).reshape(len(idx), -1).amin(-1).numpy()
+        near_boxes = sub(q[:2])
+        # two stages: 4 frames first (most rejections), then every 2nd frame of the survivors
+        quick = placed[:, [5, 10, 15, 20]]
+        sep = geometry.min_separation(quick.reshape(-1, 36), near_boxes).reshape(len(idx), -1).amin(-1).numpy()
         good = sep >= margin
+        if good.any():
+            sv = np.nonzero(good)[0]
+            frames = placed[sv][:, 1::2]
+            s2 = geometry.min_separation(frames.reshape(-1, 36), near_boxes).reshape(len(sv), -1).amin(-1).numpy()
+            sep[sv] = np.minimum(sep[sv], s2)
+            good = sep >= margin
         if corridor is not None:
             lat = np.abs(placed[:, :, :2] @ nrm - line0).max(1)
             good &= lat <= corridor
+        if bounds is not None:
+            # the scene's field grid (task._goal_status: pelvis and feet inside it laterally for plane-goal scenes, the
+            # root inside it in xy otherwise); the pelvis is kept bound_pad inside, frames behind the start are exempt
+            xlo, xhi, ylo, yhi = bounds
+            px, py = placed[:, 1:, 0], placed[:, 1:, 1]
+            inside = (py >= ylo + bound_pad) & (py <= yhi - bound_pad)
+            if goal_radius is not None:
+                inside &= (px >= xlo + .05) & (px <= xhi - .05)
+            good &= inside.all(1)
         for j in np.nonzero(good)[0]:
             end = placed[j, -1]
             # no going backwards along the route by more than 5 cm per clip
