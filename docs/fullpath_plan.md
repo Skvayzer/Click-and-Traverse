@@ -119,3 +119,44 @@ Prediction (user's diagnosis): the gate passes, mostly through side gaps and tab
 contacts come from short, colliding chunks); courses gain less because the current network cannot follow leg plans.
 Falsifier: oracle-guided clean < plan-off + 5 pp, or the oracle plans are verified collision-free yet contacts stay at the
 plan-off level (the network cannot exploit a correct full plan through its current 41 inputs).
+
+## S1 results (10:30, COMBO_FIX seed 0 plan-on, CPU protocol, 672 episodes; `/tmp/cat-fullpath/audit_fix0_plan.json`)
+
+Exact-geometry check validated first: over 40 clean plan-on trajectories the robot's own poses never read < 0 (min 1.4 mm,
+median of episode minima 5.3 cm) and every proxy first contact reads ≤ 0 (−0.2 to −1.4 cm).
+CPU vs GPU (same checkpoint, same scenes; sanity only): clean F144 courses 21.4% CPU vs 13.0/15.9% GPU (0.15/0.30), side
+gaps 42.5% vs 31.2/37.5%, table gaps 63.5% vs 58.3/54.2%. The CPU protocol (collision checked once per control step) is
+more lenient by ~5–8 pp; all S1/S2 comparisons stay inside it.
+
+| | F144 (576) | side gaps (160) | courses (416) | table gaps (96) |
+| --- | --- | --- | --- | --- |
+| clean / contact / refused % | 27.3 / 55.9 / 16.3 | 42.5 / 38.1 / 19.4 | 21.4 / 62.7 / 15.1 | 63.5 / 32.3 / 4.2 |
+| (b) chosen chunk collides (exact, any of 21 frames) | 70.5% | 73.0% | 69.4% | 6.2% |
+| (b) executed part collides / near obstacles (<15 cm) | 45.8% / 58.4% | 50.2% / 57.3% | 43.8% / 59.6% | 3.2% / 4.5% |
+| (b) all 4 candidates collide / near obstacles | 69.9% / 80.7% | 72.5% / 80.7% | 68.7% / 80.7% | 5.6% / 7.2% |
+| (b) executed-part min margin p50 | +0.9 cm | 0.0 cm | +1.6 cm | +7.9 cm |
+| (b) sphere score ≥ 0 but exact < 0 | 0.6% of candidates | | | 0.07% |
+| (a) contacts: need / reach p50; reach < need | 0.23 / 0.47 m; 22.6% | 0.28 / 0.57 m; 14.8% | 0.21 / 0.44 m; 24.4% | 0.60 / 0.64 m; 45.2% |
+| (a) stalls: need / reach p50; reach < need | 0.38 / 0.50 m; 51.1% (94) | 0.47 / 0.37 m; 58.1% | 0.38 / 0.52 m; 47.6% | 0.84 / 0.40 m; 4 of 4 |
+| (c) pelvis xy error p50 / p95, time-indexed | 18.1 / 50.1 cm | 18.3 / 50.9 | 18.0 / 49.7 | 16.1 / 50.3 |
+| (c) path-relative pelvis / hands / feet p50 | 11.6 / 33.8 / 21.2 cm | 11.2 / 36.4 / 20.8 | 11.8 / 32.9 / 21.4 | 9.2 / 51.3 / 20.1 |
+| (c) path-relative pelvis / hands / feet p95 | 42.7 / 88.2 / 61.1 cm | 43.6 / 92.9 / 61.7 | 42.4 / 84.8 / 60.7 | 42.3 / 103.8 / 57.0 |
+| (d) contacts: bad plan / bad tracking / conflict / no plan | 81.5 / 3.4 / 15.0 / 0% (319) | 68.9 / 11.5 / 19.7 / 0 (61) | 84.5 / 1.6 / 14.0 / 0 (258) | 25.8 / 35.5 / 38.7 / 0 (31) |
+| (d) refusals: plan stops / robot stops on a moving plan | 14.9 / 85.1% (94) | 6.5 / 93.5 | 19.0 / 81.0 | 0 / 100 (4) |
+
+Contacting regions on bad plans (F144): feet 114, legs 57, head 33, hands 27, arms 20, trunk 13 — 70% lower body.
+Descriptive (not pre-registered): 80.6% of F144 contacts come right after a replan in which **every** candidate collided;
+of the 59 contacts on a safe plan, all 58 with a primitive-level record had the touching part farther from its planned
+position (median 32 cm) than the plan's own margin (median 4.2 cm) — i.e. they happen while deviating from the plan.
+
+Against the predictions: (b) **met** (≥ 20% of executed chunks collide: 46–50%; ≥ 10% of replans with no collision-free
+candidate: 70–81%). (a) **not met**: at the first contact the plan's reach already passes the obstacle's far end in 77% of
+events (contacts happen at the obstacle, where 2 s still covers it); at stalls reach < need in 51% (F144) and in all table-gap
+stalls. (d) **not met** as worded: course contacts are mostly *bad plans* (84.5%), not untracked deviations on safe plans
+(14%) — though 70% of bad-plan contacts are feet/legs, i.e. the plans collide with their legs, which the tracker does not
+follow anyway. Falsifier "bad plans < 10% of failures" not triggered; bad tracking of the tracked channels is rare (3%).
+Reading: the dominant failure is that planner v1 cannot produce a collision-free 2 s whole-body chunk in clutter, side gaps
+and hurdles from where the robot stands (all 4 samples collide 4 times out of 5 near obstacles), and the clearest-but-
+colliding chunk is executed; the horizon itself mainly matters for stalls. Tracking of the plan is loose (pelvis 12 cm,
+hands 34 cm median path-relative), so the S2 margin rule "≥ p95 tracking error" (pelvis 43 cm) is infeasible; S2 keeps the
+pre-registered 8→2 cm margin schedule and reports the oracle-feed tracking error.

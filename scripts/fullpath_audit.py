@@ -131,8 +131,13 @@ def audit_one(path):
     elif res["result"] == "contact" and int(meta["first_contact_step"]) >= 0:
         c = int(meta["first_contact_step"])
         sb = d["contact_shape_box"]; hit = sb[sb >= 0] - int(d["box_first"])
-        box = int(np.bincount(hit).argmax()) if len(hit) else -1
+        hit = hit[(hit >= 0) & (hit < len(boxes["box_center"]))]
         q_c = d["contact_qpos"][None]
+        if len(hit):
+            box = int(np.bincount(hit).argmax())
+        else:                                  # box id outside this scene's range: take the nearest box
+            sv_, si_ = g.separation(q_c, boxes)
+            box = int(si_[0, int(sv_[0].argmin())]) if len(boxes["box_center"]) else -1
         sep_now = float(g.min_separation(q_c, boxes)[0])
         ev = dict(kind="contact", step=c, box=box, box_kind=int(kinds[box]) if box >= 0 else -1, sep_actual=round(sep_now, 4),
                   regions=meta.get("first_contact_regions", []))
@@ -212,7 +217,7 @@ def summarize(records, p95=None):
     for r in records:
         if "error" in r:
             continue
-        for key in (r["family"], "all F144" if r["family"] != "table gap" else "table gap"):
+        for key in {r["family"], "all F144" if r["family"] != "table gap" else "table gap"}:
             by.setdefault(key, []).append(r)
         if r["family"].startswith("course"):
             by.setdefault("course (all)", []).append(r)
