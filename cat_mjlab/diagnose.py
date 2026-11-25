@@ -87,11 +87,13 @@ class EpisodeDiagnostics:
         S = len(off)
         self.low_x = np.full((S, 2), np.nan, dtype=np.float32)
         self.over_x = np.full((S, 2), np.nan, dtype=np.float32)
+        self.any_x = np.full((S, 2), np.nan, dtype=np.float32)
         self.box_counts = np.zeros((S, 3), dtype=np.int32)
         for s in range(S):
             a, b = off[s], off[s] + cnt[s]
             if b <= a:
                 continue
+            self.any_x[s] = (np.min(c[a:b, 0] - h[a:b, 0]), np.max(c[a:b, 0] + h[a:b, 0]))
             for code, store in ((0, self.low_x), (2, self.over_x)):
                 m = k[a:b] == code
                 if m.any():
@@ -100,6 +102,7 @@ class EpisodeDiagnostics:
                 self.box_counts[s, code] = int((k[a:b] == code).sum())
         self.low_x = torch.as_tensor(self.low_x, device=dev)
         self.over_x = torch.as_tensor(self.over_x, device=dev)
+        self.any_x = torch.as_tensor(self.any_x, device=dev)
         z = lambda *shape, dtype=torch.float32: torch.zeros(shape, device=dev, dtype=dtype)
         self.reset_all()
         self.records = []
@@ -118,6 +121,9 @@ class EpisodeDiagnostics:
         self.min_pelvis_z = full(1e9); self.max_foot_z = full(-1e9)
         self.near_low_foot = full(-1e9); self.near_over_pelvis = full(1e9); self.near_low_steps = torch.zeros(n, device=self.dev, dtype=torch.long)
         self.near_over_steps = torch.zeros(n, device=self.dev, dtype=torch.long)
+        self.near_steps = torch.zeros(n, device=dev, dtype=torch.long)
+        self.near_abs_yaw = torch.zeros(n, device=dev); self.near_vfwd = torch.zeros(n, device=dev); self.near_vlat = torch.zeros(n, device=dev)
+        self.near_pelvis_z = torch.zeros(n, device=dev)
         self.last = dict(xyz=torch.zeros((n, 3), device=dev), v=torch.zeros((n, 2), device=dev), yaw=torch.zeros(n, device=dev))
         # the first contact
         self.hit = torch.zeros(n, dtype=torch.bool, device=dev)
@@ -196,6 +202,12 @@ class EpisodeDiagnostics:
         self.near_low_foot = torch.maximum(self.near_low_foot, torch.where(near_low, feet_z, self.near_low_foot))
         self.near_over_pelvis = torch.minimum(self.near_over_pelvis, torch.where(near_over, xyz[:, 2], self.near_over_pelvis))
         self.near_low_steps += near_low.long(); self.near_over_steps += near_over.long()
+        ax_ = self.any_x[scene]
+        near_any = alive & (absx > ax_[:, 0] - WINDOW) & (absx < ax_[:, 1] + WINDOW)
+        vf = vworld[:, 0] * torch.cos(yaw) + vworld[:, 1] * torch.sin(yaw); vl = -vworld[:, 0] * torch.sin(yaw) + vworld[:, 1] * torch.cos(yaw)
+        w = near_any.float()
+        self.near_steps += near_any.long(); self.near_abs_yaw += w * yaw.abs(); self.near_vfwd += w * vf; self.near_vlat += w * vl.abs()
+        self.near_pelvis_z += w * xyz[:, 2]
         self.last = dict(xyz=torch.where(alive[:, None], xyz, self.last["xyz"]), v=torch.where(alive[:, None], vworld, self.last["v"]),
                          yaw=torch.where(alive, yaw, self.last["yaw"]))
 
@@ -220,6 +232,11 @@ class EpisodeDiagnostics:
                        min_pelvis_z=float(self.min_pelvis_z[e]), max_foot_z=float(self.max_foot_z[e]),
                        near_low_foot_z=None if self.near_low_steps[e] == 0 else float(self.near_low_foot[e]),
                        near_over_pelvis_z=None if self.near_over_steps[e] == 0 else float(self.near_over_pelvis[e]),
+                       near_obstacle_steps=int(self.near_steps[e]),
+                       near_mean_abs_yaw_deg=None if self.near_steps[e] == 0 else float(np.degrees(float(self.near_abs_yaw[e] / self.near_steps[e]))),
+                       near_mean_v_forward=None if self.near_steps[e] == 0 else float(self.near_vfwd[e] / self.near_steps[e]),
+                       near_mean_abs_v_lateral=None if self.near_steps[e] == 0 else float(self.near_vlat[e] / self.near_steps[e]),
+                       near_mean_pelvis_z=None if self.near_steps[e] == 0 else float(self.near_pelvis_z[e] / self.near_steps[e]),
                        boxes_low_wall_over=[int(x) for x in self.box_counts[scene_slot]],
                        regions_at_end={r: bool(m["episode/body_collision_" + r][e]) for r in REGIONS if ("episode/body_collision_" + r) in m})
             if bool(self.hit[e]):
@@ -248,3 +265,4 @@ class EpisodeDiagnostics:
         self.min_hand[d] = 1e9; self.min_head[d] = 1e9; self.min_all[d] = 1e9; self.min_pelvis_z[d] = 1e9; self.max_foot_z[d] = -1e9
         self.near_low_foot[d] = -1e9; self.near_over_pelvis[d] = 1e9; self.near_low_steps[d] = 0; self.near_over_steps[d] = 0
         self.hit[d] = False
+        self.near_steps[d] = 0; self.near_abs_yaw[d] = 0; self.near_vfwd[d] = 0; self.near_vlat[d] = 0; self.near_pelvis_z[d] = 0
