@@ -8,7 +8,7 @@ DIR/attempts.jsonl (one line per event: candidates tried, accepted) and DIR/summ
 """
 from __future__ import annotations
 
-import argparse, json, math, os, pickle, time
+import argparse, hashlib, json, math, os, pickle, time
 from pathlib import Path
 
 import numpy as np
@@ -41,7 +41,7 @@ def one(w):
     from cat_mjlab.cos.default_motion import default_motion, pick_cycle, to_frame
     from cat_mjlab.cos.synth import Body, distractors, obstacles_for_event, room_walls, verify
     a = ARGS
-    rng = np.random.default_rng(abs(hash((w["id"], a.seed))) % 2**32)
+    rng = np.random.default_rng([int(hashlib.md5(w["id"].encode()).hexdigest()[:8], 16), a.seed])
     if a.tracked:
         f = Path(a.tracked) / f"{w['id']}.npz"; mj = Path(a.tracked) / f"{w['id']}_metrics.json"
         if not f.exists() or not mj.exists() or not tracked_ok(json.loads(mj.read_text())):
@@ -73,8 +73,11 @@ def one(w):
             walls = room_walls(M, D, rng, xr)
             boxes = o["boxes"] + dis + walls
             ver = verify(G, qc, Dq, boxes)
+            label = fam
+            if fam == "sideways" and ver["d_main_body"] >= 0:      # amendment 02:15: only the swinging arms would hit
+                label = "arms_in"
             scenes.append(dict(scene=f"{w['id']}_e{e_i}_v{v_i}", window=w["id"], clip_id=w["clip_id"], source=w["source"],
-                               family=fam, event_frames=[fa, fb], kind=o["boxes"][0].get("kind"),
+                               family=label, event_family=fam, event_frames=[fa, fb], kind=o["boxes"][0].get("kind"),
                                chord=dict(origin=qw[0, :2].tolist(), yaw=yaw, length=L), gait_src=cyc["src"],
                                search=dict(m_clear=o["m_clear"], m_clear_main=o["m_clear_main"], d_pen=o["d_pen"],
                                            d_region=o["d_region"]),

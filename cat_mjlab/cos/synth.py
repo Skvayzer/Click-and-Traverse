@@ -46,8 +46,8 @@ class Body:
         self.lo, self.hi = lo.numpy(), hi.numpy()                     # [N, S, 3]
         self.region = geom.region_of_shape.numpy()
 
-    def sep(self, boxes, frames=None):
-        """[N, B] min separation over primitives, and [N, B] argmin primitive; boxes = list of box dicts."""
+    def sep(self, boxes, frames=None, shapes=None):
+        """[N, B] min separation over primitives (or the subset `shapes`), and [N, B] argmin primitive."""
         A = boxes_arrays(boxes)
         center, rot, half = (torch.as_tensor(A[k], dtype=torch.float32) for k in ("box_center", "box_rot", "box_half"))
         w = self.world if frames is None else {k: v[frames] for k, v in self.world.items()}
@@ -67,6 +67,10 @@ class Body:
             else:
                 s = sphere_box_separation(w["centers"][:, idx, None], c["radii"][idx][None, :, None], *ob)
             sep[:, idx] = s
+        if shapes is not None:
+            sub = torch.as_tensor(shapes)
+            v, i = sep[:, sub].min(1)
+            return v.numpy(), sub[i].numpy()
         v, i = sep.min(1)
         return v.numpy(), i.numpy()
 
@@ -354,7 +358,10 @@ def verify(geom, Mq, Dq, boxes):
     vm, _ = Mu.sep(boxes)
     main = [b for b in boxes if b["role"] == "main"]
     vd, _ = Du.sep(main)
+    body = [i for i, n in enumerate(geom.shape_names) if int(geom.region_of_shape[i]) in (2, 3)
+            or "shoulder_pitch" in n or "shoulder_roll" in n]            # trunk, head, shoulders (no swinging arms)
+    vb, _ = Du.sep(main, shapes=body)
     nonmain = [b for b in boxes if b["role"] in ("distractor", "wall")]
     vdn = Du.sep(nonmain)[0].min() if nonmain else 10.
-    return dict(m_clear=float(vm.min()), d_main=float(vd.min()), d_other=float(vdn),
+    return dict(m_clear=float(vm.min()), d_main=float(vd.min()), d_main_body=float(vb.min()), d_other=float(vdn),
                 ok=bool(vm.min() >= MARGIN and vd.min() < 0), ok_pen=bool(vm.min() >= MARGIN and vd.min() < -MIN_PEN))

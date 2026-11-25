@@ -21,7 +21,7 @@ sys.path.insert(0, str(ROOT))
 
 COL = dict(main=(0.95, 0.55, 0.15, 0.92), support=(0.55, 0.38, 0.22, 0.92), distractor=(0.45, 0.55, 0.7, 0.45),
            wall=(0.85, 0.85, 0.82, 0.18))
-NAMES = dict(duck="duck under", crawl="crawl", high_step="high step", sideways="turn sideways", arms_tucked="arms tucked",
+NAMES = dict(arms_in="arms in (sideways event)", duck="duck under", crawl="crawl", high_step="high step", sideways="turn sideways", arms_tucked="arms tucked",
              arms_raised="arms raised", detour="detour")
 
 
