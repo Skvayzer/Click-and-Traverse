@@ -308,3 +308,20 @@ Plain SONIC on gait contacts in all 10.
   - Length: 1400 updates.
 
 Both runs wait on the per-user GPU and memory quota; their memory request was lowered to 40 GB.
+
+**Continuation status (06:10 +04).**
+
+- **Run 1: exact resume of 322876 from u600 to u2000.** Job 324548 on gpu-04, using the original code `910307a`,
+  9.1 s per update, ETA about 09:45.
+  - The first two resume attempts failed the run-contract check. At launch the contract had recorded the wrapper's
+    initial soft-contact settings in the environment config (`contact_penalty` 2.0, `contact_soft_hands` True); the
+    schedule ended them at update 200, and a resume builds the environment without them.
+  - `hpc/sonic_jobs/patch_contract.py` removes exactly these two fields from `run.json`, `resume.pt` and `best.pt`. It
+    keeps backups and asserts that nothing else differs. Optimizer state, σ and the sampler continue unchanged.
+- **Run 2: beam/bar curricula.** Job 324549, pending on the GPU quota. Bank `tablegap_bb_v1` exists on the cluster
+  only as packed scenes and goal cache; its collision bank and certified resets were missing (dangling links). The job
+  first rebuilds them incrementally on top of `tablegap_v1`, using the repository builders under the cluster path
+  remap, and then trains (`hpc/sonic_jobs/run2_build_train.sbatch`).
+- **Run 2b: dep-1 variant.** Same as run 2 but on `tablegap_v1` without the beam bank: dep-1's disk is 99% full
+  (16 GB free) and the beam bank needs about 18 GB. It waits on the dep-1 lock (`hpc/sonic_jobs/run2b.sh`). If both
+  runs complete, the pair isolates the effect of the height curriculum.
