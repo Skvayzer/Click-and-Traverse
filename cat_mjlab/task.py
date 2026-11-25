@@ -879,7 +879,6 @@ class CATTask:
             fpw=feed.plan[ids]>=0
             if bool(fpw.any()):
                 fid=ids[fpw]
-                feed.match(fid,self.data.qpos[fid,:2])
                 xy,yaw,z,upper,roll,pitch,legs=feed.chunk(fid,t.route_speed[fid])
                 t.set_plan(fid,xy,yaw,z,upper,torch.full((len(fid),),.1,device=self.device),roll=roll,pitch=pitch,legs=legs)
                 t.has_full[fid]=False
@@ -2446,6 +2445,9 @@ class CATTask:
             self.track_info=self.tracker.step(d.qpos[:,:2],self.dt,sample_dir=self._track_dir,op_speed=self.op_speed)
             lost=torch.nonzero(self.tracker.lost,as_tuple=False)[:,0]
             if len(lost):self.tracker.reanchor(lost,d.qpos[lost,:2],self._root_yaw(lost),sample_dir=self._track_dir,op_speed=self.op_speed[lost])
+            if getattr(self,'fullpath_feed',None) is not None:
+                # full-path worlds: the robot's match on its plan every step, then the reference clock
+                self.fullpath_feed.match(self.all_ids,d.qpos[:,:2]);self.fullpath_feed.advance(self.all_ids,self.tracker.route_speed)
             if self.online_planner is not None:
                 self.plan_fresh.zero_();self._replan(self.tracker.due())
         gf,bf,sdf,command=self._fields(positions,d.qpos[:,:2],ids,store=True)

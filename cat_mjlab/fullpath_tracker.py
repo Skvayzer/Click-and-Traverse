@@ -132,10 +132,12 @@ class FullPathBank:
 
 
 class FullPathFeed:
-    def __init__(self, bank, num_envs, device, *, lead=0.0, search_back=.5, search_ahead=2.0):
+    def __init__(self, bank, num_envs, device, *, lead=0.0, search_back=.5, search_ahead=2.0, leash=.3):
         self.bank, self.n, self.device = bank, int(num_envs), torch.device(device)
         self.plan = torch.full((self.n,), -1, dtype=torch.long, device=self.device)
-        self.idx = torch.zeros(self.n, device=self.device)
+        self.idx = torch.zeros(self.n, device=self.device)          # match: plan index nearest the robot
+        self.clock = torch.zeros(self.n, device=self.device)        # reference clock (plan index), see advance()
+        self.leash = float(leash)
         self.lead = float(lead)
         self.back, self.ahead = int(search_back / DT), int(search_ahead / DT)
         self.v_plan = (bank.s[:, -1] / ((bank.length - 1).clamp_min(1) * DT)).clamp_min(.05)       # [P]
@@ -145,7 +147,23 @@ class FullPathFeed:
         return self.plan >= 0
 
     def assign(self, ids, plan_ids):
-        self.plan[ids] = plan_ids; self.idx[ids] = 0.
+        self.plan[ids] = plan_ids; self.idx[ids] = 0.; self.clock[ids] = 0.
+
+    def advance(self, ids, route_speed):
+        """Reference clock: advances at the operator speed (plan index rate) but never more than `leash` m of plan arc
+        length ahead of the robot's match, and never behind it -- standing still loses the pelvis tracking reward
+        instead of being paid for (a purely distance-indexed reference would follow a stalled robot)."""
+        p = self.plan[ids]
+        ok = p >= 0
+        if not bool(ok.any()):
+            return
+        ids, p = ids[ok], p[ok]
+        rate = (route_speed[ok] / self.v_plan[p]).clamp(.2, 1.5)
+        b = self.bank
+        cap_s = b.s[p, self.idx[ids].long().clamp_max(b.T - 1)] + self.leash
+        cap = torch.searchsorted(b.s[p], cap_s[:, None])[:, 0].clamp_max(b.T - 1).float()
+        cap = torch.minimum(cap, (b.length[p] - 1).float())
+        self.clock[ids] = torch.maximum(torch.minimum(self.clock[ids] + rate, cap), self.idx[ids])
 
     def match(self, ids, root_xy):
         """Advance the matched plan index of worlds ids (with a plan) to the smoothed pelvis nearest the robot."""
@@ -174,7 +192,7 @@ class FullPathFeed:
         """21 world frames for the tracker's plan source: xy [m, 21, 2], yaw, z [m, 21], upper [m, 21, 17], roll/pitch, legs."""
         p = self.plan[ids]
         rate = (route_speed / self.v_plan[p]).clamp(.2, 1.5)
-        t = self.idx[ids][:, None] + (self.lead + .1 * torch.arange(21, device=self.device)[None]) * rate[:, None] / DT
+        t = self.clock[ids][:, None] + (self.lead + .1 * torch.arange(21, device=self.device)[None]) * rate[:, None] / DT
         q = self._at(self.bank.qpos, p, t)
         yaw = self._at(self.bank.yaw, p, t)
         w, x, y, z = q[..., 3], q[..., 4], q[..., 5], q[..., 6]
