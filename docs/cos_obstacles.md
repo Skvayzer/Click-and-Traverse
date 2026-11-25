@@ -185,3 +185,32 @@ Crawl: the lite harness never terminates on floor contact (knees, hands and fore
 still sinks > 25 cm below the reference within the first second — frozen SONIC does not track crawling; neither do deep
 crouches (duck: 14%). Needed: a crawl/deep-crouch-capable tracker (fine-tuned SONIC or a dedicated tracker trained on
 these clips), not a contact-rule change. Tracked flags go into the data manifest.
+
+## Scenes v1 — full-data preparation (scope change 02:30; no planner or policy training)
+
+**Sources.** (1) All SMPL-X sequences of the four raw AMASS subsets on dep-1 (CMU, KIT, BMLmovi, SFU; 7.9 GB archives
+copied to Lustre), retargeted with GMR exactly as in September (`scripts/cos_retarget_amass.py`, 8,123 sequences in
+two 12-CPU jobs). (2) If the user's download job lands: ember-lab AMASS→G1 (all of AMASS; the retargeting is fleaven's,
+CC-BY-4.0 on the repo, AMASS non-commercial research terms underneath), full PHUMA (Apache-2.0), Unitree's LAFAN1 G1
+retargeting (LAFAN1 CC BY-NC-ND 4.0). Fallback: the September PHUMA subset (2,484 chunks) already on Lustre.
+Every source goes through `scripts/cos_library.py` (50 Hz, joint-limit check) → `cos_process.py events` (G0 clean tier)
+→ `cos_feasibility.py` (SONIC, lite harness, tracked flag per window) → `cos_process.py synth`.
+
+**Multi-fit synthesis** (`cat_mjlab/cos/kinds.py`). Per clean event up to K = 6 accepted fits (≤ 150 candidates),
+cycling through several obstacle kinds per family: duck → beam / bar / shelf cantilevered from a side wall / low
+ceiling (passage entrance); crawl → ceiling on posts / tunnel / table; high step → hurdle / low box; sideways →
+gap / doorway (lintel) / cabinet-and-wall gap; arms tucked → narrow gap / narrow doorway; arms raised → counter /
+table / counters on both sides; detour → box or column / wall stub from the side / table. Same acceptance as G2
+(M clear ≥ 5 cm, explaining part within 25 cm of M, D penetrates > 3 cm). A fit is a near-duplicate of a kept one if
+it has the same kind and its main part's centre and half-sizes are all within (10, 10, 5, 8, 8, 5) cm. Windows with
+≥ 2 fitted events also get up to 3 multi-obstacle scenes (one random fit per event). Each scene gets 2–5
+distractors and room walls and is verified at 100 Hz (G2 rule); sideways scenes without a trunk/shoulder hit are
+labelled arms_in.
+
+**Quality metrics** (`scripts/cos_report.py`), per family and source: yield (clips → clean events → events with ≥ 1
+fit → scenes → verified; verified scenes per mocap hour); explanation strength = default penetration of the
+explaining part; tightness = the real motion's minimum clearance to all boxes; clearance to the explaining part;
+realism = dimension ranges of real objects (beam/shelf/ceiling-entrance bottom 0.8–1.6 m; crawl ceiling/table
+0.35–0.95 m; hurdle/box top 0.08–0.6 m; gap width 0.30–1.2 m; counter top 0.6–1.0 m); diversity = kinds per family
+and fits per event; G1 trackability = SONIC tracked flag of the window, and whether the tracked rollout itself clears
+every box (tracked_clear ≥ 0).
