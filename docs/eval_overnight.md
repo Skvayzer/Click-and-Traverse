@@ -120,3 +120,10 @@ Paired differences (percentage points): planner–reflex minus reflex-off, objec
 
 ### Integration note (06:30): improve agent's I4 (plan input off, 384 scenes)
 The improve agent's `--tracker-mix none=1` runs on the 384 scenes (`improve_none_seed0_0772f2b`, seed 0 so far) agree with A3: plan off 64.8 / 63.8% clean at 0.15 / 0.30 m/s against 61.1 / 61.8% for the plan-on policy (3-seed pool; plan on minus off −3.8 [−5.7, −1.9] and −2.0 [−4.2, +0.3] pp, any contact +4.3 [+1.8, +6.9] and −1.3 [−4.2, +1.5]). They are included in `results.json` as "Planner–reflex, plan off" (narrow benchmark) and appear in the figures and on the website.
+
+### Status at 06:35 and open items
+* **A1**: done except reflex-off seeds 0 and 2 and planner seed 0 at 0.30 m/s (local queue, waiting on the dep-1 lock behind other agents' jobs since 02:06). Result files so far: `~/…/cat-energy-local-runs`-style mirrors in `/tmp/cat-eval-overnight/data/cluster/overnight_A1_*`.
+* **A2 (robustness) was not run**: the per-user quotas (gpu partition: one GPU held by sonic_latent_run1; ws-ia: improve_stallplan ×2) kept cluster jobs 322951 (reactive) and 322952_[1-2] (planner seeds 1–2) pending all night, and the local pairs (`/tmp/cat-eval-overnight/run-batch-local.sh`) never obtained the GPU lock. H2 is therefore **untested**. When the jobs land: `rsync` the `overnight_A2_*` dirs into `/tmp/cat-eval-overnight/data/cluster`, rerun `scripts/overnight_data.py`, `scripts/overnight_figures.py`, `scripts/preregistered_verdicts.py`, copy `results.json` into the site's `src/data/` and run `python3 src/build.py`; the robustness figure (fig6) and the site panel appear automatically.
+* **A3**: done (three matched seeds).
+* **A4**: third flip seed, α sensitivity and E5 (all four protocols for every cell, including the price-free continuation 320670) collected: `results.json` (standing), `fig4_energy`, `e5_table.md`.
+* Branch state: all code and this log are committed on `feature/eval-overnight` (worktree `~/robotics/cat-energy-eval`), not pushed. Cluster code: `~/cat_worktrees/eval_overnight_f42a276` (A1/A3), `eval_overnight_637d8b9` (A2).
