@@ -74,6 +74,7 @@ def main():
     p.add_argument("--margins", default="0.08,0.06,0.04,0.02")
     p.add_argument("--budget", type=float, default=150.)
     p.add_argument("--workers", type=int, default=28)
+    p.add_argument("--reverse", action="store_true", help="process starts in reverse order (a second worker pool)")
     a = p.parse_args()
     a.out.mkdir(parents=True, exist_ok=True)
     margins = [float(x) for x in a.margins.split(",")]
@@ -81,6 +82,8 @@ def main():
     for f in sorted(a.starts.glob(f"*_{a.speed}_*.npz")):
         scene, _, trial = f.stem.rsplit("_", 2)
         jobs.append((str(f), str(a.out / f"{scene}_{trial}.npz"), margins, a.budget))
+    if a.reverse:
+        jobs.reverse()
     os.environ.setdefault("OMP_NUM_THREADS", "2")
     with ProcessPoolExecutor(a.workers, initializer=setup, initargs=(str(a.library),)) as ex:
         metas = []

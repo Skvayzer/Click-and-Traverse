@@ -27,6 +27,8 @@ def main():
     p.add_argument("--per-scene", type=int, default=1)
     p.add_argument("--checkpoint", default="/tmp/cat-energy-current-videos/inputs/COMBO_FIX_315808_u150.pt")
     p.add_argument("--bank", default="/home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab/data/furniture/tablegap_v1")
+    p.add_argument("--seed-base", type=int, default=100, help="episode k uses the task generator seeded with seed-base + k")
+    p.add_argument("--planning-benchmark", action="store_true", help="certified benchmark starts (eval_per_scene.benchmark_start)")
     a = p.parse_args()
     from cat_mjlab.runner import create_task
     from cat_mjlab.sim_cpu import CPUSimulation
@@ -57,14 +59,18 @@ def main():
         sid = names.index(sc)
         meta_scene = task.bank.manifest["scenes"][sid]
         for k in range(a.per_scene):
-            out = a.out / f"{sc}_0.15_{k}.npz"
+            out = a.out / (f"{sc}_{k}.npz" if a.planning_benchmark or a.seed_base != 100 else f"{sc}_0.15_{k}.npz")
             if out.exists():
                 continue
-            task.generator.manual_seed(100 + k)
-            task.reset(None, torch.tensor([sid]))
+            task.generator.manual_seed(a.seed_base + k)
+            if a.planning_benchmark:
+                from eval_per_scene import benchmark_start
+                task.reset(None, torch.tensor([sid]), **benchmark_start(task, torch.tensor([sid]), torch.tensor([k]), a.per_scene))
+            else:
+                task.reset(None, torch.tensor([sid]))
             q = task.data.qpos[0, :36].numpy().copy()
             meta = dict(scene=sc, speed=.15, trial=k, mix="start", outcome=dict(result="start"), start=list(map(float, meta_scene["start"])),
-                        goal=list(map(float, meta_scene["goal"])), planning_benchmark=False)
+                        goal=list(map(float, meta_scene["goal"])), planning_benchmark=bool(a.planning_benchmark), ok=False)
             np.savez_compressed(out, meta=json.dumps(meta), qpos=q[None], **scene_boxes(task.collision, sid))
     print("starts written", len(list(a.out.glob("*.npz"))))
 
