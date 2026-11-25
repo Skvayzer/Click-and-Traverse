@@ -74,3 +74,84 @@ step-overs — the clean filter removed running strides and breakdance. **Thin f
 detour (21). Source proposal: LAFAN1 `obstacles1–6` takes (step-overs, ducking, detours; public BVH, GMR has a LAFAN1
 loader) and a wider PHUMA pull; not fetched yet (G2 runs first on CPU).
 Artifacts: `amass-obstacles/g0/` (audit log, events JSON, spot-check sheets).
+
+## G1 — robot feasibility with SONIC (pre-registered 2026-11-26 01:35, after a 4-window timing test only)
+
+**Setup.** `scripts/cos_windows.py`: every clean G0 event ± 1.5 s, merged per clip (≤ 12 s, ≥ 3 s) → **740 windows**
+(57.7 min; family counts with overlap: arms raised 368, sideways 245, arms tucked 109, crawl 102, duck 85, detour 21, high
+step 15). `scripts/cos_g1_track.py` runs frozen GEAR-SONIC (default release, ONNX, CPU) in the CPU MuJoCo harness of
+`feature/sonic-baseline` 84a4467 (`sonic_gates.build`: flat scene, harness torque noise on, SONIC PD gains) — the robot
+is reset to the window's first frame (finite-difference velocities) and SONIC follows the clip open-loop in time. SONIC
+does not see the global position, so root drift is expected and does not count against the clip.
+
+**Metric** per window, from the saved tracked/reference trajectories: end state (complete / fell: pelvis < 0.5 m while the
+reference pelvis > 0.6 m / sank: pelvis > 0.25 m below the reference / harness termination); joint error (mean |Δq| per
+frame, 90th percentile); local body error (proxy primitive centres in the pelvis-heading frame, mean over primitives,
+90th percentile); heading drift at the end; root drift per second.
+
+**Tracked within bounds** := complete AND joint-error p90 ≤ 0.15 rad AND local-body p90 ≤ 0.10 m AND |heading drift| ≤ 30°.
+
+**Pass rule.** Reported per family; G1 passes for a family if ≥ 50% of its windows are tracked within bounds. Crawl is
+reported separately: the harness's termination rules are left unchanged; if crawl windows end by termination or "sank",
+the needed change (floor contact allowed for knees/hands/forearms) is named, not made.
+Tracked trajectories replace the kinematic clips in G2 where tracked (PARC-style correction), as a second G2 variant.
+
+## G2 — COS synthesis and validation (pre-registered 2026-11-26 01:50, after a 40-window smoke test)
+
+**Method** (`cat_mjlab/cos/{default_motion,synth}.py`, `scripts/cos_g2_synth.py`). Per window M (740 windows; kinematic
+clips first, SONIC-tracked rollouts as a second variant once G1 is done): chord frame (start pelvis at the origin, goal
+on +x; windows with chord < 0.5 m are skipped). **Default motion D(M):** a stride cycle of steady straight upright human
+walking (124 cycles cut from the library, 0.41–1.63 m/s; the 5 cycles nearest M's mean speed, one drawn), distance-indexed
+on the station s(t) = running max of M's pelvis progress along the chord, so D passes every station at the same time
+as M, upright, facing +x, with natural arm swing, on the straight chord. **Families:** duck → beam or bar on two posts
+(bottom between M's top + m and min(M's top + m + slack, D's top)); crawl → low ceiling on 4 posts or tunnel with side
+walls; high step → hurdle under the swing-foot apex (height ≤ M's lowest point over it − m); sideways → wall pair with
+each face m … m + slack outside M's lateral extent over a 0.15–1.2 m stretch; arms tucked → the same narrow gap; arms raised
+→ counter or table (top + 4 legs) beside the path on the raised hand's side, top below the raised hand − m, inner edge
+m … m + slack outside M's body below the top; detour → box or column on the chord, face m … m + slack outside M on the
+bulge's far side. Rejection sampling (≤ 60 candidates per event, keep ≤ 3) on every 2nd frame (25 Hz):
+M clear of all boxes ≥ m, main part within m + slack of M, D penetrates the main part by > 3 cm.
+Then 2–5 distractors (box, column, wall segment; clear of M and D by ≥ m, ≥ 0.1 m from the main obstacle) and two room
+walls beyond both motions. m = 0.05 m, slack = 0.20 m.
+
+**Pass rule.** Independent verification of every accepted scene at full rate (50 Hz frames plus interpolated midpoints,
+100 Hz) against all boxes: M clearance ≥ m AND D touches the main obstacle (separation < 0). **G2 passes if ≥ 95% of
+accepted scenes verify.** Reported per family: acceptance rate (events with ≥ 1 accepted scene / events tried),
+candidate acceptance, verification rate, also with the 3 cm penetration re-checked at 100 Hz. Visual check: a contact
+sheet of 24 random accepted scenes (the proposal's blind 50-scene check needs a second person; flagged, not claimed).
+
+**Amendments before the full run (01:55).** (1) Minimum default penetration 3 cm in the search (grazing defaults are
+weak counterfactuals); verification still reports the pre-registered < 0 rule and the 3 cm rule. (2) After the first full
+run (high step 3/24 events accepted) the hurdle sampler was changed to place the hurdle where the floor clearance profile
+under the motion (lowest body point over all frames per 2 cm x-bin) is highest within ± 0.35 m of the swing-foot apex.
+Numbers below are from the second run; the first run gave 1,126/1,134 verified (99.3%).
+
+### G2 result (kinematic clips, 02:05) — PASS: 1,112 of 1,118 accepted scenes verify (99.5%)
+
+| family | events tried | events with ≥ 1 scene | candidate acceptance | scenes | verified at 100 Hz | D hits with |
+|---|---|---|---|---|---|---|
+| duck | 95 | 58 (61%) | 172 / 2,801 | 172 | 171 (99.4%) | head 157, trunk 14 |
+| crawl | 61 | 26 (43%) | 75 / 2,663 | 75 | 75 (100%) | trunk 69, head 5 |
+| high step | 24 | 8 (33%) | 24 / 1,008 | 24 | 24 (100%) | feet 23 |
+| sideways | 196 | 118 (60%) | 330 / 6,842 | 330 | 328 (99.4%) | hands 310 |
+| arms tucked | 119 | 65 (55%) | 184 / 4,608 | 184 | 183 (99.5%) | hands 162 |
+| arms raised | 403 | 105 (26%) | 279 / 20,528 | 279 | 278 (99.6%) | hands 252 |
+| detour | 21 | 18 (86%) | 54 / 324 | 54 | 53 (98.1%) | hands 40 |
+
+- 145 of 740 windows were skipped for chord < 0.5 m (mostly slow crawls and in-place sidesteps), so crawl tried only 61
+  of its 125 clean events.
+- 1,112/1,118 also pass with the 3 cm penetration rule at 100 Hz. Median real-motion clearance 9.2 cm, median default
+  penetration 7.3 cm. All 6 failures are real-motion clearances of 4.2–4.9 cm (between search frames) — fixable by
+  searching at 50 Hz.
+- 302 distinct clips; PHUMA 645 scenes, CMU 285, KIT 90, BMLmovi 83, SFU 15. Obstacle kinds: gap 330, narrow gap 184,
+  counter 173, beam 118, table 106, bar 54, box 50, ceiling 39, tunnel 36, hurdle 24, column 4.
+- **Weakness seen in the numbers:** for sideways, arms-tucked and detour scenes the default motion hits the obstacle with
+  its *hands* (arm swing), not its shoulders/trunk — the wall gaps are narrower than the arm swing but often wider than
+  the shoulders, so they explain "keep arms in" as much as "turn sideways". A stricter sideways rule (D's trunk must
+  hit) is the obvious next step.
+- Visual check (contact sheet of 24 random scenes, 8 videos): geometry is right in all of them; scenes are cluttered by
+  2–5 distractors. The blind 50-scene plausibility check needs a second person — not done.
+
+Videos (1280×720 H.264 yuv420p, faststart, poster JPEG): `amass-obstacles/videos/` 01 duck→beam (CMU 127), 02 duck→bar
+(CMU 108), 03 crawl→tunnel (CMU 107), 04 high step→hurdle (CMU 143), 05 sideways→gap (PHUMA), 06 arms tucked→narrow gap
+(PHUMA), 07 arms raised→counter (PHUMA), 08 detour→box (PHUMA). Contact sheet `amass-obstacles/g2/g2_contact_sheet.png`.
