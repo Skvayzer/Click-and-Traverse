@@ -155,6 +155,32 @@ courses. I2's prediction (K=8 clearest changes clean by < 1 pp) is borderline (�
 second prediction (K=8 value_safe beats K=4 value_safe by ≥ 1 pp) is not met. Pattern across all eval-only variants: gains
 appear at 0.15 m/s and vanish at 0.30, where plan-mode stops (refusals) are what keeps contact down.
 
+### I4 three seeds and I5 seeds 1–2 (07:00)
+
+No-reference mode, seeds 0–2 (dep-1, `0772f2b`) against plan-on (seed 0: same-code control; seeds 1–2: the round-4 cluster
+evaluations 318295_0/_2, whose seed-0 counterpart the same-code control reproduced). Mean ± s.d. over seeds; t = seed-level
+paired t interval, b = scene bootstrap over pooled seed pairs.
+
+| Comparison | Speed | clean | contact | refused | hands |
+| --- | --- | --- | --- | --- | --- |
+| plan-on | 0.15 | 61.11 ± 1.39 | 31.38 ± 0.65 | 7.38 ± 1.51 | 2.52 ± 0.15 |
+| no reference | 0.15 | 63.80 ± 0.98 | 29.56 ± 2.38 | 6.47 ± 1.40 | 2.82 ± 0.54 |
+| Δ vs plan-on | 0.15 | +2.69 t[−2.33, +7.72] b[+1.22, +4.25] | −1.82 t[−6.32, +2.67] b[−4.21, +0.52] | −0.91 b[−2.91, +1.04] | +0.30 b[−0.65, +1.26] |
+| Δ vs reactive V7r | 0.15 | +4.82 t[+2.38, +7.26] b[+1.65, +8.16] | −6.51 t[−12.41, −0.61] b[−9.94, −3.21] | +1.78 b[−0.04, +3.60] | −0.17 |
+| plan-on | 0.30 | 61.76 ± 1.61 | 28.69 ± 2.44 | 9.38 ± 1.54 | 2.86 ± 0.52 |
+| no reference | 0.30 | 64.15 ± 0.96 | 29.69 ± 0.26 | 6.03 ± 1.17 | 3.17 ± 0.15 |
+| Δ vs plan-on | 0.30 | +2.39 t[+0.76, +4.02] b[+0.78, +3.99] | +1.00 t[−5.09, +7.09] b[−1.35, +3.34] | −3.34 b[−5.43, −1.30] | +0.30 |
+| Δ vs reactive V7r | 0.30 | +1.26 t[−1.13, +3.64] b[−1.69, +4.21] | −2.86 t[−3.51, −2.22] b[−5.77, −0.04] | +1.74 | +0.04 |
+
+Decision rule: an improvement over plan-on at 0.15 (clean b-interval above 0, contact point estimate −1.82); **not** at 0.30
+(contact +1.00). Over reactive: clean and contact both better at 0.15; at 0.30 only contact is significantly lower. Groups
+(3 seeds): cabinets 80.4 → 86.0% clean [+3.2, +8.1] with contact 17.3 → 5.9%; CAT courses and side gaps trade refusals for
+contacts (CAT contact 67.8 → 75.2% at 0.15; side gaps 42.5 → 58.3% at 0.30).
+
+I5 (expert-iteration planner, frozen trackers), seeds 1–2 (cluster 323469) vs their plan-on evaluations: clean +0.33
+b[−1.37, +2.02] / +0.59 b[−1.17, +2.34], contact −0.85 b[−2.73, +1.04] / −0.98 b[−2.93, +0.98] at 0.15 / 0.30 — within noise;
+the predicted ≥ 1.5 pp clean gain is not seen (seed 0 pending).
+
 ## Run ledger
 
 | Id | Variant | Seed | Where | Output |
