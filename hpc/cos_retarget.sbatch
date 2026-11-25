@@ -23,4 +23,4 @@ else
   while [[ ! -f $X/.KIT.done ]]; do sleep 60; done
 fi
 export PYTHONPATH=$T/pydeps:$T/GMR OMP_NUM_THREADS=1 MKL_NUM_THREADS=1
-python -u scripts/cos_retarget_amass.py --raw $X --out $C/amass_gmr --body-models $T/body_models --workers 12 --shard ${SHARD:-0/1}
+python -u scripts/cos_retarget_amass.py --raw $X --out $C/amass_gmr --body-models $T/body_models --workers ${WORKERS:-12} --shard ${SHARD:-0/1}
