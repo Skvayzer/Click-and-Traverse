@@ -91,5 +91,5 @@ RUN_DIR=${RUN_DIR:-outputs/stationary_hands_20261113}
   --hand-clearance-near-weight 0.8 --hand-reward-soft-floor 0 \
   --hand-raised-reset-fraction ${RAISED:-0} --upper-gravity-compensation \
   ${COMPILE:---compile-task} --device ${DEVICE:-cuda:0} --seed 0 \
-  --checkpoint-interval-updates 10 ${SNAPSHOT_EVERY:+--snapshot-interval-updates $SNAPSHOT_EVERY} ${ENERGY_UPDATES:+--max-updates $ENERGY_UPDATES} ${EXTRA:-} \
+  --checkpoint-interval-updates 10 ${SNAPSHOT_EVERY:+--snapshot-interval-updates $SNAPSHOT_EVERY} ${ENERGY_UPDATES:+--max-updates $ENERGY_UPDATES} ${FULLPATH:+--tracker-fullpath $FULLPATH} ${EXTRA:-} \
   --wandb-mode ${WANDB_MODE:-online} --wandb-project CAT-wholebody --wandb-entity skvayzer
