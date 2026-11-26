@@ -250,3 +250,11 @@ high steps and crawls stay at 49–62 % (few examples: 84 and 42 situations). Ca
 C2 passed, so seed 1 starts now on the free gpu-partition GPU with the C2 planner as the online 'plan' source (seed 0 keeps
 planner v1, as amended). Seed 2 follows on the next free slot with the C2 planner. C4 evaluates every seed with the C2
 planner; seed 0's training-time planner difference is reported.
+
+### State / next / jobs (01:20)
+- Running: C3 seed 0 332631 (ws-ia, planner v1 online, ~69 s/update, ETA ≈ 03:55), seed 1 332764 (gpu partition, C2
+  planner online). C4 eval chain on ws-ia (one at a time): 332712 v7r_cos (done: 65.5 / 29.0 / 2.0 clean/contact/refused at
+  0.15), 332713 fix_none_cos, 332714 s3s1_planv1_cos, 332715 v7r_E4, 332716 fix_none_E4, 332717 v7r_384, 332718 fix_none_384
+  → `cos/c4/evals/<name>`.
+- Next: when seed 0 ends → its evals (cos/E4/384, MODE=plan with the C2 planner) + seed 2 (C2 planner); compare with
+  `scripts/cos_c4_compare.py --families cos/c4/bank_test_packed/addition.json`; videos with `hpc/cos_video.sbatch`.
