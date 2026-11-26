@@ -27,8 +27,7 @@ def norm_member(m):
     m = re.sub(r"\.npz$|\.npy$", "", m)
     m = re.sub(r"_stageii$|_poses(_\d+)?(_jpos)?$", "", m)
     parts = m.replace("\\", "/").split("/")
-    subset = parts[0] if parts[0] in ("CMU", "KIT", "BMLmovi", "SFU") else parts[-3] if len(parts) >= 3 else parts[0]
-    return (subset + "/" + parts[-1]).lower().replace(" ", "").replace("-", "")
+    return "/".join(parts[:1] + parts[-2:]).lower().replace(" ", "").replace("-", "")
 
 
 def clip_metrics(FF, q):
@@ -60,7 +59,10 @@ def main():
     A, B = load(a.a), load(a.b)
     common = sorted(set(A) & set(B))
     rng = np.random.default_rng(0)
-    pick = [common[i] for i in rng.permutation(len(common))[:a.limit]]
+    pick = []
+    for sub in sorted({k.split("/")[0] for k in common}):
+        ks = [k for k in common if k.split("/")[0] == sub]
+        pick += [ks[i] for i in rng.permutation(len(ks))[:a.limit]]
 
     def feas(path, lib):
         if not path:
@@ -83,10 +85,13 @@ def main():
                           tracked=(float(np.mean(fe[c["clip_id"]])) if c["clip_id"] in fe else None))
         rows.append(r)
     summ = {}
-    for tag in ("a", "b"):
-        for key in ("joint_limit_violation", "skate", "penetration", "tracked"):
-            v = [r[tag][key] for r in rows if r[tag][key] is not None]
-            summ[f"{tag}/{key}"] = round(float(np.mean(v)), 4) if v else None
+    for sub in sorted({r["member"].split("/")[0] for r in rows}):
+        R = [r for r in rows if r["member"].split("/")[0] == sub]
+        summ[sub] = dict(clips=len(R), common=sum(k.split("/")[0] == sub for k in common))
+        for tag in ("a", "b"):
+            for key in ("joint_limit_violation", "skate", "penetration", "tracked"):
+                v = [r[tag][key] for r in R if r[tag][key] is not None]
+                summ[sub][f"{tag}/{key}"] = round(float(np.mean(v)), 4) if v else None
     Path(a.out).write_text(json.dumps(dict(common=len(common), compared=len(rows), summary=summ, a=a.a, b=a.b, rows=rows), indent=1))
     print(json.dumps(dict(common=len(common), compared=len(rows), summary=summ)))
 
