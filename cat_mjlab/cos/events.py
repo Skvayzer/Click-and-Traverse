@@ -149,7 +149,7 @@ import re as _re
 
 EXCLUDE = _re.compile(r"fight|combo|kick|punch|box|martial|danc|jump|karate|weapon|sword|push|stumble|throw|drink|money|"
                       r"phone|wave|sit|stool|stand_?up|get_?up|lie|lying|pick|yoga|stretch|squat|kneel_down_with|exercise|"
-                      r"golf|tennis|basket|soccer|ball", _re.I)
+                      r"golf|tennis|basket|soccer|ball|fitness|music|kungfu|perform|haa500|aist", _re.I)
 # CMU subjects whose takes are dance, breakdance, acrobatics or getting up from the floor (CMU mocap subject index)
 CMU_EXCLUDE = {5, 49, 55, 60, 61, 85, 87, 88, 89, 90, 93, 94, 131, 140}
 CLEAN = dict(run_speed=1.6, travel_m=0.5, crawl_travel_m=0.3, duck_mean_speed=0.25, side_yaw_change=np.deg2rad(45),
