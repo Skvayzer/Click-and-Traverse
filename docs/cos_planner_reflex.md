@@ -128,3 +128,49 @@ The held-out test takes contain few windows of the rare families (feasible+clear
 high step 2, sideways 22, crawl 0), so one scene per window gave duck 8, detour 10, high step 2. A family short of its quota
 now also takes other obstacle fits of its windows (different geometry, same human motion): <= 3 scenes per window, 6 per
 take. Crawl has no feasible test scene (SONIC tracks no crawl) and is absent from the test-200; its share goes to the others.
+
+### C0 result (00:20) — PASS
+Full run `cos/scenes_v2` (job 332431, code e5caec5): 5,876 windows with verified scenes; **28,302 of 43,524 verified scenes kept
+(65 %)**; feasible (SONIC-tracked) 23,799 of 33,444, feasible+clear 22,395 of 31,198.
+Re-verification after levelling agrees 99.87 % (36 scenes no longer verify: duck 26, arms_raised 8, other 2; dropped).
+Levelling dz median: amass_gmr +2.8 cm, ember +4.6, phuma +1.8, lafan1 +0.6; D +3.0–3.4 cm.
+
+Windows removed (non-exclusive): uneven_floor 1,011, floating 1,020, flight 756, foot_penetration 501, acrobatic 171,
+pelvis_vz 163, terrain_name 87, trick_name 55 (11 step-over/side-step name exceptions judged kinematically; 554 windows
+have hands/knees > 2 cm below the floor — reported, kept). Scenes by first reason: flight 5,137, uneven_floor 5,601,
+foot_penetration 1,904, acrobatic 1,036, pelvis_vz 631, floating 300, terrain_name 318, trick_name 414.
+By source (scenes): phuma_full 8,055 removed (uneven 3,133, flight 2,039, penetration 1,625, acrobatic 702), ember 4,489
+(flight 2,108, uneven 1,634, terrain names 283 = KIT up/downstairs), amass_gmr 2,308, lafan1 334.
+
+| family | verified before | kept | feasible before | kept feasible | kept feasible+clear |
+|---|---|---|---|---|---|
+| arms_raised | 16,555 | 10,037 | 13,137 | 9,101 (69 %) | 8,749 |
+| arms_tucked | 9,365 | 6,518 | 8,557 | 6,067 (71 %) | 5,457 |
+| arms_in | 6,277 | 4,570 | 5,145 | 3,993 (78 %) | 3,931 |
+| multi | 4,306 | 2,885 | 3,368 | 2,424 (72 %) | 2,173 |
+| duck | 3,763 | 2,436 | 989 | 679 (69 %) | 592 |
+| detour | 1,634 | 1,009 | 1,383 | 888 (64 %) | 875 |
+| sideways | 815 | 593 | 642 | 502 (78 %) | 496 |
+| high_step | 619 | 193 | 223 | 145 (65 %) | 122 |
+| crawl | 190 | 61 | 0 | 0 | 0 |
+
+Pass rule: agreement 99.87 % >= 99.5 %; every family with >= 100 feasible scenes keeps >= 64 % (>= 50 %); contact sheet
+(`cos-policy/c0_removed_sheet.png`, 24 removed windows, 3 per first reason): clear true positives — a handstand (pelvis
+up-z −1.0), KIT up/downstairs clips, a CMU playground climb (lowest body point 87 cm above the floor), a crawl roll, foot
+dips of 2–9 cm; borderline — 4 walking clips held 5–7 cm above their inferred floor for 0.2–0.7 s (retargeting floor
+drift); false positives — 3 PHUMA descriptive names (“sleeves”, “Coaster”, “on one foot”) hit the trick keywords
+(55 windows in total carry trick_name). **PASS.** Viewer refreshed from scenes_v2 (540 scenes, 21 MB, service restarted).
+
+### C1 result (00:35)
+Takes: train 2,413 / val 133 / test 277 (disjoint by construction; one split per take key). Kept verified scenes: train
+24,445, val 1,250, test 2,607. Test-200 (`cos/splits_v2/test200.jsonl`): duck 22, high_step 5, sideways 22, arms_in 33,
+arms_tucked 34, arms_raised 34, detour 22, multi 28, crawl 0 (no feasible test scene). C3 training scenes
+(`cos/c3/train_scenes.jsonl`): 259 feasible+clear train scenes, one per window, 34 per family (high_step 21, crawl 0).
+
+### State / next / jobs (00:40)
+- Jobs: 332535 planner data (ws-ia, → `cos/planner_data_v1`), 332536 C3 train bank (ws-ia, → `cos/c3/bank_train_{packed,
+  collision,resets,goal}` + `cos/c3/plans_train`), 332537 C4 test bank (gpu partition, CPU only, → `cos/c4/bank_test_*`,
+  `cos/c4/plans_test`).
+- Next: `hpc/cos_planner.sbatch` (COSDATA=planner_data_v1, OUT=cos/c2/planner_cos_v1) → C2 gate; C3 smoke
+  (`hpc/cos_c3.sbatch SMOKE=1`) as soon as the train bank exists (planner v1 online until the C2 planner exists), then seed 0.
+- Code clone on the cluster: `~/cat_worktrees/cos_6f455fb` (deploy: `hpc/cos_deploy.sh`, deploys the current branch).
