@@ -83,3 +83,42 @@ floor. Fix: `uneven_floor` = the whole-body support level of some 0.5 s block ri
 (stairs up or down and ramps still trip it: the window floor is the lowest level). `flight` is split for reporting: airborne
 5–30 frames (0.1–0.6 s) = `flight` (a); held > 0.05 m above the floor for > 0.6 s = `floating` (b, a floor inconsistency of
 the retargeted clip, e.g. long BMLmovi stretches 6–12 cm above the inferred floor). Removal rule otherwise unchanged.
+
+## C1 — splits (pre-registered 00:45, before any split is drawn)
+
+**Rule.** Splits are by source *clip* (all windows and scenes of a clip share a split; PHUMA chunks of one sequence and
+`__rK` runs count as one clip, the v1 `take_of` rule): sha1(take) mod 100 < 10 → **test**, 10–14 → **val**, else **train**.
+No take is in two splits (checked). **Test-200:** from test takes, scenes that are C0-kept, re-verified, SONIC-tracked and
+clear with the tracked posture (tracked_clear >= 0) — "feasible, verified"; at most one scene per window and two per
+take; 9 families (duck, crawl, high_step, sideways, arms_in, arms_tucked, arms_raised, detour, multi), quota 23 each
+(200 − 9·22 = 2 extra to the largest pools); a family with fewer candidates gives all it has and the rest is spread over
+the others (reported). Seeded (seed 0). Files: `cos/splits_v2/{take_split.json, test200.jsonl, summary.json}`.
+
+## C2 — planner on COS (pre-registered 00:45, before any planner data is built)
+
+**Data.** Planner v1 format (`cat_mjlab/planner/data.py`: state 67, 2 s chunk of 20 frames × 35, goal 5, robot-centred
+40×32×36 SDF grid, 5 cm cells, uint8). COS examples from C0-kept, re-verified **train** scenes: the levelled M (and the
+SONIC-tracked rollout when tracked_clear >= 0.03 m), velocities by finite differences, chunk starts every 0.2 s whose
+2 s chunk overlaps an event ±1 s, at most 6 per (scene, trajectory); grid = analytic SDF of the scene's boxes (all
+roles; floor excluded) in the chunk frame. COS val takes → the trainer's held-out split; test takes → a separate
+`cos_test` set. Mixed with planner v1's policy-rollout data (`runs/wbp/planner_v1/all`, train subsampled to the size of
+the COS train set, at most 300k; its test split kept).
+
+**Training.** Warm start from planner v1 (`runs/wbp/planner_v1/train/planner.pt`, same format), its hyper-parameters,
+20k steps (one GPU job), EMA weights evaluated.
+
+**Evaluation (kinematic, no physics).** Situations: 2,000 random chunk starts from COS **test** takes (event-overlapping,
+levelled M as the start state and goal source; stratified by family) and 1,000 from planner v1's held-out test half.
+Per situation the planner draws K = 4 chunks (goal = the reference's chunk end, planner v1's protocol; the online
+heading offsets ±90° are not used here) and the chosen chunk is the best by the 497-sphere grid score (largest minimum
+clearance, as `planner_eval.py best_of`). **Primary metric:** exact-geometry collision rate of the chosen chunk on COS
+test = share of chunks whose 35-primitive proxy (`synth.Body.sep`, 50 Hz frames at the chunk's 10 Hz keyframes plus
+midpoints) penetrates any box (clearance < 0). Secondary: single-sample collision rate, hand clearance, goal error,
+posture diversity (`metrics.diversity`, mean pairwise distance of the 4 samples), per family; on the benchmark test
+half the grid-sphere collision-free rate (planner v1's own metric, tol 1 cm), since exact boxes do not exist for all of
+those scenes. Same situations and seeds for planner v1 and the new planner.
+
+**Pass rule.** COS-test exact collision rate of the chosen chunk <= 20 % **and** lower than planner v1's on the same
+situations (paired bootstrap 95 % CI of the difference below 0). Guard: the benchmark grid-free rate must not drop by more
+than 3 pp vs planner v1 (reported either way). Prediction: planner v1 collides on > 40 % of COS situations (it has never
+seen tight boxes or postural avoidance), the COS planner on 10–20 %.
