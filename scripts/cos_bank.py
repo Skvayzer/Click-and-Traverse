@@ -69,7 +69,7 @@ def scene_dict(s, ref):
             continue
         c[2] = (top + bot) / 2; h[2] = (top - bot) / 2
         boxes.append(dict(name=f"{b['role']}_{i}", center=c, half_size=h, yaw=float(b.get("yaw", 0.)),
-                          category="wall" if b["role"] == "wall" else "generic", cos_role=b["role"], cos_kind=b["kind"]))
+                          category="wall" if b["role"] == "wall" else "generic", cos_role=b["role"], cos_kind=b.get("kind", b["role"])))
     goal = [float(ref[-1, 0]), float(ref[-1, 1])]
     pts = np.array([[*b["center"][:2]] for b in boxes] + [[0, 0], goal])
     ext = np.array([max(b["half_size"][0], b["half_size"][1]) * 1.42 for b in boxes] + [0, 0])
