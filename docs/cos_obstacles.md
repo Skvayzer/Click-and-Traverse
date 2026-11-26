@@ -279,3 +279,23 @@ Yield per source and family: `amass-obstacles/scenes_v1/yield.csv`. Quality per 
 Figures: `scenes_v1/quality.png` (penetration, clearance, slack per family), `scenes_v1/cos_v1_best_worst.png` (12 best
 fits: verified, realistic, tracked, strongest penetration per clearance; 12 worst: failed verification at 4–5 cm,
 gaps wider than 1.2 m, 3 cm explanations, tracked posture hitting the box).
+
+## Scenes v1, part 2 — downloaded sources (user's job 327742) and the retargeting comparison
+
+Sources: ember-lab AMASS→G1 (all 23 AMASS subsets, 17,655 clips, 60.7 h; IsaacLab AMP npz, quaternions wxyz),
+full PHUMA (65,245 re-joined sequences, 69.3 h; xyzw), Unitree LAFAN1 G1 (CSV, xyzw). Clean tier additionally excludes
+PHUMA's fitness / music / kungfu / perform / haa500 / aist categories (as the September library).
+
+**Bug found and fixed (before any result was used):** the first ember library guessed the quaternion order from
+component magnitudes; for wxyz clips facing away from +x (|z| > |w|) it swapped the order, which produced 7,538
+spurious event windows and 35% falls in feasibility. The readers now use each dataset's documented order; rebuilt:
+3,416 windows, falls 0.6%.
+
+**Retargeting comparison, pre-registered 06:20 before the matched result.** On the AMASS sequences present in both
+(7,764 of them in CMU, KIT, BMLmovi and SFU; 300 sampled per subset), per subset: joint-limit violations (share of
+frames > 0.05 rad outside the model range), foot skating (sole speed while within 2 cm of its low height, m/s),
+ground penetration (share of frames > 2 cm below the clip's 5th-percentile sole height), and SONIC feasibility on
+*matched* windows (the same 6 s of the same sequence in both, 150 per subset; tracked rule of G1).
+**Decision rule:** per subset use the retargeting with the higher matched tracked share; if the two are within 5
+points, the one with less foot skating + penetration. The other one is left out of the yield (`cos_report.py
+--drop-sources`) but stays on Lustre. Subsets only ember has are added as they are.
