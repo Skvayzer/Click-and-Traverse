@@ -41,5 +41,5 @@ case "$MODE" in
 esac
 mkdir -p "$OUT"
 $P -u scripts/eval_per_scene.py "$CK" --nominal --subset-fields --episodes 2 --operator-speeds .15 .3 \
-  --start-replay $S "${B[@]}" "${M[@]}" --out-dir "$OUT" 2>&1 | tee "$OUT/evaluation.log" | grep -v "^step " 
+  --start-replay $S --traversal-metrics "${B[@]}" "${M[@]}" --out-dir "$OUT" 2>&1 | tee "$OUT/evaluation.log" | grep -v "^step " 
 echo "== done $(date -Is)"

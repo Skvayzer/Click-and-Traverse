@@ -87,6 +87,7 @@ def main():
                         "route progress, then follow a fresh plan for HOLD_S s")
     p.add_argument("--stall-audit", action="store_true", help="log before/during-stall terms for refused scenes")
     p.add_argument("--refusal-fix", choices=("fallback", "margin", "both"))
+    p.add_argument("--traversal-metrics", action="store_true", help="time to the clean goal and min palm field per episode (any scene set)")
     p.add_argument("--planning-benchmark", action="store_true", help="use certified benchmark starts and report traversal metrics")
     p.add_argument("--plan-only", action="store_true", help="hide actor obstacle inputs while retaining plan references")
     p.add_argument("--refused-rewards", action="store_true",
@@ -449,7 +450,7 @@ def main():
         task.measure_track_progress = True
         audit = StallAudit(task.num_envs, NS * K, dev, task.dt)
     target = S * args.episodes * K
-    if args.planning_benchmark:
+    if args.planning_benchmark or args.traversal_metrics:
         seconds_to_goal = torch.full_like(path, -1.)
         min_palm = task.info["sdf"][:, 5:7, 0].amin(-1).clone()
         traversal = torch.zeros((NS * K, 3), dtype=torch.float64, device=dev)
@@ -479,7 +480,7 @@ def main():
         if brace and bool(m["episode/numerical"].any()):
             raise RuntimeError("Non-finite BRACE physics state")
         done = out["done"].bool() & (before >= 0)
-        if args.planning_benchmark:
+        if args.planning_benchmark or args.traversal_metrics:
             first = (before >= 0) & (seconds_to_goal < 0.) & m["episode/goal_reached"].bool()
             seconds_to_goal = torch.where(first, m["episode_length"] * task.dt, seconds_to_goal)
             min_palm = torch.minimum(min_palm, m["acceptance/hand_clearance"].amin(-1))
@@ -540,7 +541,7 @@ def main():
                 refusal_totals.index_add_(0, sc, torch.where(refused[:, None], refusal_acc[d], 0.))
                 refusal_steps.index_add_(0, sc, torch.where(refused, m["episode_length"][d], 0).float())
                 refusal_acc[d] = 0.
-            if args.planning_benchmark:
+            if args.planning_benchmark or args.traversal_metrics:
                 arrived = flags[1][d]
                 traversal[:, 0].index_add_(0, sc, arrived.double())
                 traversal[:, 1].index_add_(0, sc, torch.where(arrived, seconds_to_goal[d], 0.))
@@ -575,7 +576,7 @@ def main():
                                (f" Throws launched {int(sim.obstacle.launched.sum())}, skipped {int(sim.obstacle.skipped.sum())}, "
                                 f"hand hits {int((sim.obstacle.slot_hand & sim.obstacle.launched).sum())}." if args.blind_variant == "throw" else ""))
         blind_names = ("inserted_scheduled", "inserted_revealed", "inserted_contact", "inserted_hand_contact")
-    if args.planning_benchmark:
+    if args.planning_benchmark or args.traversal_metrics:
         if finished != target:
             raise RuntimeError(f"Planning benchmark completed only {finished}/{target} episodes")
         traversal = traversal.cpu()
@@ -606,9 +607,9 @@ def main():
             if float(near_steps[j]) > 0:
                 row["near_speed_ratio"] = round(float(near_v[j] / near_cmd[j].clamp_min(1e-9)), 3)
                 row["near_mean_speed_ratio"] = round(float(near_vbar[j] / near_cmd[j].clamp_min(1e-9)), 3)
-            if args.planning_benchmark:
+            if args.planning_benchmark or args.traversal_metrics:
                 row.update(traversal_summary(traversal[j], e))
-                row["layout_family"] = scenes[i]["source"]["planning_benchmark"]["family"]
+                row["layout_family"] = scenes[i]["source"].get("planning_benchmark", {}).get("family")
             result[scenes[i]["scene_id"]] = row
         E = stats[jid, 0].sum().clamp_min(1)
         summary = {c: round(float(stats[jid, c_].sum() / E), 4) for c_, c in enumerate(cols) if 0 < c_ < 9}
@@ -623,7 +624,7 @@ def main():
                                                         any_hits=int(counts[3, i])) for i, speed in enumerate(SPEEDS)}
         if audit is not None:
             summary["stall_windows"] = audit.summary(jid)
-        if args.planning_benchmark:
+        if args.planning_benchmark or args.traversal_metrics:
             summary.update(traversal_summary(traversal[jid].sum(0), float(E)))
         if args.refused_rewards:
             count = float(refusal_steps[jid].sum())
