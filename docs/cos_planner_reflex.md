@@ -1,4 +1,10 @@
-# COS planner + reflex — log and pre-registrations (opened 2026-11-26 16:30 +04)
+# COS planner + reflex — log and pre-registrations (opened 2026-11-26 16:10 +04)
+
+*Timestamp correction (2026-11-27 00:40):* several section headers were first written with clock times ahead of the real
+time (e.g. "C1 result 00:35", "pre-registered 01:05" written before 00:33). They are corrected below from `date` and the
+commit times. The commit order is the proof of precedence: C0 amendments a102667 (23:59) / e5caec5 (00:01) precede the full
+cleaning job 332431 (00:02); the C1/C2 pre-registrations are in 0f7ef45 (00:19), before the splits (00:20) and the planner
+data job (00:23); the C3/C4 pre-registration is in f7921e4 (00:29), before any C3 or C4 job.
 
 Branch `feature/cos-planner-reflex` (from `feature/cos-obstacles` 4cb5dab). Data on Lustre `/l/users/konstantin.smirnov/cos/`;
 small summaries in `~/.local/share/openresearch/files/humanoid-protection/cos-policy/`.
@@ -8,7 +14,7 @@ Trackers available at the start: COMBO_FIX (seeds 0–2, u150) and S3 tracker v2
 both finished 150 updates; evals on the 384 scenes with start replay: seed 0 64.5/29.7/5.7 clean/contact/refused at 0.15 m/s,
 seed 1 68.5/28.5/2.6; E4 layouts 47–58 % clean).
 
-## C0 — data cleaning (pre-registered 16:35, before any count)
+## C0 — data cleaning (pre-registered 2026-11-26 16:10, before any count)
 
 **Hypothesis.** The user's bad examples (jumps/tricks, a stair descent sinking into the floor) are a few-percent minority
 that kinematic tests plus clip-name keywords remove without emptying any family.
@@ -42,7 +48,7 @@ scenes per family.
 of them, and a 24-scene random contact sheet of removed windows shows mostly true positives (eyeballed, reported).
 Manifest v2: `scenes_v2/manifest.json` (+ per-source `scenes.jsonl` of kept scenes and `removed.jsonl`).
 
-### C0 amendment 1 (2026-11-27 00:05, after the 200-window smoke run, before any full count)
+### C0 amendment 1 (2026-11-26 23:58, after the 200-window smoke run, before any full count)
 
 **Smoke run (`scenes_v2_smoke`, 200 amass_gmr windows):** foot_penetration flagged 192/200 windows, flight 91 (incl. 72 of
 the 90 crawl scenes); 38/1,357 scenes kept. The tests were miscalibrated, not the data.
@@ -76,7 +82,7 @@ the feet dip only 0.5–0.9 cm below their own floor. So:
 4. Output: levelled motions in `scenes_v2/<source>/motions/<window>.npz` (M, D, tracked, dz, dz_D); scenes carry levelled
    boxes. Pass rule unchanged, with re-verification agreement computed against the stored v1 flags.
 
-### C0 amendment 2 (00:25, after a second 200-window smoke run, before any full count)
+### C0 amendment 2 (2026-11-27 00:00, after a second 200-window smoke run, before any full count)
 Smoke 2 (levelled): penetration 5/200 windows; but `uneven_floor` removed 78 of 90 crawl scenes because the whole-body
 block minimum *range* is dominated by hands/knees sinking into the floor while crawling (retargeting), not by a rising
 floor. Fix: `uneven_floor` = the whole-body support level of some 0.5 s block rises > 0.05 m above the window's foot floor
@@ -84,7 +90,7 @@ floor. Fix: `uneven_floor` = the whole-body support level of some 0.5 s block ri
 5–30 frames (0.1–0.6 s) = `flight` (a); held > 0.05 m above the floor for > 0.6 s = `floating` (b, a floor inconsistency of
 the retargeted clip, e.g. long BMLmovi stretches 6–12 cm above the inferred floor). Removal rule otherwise unchanged.
 
-## C1 — splits (pre-registered 00:45, before any split is drawn)
+## C1 — splits (pre-registered 00:12, before any split is drawn)
 
 **Rule.** Splits are by source *clip* (all windows and scenes of a clip share a split; PHUMA chunks of one sequence and
 `__rK` runs count as one clip, the v1 `take_of` rule): sha1(take) mod 100 < 10 → **test**, 10–14 → **val**, else **train**.
@@ -94,7 +100,7 @@ take; 9 families (duck, crawl, high_step, sideways, arms_in, arms_tucked, arms_r
 (200 − 9·22 = 2 extra to the largest pools); a family with fewer candidates gives all it has and the rest is spread over
 the others (reported). Seeded (seed 0). Files: `cos/splits_v2/{take_split.json, test200.jsonl, summary.json}`.
 
-## C2 — planner on COS (pre-registered 00:45, before any planner data is built)
+## C2 — planner on COS (pre-registered 00:12, before any planner data is built)
 
 **Data.** Planner v1 format (`cat_mjlab/planner/data.py`: state 67, 2 s chunk of 20 frames × 35, goal 5, robot-centred
 40×32×36 SDF grid, 5 cm cells, uint8). COS examples from C0-kept, re-verified **train** scenes: the levelled M (and the
@@ -123,13 +129,13 @@ situations (paired bootstrap 95 % CI of the difference below 0). Guard: the benc
 than 3 pp vs planner v1 (reported either way). Prediction: planner v1 collides on > 40 % of COS situations (it has never
 seen tight boxes or postural avoidance), the COS planner on 10–20 %.
 
-### C1 amendment (00:30, after drawing the take split, before any evaluation on test scenes)
+### C1 amendment (00:21, after drawing the take split, before any evaluation on test scenes)
 The held-out test takes contain few windows of the rare families (feasible+clear: duck 10 windows in 7 takes, detour 12,
 high step 2, sideways 22, crawl 0), so one scene per window gave duck 8, detour 10, high step 2. A family short of its quota
 now also takes other obstacle fits of its windows (different geometry, same human motion): <= 3 scenes per window, 6 per
 take. Crawl has no feasible test scene (SONIC tracks no crawl) and is absent from the test-200; its share goes to the others.
 
-### C0 result (00:20) — PASS
+### C0 result (00:22) — PASS
 Full run `cos/scenes_v2` (job 332431, code e5caec5): 5,876 windows with verified scenes; **28,302 of 43,524 verified scenes kept
 (65 %)**; feasible (SONIC-tracked) 23,799 of 33,444, feasible+clear 22,395 of 31,198.
 Re-verification after levelling agrees 99.87 % (36 scenes no longer verify: duck 26, arms_raised 8, other 2; dropped).
@@ -161,13 +167,13 @@ dips of 2–9 cm; borderline — 4 walking clips held 5–7 cm above their infer
 drift); false positives — 3 PHUMA descriptive names (“sleeves”, “Coaster”, “on one foot”) hit the trick keywords
 (55 windows in total carry trick_name). **PASS.** Viewer refreshed from scenes_v2 (540 scenes, 21 MB, service restarted).
 
-### C1 result (00:35)
+### C1 result (00:22)
 Takes: train 2,413 / val 133 / test 277 (disjoint by construction; one split per take key). Kept verified scenes: train
 24,445, val 1,250, test 2,607. Test-200 (`cos/splits_v2/test200.jsonl`): duck 22, high_step 5, sideways 22, arms_in 33,
 arms_tucked 34, arms_raised 34, detour 22, multi 28, crawl 0 (no feasible test scene). C3 training scenes
 (`cos/c3/train_scenes.jsonl`): 259 feasible+clear train scenes, one per window, 34 per family (high_step 21, crawl 0).
 
-### State / next / jobs (00:40)
+### State / next / jobs (00:23)
 - Jobs: 332535 planner data (ws-ia, → `cos/planner_data_v1`), 332536 C3 train bank (ws-ia, → `cos/c3/bank_train_{packed,
   collision,resets,goal}` + `cos/c3/plans_train`), 332537 C4 test bank (gpu partition, CPU only, → `cos/c4/bank_test_*`,
   `cos/c4/plans_test`).
@@ -175,7 +181,7 @@ arms_tucked 34, arms_raised 34, detour 22, multi 28, crawl 0 (no feasible test s
   (`hpc/cos_c3.sbatch SMOKE=1`) as soon as the train bank exists (planner v1 online until the C2 planner exists), then seed 0.
 - Code clone on the cluster: `~/cat_worktrees/cos_6f455fb` (deploy: `hpc/cos_deploy.sh`, deploys the current branch).
 
-### C1/C3 amendment (00:55, before any rollout): harness episode format
+### C1/C3 amendment (00:26, before any rollout): harness episode format
 The harness's CAT scenes have a fixed 20 s episode (1,000 steps, validated by the bank loader), so a COS scene must be
 traversable in 20 s at 0.15 m/s: test-200 and C3 training scenes are restricted to windows with chord <= 2.5 m (median
 chord of the feasible scenes 1.5 m; 90th pct 3.0 m). Harness room = the motion's corridor (1 m behind the start and past
@@ -183,7 +189,7 @@ the goal, 1.3 m beside the pelvis path, 2.0 m high), perimeter-closed; boxes ent
 room walls); start = the reference's first pose at the chord origin, goal = its final pelvis xy. Test-200 is redrawn with
 the same rule and the same seed.
 
-## C3 — tracker + reflex fine-tune on COS (pre-registered 01:05, before any C3 run)
+## C3 — tracker + reflex fine-tune on COS (pre-registered 00:28, before any C3 run)
 
 **Setup.** Warm start: S3 tracker v2 seed 1 (u150; 68.5 % clean on the 384 scenes at 0.15 m/s — the better S3 seed; S3
 seeds trained and evaluated with sensible results, so it replaces COMBO_FIX as the start). Fresh optimizer, COMBO_FIX
@@ -199,7 +205,7 @@ first.
 **Training-health check (not a gate on performance):** episode return and clean rate on COS-scene worlds rise or hold
 over the run; no NaN; fall rate < 5 %.
 
-## C4 — rollout evaluation (pre-registered 01:05, before any C4 rollout)
+## C4 — rollout evaluation (pre-registered 00:28, before any C4 rollout)
 
 **Sets.** (i) COS test-200 (`cos/c4/bank_test`; held-out takes; start = the human reference's first pose; goal = its final
 pelvis xy; 20 s), (ii) the 384 narrow scenes, (iii) the 72 planning layouts (E4); 2 episodes × 0.15 and 0.30 m/s,
@@ -212,3 +218,8 @@ adds), and the C3 tracker fed the held-out human reference (oracle full-path arm
 higher contact; on the 384 and E4 it is not worse than COMBO_FIX plan-off by more than 3 pp clean (no forgetting).
 Prediction: +5–15 pp clean on COS (largest in arms_in/sideways/duck), within ±3 pp on 384/E4. Falsifier: no COS gain over
 COMBO_FIX plan-off, or a COS gain bought with > 3 pp loss on 384/E4.
+
+### C3 amendment (00:40, before any C3 job): seed 0 does not wait for C2
+On the user's request ("start training!") C3 seed 0 starts as soon as the smoke passes, with **planner v1** as the online
+'plan' source (the C2 planner is still training, job 332575). If C2 passes, the C2 planner is brought in for seeds 1–2 (or
+a short continuation of seed 0), stated as such; C4 then evaluates the C3 tracker with the planner that passed C2.
