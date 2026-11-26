@@ -182,3 +182,33 @@ chord of the feasible scenes 1.5 m; 90th pct 3.0 m). Harness room = the motion's
 the goal, 1.3 m beside the pelvis path, 2.0 m high), perimeter-closed; boxes entirely outside are dropped (mostly the COS
 room walls); start = the reference's first pose at the chord origin, goal = its final pelvis xy. Test-200 is redrawn with
 the same rule and the same seed.
+
+## C3 — tracker + reflex fine-tune on COS (pre-registered 01:05, before any C3 run)
+
+**Setup.** Warm start: S3 tracker v2 seed 1 (u150; 68.5 % clean on the 384 scenes at 0.15 m/s — the better S3 seed; S3
+seeds trained and evaluated with sensible results, so it replaces COMBO_FIX as the start). Fresh optimizer, COMBO_FIX
+variant (energy price, reflex, anchor E2 u300 on reference-free worlds) and the S3 tracker-v2 terms unchanged: full-body
+incl. leg references (foot tracking weight 2, σ 6 cm), plan-relative clearance (tol 3 cm, floor 2 cm), deviation-triggered
+reflex (3 cm / 2 cm floor). Bank = tablegap_v1 + 253 COS train scenes (`cos/c3/bank_train`, physical boxes via the body
+collision bank); full-path plans (share 0.5 of resets) = the 195 S3 oracle plans + 253 COS references (the SONIC-tracked
+physical trajectory of each scene; posture physical, path re-anchored); online 'plan' source = the C2 planner if it passes
+C2, else the better of planner v1 / C2 planner by the C2 metric (stated). 12,288 worlds, 150 updates, seed 0 first; seeds
+1–2 only if seed 0 trains stably (no collapse of clean success on its training telemetry). Smoke (3 updates, 4,096 worlds)
+first.
+
+**Training-health check (not a gate on performance):** episode return and clean rate on COS-scene worlds rise or hold
+over the run; no NaN; fall rate < 5 %.
+
+## C4 — rollout evaluation (pre-registered 01:05, before any C4 rollout)
+
+**Sets.** (i) COS test-200 (`cos/c4/bank_test`; held-out takes; start = the human reference's first pose; goal = its final
+pelvis xy; 20 s), (ii) the 384 narrow scenes, (iii) the 72 planning layouts (E4); 2 episodes × 0.15 and 0.30 m/s,
+identical starts for every arm (`--start-replay`). **Arms.** COS system = C3 tracker + C2 planner online (plan=1);
+reactive V7r u600; COMBO_FIX seed 0 plan-off (none=1); also reported: the S3 warm start with the same planner (what C3
+adds), and the C3 tracker fed the held-out human reference (oracle full-path arm, upper bound, not a deployable system).
+**Metrics.** clean success, contact, hand contact, refusals, falls, time-to-goal of clean episodes, min hand clearance
+(min palm field), per family on COS. Paired scene-bootstrap 95 % CIs of COS system − baseline.
+**Hypothesis / pass.** On COS test-200 the COS system's clean success exceeds both baselines (CI lower bound > 0) without
+higher contact; on the 384 and E4 it is not worse than COMBO_FIX plan-off by more than 3 pp clean (no forgetting).
+Prediction: +5–15 pp clean on COS (largest in arms_in/sideways/duck), within ±3 pp on 384/E4. Falsifier: no COS gain over
+COMBO_FIX plan-off, or a COS gain bought with > 3 pp loss on 384/E4.
