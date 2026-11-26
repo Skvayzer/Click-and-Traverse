@@ -577,7 +577,7 @@ def main():
                                 f"hand hits {int((sim.obstacle.slot_hand & sim.obstacle.launched).sum())}." if args.blind_variant == "throw" else ""))
         blind_names = ("inserted_scheduled", "inserted_revealed", "inserted_contact", "inserted_hand_contact")
     if args.planning_benchmark or args.traversal_metrics:
-        if finished != target:
+        if finished != target and args.planning_benchmark:
             raise RuntimeError(f"Planning benchmark completed only {finished}/{target} episodes")
         traversal = traversal.cpu()
 
