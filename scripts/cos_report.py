@@ -24,20 +24,24 @@ def main():
     ap = argparse.ArgumentParser()
     ap.add_argument("--scenes", nargs="+", required=True); ap.add_argument("--libs", nargs="+", required=True)
     ap.add_argument("--out", required=True); ap.add_argument("--figure", action="store_true")
+    ap.add_argument("--drop-sources", nargs="*", default=[], help="source labels left out (the losing retargeting of a subset)")
     a = ap.parse_args()
     out = Path(a.out); out.mkdir(parents=True, exist_ok=True)
     hours, clips, events = collections.Counter(), collections.Counter(), collections.Counter()
     for lib in a.libs:
         for l in open(Path(lib) / "clips.jsonl"):
-            c = json.loads(l); hours[c["source"]] += c["seconds"] / 3600; clips[c["source"]] += 1
+            c = json.loads(l)
+            if c["source"] in a.drop_sources:
+                continue
+            hours[c["source"]] += c["seconds"] / 3600; clips[c["source"]] += 1
         for l in open(Path(lib) / "events.jsonl"):
             e = json.loads(l)
-            if e["clean"]:
+            if e["clean"] and e["source"] not in a.drop_sources:
                 events[(e["source"], e["family"])] += 1
     S, A, W = [], [], []
     for d in a.scenes:
-        S += [json.loads(l) for l in open(Path(d) / "scenes.jsonl")]
-        A += [json.loads(l) for l in open(Path(d) / "attempts.jsonl")]
+        S += [x for x in map(json.loads, open(Path(d) / "scenes.jsonl")) if x["source"] not in a.drop_sources]
+        A += [x for x in map(json.loads, open(Path(d) / "attempts.jsonl")) if x["source"] not in a.drop_sources]
         W += [json.loads(l) for l in open(Path(d) / "windows.jsonl")]
     fitted = collections.Counter((x["source"], x["family"]) for x in A if x["accepted"] > 0)
     tried = collections.Counter((x["source"], x["family"]) for x in A)
@@ -78,7 +82,7 @@ def main():
                       kinds=" ".join(f"{k}:{v}" for k, v in kinds.most_common())))
     with open(out / "quality.csv", "w", newline="") as fh:
         wr = csv.DictWriter(fh, fieldnames=list(q[0])); wr.writeheader(); wr.writerows(q)
-    manifest = dict(schema="cos-scenes-v1", scene_folders=a.scenes, libraries=a.libs,
+    manifest = dict(schema="cos-scenes-v1", scene_folders=a.scenes, libraries=a.libs, dropped_sources=a.drop_sources,
                     hours={k: round(v, 2) for k, v in hours.items()}, clips=dict(clips),
                     scenes=len(S), verified=sum(s["verified"] for s in S),
                     windows=len(W), windows_skipped=dict(collections.Counter(w.get("skip") for w in W if w.get("skip"))),
