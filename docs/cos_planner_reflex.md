@@ -258,3 +258,16 @@ planner; seed 0's training-time planner difference is reported.
   → `cos/c4/evals/<name>`.
 - Next: when seed 0 ends → its evals (cos/E4/384, MODE=plan with the C2 planner) + seed 2 (C2 planner); compare with
   `scripts/cos_c4_compare.py --families cos/c4/bank_test_packed/addition.json`; videos with `hpc/cos_video.sbatch`.
+
+### C4 baselines on COS test-200 (01:42; clean / contact / refused / fall / hand contact, 400 episodes per speed)
+| arm | 0.15 m/s | 0.30 m/s |
+|---|---|---|
+| reactive V7r u600 | 65.5 / 29.0 / 2.0 / 3.5 / 15.0 | 64.8 / 29.5 / 2.3 / 3.5 / 13.5 |
+| COMBO_FIX seed 0 plan-off | 76.3 / 21.3 / 1.3 / 1.3 / 13.3 | 74.8 / 21.5 / 2.5 / 1.3 / 13.8 |
+| S3 tracker v2 seed 1 + planner v1 (C3 warm start) | 75.5 / 23.0 / 0.8 / 0.8 / 14.0 | 74.0 / 23.0 / 2.0 / 1.0 / 13.3 |
+
+### State / next / jobs (01:42)
+- Training: seed 0 332631 (ws-ia, ETA ≈ 03:55), seed 1 332764 (gpu, ETA ≈ 04:30), seed 2 332833 (ws-ia, after seed 0, C2
+  planner online).
+- Evals: ws-ia chain 332715–332718 (V7r / FIX plan-off on E4 and 384); gpu chain after seed 1: 332834 c3s0 cos, 332835 c3s0
+  oracle (human reference) cos, 332836 S3+C2 planner cos, 332837 c3s0 E4, 332838 c3s0 384, 332839–332841 seed 1 cos/E4/384.
