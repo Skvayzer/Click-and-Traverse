@@ -24,6 +24,7 @@ import numpy as np
 
 ROOT = Path(__file__).resolve().parents[1]
 sys.path[:0] = [str(ROOT), str(ROOT / "scripts")]
+import cat_mjlab  # noqa: F401,E402  (installs CAT_PATH_MAP before the pinned bank is read)
 FAMS = ("duck", "crawl", "high_step", "sideways", "arms_in", "arms_tucked", "arms_raised", "detour", "multi")
 ZCAP = 2.0
 
