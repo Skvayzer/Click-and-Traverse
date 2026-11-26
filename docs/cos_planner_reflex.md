@@ -244,4 +244,4 @@ arms_tucked 14 → 4 %, arms_raised 15 → 3 %, detour 9 → 6 %, multi 17 → 6
 **Gate PASS** (8.0 % <= 20 % and lower than v1, CI below 0; benchmark guard ok). The prediction (v1 > 40 %) was wrong:
 v1 already collides on only 18 % here — its 70 % in S1 was closed-loop chunks, not these open-loop situations. Weak spots:
 high steps and crawls stay at 49–62 % (few examples: 84 and 42 situations). Caveat: the goal is the reference chunk end
-(planner v1 protocol), which leaks part of the human's route. Checkpoint .
+(planner v1 protocol), which leaks part of the human's route. Checkpoint `cos/c2/planner_cos_v1/train/planner.pt`.
