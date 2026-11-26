@@ -39,20 +39,23 @@ def main():
     for f in cand:
         rng.shuffle(cand[f])
 
-    def draw(fam, k, used_w, per_take):
+    def draw(fam, k, used_w, per_take, per_w=1, take_cap=2):
         got = []
         for c in cand[fam]:
             if len(got) >= k:
                 break
-            if c["window"] in used_w or per_take[c["take"]] >= 2 or c.get("_used"):
+            if used_w[c["window"]] >= per_w or per_take[c["take"]] >= take_cap or c.get("_used"):
                 continue
-            got.append(c); used_w.add(c["window"]); per_take[c["take"]] += 1; c["_used"] = True
+            got.append(c); used_w[c["window"]] += 1; per_take[c["take"]] += 1; c["_used"] = True
         return got
-    used_w, per_take = set(), collections.Counter()
+    used_w, per_take = collections.Counter(), collections.Counter()
     quota = {f: a.n // len(FAMS) for f in FAMS}
     for f in sorted(FAMS, key=lambda f: -len(cand[f]))[: a.n - sum(quota.values())]:
         quota[f] += 1
     pick = {f: draw(f, quota[f], used_w, per_take) for f in FAMS}
+    for f in FAMS:          # amendment: a family short of its quota takes other obstacle fits of its windows (<= 3/window, 6/take)
+        if len(pick[f]) < quota[f]:
+            pick[f] += draw(f, quota[f] - len(pick[f]), used_w, per_take, per_w=3, take_cap=6)
     short = a.n - sum(len(v) for v in pick.values())
     while short > 0:
         progressed = False

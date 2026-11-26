@@ -122,3 +122,9 @@ those scenes. Same situations and seeds for planner v1 and the new planner.
 situations (paired bootstrap 95 % CI of the difference below 0). Guard: the benchmark grid-free rate must not drop by more
 than 3 pp vs planner v1 (reported either way). Prediction: planner v1 collides on > 40 % of COS situations (it has never
 seen tight boxes or postural avoidance), the COS planner on 10–20 %.
+
+### C1 amendment (00:30, after drawing the take split, before any evaluation on test scenes)
+The held-out test takes contain few windows of the rare families (feasible+clear: duck 10 windows in 7 takes, detour 12,
+high step 2, sideways 22, crawl 0), so one scene per window gave duck 8, detour 10, high step 2. A family short of its quota
+now also takes other obstacle fits of its windows (different geometry, same human motion): <= 3 scenes per window, 6 per
+take. Crawl has no feasible test scene (SONIC tracks no crawl) and is absent from the test-200; its share goes to the others.
