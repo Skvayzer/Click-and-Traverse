@@ -223,3 +223,25 @@ COMBO_FIX plan-off, or a COS gain bought with > 3 pp loss on 384/E4.
 On the user's request ("start training!") C3 seed 0 starts as soon as the smoke passes, with **planner v1** as the online
 'plan' source (the C2 planner is still training, job 332575). If C2 passes, the C2 planner is brought in for seeds 1–2 (or
 a short continuation of seed 0), stated as such; C4 then evaluates the C3 tracker with the planner that passed C2.
+
+### C2 result (01:18) — PASS
+Job 332575 (code 9ba2a99): mixed data = 12 shards of planner v1 data (240k) + COS train 238,550 examples (val 12,584 →
+trainer's held-out split; COS test 25,540); warm start planner v1, 20k steps (26 min, lr 1.5e-4), val grid-free 0.964 →
+0.971. Evaluation (2,000 COS-test situations stratified by family, 1,000 benchmark test situations, K = 4, same seeds):
+
+| | planner v1 | COS planner |
+|---|---|---|
+| **exact collision, chosen chunk (COS test)** | 18.3 % | **8.0 %** (paired diff −10.3 pp [−12.3, −8.2]) |
+| exact collision, single sample | 26.1 % | 19.2 % |
+| any of 4 samples exact-free | 84.4 % | 93.8 % |
+| hand collision, chosen | 8.9 % | 3.2 % |
+| goal error | 26 cm | 4.8 cm |
+| posture diversity (4 samples) | 7.6 cm | 9.3 cm |
+| benchmark grid-free, chosen | 99.5 % | 99.4 % (−0.1 [−0.7, +0.4], guard ok) |
+
+Per family (chosen, v1 → COS): duck 28 → 9 %, crawl 90 → 62 %, high step 82 → 49 %, sideways 7 → 3 %, arms_in 7 → 5 %,
+arms_tucked 14 → 4 %, arms_raised 15 → 3 %, detour 9 → 6 %, multi 17 → 6 %.
+**Gate PASS** (8.0 % <= 20 % and lower than v1, CI below 0; benchmark guard ok). The prediction (v1 > 40 %) was wrong:
+v1 already collides on only 18 % here — its 70 % in S1 was closed-loop chunks, not these open-loop situations. Weak spots:
+high steps and crawls stay at 49–62 % (few examples: 84 and 42 situations). Caveat: the goal is the reference chunk end
+(planner v1 protocol), which leaks part of the human's route. Checkpoint .
