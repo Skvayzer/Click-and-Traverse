@@ -21,7 +21,7 @@ def split_of(take):
 
 def main():
     ap = argparse.ArgumentParser(); ap.add_argument("--manifest", required=True); ap.add_argument("--out", required=True)
-    ap.add_argument("--n", type=int, default=200); ap.add_argument("--seed", type=int, default=0)
+    ap.add_argument("--n", type=int, default=200); ap.add_argument("--max-chord", type=float, default=2.5); ap.add_argument("--seed", type=int, default=0)
     a = ap.parse_args()
     man = json.load(open(a.manifest)); out = Path(a.out); out.mkdir(parents=True, exist_ok=True)
     takes = {}; cnt = collections.defaultdict(collections.Counter); cand = collections.defaultdict(list)
@@ -32,7 +32,8 @@ def main():
                 continue
             t = take_of(s["clip"]); sp = split_of(t); takes[t] = sp
             cnt[sp][s["family"]] += 1
-            if sp == "test" and s.get("tracked") and s.get("tracked_clear") is not None and s["tracked_clear"] >= 0:
+            if sp == "test" and s.get("tracked") and s.get("tracked_clear") is not None and s["tracked_clear"] >= 0 \
+                    and s["chord"]["length"] <= a.max_chord:
                 cand[s["family"]].append(dict(scene=s["scene"], window=s["window"], take=t, family=s["family"],
                                               source=s["source"], folder=folder))
     rng = random.Random(a.seed)

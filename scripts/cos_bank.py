@@ -40,6 +40,8 @@ def select(a):
                 continue
             if not (s.get("tracked") and s.get("tracked_clear") is not None and s["tracked_clear"] >= a.min_tracked_clear):
                 continue
+            if s["chord"]["length"] > a.max_chord:          # a CAT episode is 20 s: <= 2.5 m at 0.15 m/s
+                continue
             pool[s["family"]].append(dict(scene=s["scene"], window=s["window"], take=take_of(s["clip"]), family=s["family"],
                                           source=s["source"], folder=folder))
     out = []
@@ -71,11 +73,15 @@ def scene_dict(s, ref):
         boxes.append(dict(name=f"{b['role']}_{i}", center=c, half_size=h, yaw=float(b.get("yaw", 0.)),
                           category="wall" if b["role"] == "wall" else "generic", cos_role=b["role"], cos_kind=b.get("kind", b["role"])))
     goal = [float(ref[-1, 0]), float(ref[-1, 1])]
-    pts = np.array([[*b["center"][:2]] for b in boxes] + [[0, 0], goal])
-    ext = np.array([max(b["half_size"][0], b["half_size"][1]) * 1.42 for b in boxes] + [0, 0])
-    lo = np.minimum((pts - ext[:, None]).min(0), [-1.0, -1.0]) - 0.3
-    hi = np.maximum((pts + ext[:, None]).max(0), [goal[0] + 1.0, 1.0]) + 0.3
-    lo[0] = max(lo[0], -1.5); hi[0] = min(hi[0], goal[0] + 1.5)          # the room ends 1.5 m behind start / past goal
+    # room = the motion's corridor: 1 m behind the start / past the goal, 1.3 m beside the pelvis path (GPU field memory);
+    # boxes entirely outside are dropped (the COS room walls usually are), the perimeter closes the room
+    lo = np.array([-1.0, min(float(ref[:, 1].min()), 0.) - 1.3]); hi = np.array([goal[0] + 1.0, max(float(ref[:, 1].max()), 0.) + 1.3])
+    keep = []
+    for b in boxes:
+        e = max(b["half_size"][0], b["half_size"][1]) * 1.42
+        if b["center"][0] + e > lo[0] and b["center"][0] - e < hi[0] and b["center"][1] + e > lo[1] and b["center"][1] - e < hi[1]:
+            keep.append(b)
+    boxes = keep
     shift = -lo                                                            # room frame = chord frame + shift
     dims = [float(hi[0] - lo[0]), float(hi[1] - lo[1]), ZCAP]
     for b in boxes:
@@ -91,7 +97,7 @@ def scene_dict(s, ref):
     digest = _digest(dict(boxes=boxes, room_dimensions=dims))
     return dict(schema=SCHEMA, scene_id=f"cos-{s['family']}-{digest[:12]}", family="generic_clutter", split="train",
                 units="metres", coordinate_system="right-handed-z-up", boxes=boxes, room_dimensions=dims,
-                geometry_hash=digest, start=start, goal=g, route=[start[:2], g], time_budget=max(20., L / 0.12 + 8.),
+                geometry_hash=digest, start=start, goal=g, route=[start[:2], g], time_budget=20.,
                 bottlenecks=[], counts=dict(tables=0, chairs=0, generic_objects=len(boxes), primitive_boxes=len(boxes),
                                             bottlenecks=0),
                 feasibility=dict(method="COS verified human motion (synth.verify) + SONIC tracked", root_route_validated=True),
@@ -121,8 +127,8 @@ def write_case(job):
     spec["route"] = (np.asarray(spec["route"]) - sh[:2]).tolist(); spec["runtime_shift_m"] = (-sh).tolist()
     (directory / "scene.json").write_text(json.dumps(spec, indent=2) + "\n")
     steps = int(math.ceil(scene["time_budget"] / 0.02))
-    record.update(family="procedural_cat", task_kind="cat", reset_mode="cat", crossed_mode="goal_radius",
-                  sampling_group="procedural_cat", episode_length=max(1000, steps), reset_xy_scale=[1., 1.],
+    record.update(family="procedural_cat", task_kind="cat", reset_mode="cat", crossed_mode="x_plane",
+                  sampling_group="procedural_cat", episode_length=1000, reset_xy_scale=[1., 1.],
                   start=[0., 0., .8], goal=(np.asarray(record["goal"]) - sh).tolist(),
                   origin=(np.asarray(record["origin"]) - sh).tolist())
     source = dict(record["source"], kind="cos-scene", cos=scene["cos"], flat_balance="cos-scene")
@@ -185,6 +191,7 @@ if __name__ == "__main__":
     p = argparse.ArgumentParser(); p.add_argument("mode", choices=("select", "build"))
     p.add_argument("--manifest"); p.add_argument("--splits"); p.add_argument("--split", default="train")
     p.add_argument("--per-family", type=int, default=34); p.add_argument("--min-tracked-clear", type=float, default=0.0)
+    p.add_argument("--max-chord", type=float, default=2.5)
     p.add_argument("--seed", type=int, default=0); p.add_argument("--out")
     p.add_argument("--base-manifest"); p.add_argument("--scenes"); p.add_argument("--output"); p.add_argument("--plans")
     p.add_argument("--workers", type=int, default=8)

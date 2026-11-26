@@ -174,3 +174,11 @@ arms_tucked 34, arms_raised 34, detour 22, multi 28, crawl 0 (no feasible test s
 - Next: `hpc/cos_planner.sbatch` (COSDATA=planner_data_v1, OUT=cos/c2/planner_cos_v1) → C2 gate; C3 smoke
   (`hpc/cos_c3.sbatch SMOKE=1`) as soon as the train bank exists (planner v1 online until the C2 planner exists), then seed 0.
 - Code clone on the cluster: `~/cat_worktrees/cos_6f455fb` (deploy: `hpc/cos_deploy.sh`, deploys the current branch).
+
+### C1/C3 amendment (00:55, before any rollout): harness episode format
+The harness's CAT scenes have a fixed 20 s episode (1,000 steps, validated by the bank loader), so a COS scene must be
+traversable in 20 s at 0.15 m/s: test-200 and C3 training scenes are restricted to windows with chord <= 2.5 m (median
+chord of the feasible scenes 1.5 m; 90th pct 3.0 m). Harness room = the motion's corridor (1 m behind the start and past
+the goal, 1.3 m beside the pelvis path, 2.0 m high), perimeter-closed; boxes entirely outside are dropped (mostly the COS
+room walls); start = the reference's first pose at the chord origin, goal = its final pelvis xy. Test-200 is redrawn with
+the same rule and the same seed.
