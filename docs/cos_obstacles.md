@@ -5,9 +5,47 @@ Branch `feature/cos-obstacles` (from `feature/fullpath-plan` cd40fee). Proposal:
 Log copy after each gate: `~/.local/share/openresearch/files/humanoid-protection/amass-obstacles/cos_obstacles.md`.
 Large outputs: cluster `/l/users/konstantin.smirnov/cos/`.
 
-## Summary
+## Summary (2026-11-26, end of the night)
 
-(written at the end of the night)
+**Passed.** G0 event audit: 7/7 families have >= 20 clean events from >= 10 takes. G2 synthesis: 99.5% of accepted
+scenes verify at 100 Hz with exact G1 geometry (rule: >= 95%). G1 SONIC feasibility: 5/7 families >= 50% tracked
+(detour 90%, arms tucked 89%, sideways 75%, arms raised 66%, high step 60%).
+**Failed.** G1 for duck (14%) and crawl (0%): frozen SONIC does not follow deep crouches or crawls, even with floor
+contact allowed.
+**Dropped.** G3 (planner training): the user changed scope to data preparation only.
+
+**Scenes v1 (data deliverable, on Lustre `/l/users/konstantin.smirnov/cos/`).**
+- Motion: 24.2 h of G1 motion. That is all 8,059 retargetable SMPL-X sequences of AMASS CMU/KIT/BMLmovi/SFU, retargeted
+  with our GMR pipeline (21.9 h; 33 very long sequences failed on memory), plus the September PHUMA subset (2.4 h).
+- Scenes: **9,574 scenes, 9,509 verified (99.3%)**, from 1,701 events in 1,132 clips. A fitted event gets 5.2 fits on
+  average, of 2.4 different obstacle kinds; 2,532 near-duplicates were rejected. Verified per family: arms raised
+  3,496, duck 2,163, arms in 1,391, multi-obstacle 740, arms tucked 571, detour 446, high step 339, sideways 190,
+  crawl 173.
+- Physical feasibility: SONIC tracks 1,171 of 2,505 windows. 4,456 verified scenes lie on tracked windows; in 4,078 of
+  them the tracked posture also clears every box.
+- Files: `scenes_v1/manifest.json`, `yield.csv` and `quality.csv`. Per source: `scenes_v1/<source>/{scenes.jsonl,
+  motions/*.npz (M, D, tracked), feasibility.jsonl}`. Libraries are in `library/<source>`, retargeted clips in
+  `amass_gmr/`.
+- Artifacts (`amass-obstacles/`): `scenes_v1/{yield.csv, quality.csv, quality.png, cos_v1_best_worst.png, manifest.json}`,
+  8 G2 videos in `videos/`, G0/G1/G2 logs and sheets.
+
+**Weak spots.**
+- The chord >= 0.5 m rule skipped 386 windows (BMLmovi crawls: 94 clean events, 31 tried).
+- Realism checks fail for 40% of crawl scenes (ceiling above 0.95 m) and 16-32% of gap scenes (gap wider than 1.2 m).
+- Sideways explanations are mostly "arms in": only 190 scenes have a trunk or shoulder hit.
+
+**Not done.**
+- The full download (ember-lab AMASS->G1 for all of AMASS, full PHUMA, LAFAN1 G1) was blocked by the permission
+  classifier. The job is `hpc/cos_fetch.sbatch` and must be submitted by the user; `cos_library.py` has the ember,
+  PHUMA and LAFAN1 readers.
+- The GMR-vs-ember quality comparison (`scripts/cos_compare_retarget.py`) is waiting on that download.
+
+**Next steps.**
+1. Process the downloaded sources with `hpc/cos_process.sbatch` and compare the two retargetings.
+2. Handle slow-travel windows with an event-direction chord instead of skipping them.
+3. Get a crawl- and duck-capable tracker (fine-tuned SONIC) and turn the tracked rollouts into PARC-style corrected data.
+4. Run the blind plausibility check by a second person.
+
 
 ---
 
@@ -214,3 +252,30 @@ realism = dimension ranges of real objects (beam/shelf/ceiling-entrance bottom 0
 0.35–0.95 m; hurdle/box top 0.08–0.6 m; gap width 0.30–1.2 m; counter top 0.6–1.0 m); diversity = kinds per family
 and fits per event; G1 trackability = SONIC tracked flag of the window, and whether the tracked rollout itself clears
 every box (tracked_clear ≥ 0).
+
+### Scenes v1 result (04:45)
+
+GMR retargeting: 8,123 SMPL-X sequences; 8,090 retargeted, 33 very long ones failed on memory (~49 GB per 12-CPU
+job; listed in `amass_gmr/not_retargeted.json`); 24 too short. Library: 8,059 clips, 21.86 h (CMU 8.6, KIT 10.16,
+BMLmovi 2.89, SFU 0.21) + PHUMA subset 2,465 clips, 2.37 h. Windows: 2,505 (2,096 AMASS, 409 PHUMA), 386 skipped
+for chord < 0.5 m. Feasibility on the cluster ran with ONNX Runtime copied from dep-1 (the cluster env has only `onnx`;
+the torch port is far too slow on CPU): 1,171 tracked, 591 sank, 86 fell. Synthesis ran on code def5143 (tracked-posture
+clearance uses the rollout re-anchored to the reference root path and heading, because SONIC sees no global position).
+
+Yield per source and family: `amass-obstacles/scenes_v1/yield.csv`. Quality per family (verified scenes):
+
+| family | scenes | clips | default penetration p50 (cm) | real clearance p50 (cm) | realistic | window tracked | tracked posture clear | kinds |
+|---|---|---|---|---|---|---|---|---|
+| duck | 2,163 | 234 | 6.1 | 9.7 | 100% | 28% | 79% | shelf, beam, low ceiling, bar |
+| crawl | 173 | 31 | 19.3 | 10.4 | 60% | 0% | 95% | ceiling, tunnel, table |
+| high step | 339 | 38 | 9.5 | 8.4 | 100% | 34% | 47% | hurdle, low box |
+| sideways | 190 | 67 | 14.6 | 8.5 | 68% | 67% | 96% | gap, doorway, cabinet gap |
+| arms in | 1,391 | 220 | 5.8 | 8.1 | 84% | 61% | 89% | cabinet gap, gap, doorway |
+| arms tucked | 571 | 92 | 6.7 | 9.0 | 77% | 71% | 86% | narrow gap, narrow doorway |
+| arms raised | 3,496 | 626 | 6.2 | 8.6 | 100% | 47% | 94% | counter pair, counter, table |
+| detour | 446 | 75 | 13.1 | 12.0 | 100% | 85% | 99% | box, wall stub, table, column |
+| multi | 740 | 232 | 9.0 | 7.0 | 83% | 43% | 69% | mixes of the above |
+
+Figures: `scenes_v1/quality.png` (penetration, clearance, slack per family), `scenes_v1/cos_v1_best_worst.png` (12 best
+fits: verified, realistic, tracked, strongest penetration per clearance; 12 worst: failed verification at 4–5 cm,
+gaps wider than 1.2 m, 3 cm explanations, tracked posture hitting the box).
