@@ -29,10 +29,13 @@ TERRAIN = re.compile(r"stair|step|climb|ramp|slope|platform|ladder|(?<![a-z])hil
 STEP_OK = re.compile(r"step_?over|side_?step|stepping_?over|stepover|sidestep", re.I)
 ORDER = ["trick_name", "flight", "pelvis_vz", "acrobatic", "terrain_name", "uneven_floor", "foot_penetration"]
 G = FF = None
+OUT = None
+PHYS_FLOOR = -0.010          # proxy lowest foot point of SONIC-tracked (physical) rollouts, amendment 1
 
 
-def init():
-    global G, FF
+def init(out):
+    global G, FF, OUT
+    OUT = Path(out)
     import torch
     torch.set_num_threads(1)
     from cat_mjlab.cos.features import FrameFeatures, _extent
@@ -61,8 +64,10 @@ def window_flags(q, clip):
     tn = bool(TERRAIN.search(nm))
     f["step_exception"] = bool(tn and STEP_OK.search(nm) and not re.search(r"stair|climb|ramp|slope|platform|ladder", nm, re.I))
     f["terrain_name"] = tn and not f["step_exception"]
-    floor = float(np.percentile(fmin, 5))
-    air = (fz > floor + TH["flight_h"]).all(1)
+    floor = float(np.percentile(fmin, 5))                            # the window's own floor (feet)
+    blo = lo[:, :, 2].min(1)                                         # whole-body lowest point (amendment 1)
+    f["floor"] = floor
+    air = blo > floor + TH["flight_h"]
     run = best = 0
     for v in air:
         run = run + 1 if v else 0; best = max(best, run)
@@ -84,9 +89,9 @@ def window_flags(q, clip):
     f["min_upz"] = float(upz.min()); f["max_latz"] = float(latz.max()); f["max_angvel"] = float(ang.max())
     f["acrobatic"] = bool(upz.min() < 0 or latz.max() > TH["roll_z"] or head_below or ang.max() > TH["angvel"])
     nb = max(1, int(round(TH["block_s"] / DT)))
-    blocks = [fmin[i:i + nb].min() for i in range(0, T, nb) if len(fmin[i:i + nb]) >= nb // 2]
+    blocks = [blo[i:i + nb].min() for i in range(0, T, nb) if len(blo[i:i + nb]) >= nb // 2]
     f["floor_range"] = float(max(blocks) - min(blocks)); f["uneven_floor"] = f["floor_range"] > TH["floor_var"]
-    f["min_foot"] = float(fmin.min()); f["foot_penetration"] = f["min_foot"] < TH["pen"]
+    f["min_foot"] = float(fmin.min()); f["foot_penetration"] = f["min_foot"] - floor < TH["pen"]
     other = [i for g in ("hands",) for i in FF.groups.get(g, [])] + list(FF.knee_shapes)
     f["min_other"] = float(lo[:, other, 2].min()) if other else 0.
     f["trick_frames"] = np.flatnonzero(air | np.r_[np.zeros(k), vz > TH["vz"], np.zeros(k)][:T].astype(bool)).tolist()
@@ -106,11 +111,43 @@ def one(job):
         trick_event.append(hit)
     ver = []
     if not reasons:
-        from cat_mjlab.cos.synth import verify
+        from cat_mjlab.cos.synth import Body, verify
+        dz = PHYS_FLOOR - f["floor"]; dzD = PHYS_FLOOR - foot_floor(D)
+        f["dz"] = dz; f["dz_D"] = dzD
+        M[:, 2] += dz; D[:, 2] += dzD
+        tr = d["tracked"].astype(np.float64) if "tracked" in d.files else None
         for s in scenes:
-            v = verify(G, M, D, s["boxes"])
-            ver.append(dict(ok=v["ok"], ok_pen=v["ok_pen"], m_clear=v["m_clear"]))
+            boxes = level_boxes(s["boxes"], dz)
+            v = verify(G, M, D, boxes)
+            tc = float(Body(G, tr).sep(boxes)[0].min()) if tr is not None else None
+            ver.append(dict(ok=v["ok"], ok_pen=v["ok_pen"], m_clear=v["m_clear"], d_main=v["d_main"], boxes=boxes,
+                            tracked_clear=tc))
+        out_dir = OUT / Path(folder).name / "motions"; out_dir.mkdir(parents=True, exist_ok=True)
+        np.savez_compressed(out_dir / f"{window}.npz", M=M.astype(np.float32), D=D.astype(np.float32), dz=dz, dz_D=dzD,
+                            **({"tracked": tr.astype(np.float32)} if tr is not None else {}))
     return folder, window, f, reasons, trick_event, ver
+
+
+def foot_floor(q):
+    import torch
+    from cat_mjlab.cos.features import _extent
+    world, _ = G.primitives(torch.as_tensor(q, dtype=torch.float32))
+    lo = _extent(world, G.compiled)[0].numpy()
+    return float(np.percentile(lo[:, FF.left_foot + FF.right_foot, 2].min(1), 5))
+
+
+def level_boxes(boxes, dz):
+    """Shift boxes by dz with the motion; floor-standing boxes keep their bottom at z = 0 (top moves by dz)."""
+    out = []
+    for b in boxes:
+        b = dict(b); c = list(b["center"]); h = list(b["half"])
+        bottom = c[2] - h[2]
+        if abs(bottom) < 0.01:
+            top = max(c[2] + h[2] + dz, 0.02); c[2] = top / 2; h[2] = top / 2
+        else:
+            c[2] = c[2] + dz
+        b["center"] = c; b["half"] = h; out.append(b)
+    return out
 
 
 def main():
@@ -139,10 +176,11 @@ def main():
     first = collections.defaultdict(collections.Counter)    # first reason -> family -> scenes
     wcnt = collections.Counter(); kept = collections.Counter(); kept_feas = collections.Counter()
     kept_fc = collections.Counter(); before = collections.Counter(); before_feas = collections.Counter()
+    reverify_fail = collections.Counter(); dzs = collections.defaultdict(list)
     agree = n_ver = 0; trick_ev = 0; step_exc = 0; other_low = 0
     files = {}
     t = time.time()
-    with mp.get_context("fork").Pool(a.jobs, initializer=init) as pool:
+    with mp.get_context("fork").Pool(a.jobs, initializer=init, initargs=(a.out,)) as pool:
         for k, (folder, window, f, reasons, tev, ver) in enumerate(pool.imap_unordered(one, jobs, chunksize=4)):
             name = Path(folder).name
             if name not in files:
@@ -151,6 +189,8 @@ def main():
             F = files[name]
             F["window_flags"].write(json.dumps(dict(window=window, reasons=reasons, **f)) + "\n")
             ss = S[folder][window]
+            if "dz" in f:
+                dzs[name].append((f["dz"], f["dz_D"]))
             step_exc += int(f["step_exception"]); other_low += int(f["min_other"] < -0.02)
             for r in reasons:
                 wcnt[r] += 1
@@ -166,7 +206,11 @@ def main():
                                                        reasons=reasons)) + "\n")
                     continue
                 v = ver[i]; n_ver += 1; agree += int(v["ok"] == bool(s["verified"]))
-                s = dict(s); s["reverify"] = v; s["clean_v2"] = True
+                s = dict(s); s["boxes"] = v.pop("boxes"); s["tracked_clear_v1"] = s.get("tracked_clear")
+                s["tracked_clear"] = v.pop("tracked_clear"); s["reverify"] = v; s["clean_v2"] = True
+                s["dz"] = f["dz"]; s["verified"] = v["ok"]; s["verified_pen"] = v["ok_pen"]
+                if not v["ok"]:
+                    reverify_fail[fam] += 1
                 F["scenes"].write(json.dumps(s) + "\n")
                 if v["ok"]:
                     kept[fam] += 1; kept_feas[fam] += feas
@@ -181,6 +225,11 @@ def main():
                 scenes_before=dict(before), scenes_before_feasible=dict(before_feas),
                 removed_by_reason=dict((r, dict(cnt[r])) for r in ORDER), removed_first_reason=dict((r, dict(first[r])) for r in ORDER),
                 kept_verified=dict(kept), kept_feasible=dict(kept_feas), kept_feasible_clear=dict(kept_fc),
+                reverify_fail=dict(reverify_fail),
+                dz_by_source={k: dict(zip(("p5", "p50", "p95"), np.percentile([x[0] for x in v], [5, 50, 95]).round(4).tolist()))
+                              for k, v in dzs.items()},
+                dzD_by_source={k: dict(zip(("p5", "p50", "p95"), np.percentile([x[1] for x in v], [5, 50, 95]).round(4).tolist()))
+                               for k, v in dzs.items()},
                 reverify_agreement=agree / max(1, n_ver), reverified=n_ver, trick_inside_event_scenes=trick_ev,
                 step_name_exceptions_windows=step_exc, windows_hand_or_knee_below_2cm=other_low,
                 total=dict(before=sum(before.values()), kept=sum(kept.values()), kept_feasible=sum(kept_feas.values()),
@@ -188,7 +237,7 @@ def main():
     json.dump(summ, open(out / "clean_summary.json", "w"), indent=1)
     m2 = dict(man); m2.update(schema="cos-scenes-v2", version="scenes v2 (C0 cleaned v1.1)",
                               scene_folders=[str(out / Path(f).name) for f in man["scene_folders"]],
-                              motions_from={str(out / Path(f).name): f for f in man["scene_folders"]},
+                              motions="levelled, OUT/<source>/motions/<window>.npz (M, D, tracked, dz, dz_D)",
                               scenes=sum(before.values()), verified=sum(kept.values()), clean=summ, log="docs/cos_planner_reflex.md")
     json.dump(m2, open(out / "manifest.json", "w"), indent=1)
     print(json.dumps(summ["total"]), "reverify", round(summ["reverify_agreement"], 4), f"{time.time() - t:.0f}s", flush=True)
