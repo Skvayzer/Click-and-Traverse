@@ -245,3 +245,8 @@ arms_tucked 14 → 4 %, arms_raised 15 → 3 %, detour 9 → 6 %, multi 17 → 6
 v1 already collides on only 18 % here — its 70 % in S1 was closed-loop chunks, not these open-loop situations. Weak spots:
 high steps and crawls stay at 49–62 % (few examples: 84 and 42 situations). Caveat: the goal is the reference chunk end
 (planner v1 protocol), which leaks part of the human's route. Checkpoint `cos/c2/planner_cos_v1/train/planner.pt`.
+
+### C3 note (01:19): seeds 1–2 use the C2 planner online
+C2 passed, so seed 1 starts now on the free gpu-partition GPU with the C2 planner as the online 'plan' source (seed 0 keeps
+planner v1, as amended). Seed 2 follows on the next free slot with the C2 planner. C4 evaluates every seed with the C2
+planner; seed 0's training-time planner difference is reported.
