@@ -22,12 +22,12 @@ import numpy as np
 ROOT = Path(__file__).resolve().parents[1]
 sys.path.insert(0, str(ROOT))
 DT = 0.02
-TH = dict(flight_h=0.05, flight_frames=5, vz=1.0, roll_z=0.87, angvel=8.0, floor_var=0.05, pen=-0.02, block_s=0.5)
+TH = dict(flight_h=0.05, flight_frames=5, vz=1.0, roll_z=0.87, angvel=8.0, floor_var=0.05, pen=-0.02, block_s=0.5, float_frames=30)
 TRICK = re.compile(r"flip|cartwheel|cart_wheel|roll|handstand|hand_stand|parkour|vault|acrobat|somersault|tumbl|jump|"
                    r"(?<![a-z])hop|leap|skip|breakdanc|trick|gymnast|spin|twirl|pirouette|(?<![a-z])dive", re.I)
 TERRAIN = re.compile(r"stair|step|climb|ramp|slope|platform|ladder|(?<![a-z])hill|incline|curb|ledge|ascend|descend", re.I)
 STEP_OK = re.compile(r"step_?over|side_?step|stepping_?over|stepover|sidestep", re.I)
-ORDER = ["trick_name", "flight", "pelvis_vz", "acrobatic", "terrain_name", "uneven_floor", "foot_penetration"]
+ORDER = ["trick_name", "flight", "pelvis_vz", "acrobatic", "terrain_name", "uneven_floor", "floating", "foot_penetration"]
 G = FF = None
 OUT = None
 PHYS_FLOOR = -0.010          # proxy lowest foot point of SONIC-tracked (physical) rollouts, amendment 1
@@ -71,7 +71,9 @@ def window_flags(q, clip):
     run = best = 0
     for v in air:
         run = run + 1 if v else 0; best = max(best, run)
-    f["flight_frames"] = int(best); f["flight"] = best >= TH["flight_frames"]
+    f["flight_frames"] = int(best)
+    f["flight"] = TH["flight_frames"] <= best <= TH["float_frames"]          # airborne (a)
+    f["floating"] = best > TH["float_frames"]                                # body held above the floor > 0.6 s (b)
     pel = xpos[:, G.body["pelvis"]]
     k = 2 if T > 5 else 1
     vz = np.abs(pel[2 * k:, 2] - pel[:-2 * k, 2]) / (2 * k * DT) if T > 2 * k else np.zeros(1)
@@ -90,7 +92,8 @@ def window_flags(q, clip):
     f["acrobatic"] = bool(upz.min() < 0 or latz.max() > TH["roll_z"] or head_below or ang.max() > TH["angvel"])
     nb = max(1, int(round(TH["block_s"] / DT)))
     blocks = [blo[i:i + nb].min() for i in range(0, T, nb) if len(blo[i:i + nb]) >= nb // 2]
-    f["floor_range"] = float(max(blocks) - min(blocks)); f["uneven_floor"] = f["floor_range"] > TH["floor_var"]
+    f["floor_range"] = float(max(blocks) - min(blocks)); f["floor_rise"] = float(max(blocks) - floor)
+    f["uneven_floor"] = f["floor_rise"] > TH["floor_var"]         # support rises above the window floor (amendment 2)
     f["min_foot"] = float(fmin.min()); f["foot_penetration"] = f["min_foot"] - floor < TH["pen"]
     other = [i for g in ("hands",) for i in FF.groups.get(g, [])] + list(FF.knee_shapes)
     f["min_other"] = float(lo[:, other, 2].min()) if other else 0.

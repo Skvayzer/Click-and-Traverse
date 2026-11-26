@@ -75,3 +75,11 @@ the feet dip only 0.5–0.9 cm below their own floor. So:
    0.5 s block (crawling or kneeling on the floor is flat ground). Everything else is unchanged.
 4. Output: levelled motions in `scenes_v2/<source>/motions/<window>.npz` (M, D, tracked, dz, dz_D); scenes carry levelled
    boxes. Pass rule unchanged, with re-verification agreement computed against the stored v1 flags.
+
+### C0 amendment 2 (00:25, after a second 200-window smoke run, before any full count)
+Smoke 2 (levelled): penetration 5/200 windows; but `uneven_floor` removed 78 of 90 crawl scenes because the whole-body
+block minimum *range* is dominated by hands/knees sinking into the floor while crawling (retargeting), not by a rising
+floor. Fix: `uneven_floor` = the whole-body support level of some 0.5 s block rises > 0.05 m above the window's foot floor
+(stairs up or down and ramps still trip it: the window floor is the lowest level). `flight` is split for reporting: airborne
+5–30 frames (0.1–0.6 s) = `flight` (a); held > 0.05 m above the floor for > 0.6 s = `floating` (b, a floor inconsistency of
+the retargeted clip, e.g. long BMLmovi stretches 6–12 cm above the inferred floor). Removal rule otherwise unchanged.
