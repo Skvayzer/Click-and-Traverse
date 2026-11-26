@@ -5,46 +5,43 @@ Branch `feature/cos-obstacles` (from `feature/fullpath-plan` cd40fee). Proposal:
 Log copy after each gate: `~/.local/share/openresearch/files/humanoid-protection/amass-obstacles/cos_obstacles.md`.
 Large outputs: cluster `/l/users/konstantin.smirnov/cos/`.
 
-## Summary (2026-11-26, end of the night)
+## Summary (updated 2026-11-26 16:00, all sources)
 
-**Passed.** G0 event audit: 7/7 families have >= 20 clean events from >= 10 takes. G2 synthesis: 99.5% of accepted
-scenes verify at 100 Hz with exact G1 geometry (rule: >= 95%). G1 SONIC feasibility: 5/7 families >= 50% tracked
-(detour 90%, arms tucked 89%, sideways 75%, arms raised 66%, high step 60%).
-**Failed.** G1 for duck (14%) and crawl (0%): frozen SONIC does not follow deep crouches or crawls, even with floor
-contact allowed.
-**Dropped.** G3 (planner training): the user changed scope to data preparation only.
+**Gates.**
+- G0 event audit passed (7/7 families).
+- G2 synthesis passed (99.5% verified).
+- G1 (SONIC): 5/7 families passed; duck and crawl failed (14% and 0% tracked).
+- G3 (planner training) was dropped: the user limited the scope to data.
 
-**Scenes v1 (data deliverable, on Lustre `/l/users/konstantin.smirnov/cos/`).**
-- Motion: 24.2 h of G1 motion. That is all 8,059 retargetable SMPL-X sequences of AMASS CMU/KIT/BMLmovi/SFU, retargeted
-  with our GMR pipeline (21.9 h; 33 very long sequences failed on memory), plus the September PHUMA subset (2.4 h).
-- Scenes: **9,574 scenes, 9,509 verified (99.3%)**, from 1,701 events in 1,132 clips. A fitted event gets 5.2 fits on
-  average, of 2.4 different obstacle kinds; 2,532 near-duplicates were rejected. Verified per family: arms raised
-  3,496, duck 2,163, arms in 1,391, multi-obstacle 740, arms tucked 571, detour 446, high step 339, sideways 190,
-  crawl 173.
-- Physical feasibility: SONIC tracks 1,171 of 2,505 windows. 4,456 verified scenes lie on tracked windows; in 4,078 of
-  them the tracked posture also clears every box.
-- Files: `scenes_v1/manifest.json`, `yield.csv` and `quality.csv`. Per source: `scenes_v1/<source>/{scenes.jsonl,
-  motions/*.npz (M, D, tracked), feasibility.jsonl}`. Libraries are in `library/<source>`, retargeted clips in
-  `amass_gmr/`.
-- Artifacts (`amass-obstacles/`): `scenes_v1/{yield.csv, quality.csv, quality.png, cos_v1_best_worst.png, manifest.json}`,
-  8 G2 videos in `videos/`, G0/G1/G2 logs and sheets.
+**Dataset: scenes v1.1, on Lustre `/l/users/konstantin.smirnov/cos/`.**
+- Motion: 132.5 h of G1 motion from 83,053 clips.
+  - AMASS 60.7 h: our GMR retargeting for CMU, BMLmovi and SFU; ember-lab for KIT and the 19 subsets we had no raw
+    data for. The choice per subset came from the pre-registered matched SONIC test.
+  - Full PHUMA 69.3 h; LAFAN1 2.5 h.
+- Scenes: **43,524 verified (99.46% of 43,762)** from 7,804 events in 5,337 clips. Each fitted event has about 5 fits
+  of about 2 obstacle kinds.
+- Feasibility: 33,444 scenes lie on SONIC-tracked windows; 31,198 of them also clear every box with the tracked posture.
+- Files: `scenes_v1/manifest.json`, `yield.csv`, `quality.csv`, `quality.png`, `retarget_comparison.json`.
+  Per source: `scenes_v1/<source>/{scenes.jsonl, motions/*.npz (M, D, tracked), feasibility.jsonl}`. Libraries are in
+  `library/<source>` (50 Hz qpos), GMR clips in `amass_gmr/`. The same report files are in the artifacts folder
+  `amass-obstacles/scenes_v1/`.
+
+**Retargeting comparison** (GMR vs ember-lab on the same sequences). Ember-lab has fewer joint-limit violations; GMR
+has about half the foot skating and less floor penetration. SONIC tracks them equally on CMU and SFU, GMR better on
+BMLmovi (59 vs 52%), and ember-lab better on KIT (75 vs 59%).
 
 **Weak spots.**
 - The chord >= 0.5 m rule skipped 386 windows (BMLmovi crawls: 94 clean events, 31 tried).
 - Realism checks fail for 40% of crawl scenes (ceiling above 0.95 m) and 16-32% of gap scenes (gap wider than 1.2 m).
 - Sideways explanations are mostly "arms in": only 190 scenes have a trunk or shoulder hit.
 
-**Not done.**
-- The full download (ember-lab AMASS->G1 for all of AMASS, full PHUMA, LAFAN1 G1) was blocked by the permission
-  classifier. The job is `hpc/cos_fetch.sbatch` and must be submitted by the user; `cos_library.py` has the ember,
-  PHUMA and LAFAN1 readers.
-- The GMR-vs-ember quality comparison (`scripts/cos_compare_retarget.py`) is waiting on that download.
+**Not done.** 33 very long AMASS sequences were not retargeted with GMR. The blind plausibility check needs a
+second person. The best/worst contact sheet covers v1 only.
 
 **Next steps.**
-1. Process the downloaded sources with `hpc/cos_process.sbatch` and compare the two retargetings.
-2. Handle slow-travel windows with an event-direction chord instead of skipping them.
-3. Get a crawl- and duck-capable tracker (fine-tuned SONIC) and turn the tracked rollouts into PARC-style corrected data.
-4. Run the blind plausibility check by a second person.
+1. Handle slow-travel windows with an event-direction chord instead of skipping them.
+2. Get a crawl- and duck-capable tracker (fine-tuned SONIC) and turn the tracked rollouts into PARC-style corrected data.
+3. Run the blind plausibility check by a second person.
 
 
 ---
@@ -299,3 +296,39 @@ ground penetration (share of frames > 2 cm below the clip's 5th-percentile sole 
 **Decision rule:** per subset use the retargeting with the higher matched tracked share; if the two are within 5
 points, the one with less foot skating + penetration. The other one is left out of the yield (`cos_report.py
 --drop-sources`) but stays on Lustre. Subsets only ember has are added as they are.
+
+### Part 2 result (16:00)
+
+**Retargeting comparison** (`scenes_v1/retarget_comparison.json`, 300 sequences per subset, SFU 31; matched SONIC
+windows 150 per subset, SFU 30). Each cell is ours (GMR) / ember-lab:
+
+| subset | joint-limit frames | foot skating (m/s) | penetration frames | matched tracked | chosen |
+|---|---|---|---|---|---|
+| BMLmovi | 0.9% / 0.2% | 0.07 / 0.22 | 0.04% / 0.57% | **59% / 52%** | GMR |
+| CMU | 1.9% / 1.1% | 0.17 / 0.38 | 0.29% / 1.17% | 53% / 55% (tie) | GMR (less skating) |
+| KIT | 1.7% / 0.7% | 0.10 / 0.16 | 0.23% / 0.36% | 59% / **75%** | ember-lab |
+| SFU | 3.7% / 0.4% | 0.21 / 0.55 | 0.08% / 1.45% | 60% / 60% (tie) | GMR (less skating) |
+
+On these sequences ember-lab violates joint limits less often; GMR skates about half as much and penetrates the floor
+less. SONIC tracks KIT better from ember-lab. The 19 subsets we have no raw data for come from ember-lab.
+
+**Final dataset (scenes v1.1):** 132.5 h of G1 motion from 83,053 clips: AMASS 60.7 h (GMR CMU/BMLmovi/SFU + ember-lab
+KIT and the 19 other subsets), full PHUMA 69.3 h, LAFAN1 2.5 h. That gives **43,762 scenes, 43,524 verified at 100 Hz
+(99.46%)**, from 7,804 fitted events in 5,337 clips: 5.05 fits per fitted event of 2.15 kinds on average. By source:
+PHUMA 30,297, AMASS 10,974 (3,914 from subsets new to us), LAFAN1 2,253. 33,444 verified scenes lie on SONIC-tracked
+windows, and in 31,198 of them the drift-corrected tracked posture also clears every box.
+
+| family | verified scenes | clips | default penetration p50 (cm) | real clearance p50 (cm) | realistic | window tracked | tracked posture clear |
+|---|---|---|---|---|---|---|---|
+| arms raised | 16,555 | 3,228 | 6.3 | 8.8 | 100% | 79% | 95% |
+| arms tucked | 9,365 | 1,402 | 7.3 | 8.9 | 81% | 91% | 89% |
+| arms in | 6,277 | 1,100 | 5.7 | 8.2 | 86% | 82% | 97% |
+| multi | 4,306 | 1,350 | 8.9 | 6.9 | 81% | 78% | 87% |
+| duck | 3,763 | 428 | 5.3 | 8.7 | 100% | 26% | 81% |
+| detour | 1,634 | 251 | 12.3 | 12.9 | 100% | 85% | 98% |
+| sideways | 815 | 287 | 14.9 | 8.7 | 65% | 79% | 99% |
+| high step | 619 | 89 | 9.3 | 7.9 | 100% | 36% | 48% |
+| crawl | 190 | 29 | 18.3 | 11.7 | 64% | 0% | 96% |
+
+Yield per source/family: `scenes_v1/yield.csv`; manifest `scenes_v1/manifest.json` (Lustre and artifacts).
+`scenes_v1/phuma_subset` is superseded by `phuma_full`. The best/worst contact sheet is from the first 24 h (v1).
