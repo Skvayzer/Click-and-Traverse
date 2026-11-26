@@ -61,7 +61,8 @@ def resample(fps, pos, quat, dof):
 
 
 def xyzw_or_wxyz(q):
-    """Upright humans: the scalar part has the largest mean magnitude."""
+    """Upright humans: the scalar part has the largest mean magnitude. NOT used for ember/PHUMA: it fails for wxyz clips
+    facing away from +x (|z| > |w|); the readers use each dataset's documented order instead."""
     return q[:, [3, 0, 1, 2]] if np.abs(q[:, 3]).mean() >= np.abs(q[:, 0]).mean() else q
 
 
@@ -89,7 +90,7 @@ def read_ember(src):
         yield dict(clip_id="ember__" + "__".join(rel.with_suffix("").parts), subset=subset, member=str(rel),
                    licence=f"AMASS/{subset} (non-commercial research licence); retargeting fleaven/ember-lab CC-BY-4.0",
                    source=f"amass_ember_{subset}", fps=float(z["fps"]), pos=z["body_positions"][:, root],
-                   quat=xyzw_or_wxyz(np.asarray(z["body_rotations"][:, root])), dof=z["dof_positions"][:, idx])
+                   quat=np.asarray(z["body_rotations"][:, root]), dof=z["dof_positions"][:, idx])   # IsaacLab: wxyz
 
 
 def read_phuma(src):
@@ -105,7 +106,7 @@ def read_phuma(src):
         obj = np.load(io.BytesIO(z.read(n)), allow_pickle=True)
         d = obj.item() if obj.dtype == object else dict(obj)
         return (float(np.asarray(d.get("fps", 30.))), np.asarray(d["root_trans"], np.float32),
-                xyzw_or_wxyz(np.asarray(d["root_ori"], np.float32)), np.asarray(d["dof_pos"], np.float32))
+                np.asarray(d["root_ori"], np.float32)[:, [3, 0, 1, 2]], np.asarray(d["dof_pos"], np.float32))  # xyzw
 
     for (cat, key), ns in sorted(groups.items()):
         ns.sort(key=lambda n: int(re.search(r"_chunk_(\d+)", n).group(1)) if "_chunk_" in n else 0)
