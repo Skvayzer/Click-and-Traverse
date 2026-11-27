@@ -271,3 +271,13 @@ planner; seed 0's training-time planner difference is reported.
   planner online).
 - Evals: ws-ia chain 332715–332718 (V7r / FIX plan-off on E4 and 384); gpu chain after seed 1: 332834 c3s0 cos, 332835 c3s0
   oracle (human reference) cos, 332836 S3+C2 planner cos, 332837 c3s0 E4, 332838 c3s0 384, 332839–332841 seed 1 cos/E4/384.
+
+### C3 seed 0 result (04:22)
+Job 332631: 150 updates, 04:07, ~78 s/update, peak GPU 31.7 GB; return 0.4 → ~90, falls 0 after update 10 (healthy).
+COS test-200 with the C2 planner online (job 332834): 74.3 / 23.8 / 1.0 / 1.3 / 13.5 at 0.15 m/s, 72.3 / 24.0 / 3.8 / 0.3 /
+14.5 at 0.30 (clean / contact / refused / fall / hand contact). Paired (both speeds, 200 scenes): vs V7r clean +8.1 pp
+[+4.0, +12.1], contact −5.4 [−9.0, −1.6]; vs COMBO_FIX plan-off clean −2.3 [−5.4, +0.8], contact +2.5 [−0.1, +5.3]; vs the
+warm start (S3 s1 + planner v1) −1.5 [−4.5, +1.5]. Per family vs plan-off (clean pp): high_step −20 (n = 5), multi −6,
+arms_tucked −4, arms_in −3, detour −2, sideways −1, arms_raised +1, duck +2 — none significant.
+Baselines on the benchmarks (0.15 m/s, clean / contact): 384 — V7r 59.8 / 35.3, plan-off 67.1 / 27.2; E4 — V7r 65.3 / 33.3,
+plan-off 62.5 / 36.8.
