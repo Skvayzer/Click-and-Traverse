@@ -160,3 +160,5 @@ capped at a fixed random 6,000 of its ~56 k tiles (`--eprobe_max_worlds 6000`). 
 (B2 amendment), B2-full uses the SALL-AR settings (`BM_ANCHOR_OBS=1`, root σ 0.1 m) and is compared with SALL-AR (same
 settings, windows only). Budget 15,000 iterations (the library is 23 × SALL's; ≈ 1 h), checkpoints every 500. Training-set
 metrics on a fixed random 2,000-segment subset of the train segments; held-out on the same 340 test windows.
+| SALL-AR 7k (338020, 7,000 it, 26 min training) | train 0.922 / 0 / 4.9·6.8·8.6 / 3.0 / 4.0 / 4.1° | test 0.900 / 1 / 5.6·10.9·12.6 / 3.5 / 4.7 / 4.4° |
+(42 "nefc overflow, increase njmax to 505" warnings in its log: a few worlds briefly exceeded the 500-constraint buffer.)
