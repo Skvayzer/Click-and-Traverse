@@ -108,3 +108,17 @@ rollouts with our 35-primitive exact proxy (`synth.Body.sep`, same as C2/C0); pe
 metrics (SALL, or B2-full if it is better on held-out error). Context: C4 plan-off 76.3 / 74.8 %, C3 oracle arm 73.8 %.
 Prediction: 80–90 % clean; contacts concentrated in tight families (arms_in, sideways, duck), since M clears the boxes by
 only >= 5 cm and any tracking error of > 5 cm on the arms touches.
+
+### B2 amendment (16:43, after S40 / SALL metrics, before any variant run): global drift is unobservable
+BlinkMimic's policy observation (`mdp.obs`) holds joints, joint velocities, angular velocity, gravity, previous action and the
+reference-relative root **orientation** — no root **position** error; the reward's root-position term is weak (σ 0.3 m,
+weight 0.5 of 5). Global drift is therefore invisible to the policy: SALL tracks held-out windows with 4.4 cm re-anchored
+body error but 17 cm mean root drift (32 cm mean global body error). For B3 (world-frame obstacles cleared by >= 5 cm) this is
+decisive, so two variants are added (seed 0, all 3,045 train windows, PRESET[main], 3,500 iterations), flag
+`BM_ANCHOR_OBS=1`: the reference root position in the robot's yaw frame (3 values, 2 cm uniform noise) appended to the
+observation (BeyondMimic's motion_anchor_pos_b; branch cos-tracking 731474c):
+* **SALL-A**: anchor observation, reward unchanged;
+* **SALL-AR**: anchor observation + root-position reward σ 0.3 → 0.1 m (`BM_ROOT_POS_STD=0.1`).
+Same metrics; the B3 tracker is chosen among SALL / SALL-A / SALL-AR (and B2-full) by held-out median global body error
+with failed clips <= 3 %, before any B3 rollout. Prediction: the anchor observation cuts held-out root drift from ~17 cm to
+< 5 cm at equal re-anchored error.

@@ -14,7 +14,7 @@ T=/l/users/konstantin.smirnov/cos/tracker; export PYTHON=$T/venv/bin/python OMP_
 cd ~/blinkmimic
 echo "== bm $(git rev-parse --short HEAD) on $(hostname) $(date -Is) RUN=$RUN MOTION_DIR=${MOTION_DIR:-lafan1} EXTRA=${EXTRA:-}"
 nvidia-smi --query-gpu=name,memory.used,memory.total --format=csv,noheader
-mkdir -p "$RUN"
+mkdir -p "$RUN"; env | grep "^BM_" > "$RUN/bm_env.txt" || true
 if [[ -z "${EVAL_ONLY:-}" ]]; then
   bash scripts/train.sh "$RUN" ${MOTION_DIR:+--motion_dir $MOTION_DIR} ${EXTRA:-} | grep -v "^\s*$" | tail -n 40
 fi
