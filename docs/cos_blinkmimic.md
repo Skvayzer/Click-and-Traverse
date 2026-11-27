@@ -67,3 +67,25 @@ Job 337353 (ws-ia, RTX 5000 Ada 32 GB), PRESET[main], seed 0: 3,500 iterations i
 failed (theirs 0.862 / 0). **The pre-registered wall-clock rule is missed: 11.4 min against the 10.2 min limit.** Reasons: the same iteration counts
 (1,400 / 2,200 vs their 1,300 / ~1,550) and the same final return as the authors, about 7 min of compilation before
 iteration 1,000, and a slower card (6.6 vs 7.5 it/s). The recipe itself reproduces (target reached, final 0.861 / 0 failed).
+
+## B1-full — whole-clip cleaning (pre-registered 16:25, before any count; requested after B1: 3.34 h of windows is a
+small slice of the 132.5 h dataset)
+Per whole clip of the four v1.1 libraries (dropped sources skipped), `scripts/cos_full_segments.py` applies the C0 tests
+**per frame** with a local floor (p5 of the min foot height within ±2 s): flight (whole-body lowest point > floor + 5 cm
+for 5–30 frames), floating (> 30 frames), pelvis vertical speed > 1 m/s, acrobatic (pelvis upside down, roll > 60°, head
+below pelvis, angular speed > 8 rad/s), uneven floor (0.5 s support block > floor + 5 cm), foot penetration (min foot <
+floor − 2 cm); clip names with the C0 trick/terrain keywords are dropped whole. Bad frames are dilated by 0.5 s, good runs
+>= 2 s become segments, a segment whose local floor varies by > 5 cm is dropped, and each segment is levelled to the
+physical proxy floor (dz = −0.010 − p5 of its min foot height, C0 amendment 1). Split by take with the C1 rule (C1's
+take_split.json where the take had scenes, else the same sha1 rule) → no test take in training. Report hours and segments
+per split and source, hours flagged per reason. No pass rule (data gate); a 40-clip contact sheet check is skipped (the
+tests are C0's, already eyeballed).
+
+## B2-full (pre-registered 16:25, before any B2-full run)
+Train BlinkMimic from scratch on **all train segments** of B1-full (PRESET[main]; changes needed for memory — e.g. reference
+storage, probe-sweep size — or a cap on hours if the library does not fit on a 32 GB card are logged as amendments and the
+largest fitting subset is used), then evaluate with `tools/eval_metrics.py` on the **same 340 held-out test windows** as B2.
+Comparison: B2-full vs B2 SALL (windows only) on held-out global body-position error, joint error and failed clips, and
+both in B3. Hypothesis: 10–30 × more motion lowers held-out error and failures (more varied gaits and postures); risk: the
+fixed iteration budget covers the larger library less densely → also report the training-set return. Pass (vs SALL):
+held-out failed clips not higher and global body error lower by >= 0.5 cm.
