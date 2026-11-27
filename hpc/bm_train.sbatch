@@ -18,7 +18,7 @@ mkdir -p "$RUN"
 if [[ -z "${EVAL_ONLY:-}" ]]; then
   bash scripts/train.sh "$RUN" ${MOTION_DIR:+--motion_dir $MOTION_DIR} ${EXTRA:-} | grep -v "^\s*$" | tail -n 40
 fi
-if [[ -n "${EVAL:-1}" ]]; then
+if [[ "${EVAL:-1}" != 0 ]]; then
   PYTHONPATH=src $PYTHON -u tools/eval_batch.py --run_dir "$RUN" ${EVAL_ARGS:---group 18 --reps 4} 2>&1 | tail -n 15
   PYTHONPATH=src $PYTHON -u tools/time_to_target.py "$RUN" 2>&1 | tail -n 15
 fi
