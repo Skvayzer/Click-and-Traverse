@@ -156,10 +156,10 @@ def main():
     import multiprocessing as mp
     S = collections.defaultdict(lambda: collections.Counter()); R = collections.defaultdict(collections.Counter)
     t0 = time.time()
-    fo = open(Path(a.out) / "clips.jsonl", "w")            # opened before the workers fork (EFAULT seen otherwise)
+    lines = []                                             # written once at the end (EFAULT on Lustre writes seen on gpu-01)
     with mp.get_context("spawn").Pool(a.jobs, initializer=init, initargs=(a,)) as pool:
         for i, o in enumerate(pool.imap_unordered(one, jobs, chunksize=4)):
-            fo.write(json.dumps(dict(o, removed=dict(o["removed"]))) + "\n")
+            lines.append(json.dumps(dict(o, removed=dict(o["removed"]))))
             key = (o["split"], o["source"].split("_")[0] if o["source"].startswith("amass") else o["source"])
             src = o["source"] if not o["source"].startswith("amass") else ("amass_gmr" if "gmr" in o["source"] else "amass_ember")
             for sp in (o["split"], "all"):
@@ -168,7 +168,11 @@ def main():
                 R[sp].update(o["removed"])
             if i % 5000 == 0:
                 print(f"{i}/{len(jobs)} clips {time.time() - t0:.0f}s", flush=True)
-    fo.close()
+    for attempt in range(5):
+        try:
+            Path(a.out, "clips.jsonl").write_text("\n".join(lines) + "\n"); break
+        except OSError as e:
+            print("write retry", attempt, e, flush=True); time.sleep(10)
     summ = {f"{sp}/{src}": dict(clips=v["clips"], hours_in=round(v["frames_in"] / FPS / 3600, 2),
                                 hours_kept=round(v["frames_kept"] / FPS / 3600, 2), segments=v["segments"])
             for (sp, src), v in sorted(S.items())}
