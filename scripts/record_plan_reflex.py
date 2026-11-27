@@ -37,6 +37,7 @@ def main():
     p.add_argument("--speed", type=float, default=0.15, help="operator speed, m/s")
     p.add_argument("--steps", type=int, default=3000)
     p.add_argument("--bank", default="data/furniture/tablegap_v1")
+    p.add_argument("--start-replay", type=Path, help="DIR of <scene>_0.npz: start each world at qpos[0] (the evaluation's start)")
     p.add_argument("--seed", type=int, default=1)
     p.add_argument("--goal-seed-cache", type=Path,
                    help="local copy of the exact goal-column cache for the forced recording scenes")
@@ -138,7 +139,12 @@ def main():
                             events[key].append(last[key][k].float().numpy())
 
         task._replan = replan
-    task.reset(None, sids)
+    if args.start_replay:      # the evaluation's start pose per scene (episode 0), as eval_per_scene --start-replay
+        pose = torch.stack([torch.as_tensor(np.load(args.start_replay / f"{sc}_0.npz")["qpos"][0], dtype=torch.float32)
+                            for sc in scenes]).to(dev)
+        task.reset(None, sids, initial_pose=pose, initial_velocity=torch.zeros((len(scenes), 35), device=dev))
+    else:
+        task.reset(None, sids)
     learner, _ = load_policy(args.checkpoint, device=dev, policy_id=0)
     if (args.plan_select not in (None, "clear")) or args.plan_arbitrate is not None:
         task.value_fn = lambda o: learner.model.value(o, torch.zeros(o.shape[:-1], dtype=torch.long, device=o.device))

@@ -17,6 +17,6 @@ export CAT_PATH_MAP=/home/konstantinsmirnov/robotics/Click-and-Traverse-Mjlab=$L
 cd "${CLONE:?}"; P=.venv-mjlab/bin/python; mkdir -p "${OUT:?}"
 echo "== cos_video $(git rev-parse --short HEAD) $(hostname) CK=$CK SCENES=$SCENES $(date -Is)"
 $P -u scripts/record_plan_reflex.py "$CK" --scenes $SCENES --out $OUT/rec.npz --mix ${MIX:-plan=1} --speed ${SPEED:-0.15} --steps 1100 \
-   --bank $C4/bank_test --goal-seed-cache $C4/bank_test_goal ${PLANNER:+--planner-checkpoint $PLANNER} 2>&1 | grep -v "^step" | tail -20
+   --bank $C4/bank_test --goal-seed-cache $C4/bank_test_goal --start-replay $C4/starts ${PLANNER:+--planner-checkpoint $PLANNER} 2>&1 | grep -v "^step" | tail -20
 $P -u scripts/render_plan_reflex.py --rec $OUT/rec.npz --out $OUT --bank $C4/bank_test --width 1280 --height 720 ${SCENE_MAP:+--scene-map $SCENE_MAP} 2>&1 | tail -10
 echo "== done $(date -Is)"
