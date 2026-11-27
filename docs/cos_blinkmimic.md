@@ -192,3 +192,34 @@ over 2 episodes × 2 speeds, also per speed); arms plan-off (COMBO_FIX none=1), 
 C2 planner. (b) C4-clean on all 200. (c) contact and hand-contact rates on all 200, every arm. (d) tracker arms only, not
 comparable to C4: route completed cleanly = no contact, no fall, pelvis within 0.30 m xy of the reference's final pelvis at
 the clip's end; candidate vs the no-obstacle control (which separates tracking failures from obstacle contacts).
+
+## B3 result — PASS (rule: >= 85 % C4-clean on the 200 scenes)
+Tracker SALL-AR 7k (val-selected), job 338415; control without boxes 338416. BlinkMimic's simulator, 1,614 boxes, one
+rollout per scene at the human reference's own timing. C4-clean (goal within 20 s: pelvis + feet within 0.30 m of the
+reference's final pelvis; no contact; no fall): **92.5 % on all 200 (Wilson 95 % CI 88.0–95.4)**; contact-free 99.0 %, goal
+93.5 % (the reference itself passes the goal test in 94.0 %), contact 1.0 % (2 scenes: sideways, multi), hand contact 0 %,
+falls 0 %, time-out without goal 6.5 %; median min clearance (exact proxy) 7.5 cm, hands 11.5 cm; proxy-contact 3 %.
+Per family (C4-clean): arms_in 97.4, arms_tucked 94.9, sideways 95.5, multi 91.7, duck 86.4, arms_raised 84.6, detour 100
+(n = 11), high_step 100 (n = 5). Not clean: 15 scenes, 13 of them only for the goal (the clip ends with a foot > 0.30 m
+from the final pelvis; 8 of these references fail the goal test themselves), 2 with a contact.
+
+**Fairness analysis** (`scripts/cos_bm_b3_compare.py`, `cos/tracker/b3/compare_b3.json`; C4 arms: per-scene clean averaged
+over 2 episodes × 2 speeds):
+| | (a) C4-clean, 188 scenes whose reference passes the goal test | tracker − arm (paired 95 % CI) | (b) C4-clean, all 200 | (c) contact / hand / fall, all 200 |
+|---|---|---|---|---|
+| **BlinkMimic tracker** | **95.2 %** | — | **92.5 %** | **1.0 / 0.0 / 0.0 %** |
+| COMBO_FIX plan-off | 76.6 (0.15: 77.7, 0.30: 75.5) | +18.6 [+12.5, +24.6] | 75.5 | 21.4 / 13.5 / 1.3 (refused 1.9) |
+| C3 s0 oracle (human reference) | 73.8 | +21.4 [+14.6, +27.9] | 72.6 | 24.1 / 13.9 / 1.8 |
+| C3 s0 + C2 planner | 74.1 | +21.1 [+15.0, +27.1] | 73.3 | 23.9 / 14.0 / 0.7 |
+| V7r | 66.1 | +29.1 [+22.5, +35.6] | 65.1 | 29.2 / 14.2 / 3.5 |
+(a) by family, tracker vs plan-off: arms_in 97 vs 88, arms_raised 91 vs 69, arms_tucked 95 vs 90, detour 100 vs 91, duck
+100 vs 59, high_step 100 vs 45, multi 91 vs 61, sideways 95 vs 75.
+(d) tracker only, not comparable to C4 — route completed cleanly (no contact, no fall, pelvis within 0.30 m of the reference's
+final pelvis at the clip end): 99.0 % with the boxes, 100 % without (control goal-test 94.0 %, 0 falls) → the 2 contacts
+are the only obstacle-caused failures; tracking itself never failed.
+**Caveats.** Different simulator and robot collision model than C4 (BlinkMimic's G1 convex hulls + foot spheres vs our
+harness's collision bank); the tracker gets the verified human route (>= 5 cm clearance by construction) at the human's own
+timing and from its first frame — it is an oracle-reference tracker, not a goal-seeking policy, unlike plan-off/V7r; C4 arms
+were run at 0.15/0.30 m/s operator speeds. The comparison with the C3 oracle arm (same information: the human reference)
+is the closest like-for-like: +21 pp, i.e. a precise tracker turns the human route into clean traversals where the C3
+tracker could not.
