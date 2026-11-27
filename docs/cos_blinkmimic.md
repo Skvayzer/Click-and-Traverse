@@ -223,3 +223,27 @@ timing and from its first frame — it is an oracle-reference tracker, not a goa
 were run at 0.15/0.30 m/s operator speeds. The comparison with the C3 oracle arm (same information: the human reference)
 is the closest like-for-like: +21 pp, i.e. a precise tracker turns the human route into clean traversals where the C3
 tracker could not.
+
+## B2 verdict (18:58) against the pre-registered targets
+Training windows: return >= 0.82 and <= 1 % failed — **met** by every run (SALL-AR 7k: 0.922, 0 / 3,045). Held-out 340 test
+windows: <= 3 % failed — **met** (0–1 / 340); joint error <= 5° — **met** (4.4°); global body position <= 5 cm — **missed**
+(released recipe 10.2 cm median; with the anchor observation 5.6 cm median, 10.9 mean, 12.6 p90); re-anchored body position
+<= 4 cm — **missed** (4.4–4.7 cm). Reference points: BlinkMimic on LAFAN1 3.44 cm re-anchored; SONIC on NVIDIA's walk 2.5 cm.
+**B2-full** (77.6 h) vs SALL-AR, held-out (checkpoint 13,000, the last before the divergence): median 5.88 vs 5.69 cm, mean
+9.6 vs 12.5 cm, p90 12.0 vs 13.1 cm, failed 0 vs 0 → the pre-registered rule (median lower by >= 0.5 cm) **fails**; 23 × more
+motion buys a thinner error tail, not a lower median, within 13,000 iterations, and the run diverged at 13,650.
+
+## B4 videos (`cos-tracker/videos/`, 1280×720 H.264 yuv420p faststart, real time; solid robot, blue ghost = human
+reference; `scripts/cos_bm_render.py`)
+COS test scenes with obstacles (SALL-AR 7k): `scene_duck_clean_*`, `scene_high_step_clean_*`, `scene_sideways_clean_*`
+(LAFAN1 run, sideways), `scene_sideways_fail_*` (**contact**, one of the 2 contact scenes); held-out motions without
+obstacles: `heldout_motion_detour_clean_*`, `heldout_motion_arms_raised_clean_*`.
+
+## State / next / jobs (18:58)
+No jobs running. Checkpoints `cos/tracker/runs/{b0_lafan_s0, b2_s40, b2_s500, b2_sall, b2_sall_A, b2_sall_AR, b2_sall_AR7k,
+b2full_AR}`; data `cos/tracker/motions_v1` (windows), `motions_full` (whole-clip segments); B3 `cos/tracker/b3/`.
+BlinkMimic changes on `~/robotics/blinkmimic` branch cos-tracking (local + cluster `~/blinkmimic`; not pushed — its origin
+is the author's GitHub). Next options: (1) rerun B2-full with a non-finite-state guard and evaluate through 15k+ iterations;
+(2) tighter global tracking (root σ 0.05, anchor observation of more bodies) to reach <= 5 cm median; (3) a goal-seeking
+wrapper (tracker + planner/C2 references instead of the human route) to make B3 comparable to C4 without the oracle route;
+(4) SONIC on the same references in the same harness (skipped, optional).
