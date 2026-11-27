@@ -177,3 +177,8 @@ below. Fix for a rerun: guard the training batch against non-finite simulator st
 2. **Selection on val, not test**: the B3 tracker = the candidate with the lowest median global body error on the 151 B1
    **val** windows among {SALL-AR 7k (it 7,000), B2-full it 10,000 / 12,000 / 13,000 / 13,500}, failed clips <= 3 % on val.
    Test-window errors are results only.
+
+### B3 tracker selected (18:52) on val (151 windows): **SALL-AR 7k** — median global 5.35 cm (mean 8.1, p90 10.5), root
+3.4 cm, 0 failed; B2-full it 10k / 12k / 13k / 13.5k: 5.90 / 5.91 / 5.87 / 6.08 cm, 0 failed. Smoke re-scored with the C4
+definition (LAFAN-only B0 tracker, not a candidate): **13.0 % clean** (goal reached 15 %, contact-free 71.5 %, 0 falls) —
+the earlier 71.5 % ignored the goal. The scorer now also checks whether the human reference itself passes the C4 goal test.
