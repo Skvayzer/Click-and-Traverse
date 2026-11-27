@@ -77,6 +77,8 @@ def main():
             p.error("--goal-seed-cache requires a checkpoint trained with a goal-column cache")
         goal_seed["cache"] = str(args.goal_seed_cache.resolve())
     tracker = env.get("tracker")
+    if tracker and tracker.get("fullpath"):      # as eval_per_scene without --fullpath-plans: no oracle plans, no scene swap
+        tracker["fullpath"] = dict(tracker["fullpath"], share=0.)
     if args.planner_checkpoint:
         if not tracker or not tracker.get("planner"):
             p.error("--planner-checkpoint requires an online-planner tracker")
