@@ -302,3 +302,38 @@ pose, 1280×720 H.264 yuv420p faststart (`hpc/cos_video.sbatch`; recorder fixed 
 training-time full-path share set to 0 as in eval_per_scene — before that fix half the recorded worlds were swapped into a
 random S3 plan's scene and collided at 1 s). Recorded outcomes: duck clean, arms_raised clean, detour clean, arms_in clean,
 high_step **contact (failure case)**, sideways still walking at 22 s (unfinished). Files are named by the recorded outcome.
+
+## C4 result (08:22) — hypothesis NOT met on COS; no forgetting on the benchmarks
+COS system = C3 tracker (seeds 0–2; seed 0 trained with planner v1 online, seeds 1–2 with the C2 planner) + C2 planner
+online at evaluation; identical starts for every arm; seeds pooled by averaging per scene; paired scene-bootstrap 95 % CIs
+over both speeds. Clean / contact / hand contact / refused (%), time to clean goal (s), mean episode min palm field (cm):
+
+| set | arm | 0.15 m/s | 0.30 m/s |
+|---|---|---|---|
+| COS test-200 | **COS system (3 seeds)** | 72.1 / 25.7 / 14.6 / 1.0, 5.1 s, 11.0 | 72.8 / 23.8 / 14.0 / 2.3, 4.1 s, 11.3 |
+| | V7r reactive | 65.5 / 29.0 / 15.0 / 2.0, 5.7 s, 11.6 | 64.8 / 29.5 / 13.5 / 2.3, 4.1 s, 11.7 |
+| | COMBO_FIX plan-off | 76.3 / 21.3 / 13.3 / 1.3, 5.1 s, 11.2 | 74.8 / 21.5 / 13.8 / 2.5, 4.2 s, 10.9 |
+| 384 narrow | COS system | 69.4 / 28.3 / 2.7 / 2.0, 26.2 s | 69.2 / 27.4 / 2.8 / 3.0, 18.8 s |
+| | V7r | 59.8 / 35.3 / 2.3 / 4.6 | 66.3 / 29.8 / 3.9 / 3.8 |
+| | plan-off | 67.1 / 27.2 / 2.0 / 5.3 | 68.1 / 25.9 / 2.3 / 5.2 |
+| E4 (72 layouts) | COS system | 60.9 / 37.5 / 18.5 / 1.6, 21.0 s, 3.5 | 62.5 / 36.6 / 18.3 / 0.9, 16.7 s, 3.4 |
+| | V7r | 65.3 / 33.3 / 18.8 / 1.4 | 56.9 / 43.1 / 24.3 / 0.0 |
+| | plan-off | 62.5 / 36.8 / 25.0 / 0.7 | 61.8 / 36.8 / 22.2 / 1.4 |
+
+Paired, COS system − arm (clean pp; contact pp): **COS test-200** vs V7r +7.3 [+3.7, +10.9]; −4.5 [−7.9, −1.2] —
+vs plan-off **−3.1 [−5.6, −0.6]; +3.3 [+1.0, +5.6]** (hand contact +0.8 [−1.2, +2.7]). 384 vs V7r +6.3 [+3.7, +8.8]; vs plan-off
++1.7 [+0.1, +3.4]. E4 vs V7r +0.6 [−3.1, +4.5]; vs plan-off −0.5 [−3.8, +2.7]. Seeds on COS (0.15): 74.3 / 71.3 / 70.8 clean.
+Per family vs plan-off (COS, clean pp, none significant): duck +1, multi −2, arms_raised −2, detour −3, arms_in −4,
+arms_tucked −4, sideways −5, high_step −17 (n = 5).
+**Verdict.** Pre-registered hypothesis (COS system beats both baselines on COS) **fails**: it beats reactive V7r but is 3 pp
+worse than COMBO_FIX plan-off on the held-out COS scenes (CI excludes 0). No forgetting: within ±2 pp of plan-off on 384
+(slightly better) and E4. Diagnostics: the C3 tracker fed the verified human route is no better (73.8 %), and swapping
+planner v1 → C2 planner does not change the S3 tracker (75.5 → 76.0 %): the tracker, not the plan, limits COS performance.
+
+## Final state (08:22)
+No jobs running. Checkpoints: C2 planner ; C3 trackers
+. Evaluations , comparisons
+ (copies in artifacts ), videos .
+Caveats: COS obstacles are short corridors (chord <= 2.5 m, 20 s episodes) and the test set is limited by held-out takes
+(high step 5, detour 11 scenes, no crawl); 253 training scenes (~30 % of resets) only; the reflex/plan-relative terms were
+inherited from S3, not re-tuned for COS; the oracle arm uses physical SONIC tracks re-anchored to the reference path.
