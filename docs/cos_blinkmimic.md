@@ -182,3 +182,13 @@ below. Fix for a rerun: guard the training batch against non-finite simulator st
 3.4 cm, 0 failed; B2-full it 10k / 12k / 13k / 13.5k: 5.90 / 5.91 / 5.87 / 6.08 cm, 0 failed. Smoke re-scored with the C4
 definition (LAFAN-only B0 tracker, not a candidate): **13.0 % clean** (goal reached 15 %, contact-free 71.5 %, 0 falls) —
 the earlier 71.5 % ignored the goal. The scorer now also checks whether the human reference itself passes the C4 goal test.
+
+### B3 fairness analysis (registered 18:55; **written after the candidate's headline B3 numbers were visible**
+(338415 finished 18:54: 92.5 % C4-clean on all 200, reference passes the goal test on 94 %, 1 % contact, 0 falls), **before
+any subset, paired or baseline comparison was computed**). Four reports, every arm on the same scenes:
+(a) **primary**: C4-clean on the subset of scenes whose human reference itself passes the C4 goal test; subset size
+stated; paired scene-bootstrap 95 % CIs of tracker − arm (tracker: one rollout; C4 arms: their per-scene clean averaged
+over 2 episodes × 2 speeds, also per speed); arms plan-off (COMBO_FIX none=1), C3 s0 oracle (human reference), V7r, C3 s0 +
+C2 planner. (b) C4-clean on all 200. (c) contact and hand-contact rates on all 200, every arm. (d) tracker arms only, not
+comparable to C4: route completed cleanly = no contact, no fall, pelvis within 0.30 m xy of the reference's final pelvis at
+the clip's end; candidate vs the no-obstacle control (which separates tracking failures from obstacle contacts).
