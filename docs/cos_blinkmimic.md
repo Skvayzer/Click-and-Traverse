@@ -134,3 +134,13 @@ S40 reached the LAFAN-style target on its own 40 clips at 6.2 min (it 500; 0.952
 held-out failure target (0 / 340) and the re-anchored target (4.4 vs <= 4 cm: just missed) and joints (3.9 <= 5°), but **not
 the global target** (median 10.2 cm vs <= 5 cm; mean 32 cm) — drift, see the amendment above. One SALL training window
 failed; a few worlds became non-finite in S40 (counted, excluded from pooled errors).
+
+### B2 metrics, corrected (17:07): eval_metrics fix — finished worlds keep stepping idle and some blow up; `alive *
+NaN` poisoned the sums (all "non-finite clips" were this artifact, short PHUMA windows; blinkmimic 1b8c56a). Re-evaluated:
+| run | train: ret / failed / global med·mean·p90 / root med / re-anch. / joint | test (340): ret / failed / global med·mean·p90 / root med·mean / re-anch. / joint |
+|---|---|---|---|
+| SALL | 0.925 / 1 / 8.8·13.4·17.6 / 7.4 / 4.0 / 3.7° | 0.909 / 0 / 10.2·32.1·27.8 / 8.7·17.1 / 4.4 / 3.8° |
+| SALL-A | 0.931 / 1 / 6.5·8.3·12.0 / 5.2 / 4.0 / 3.9° | 0.913 / 2 / 7.3·13.5·16.9 / 5.8·8.2 / 4.6 / 4.1° |
+| SALL-AR | 0.914 / 1 / 5.2·7.1·9.4 / 3.3 / 4.2 / 4.4° | **0.897 / 0 / 5.7·12.5·13.1 / 3.8·6.1 / 4.6 / 4.6°** |
+The anchor observation removes most of the drift (held-out root median 8.7 → 3.8 cm, p90 global 27.8 → 13.1 cm) at +0.2 cm
+re-anchored / +0.7° joint error. Running: SALL-AR for 7,000 iterations (338020).
