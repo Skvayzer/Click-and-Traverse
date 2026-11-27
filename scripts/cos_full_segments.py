@@ -156,7 +156,8 @@ def main():
     import multiprocessing as mp
     S = collections.defaultdict(lambda: collections.Counter()); R = collections.defaultdict(collections.Counter)
     t0 = time.time()
-    with mp.get_context("fork").Pool(a.jobs, initializer=init, initargs=(a,)) as pool, open(Path(a.out) / "clips.jsonl", "w") as fo:
+    fo = open(Path(a.out) / "clips.jsonl", "w")            # opened before the workers fork (EFAULT seen otherwise)
+    with mp.get_context("spawn").Pool(a.jobs, initializer=init, initargs=(a,)) as pool:
         for i, o in enumerate(pool.imap_unordered(one, jobs, chunksize=4)):
             fo.write(json.dumps(dict(o, removed=dict(o["removed"]))) + "\n")
             key = (o["split"], o["source"].split("_")[0] if o["source"].startswith("amass") else o["source"])
@@ -167,6 +168,7 @@ def main():
                 R[sp].update(o["removed"])
             if i % 5000 == 0:
                 print(f"{i}/{len(jobs)} clips {time.time() - t0:.0f}s", flush=True)
+    fo.close()
     summ = {f"{sp}/{src}": dict(clips=v["clips"], hours_in=round(v["frames_in"] / FPS / 3600, 2),
                                 hours_kept=round(v["frames_kept"] / FPS / 3600, 2), segments=v["segments"])
             for (sp, src), v in sorted(S.items())}
