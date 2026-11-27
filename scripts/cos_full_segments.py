@@ -182,7 +182,13 @@ def main():
                                    hours_kept=round(sum(v["frames_kept"] for v in tot) / FPS / 3600, 2),
                                    segments=sum(v["segments"] for v in tot))
     summ["removed_hours_by_reason"] = {sp: {r: round(n / FPS / 3600, 2) for r, n in R[sp].items()} for sp in R}
-    json.dump(summ, open(Path(a.out) / "summary.json", "w"), indent=1)
+    txt = json.dumps(summ, indent=1)
+    print(txt, flush=True)                                 # the summary is also in the job log
+    for attempt in range(5):
+        try:
+            Path(a.out, "summary.json").write_text(txt); break
+        except OSError as e:
+            print("write retry", attempt, e, flush=True); time.sleep(10)
     print(json.dumps({k: v for k, v in summ.items() if "TOTAL" in k}), f"{time.time() - t0:.0f}s", flush=True)
 
 
