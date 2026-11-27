@@ -162,3 +162,18 @@ settings, windows only). Budget 15,000 iterations (the library is 23 × SALL's; 
 metrics on a fixed random 2,000-segment subset of the train segments; held-out on the same 340 test windows.
 | SALL-AR 7k (338020, 7,000 it, 26 min training) | train 0.922 / 0 / 4.9·6.8·8.6 / 3.0 / 4.0 / 4.1° | test 0.900 / 1 / 5.6·10.9·12.6 / 3.5 / 4.7 / 4.4° |
 (42 "nefc overflow, increase njmax to 505" warnings in its log: a few worlds briefly exceeded the 500-constraint buffer.)
+
+### B2-full result (18:20) — diverged at iteration 13,650
+Job 338039: 77.6 h, anchor settings, 6.4 it/s, stable to it ≈ 13,000 (world-model loss 0.10–0.18), then a simulator
+blow-up (sim reward −15,342 at it 13,650) turned world model and policy to NaN; the final checkpoint (15,000) is degraded
+(held-out: return 0.803, 7 failed, median global 12.4 cm). The healthy checkpoints (every 500 iterations) are evaluated
+below. Fix for a rerun: guard the training batch against non-finite simulator states (not done yet).
+
+### B3 corrections and tracker selection (pre-registered 18:20, before any candidate B3 rollout)
+1. **Clean = C4's definition**: goal reached within the 20 s episode (pelvis and both feet within 0.30 m xy of the goal =
+   the reference's final pelvis xy; `goal_ground.cross_radius`), no obstacle contact, no fall/termination. Reported
+   separately: contact-free, goal reached, contact, hand contact, fall (BlinkMimic termination), time-out without goal.
+   The earlier smoke number (71.5 % "clean" = completed without contact) did not require the goal and is re-scored.
+2. **Selection on val, not test**: the B3 tracker = the candidate with the lowest median global body error on the 151 B1
+   **val** windows among {SALL-AR 7k (it 7,000), B2-full it 10,000 / 12,000 / 13,000 / 13,500}, failed clips <= 3 % on val.
+   Test-window errors are results only.
