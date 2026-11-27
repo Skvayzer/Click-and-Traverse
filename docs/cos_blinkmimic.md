@@ -19,3 +19,15 @@ for 3 checkpoints in a row.
 time incl. compilation, excl. start-up and data loading). The RTX 5000 Ada is slower than a 4090, so a miss up to the 3,500
 iterations with the target reached counts as "install works, slower hardware" and is reported as such; a run that never
 reaches 0.82 / 0 failed fails B0. Purpose: proves the install, nothing about our data.
+
+## B1 — data (pre-registered 15:47, before the export)
+**Choice: unique C0-kept windows, not whole clips.** C0 cleaned and levelled *windows* (3–12 s around the avoidance events),
+not whole clips: the parts of a clip outside its windows were never tested for flight, uneven floor or penetration, and the
+levelling dz is per window. So the motion set = every window with >= 1 kept, re-verified scene (the levelled M of
+`scenes_v2/<source>/motions/<window>.npz`, 50 Hz), one file per window, >= 2 s. These are also exactly the references of
+the COS test scenes (B3). Splits by take (C1 `take_split.json`): train takes → training; val and test takes held out.
+**Checks.** Joint order (ours vs BlinkMimic's `G1_JOINT_NAMES`), frame rate (50 Hz; their loader resamples to 50 Hz),
+kinematics of the two G1 models (FK of the 14 tracked bodies on 2,000 random frames of our motions, max position difference),
+foot height on the floor with their collision geometry (p5 of the lowest foot point per window should be within ±1 cm of 0).
+**Report.** Clips and hours per split and family. No pass rule (a data gate); a kinematic mismatch > 1 cm or a floor offset
+> 1 cm is fixed (re-levelled) before B2.
