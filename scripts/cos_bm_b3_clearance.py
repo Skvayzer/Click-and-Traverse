@@ -34,10 +34,17 @@ def main():
             if s["scene"] in rows:
                 boxes[s["scene"]] = s["boxes"]; windows[s["scene"]] = s["window"]
     import torch
+    print("scoring", len(per), "scenes", flush=True)
     q, alive = R["qpos"], R["alive"]
     goals = {}
+    ref_goal = {}
     for sid, row in rows.items():
-        goals[sid] = np.load(Path(row["folder"]) / "motions" / f"{windows[sid]}.npz")["M"][-1, :2].astype(np.float64)
+        Mref = np.load(Path(row["folder"]) / "motions" / f"{windows[sid]}.npz")["M"].astype(np.float64)
+        goals[sid] = Mref[-1, :2]
+        # does the human reference itself pass the C4 goal test (perfect tracking)? It may end mid-stride.
+        pel_r, _, feet_r = G.keypoints(torch.as_tensor(Mref, dtype=torch.float32))
+        pr = torch.cat((pel_r[:, None, :2], feet_r[:, :, :2]), 1).numpy()
+        ref_goal[sid] = bool((np.linalg.norm(pr - goals[sid][None, None], axis=-1) <= 0.30).all(-1).any())
     for k, r in enumerate(per):
         idx = np.flatnonzero(alive[:, k])
         qk = q[idx, k].astype(np.float64)
@@ -46,7 +53,7 @@ def main():
         pel, _, feet = G.keypoints(torch.as_tensor(qk, dtype=torch.float32))
         pts = torch.cat((pel[:, None, :2], feet[:, :, :2]), 1).numpy()
         within = (np.linalg.norm(pts - goals[r["scene"]][None, None], axis=-1) <= 0.30).all(-1) & (idx < 1000)
-        r["goal_c4"] = bool(within.any())
+        r["goal_c4"] = bool(within.any()); r["reference_goal_c4"] = ref_goal[r["scene"]]
         r["contact_free"] = not r["contact"]
         r["clean_c4"] = bool(r["goal_c4"] and not r["contact"] and not r["failed"])
         r["timeout_no_goal"] = bool(not r["failed"] and not r["goal_c4"])
@@ -55,7 +62,7 @@ def main():
         r["min_clear_m"] = float(v.min()); r["min_hand_clear_m"] = float(vh.min())
         r["proxy_contact"] = bool(v.min() < 0)
     json.dump(per, open(run / "per_scene_clearance.json", "w"), indent=1)
-    keys = ("clean_c4", "contact_free", "goal_c4", "contact", "hand_contact", "failed", "timeout_no_goal", "proxy_contact")
+    keys = ("clean_c4", "contact_free", "goal_c4", "reference_goal_c4", "contact", "hand_contact", "failed", "timeout_no_goal", "proxy_contact")
     def block(rr):
         n = len(rr); d = dict(n=n, **{k: round(float(np.mean([x[k] for x in rr])), 3) for k in keys})
         d["clean_c4_ci95"] = wilson(sum(x["clean_c4"] for x in rr), n)
