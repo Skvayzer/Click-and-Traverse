@@ -16,10 +16,28 @@ KEYS = ("clean", "contact", "hands", "refused", "fall")
 
 
 def load(d):
-    out = {}
-    for f in sorted(Path(d).glob("speed_*.json")):
-        j = json.load(open(f)); out[str(j["operator_speed"])] = j
-    return out
+    """One eval dir, or several comma-separated dirs (seeds): per-scene values are averaged over the dirs."""
+    dirs = d.split(",")
+    runs = []
+    for dd in dirs:
+        out = {}
+        for f in sorted(Path(dd).glob("speed_*.json")):
+            j = json.load(open(f)); out[str(j["operator_speed"])] = j
+        runs.append(out)
+    if len(runs) == 1:
+        return runs[0]
+    merged = {}
+    for sp in runs[0]:
+        ps = {}
+        for sc in runs[0][sp]["per_scene"]:
+            rows = [r[sp]["per_scene"][sc] for r in runs if sp in r and sc in r[sp]["per_scene"]]
+            row = {k: float(np.mean([x[k] for x in rows])) for k in KEYS}
+            for k in ("mean_time_to_clean_goal_s", "mean_episode_min_palm_field_m"):
+                v = [x[k] for x in rows if x.get(k) is not None]
+                row[k] = float(np.mean(v)) if v else None
+            ps[sc] = row
+        merged[sp] = dict(per_scene=ps)
+    return merged
 
 
 def boot(x, n=4000, seed=0):
