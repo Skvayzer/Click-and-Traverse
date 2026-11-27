@@ -22,4 +22,10 @@ if [[ -n "${EVAL:-1}" ]]; then
   PYTHONPATH=src $PYTHON -u tools/eval_batch.py --run_dir "$RUN" ${EVAL_ARGS:---group 18 --reps 4} 2>&1 | tail -n 15
   PYTHONPATH=src $PYTHON -u tools/time_to_target.py "$RUN" 2>&1 | tail -n 15
 fi
+if [[ -n "${METRICS:-}" ]]; then        # accuracy on the training set and on held-out motions (last checkpoint)
+  CK=$(ls $RUN/ckpt_*.pt | sort | tail -1)
+  for M in ${MOTION_DIR:-} ${HELDOUT:-}; do
+    PYTHONPATH=src BM_MOTION_GLOB=${BM_MOTION_GLOB:-*.csv} $PYTHON -u tools/eval_metrics.py $CK --motion_dir $M --out $RUN/metrics_$(basename $M) 2>&1 | tail -n 3
+  done
+fi
 echo "== done $(date -Is)"

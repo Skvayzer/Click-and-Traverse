@@ -58,3 +58,11 @@ global body position <= 5 cm, re-anchored body position <= 4 cm, joint error <= 
 3.44 cm re-anchored body error, 4.2° joints; SONIC tracked NVIDIA's walk within 2.5 cm in our harness (different metric,
 stated for orientation only). Prediction: the short COS windows (mostly walking with arm postures) are easier than LAFAN1 per
 second, so SALL reaches the training target within 3,500 iterations; held-out error 1–2 cm above training error.
+
+### B0 result (16:22) — install works; time rule missed on slower hardware
+Job 337353 (ws-ia, RTX 5000 Ada 32 GB), PRESET[main], seed 0: 3,500 iterations in 15.1 min of training wall-clock (their
+4090: 7.8 min); 6.6 it/s in steady state (theirs 7.5) but ≈ 7.6 min to iteration 1,000 including compilation. Evaluation
+(40 clips, 4 replicas, every 100 iterations): first return >= 0.82 at 9.19 min (it 1,400; theirs 2.9 min), strict target
+(>= 0.82 and 0 failed for 3 checkpoints in a row) at **11.44 min** (it 2,200; theirs 3.4 min; rule 10.2 min). Final 0.861 / 0
+failed (theirs 0.862 / 0). Verdict by the pre-registered rule: target reached, time 3.4 × theirs (rule 3 ×) → "install works,
+slower hardware"; the iteration counts (1,400 / 2,200 vs their 1,300 / ~1,550) match.
