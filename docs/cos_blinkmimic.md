@@ -89,3 +89,22 @@ Comparison: B2-full vs B2 SALL (windows only) on held-out global body-position e
 both in B3. Hypothesis: 10–30 × more motion lowers held-out error and failures (more varied gaits and postures); risk: the
 fixed iteration budget covers the larger library less densely → also report the training-set return. Pass (vs SALL):
 held-out failed clips not higher and global body error lower by >= 0.5 cm.
+
+## B3 — tracking through the obstacle scenes (pre-registered 16:27, before any B3 rollout)
+**Setup** (`~/blinkmimic/tools/cos_obstacle_eval.py`, branch cos-tracking). BlinkMimic's own MuJoCo-Warp simulator (their
+G1 collision geometry: convex hulls + foot spheres) with the boxes of each of the 200 COS test scenes (levelled, all roles)
+added as static colliding geoms; scene k is placed 30 m along x from scene k−1 and world k tracks scene k's **held-out human
+reference** (levelled M of the scene's window, 50 Hz, its own timing) from the reference's first frame, evaluation
+conditions (no randomization, deterministic). One rollout per scene. A control run without the boxes is also made.
+Deviations from C4, stated up front: different simulator and robot collision model (theirs vs our harness's body collision
+bank); start = the reference's first frame (C4: the SONIC-tracked first pose re-anchored to it — same xy, near-identical
+posture); the human's own timing instead of 0.15/0.30 m/s operator speeds; no goal-seeking policy (the reference ends at
+the goal). Compared with C4 numbers as context, not as a paired test.
+**Metrics.** Per scene: physical robot–box contact (any geom, penetration < 0), hand contact (wrist/hand bodies),
+tracking failure (BeyondMimic termination = fall/reset), completion, goal reached (clip completed and final pelvis within
+0.5 m of the reference's), **clean = completed without failure and without contact**; min clearance from the recorded
+rollouts with our 35-primitive exact proxy (`synth.Body.sep`, same as C2/C0); per family; Wilson 95 % CI on clean.
+**Pass rule (proposed by the user, fixed now):** clean >= 85 % on the 200 scenes with the B2 tracker chosen by the held-out
+metrics (SALL, or B2-full if it is better on held-out error). Context: C4 plan-off 76.3 / 74.8 %, C3 oracle arm 73.8 %.
+Prediction: 80–90 % clean; contacts concentrated in tight families (arms_in, sideways, duck), since M clears the boxes by
+only >= 5 cm and any tracking error of > 5 cm on the arms touches.
