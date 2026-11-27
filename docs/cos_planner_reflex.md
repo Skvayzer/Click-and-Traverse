@@ -295,3 +295,10 @@ swap (v1 → C2) changes nothing for the S3 tracker. As in S2, the limit is what
 Resets: ≈ 30 % of training resets land in the 253 COS scenes (0.5 full-path share × 253/448 plans + ≈ 1–2 % via the
 procedural_cat group; estimate). GPU memory: COS scenes 0.38 M voxels each (≈ 4.5 MB on device), base bank 1,672 M voxels
 (≈ 20 GB); seed 0 peaked at 31.7 / 32.76 GB → ≈ 200 more COS scenes fit; more needs base scenes swapped out or fewer worlds.
+
+### C4 videos (06:15)
+`cos-policy/videos/` (artifacts): six held-out COS scenes, C3 seed 0 + C2 planner, 0.15 m/s, start = the evaluation's start
+pose, 1280×720 H.264 yuv420p faststart (`hpc/cos_video.sbatch`; recorder fixed twice: `--start-replay` added, and the
+training-time full-path share set to 0 as in eval_per_scene — before that fix half the recorded worlds were swapped into a
+random S3 plan's scene and collided at 1 s). Recorded outcomes: duck clean, arms_raised clean, detour clean, arms_in clean,
+high_step **contact (failure case)**, sideways still walking at 22 s (unfinished). Files are named by the recorded outcome.
