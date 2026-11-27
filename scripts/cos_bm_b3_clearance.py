@@ -27,18 +27,17 @@ def main():
     G = ExactGeometry(); hands = G.hand_shapes.tolist()
     run = Path(a.run); per = json.load(open(run / "per_scene.json")); R = np.load(run / "rollouts.npz")
     rows = {json.loads(l)["scene"]: json.loads(l) for l in open(a.scenes) if l.strip()}
-    boxes = {}
+    boxes, windows = {}, {}
     for folder in {r["folder"] for r in rows.values()}:
         for l in open(Path(folder) / "scenes.jsonl"):
             s = json.loads(l)
             if s["scene"] in rows:
-                boxes[s["scene"]] = s["boxes"]
+                boxes[s["scene"]] = s["boxes"]; windows[s["scene"]] = s["window"]
     import torch
     q, alive = R["qpos"], R["alive"]
     goals = {}
     for sid, row in rows.items():
-        s_ = next(json.loads(l) for l in open(Path(row["folder"]) / "scenes.jsonl") if json.loads(l)["scene"] == sid)
-        goals[sid] = np.load(Path(row["folder"]) / "motions" / f"{s_['window']}.npz")["M"][-1, :2].astype(np.float64)
+        goals[sid] = np.load(Path(row["folder"]) / "motions" / f"{windows[sid]}.npz")["M"][-1, :2].astype(np.float64)
     for k, r in enumerate(per):
         idx = np.flatnonzero(alive[:, k])
         qk = q[idx, k].astype(np.float64)
