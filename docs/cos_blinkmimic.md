@@ -144,3 +144,19 @@ NaN` poisoned the sums (all "non-finite clips" were this artifact, short PHUMA w
 | SALL-AR | 0.914 / 1 / 5.2·7.1·9.4 / 3.3 / 4.2 / 4.4° | **0.897 / 0 / 5.7·12.5·13.1 / 3.8·6.1 / 4.6 / 4.6°** |
 The anchor observation removes most of the drift (held-out root median 8.7 → 3.8 cm, p90 global 27.8 → 13.1 cm) at +0.2 cm
 re-anchored / +0.7° joint error. Running: SALL-AR for 7,000 iterations (338020).
+
+### B1-full result (17:09) — job 337990 (`cos/tracker/motions_full`, 199 s on 12 CPUs; three earlier attempts died on
+EFAULT writes from the gpu-01 node and were rerun on ws-ia with buffered writes)
+All 83,053 clips / 132.5 h → **91.4 h kept in 64,852 segments (69 %)**: train 77.6 h / 55,126 segments (70,624 clips);
+val 4.3 h / 3,022; test 9.4 h / 6,704. By source (in → kept h): PHUMA 69.3 → 53.7, AMASS ember 49.1 → 25.9 (floating
+floors), AMASS GMR 11.7 → 9.7, LAFAN1 2.5 → 2.1. Flagged hours (non-exclusive, before margins): floating 6.5, flight 4.1,
+acrobatic 0.7, pelvis_vz 0.1, uneven floor 0.1, foot penetration 0.1; trick names 3.4 h and terrain names 3.2 h dropped
+whole; short pieces (< 2 s after cutting) 5.8 h, short clips 2.7 h, segments with > 5 cm floor drift 1.3 h.
+
+### B2-full amendment (17:09, before the run)
+Scale changes (blinkmimic c5e1c8e): reference FK arrays filled in place (no second copy; 77.6 h ≈ 14 M frames ≈ 19 GB of
+references on the GPU, training itself used 5.6 GB at SALL scale), per-clip contact floors by slices, and the probe sweep
+capped at a fixed random 6,000 of its ~56 k tiles (`--eprobe_max_worlds 6000`). Because B3 needs the anchor observation
+(B2 amendment), B2-full uses the SALL-AR settings (`BM_ANCHOR_OBS=1`, root σ 0.1 m) and is compared with SALL-AR (same
+settings, windows only). Budget 15,000 iterations (the library is 23 × SALL's; ≈ 1 h), checkpoints every 500. Training-set
+metrics on a fixed random 2,000-segment subset of the train segments; held-out on the same 340 test windows.
