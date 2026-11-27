@@ -31,3 +31,30 @@ kinematics of the two G1 models (FK of the 14 tracked bodies on 2,000 random fra
 foot height on the floor with their collision geometry (p5 of the lowest foot point per window should be within ±1 cm of 0).
 **Report.** Clips and hours per split and family. No pass rule (a data gate); a kinematic mismatch > 1 cm or a floor offset
 > 1 cm is fixed (re-levelled) before B2.
+
+### B1 result (15:50)
+`cos/tracker/motions_v1/{train,val,test}/<window>.npz` (`scripts/cos_bm_export.py`): **train 3,045 windows, 3.34 h, 2,413
+takes; val 151, 0.15 h; test 340, 0.38 h** (windows >= 2 s; median ≈ 4 s). Families (windows; a window can hold several):
+train arms_raised 1,635, arms_tucked 914, multi 815, arms_in 698, duck 275, sideways 205, detour 149, high_step 31, crawl 10;
+test arms_raised 181, arms_tucked 97, arms_in 83, multi 83, duck 30, sideways 23, detour 15, high_step 2, crawl 2.
+Checks: joint order identical (29 joints, Unitree SDK order); 50 Hz (no resampling); FK of the 14 tracked bodies of our
+training G1 and BlinkMimic's g1_29dof_rev_1_0 MJCF identical on 2,000 frames (max difference 0.0 mm); with their collision
+geometry (foot spheres) the levelled windows stand at −1.1 mm (p5 of the lowest foot point per window; 5–95 %: −4.4 /
++5.4 mm) → no re-levelling. Their model is 33.3 kg vs 34.4 kg for ours (same kinematics, different inertials; B3 uses our
+harness). Loader: `BM_MOTION_GLOB=*.npz` (`load_qpos_npz`, branch cos-tracking 1d0e700).
+
+## B2 — train from scratch on COS motions (pre-registered 15:50, before any COS training run)
+**Runs** (PRESET[main] unchanged unless stated; seed 0; one RTX 5000 Ada): S40 = 40 random train windows, 3,500 iterations;
+S500 = 500 random train windows, 3,500 iterations; SALL = all 3,045 train windows (3.34 h, 1.4 × LAFAN1's 2.45 h), 3,500
+iterations first, extended to 7,000 if the return is still rising. Changes needed for scale (memory, probe sweep) are logged
+as amendments.
+**Metrics** (`tools/eval_metrics.py`, deterministic, every clip once from its first frame, no randomization; patched with
+`--motion_dir`, a global body-position error and the failed-clip names): normalized return, failed clips (BeyondMimic
+termination = fall/reset), global body-position RMS (14 bodies, not re-anchored), re-anchored body-position RMS, root
+position error, joint error; on the run's training windows and on the 340 held-out **test** windows (val for checkpoint
+choice only if needed). Wall-clock from their logs.
+**Targets / pass rule (SALL).** Training windows: return >= 0.82 and <= 1 % failed. Held-out test windows: <= 3 % failed,
+global body position <= 5 cm, re-anchored body position <= 4 cm, joint error <= 5°. Reference points: BlinkMimic on LAFAN1
+3.44 cm re-anchored body error, 4.2° joints; SONIC tracked NVIDIA's walk within 2.5 cm in our harness (different metric,
+stated for orientation only). Prediction: the short COS windows (mostly walking with arm postures) are easier than LAFAN1 per
+second, so SALL reaches the training target within 3,500 iterations; held-out error 1–2 cm above training error.
