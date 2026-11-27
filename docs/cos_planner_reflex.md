@@ -331,9 +331,9 @@ worse than COMBO_FIX plan-off on the held-out COS scenes (CI excludes 0). No for
 planner v1 → C2 planner does not change the S3 tracker (75.5 → 76.0 %): the tracker, not the plan, limits COS performance.
 
 ## Final state (08:22)
-No jobs running. Checkpoints: C2 planner ; C3 trackers
-. Evaluations , comparisons
- (copies in artifacts ), videos .
+No jobs running. Checkpoints: C2 planner `cos/c2/planner_cos_v1/train/planner.pt`; C3 trackers
+`runs/stationary_hands_20261113_cos_C3_seed{0,1,2}_{332631,332764,332833}/run/resume.pt`. Evaluations `cos/c4/evals/*`,
+comparisons `compare3_{cos,E4,384}.json` (copies in artifacts `cos-policy/`), videos `cos-policy/videos/`.
 Caveats: COS obstacles are short corridors (chord <= 2.5 m, 20 s episodes) and the test set is limited by held-out takes
 (high step 5, detour 11 scenes, no crawl); 253 training scenes (~30 % of resets) only; the reflex/plan-relative terms were
 inherited from S3, not re-tuned for COS; the oracle arm uses physical SONIC tracks re-anchored to the reference path.
