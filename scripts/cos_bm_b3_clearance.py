@@ -33,18 +33,33 @@ def main():
             s = json.loads(l)
             if s["scene"] in rows:
                 boxes[s["scene"]] = s["boxes"]
+    import torch
     q, alive = R["qpos"], R["alive"]
+    goals = {}
+    for sid, row in rows.items():
+        s_ = next(json.loads(l) for l in open(Path(row["folder"]) / "scenes.jsonl") if json.loads(l)["scene"] == sid)
+        goals[sid] = np.load(Path(row["folder"]) / "motions" / f"{s_['window']}.npz")["M"][-1, :2].astype(np.float64)
     for k, r in enumerate(per):
         idx = np.flatnonzero(alive[:, k])
-        b = Body(G, q[idx, k].astype(np.float64))
+        qk = q[idx, k].astype(np.float64)
+        # C4 goal (goal_ground): pelvis and both feet within 0.30 m (xy) of the goal = the reference's final pelvis xy,
+        # at any step within the 20 s episode (1,000 steps; every COS reference is <= 12 s)
+        pel, _, feet = G.keypoints(torch.as_tensor(qk, dtype=torch.float32))
+        pts = torch.cat((pel[:, None, :2], feet[:, :, :2]), 1).numpy()
+        within = (np.linalg.norm(pts - goals[r["scene"]][None, None], axis=-1) <= 0.30).all(-1) & (idx < 1000)
+        r["goal_c4"] = bool(within.any())
+        r["contact_free"] = not r["contact"]
+        r["clean_c4"] = bool(r["goal_c4"] and not r["contact"] and not r["failed"])
+        r["timeout_no_goal"] = bool(not r["failed"] and not r["goal_c4"])
+        b = Body(G, qk)
         v, _ = b.sep(boxes[r["scene"]]); vh, _ = b.sep(boxes[r["scene"]], shapes=hands)
         r["min_clear_m"] = float(v.min()); r["min_hand_clear_m"] = float(vh.min())
         r["proxy_contact"] = bool(v.min() < 0)
     json.dump(per, open(run / "per_scene_clearance.json", "w"), indent=1)
-    keys = ("clean", "contact", "hand_contact", "failed", "goal_reached", "proxy_contact")
+    keys = ("clean_c4", "contact_free", "goal_c4", "contact", "hand_contact", "failed", "timeout_no_goal", "proxy_contact")
     def block(rr):
         n = len(rr); d = dict(n=n, **{k: round(float(np.mean([x[k] for x in rr])), 3) for k in keys})
-        d["clean_ci95"] = wilson(sum(x["clean"] for x in rr), n)
+        d["clean_c4_ci95"] = wilson(sum(x["clean_c4"] for x in rr), n)
         d["median_min_clear_cm"] = round(100 * float(np.median([x["min_clear_m"] for x in rr])), 1)
         d["median_min_hand_clear_cm"] = round(100 * float(np.median([x["min_hand_clear_m"] for x in rr])), 1)
         return d
