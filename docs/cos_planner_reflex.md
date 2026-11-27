@@ -281,3 +281,17 @@ warm start (S3 s1 + planner v1) −1.5 [−4.5, +1.5]. Per family vs plan-off (c
 arms_tucked −4, arms_in −3, detour −2, sideways −1, arms_raised +1, duck +2 — none significant.
 Baselines on the benchmarks (0.15 m/s, clean / contact): 384 — V7r 59.8 / 35.3, plan-off 67.1 / 27.2; E4 — V7r 65.3 / 33.3,
 plan-off 62.5 / 36.8.
+
+### C4 diagnostics on COS test-200 (04:49; clean / contact, 0.15 | 0.30 m/s)
+| arm | 0.15 | 0.30 |
+|---|---|---|
+| C3 s0 + human reference (oracle full path, job 333717; first attempt 332835 crashed: plan files lacked meta "trial", fixed) | 73.8 / 23.5 | 71.5 / 24.8 |
+| C3 s0 + C2 planner | 74.3 / 23.8 | 72.3 / 24.0 |
+| S3 s1 + C2 planner (job 332836) | 76.0 / 22.5 | 73.5 / 24.5 |
+| S3 s1 + planner v1 | 75.5 / 23.0 | 74.0 / 23.0 |
+| COMBO_FIX plan-off | 76.3 / 21.3 | 74.8 / 21.5 |
+Even a verified, SONIC-tracked human route fed as the full plan does not raise clean success over plan-off; the planner
+swap (v1 → C2) changes nothing for the S3 tracker. As in S2, the limit is what the tracker can follow, not plan quality.
+Resets: ≈ 30 % of training resets land in the 253 COS scenes (0.5 full-path share × 253/448 plans + ≈ 1–2 % via the
+procedural_cat group; estimate). GPU memory: COS scenes 0.38 M voxels each (≈ 4.5 MB on device), base bank 1,672 M voxels
+(≈ 20 GB); seed 0 peaked at 31.7 / 32.76 GB → ≈ 200 more COS scenes fit; more needs base scenes swapped out or fewer worlds.
