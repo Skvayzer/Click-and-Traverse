@@ -201,7 +201,7 @@ reference's final pelvis; no contact; no fall): **92.5 % on all 200 (Wilson 95 %
 falls 0 %, time-out without goal 6.5 %; median min clearance (exact proxy) 7.5 cm, hands 11.5 cm; proxy-contact 3 %.
 Per family (C4-clean): arms_in 97.4, arms_tucked 94.9, sideways 95.5, multi 91.7, duck 86.4, arms_raised 84.6, detour 100
 (n = 11), high_step 100 (n = 5). Not clean: 15 scenes, 13 of them only for the goal (the clip ends with a foot > 0.30 m
-from the final pelvis; 8 of these references fail the goal test themselves), 2 with a contact.
+from the final pelvis; 6 of these references fail the goal test themselves), 2 with a contact.
 
 **Fairness analysis** (`scripts/cos_bm_b3_compare.py`, `cos/tracker/b3/compare_b3.json`; C4 arms: per-scene clean averaged
 over 2 episodes × 2 speeds):
