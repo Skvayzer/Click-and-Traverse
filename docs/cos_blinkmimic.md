@@ -122,3 +122,15 @@ observation (BeyondMimic's motion_anchor_pos_b; branch cos-tracking 731474c):
 Same metrics; the B3 tracker is chosen among SALL / SALL-A / SALL-AR (and B2-full) by held-out median global body error
 with failed clips <= 3 %, before any B3 rollout. Prediction: the anchor observation cuts held-out root drift from ~17 cm to
 < 5 cm at equal re-anchored error.
+
+### B2 results so far (16:44; `eval_metrics` patched to report per-clip values and medians — pooled means are
+dominated by a tail of large drifts; seed 0; 3,500 iterations each; training wall-clock ≈ 15 min each)
+| run | windows | train: return / failed / med. global / re-anch. body / joint | held-out test (340): return / failed / med. global / med. root / re-anch. body / joint |
+|---|---|---|---|
+| S40 | 40 | 0.928 / 0 / 5.6 cm / 3.4 cm / 3.0° | 0.744 / 11 (+2 non-finite) / 44.0 / 35.7 cm / 7.9 cm / 4.8° |
+| S500 | 500 | 0.932 / 0 / 7.6 / 4.1 / 3.7° | 0.880 / 2 / 13.6 / 11.3 / 5.4 / 4.2° |
+| SALL | 3,045 | 0.925 / 1 / 8.7 / 4.0 / 3.7° | **0.909 / 0 / 10.2 / 8.8 / 4.4 / 3.9°** |
+S40 reached the LAFAN-style target on its own 40 clips at 6.2 min (it 500; 0.952 / 0 failed by 3,500). SALL meets the
+held-out failure target (0 / 340) and the re-anchored target (4.4 vs <= 4 cm: just missed) and joints (3.9 <= 5°), but **not
+the global target** (median 10.2 cm vs <= 5 cm; mean 32 cm) — drift, see the amendment above. One SALL training window
+failed; a few worlds became non-finite in S40 (counted, excluded from pooled errors).
